@@ -49,7 +49,10 @@ def get_agent() -> CompiledGraph:
     checkpointer = get_checkpointer()
 
     agent = create_react_agent(
-        model=model, tools=[get_weather], prompt=get_prompt, checkpointer=checkpointer
+        model=model,
+        tools=[get_weather],
+        prompt=get_prompt,  # type: ignore reportArgumentType
+        checkpointer=checkpointer,
     )
 
     return agent
