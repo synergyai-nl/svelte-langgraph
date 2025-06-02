@@ -1,10 +1,12 @@
 #!/usr/bin/env uv run python
+import asyncio
+
 from dotenv import load_dotenv
 
 from langchain.chat_models import init_chat_model
 
 from langchain.chat_models.base import BaseChatModel
-from langchain_core.messages import AnyMessage
+from langchain_core.messages import AnyMessage, BaseMessage
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.graph.graph import CompiledGraph
@@ -46,25 +48,57 @@ def get_agent() -> CompiledGraph:
     return agent
 
 
-def main():
+async def main():
     load_dotenv()
 
     agent = get_agent()
 
     config = RunnableConfig(configurable={"thread_id": "1"})
 
-    last_message = "What's up?\n"
+    # last_message = "What's up?\n"
 
     while True:
-        user_input = input(last_message)
+        user_input = input("")
 
-        agent_response = agent.invoke(
+        async for chunk, metadata in agent.astream(
             {"messages": [{"role": "user", "content": user_input}]},
             config,
-        )
+            stream_mode="messages",
+        ):
+            assert isinstance(chunk, BaseMessage)
 
-        last_message = agent_response["messages"][-1].content + "\n"
+            print(chunk.text(), end="")
+            # chunk = (
+            #     AIMessageChunk(
+            #         content="",
+            #         additional_kwargs={},
+            #         response_metadata={
+            #             "stop_reason": "end_turn",
+            #             "stop_sequence": None,
+            #         },
+            #         id="run--60a1ec70-3d15-4762-b064-5e9aef0eba7d",
+            #         usage_metadata={
+            #             "input_tokens": 0,
+            #             "output_tokens": 24,
+            #             "total_tokens": 24,
+            #         },
+            #     ),
+            #     {
+            #         "thread_id": "1",
+            #         "langgraph_step": 1,
+            #         "langgraph_node": "agent",
+            #         "langgraph_triggers": ("branch:to:agent",),
+            #         "langgraph_path": ("__pregel_pull", "agent"),
+            #         "langgraph_checkpoint_ns": "agent:a185512b-f58c-8d34-5f72-5b9e2c133a6c",
+            #         "checkpoint_ns": "agent:a185512b-f58c-8d34-5f72-5b9e2c133a6c",
+            #         "ls_provider": "anthropic",
+            #         "ls_model_name": "claude-3-5-haiku-latest",
+            #         "ls_model_type": "chat",
+            #         "ls_temperature": 0.9,
+            #         "ls_max_tokens": 1024,
+            #     },
+            # )
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
