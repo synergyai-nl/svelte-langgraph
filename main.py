@@ -15,6 +15,8 @@ from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
 
+INITIAL_MESSAGE = "Hi, how are you doing?"
+
 
 def get_checkpointer() -> Checkpointer:
     checkpointer = InMemorySaver()
@@ -34,7 +36,10 @@ def get_model() -> BaseChatModel:
 def get_prompt(state: AgentState, config: RunnableConfig) -> list[AnyMessage]:
     user_name = config["configurable"].get("user_name")
     system_msg = f"You are a helpful assistant. Address the user as {user_name}."
-    return [{"role": "system", "content": system_msg}] + state["messages"]
+    return [
+        {"role": "system", "content": system_msg},
+        {"role": "assistant", "content": INITIAL_MESSAGE},
+    ] + state["messages"]
 
 
 def get_agent() -> CompiledGraph:
@@ -55,11 +60,9 @@ async def main():
 
     config = RunnableConfig(configurable={"thread_id": "1"})
 
-    # last_message = "What's up?\n"
+    user_input = input(f"{INITIAL_MESSAGE}\n")
 
     while True:
-        user_input = input("")
-
         async for chunk, metadata in agent.astream(
             {"messages": [{"role": "user", "content": user_input}]},
             config,
@@ -68,36 +71,8 @@ async def main():
             assert isinstance(chunk, BaseMessage)
 
             print(chunk.text(), end="")
-            # chunk = (
-            #     AIMessageChunk(
-            #         content="",
-            #         additional_kwargs={},
-            #         response_metadata={
-            #             "stop_reason": "end_turn",
-            #             "stop_sequence": None,
-            #         },
-            #         id="run--60a1ec70-3d15-4762-b064-5e9aef0eba7d",
-            #         usage_metadata={
-            #             "input_tokens": 0,
-            #             "output_tokens": 24,
-            #             "total_tokens": 24,
-            #         },
-            #     ),
-            #     {
-            #         "thread_id": "1",
-            #         "langgraph_step": 1,
-            #         "langgraph_node": "agent",
-            #         "langgraph_triggers": ("branch:to:agent",),
-            #         "langgraph_path": ("__pregel_pull", "agent"),
-            #         "langgraph_checkpoint_ns": "agent:a185512b-f58c-8d34-5f72-5b9e2c133a6c",
-            #         "checkpoint_ns": "agent:a185512b-f58c-8d34-5f72-5b9e2c133a6c",
-            #         "ls_provider": "anthropic",
-            #         "ls_model_name": "claude-3-5-haiku-latest",
-            #         "ls_model_type": "chat",
-            #         "ls_temperature": 0.9,
-            #         "ls_max_tokens": 1024,
-            #     },
-            # )
+
+        user_input = input("\n")
 
 
 if __name__ == "__main__":
