@@ -1,12 +1,13 @@
 #!/usr/bin/env uv run python
 import asyncio
+from typing import Sequence
 
 from dotenv import load_dotenv
 
 from langchain.chat_models import init_chat_model
 
 from langchain.chat_models.base import BaseChatModel
-from langchain_core.messages import AnyMessage, BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.graph.graph import CompiledGraph
@@ -33,13 +34,14 @@ def get_model() -> BaseChatModel:
     return model
 
 
-def get_prompt(state: AgentState, config: RunnableConfig) -> list[AnyMessage]:
+def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessage]:
+    assert "configurable" in config
     user_name = config["configurable"].get("user_name")
     system_msg = f"You are a helpful assistant. Address the user as {user_name}."
-    return [
-        {"role": "system", "content": system_msg},
-        {"role": "assistant", "content": INITIAL_MESSAGE},
-    ] + state["messages"]
+
+    assert isinstance(state["messages"], list)
+
+    return [SystemMessage(system_msg), AIMessage(INITIAL_MESSAGE)] + state["messages"]
 
 
 def get_agent() -> CompiledGraph:
