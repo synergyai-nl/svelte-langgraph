@@ -53,16 +53,17 @@ def main():
 
     config = RunnableConfig(configurable={"thread_id": "1"})
 
-    sf_response = agent.invoke(
-        {"messages": [{"role": "user", "content": "what is the weather in sf"}]}, config
-    )
+    last_message = "What's up?\n"
 
-    print(sf_response["messages"][-1].content)
+    while True:
+        user_input = input(last_message)
 
-    ny_response = agent.invoke(
-        {"messages": [{"role": "user", "content": "what about new york?"}]}, config
-    )
-    print(ny_response["messages"][-1].content)
+        agent_response = agent.invoke(
+            {"messages": [{"role": "user", "content": user_input}]},
+            config,
+        )
+
+        last_message = agent_response["messages"][-1].content + "\n"
 
 
 if __name__ == "__main__":
