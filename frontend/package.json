@@ -48,6 +48,7 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
+		"@auth/sveltekit": "^1.9.2",
 		"@inlang/paraglide-js": "^2.0.0"
 	},
 	"pnpm": {
