@@ -57,7 +57,7 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
     )
 
 
-def get_agent() -> CompiledGraph:
+def make_graph(config: RunnableConfig) -> CompiledGraph:
     model = get_model()
     checkpointer = get_checkpointer()
 
@@ -74,7 +74,7 @@ def get_agent() -> CompiledGraph:
 async def main():
     load_dotenv()
 
-    agent = get_agent()
+    agent = make_graph()
 
     config = RunnableConfig(configurable={"thread_id": "1"})
 
