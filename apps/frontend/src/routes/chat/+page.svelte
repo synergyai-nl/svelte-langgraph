@@ -9,6 +9,8 @@
 	import { Client } from '@langchain/langgraph-sdk';
 
 	const client = new Client({
+		apiUrl: 'https://angry-fee-frontpage-publicity.trycloudflare.com'
+		// apiKey: page.data.session?.user.
 		// apiKey: process.env.LANGCHAIN_API_KEY,
 		// apiUrl: process.env.LANGGRAPH_API_URL
 	});
@@ -30,15 +32,18 @@
 		}
 	]);
 
+	let assistantId = $state('');
+	let threadId = $state('');
+
 	onMount(async () => {
 		if (!page.data.session) show_login_dialog = true;
 
 		const thread = await client.threads.create();
-		const threadId = thread.thread_id;
+		threadId = thread.thread_id;
 		const assistant = await client.assistants.create({
 			graphId: process.env.LANGGRAPH_GRAPH_ID as string
 		});
-		const assistantId = assistant.assistant_id;
+		assistantId = assistant.assistant_id;
 	});
 
 	async function streamAnswer(input: string) {
@@ -46,6 +51,39 @@
 			input,
 			streamMode: 'events'
 		});
+
+		for await (const event of stream) {
+			console.log({
+				event: event.event,
+				data: event.data
+			});
+		}
+
+		// const stream = client.runs.stream({
+		// 	assistantId: assistantId,
+		// 	threadId: threadId,
+		// 	inputs: {
+		// 		message: input
+		// 	},
+		// 	options: {
+		// 		stream: true
+		// 	}
+		// });
+
+		// for await (const event of stream) {
+		// 	console.log(event);
+
+		// 	if (event.type === 'stream') {
+		// 		messages.push({
+		// 			type: 'ai',
+		// 			text: event.output.message
+		// 		});
+		// 	} else if (event.type === 'error') {
+		// 		console.error('Error:', event.error);
+		// 	}
+		// }
+
+		is_streaming = false;
 	}
 
 	async function inputSubmit() {
