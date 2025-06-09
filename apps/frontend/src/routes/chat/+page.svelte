@@ -72,10 +72,21 @@
 					}
 
 					// Extract the message content
-					const content = chunk.data[0].content as MessageContentText[];
+					const content = chunk.data[0].content as MessageContentComplex[];
 					if (content) {
 						for (let fragment of content) {
-							yield fragment.text;
+							switch (fragment.type) {
+								case 'text':
+									yield fragment.text;
+									break;
+								case 'tool_use':
+									yield `\nCalling tool:${fragment.name}\n`;
+									break;
+								case 'input_json_delta':
+									break;
+								default:
+									console.log('Unexpected fragment type:', fragment.type);
+							}
 						}
 					}
 
