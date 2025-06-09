@@ -58,7 +58,7 @@
 			</div>
 		{/each}
 
-		<form class="py-8" onsubmit={inputSubmit}>
+		<form id="input_form" class="py-8" onsubmit={inputSubmit}>
 			<Textarea
 				id="user-input"
 				disabled={is_streaming}
@@ -66,6 +66,10 @@
 				rows={2}
 				name="message"
 				bind:value={current_input}
+				clearable
+				onkeypress={(event) => {
+					if (event.key === 'Enter' && event.shiftKey === false) inputSubmit();
+				}}
 			>
 				{#snippet footer()}
 					<div class="flex items-center justify-end">
