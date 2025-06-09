@@ -2,8 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SignIn } from '@auth/sveltekit/components';
-	import { Button, Label, Modal, P, Textarea } from 'flowbite-svelte';
-	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
+	import { Button, Label, Modal, P, Textarea, Card } from 'flowbite-svelte';
+	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
 	import { Content, Section } from 'flowbite-svelte-blocks';
 
@@ -18,9 +18,29 @@
 	<Content>
 		{#snippet h2()}Welcome to the chat{/snippet}
 
-		<form>
-			<Label for="textarea-id" class="mb-2">Your message</Label>
-			<Textarea id="textarea-id" placeholder="Your message" rows={4} name="message">
+		<div class="flex items-center gap-4">
+			<UserOutline size="xl" />
+			<Card class="max-w-full p-4 text-sm">
+				<p>
+					Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse
+					chronological order.
+				</p>
+			</Card>
+		</div>
+
+		<div class="flex items-center gap-4 py-4">
+			<Card class="max-w-full p-4 text-sm">
+				<p>
+					Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse
+					chronological order.
+				</p>
+			</Card>
+			<UserOutline size="xl" />
+		</div>
+
+		<form class="py-8">
+			<Label for="user-input" class="mb-2">Your message</Label>
+			<Textarea id="user-input" placeholder="Your message" rows={2} name="message">
 				{#snippet footer()}
 					<div class="flex items-center justify-between">
 						<Button type="submit">Submit</Button>
