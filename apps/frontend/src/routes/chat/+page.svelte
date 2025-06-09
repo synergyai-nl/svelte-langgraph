@@ -30,13 +30,7 @@
 		text: string;
 	}
 
-	let messages = $state<Array<Messsage>>([
-		{ type: 'ai', text: 'Hello human' },
-		{
-			type: 'user',
-			text: 'I feel fine'
-		}
-	]);
+	let messages = $state<Array<Messsage>>([{ type: 'ai', text: 'How can I help you?' }]);
 
 	let assistantId = $state('');
 	let threadId = $state('');
@@ -53,9 +47,15 @@
 	});
 
 	async function* streamAnswer(input: string) {
+		let input_messages = [];
+
+		if ((input_messages.length = 0))
+			input_messages.push({ role: 'ai', content: 'How may I help you?' });
+		input_messages.push({ role: 'user', content: input });
+
 		const streamResponse = client.runs.stream(threadId, assistantId, {
 			input: {
-				messages: [{ role: 'user', content: input }]
+				messages: input_messages
 			},
 			streamMode: 'messages-tuple'
 		});
@@ -65,21 +65,19 @@
 
 			switch (chunk.event) {
 				case 'messages':
-					// TODO: Check against ReferenceError: content is not defined
+					console.log('got message');
 					// Check if chunk.data[0] is defined and has content
-					if (!chunk.data || !chunk.data[0] || !chunk.data[0].content || !chunk.data[0].content) {
+					if (!chunk.data || !chunk.data[0] || !chunk.data[0].content) {
 						console.error('Invalid chunk data:', chunk);
 						continue; // Skip this iteration if data is invalid
 					}
 
 					// Extract the message content
-
 					const content = chunk.data[0].content as MessageContentText[];
 					if (content) {
 						for (let fragment of content) {
-							if (fragment['type'] === 'text') yield fragment['text'];
+							yield fragment.text;
 						}
-						// yield message[0].text;
 					}
 
 					break;
@@ -87,35 +85,7 @@
 					console.error('Error:', chunk.data);
 					break;
 			}
-
-			// yield chunk.data['content'][0]['text'];
-			// console.log(`Receiving new event of type: ${chunk.event}...`);
-			// console.log(JSON.stringify(chunk.data));
-			// console.log('\n\n');
 		}
-		// const stream = client.runs.stream({
-		// 	assistantId: assistantId,
-		// 	threadId: threadId,
-		// 	inputs: {
-		// 		message: input
-		// 	},
-		// 	options: {
-		// 		stream: true
-		// 	}
-		// });
-
-		// for await (const event of stream) {
-		// 	console.log(event);
-
-		// 	if (event.type === 'stream') {
-		// 		messages.push({
-		// 			type: 'ai',
-		// 			text: event.output.message
-		// 		});
-		// 	} else if (event.type === 'error') {
-		// 		console.error('Error:', event.error);
-		// 	}
-		// }
 	}
 
 	async function inputSubmit() {
@@ -135,7 +105,13 @@
 			messages.push(aimessage);
 
 			for await (const chunk of streamAnswer(current_input)) {
-				aimessage += chunk;
+				console.log('Received chunk:', chunk);
+
+				aimessage.text += chunk;
+
+				// Aparently changing by reference doesn't work.
+				// So: kick this reactive locomotive.
+				messages[messages.length - 1] = aimessage;
 			}
 
 			current_input = '';
