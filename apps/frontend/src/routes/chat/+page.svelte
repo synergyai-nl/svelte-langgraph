@@ -6,6 +6,12 @@
 	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
 	import { Content, Section } from 'flowbite-svelte-blocks';
+	import { Client } from '@langchain/langgraph-sdk';
+
+	const client = new Client({
+		// apiKey: process.env.LANGCHAIN_API_KEY,
+		// apiUrl: process.env.LANGGRAPH_API_URL
+	});
 
 	let show_login_dialog = $state(false);
 	let current_input = $state('');
@@ -24,11 +30,25 @@
 		}
 	]);
 
-	onMount(() => {
+	onMount(async () => {
 		if (!page.data.session) show_login_dialog = true;
+
+		const thread = await client.threads.create();
+		const threadId = thread.thread_id;
+		const assistant = await client.assistants.create({
+			graphId: process.env.LANGGRAPH_GRAPH_ID as string
+		});
+		const assistantId = assistant.assistant_id;
 	});
 
-	function inputSubmit() {
+	async function streamAnswer(input: string) {
+		const stream = client.runs.stream(threadId, assistantId, {
+			input,
+			streamMode: 'events'
+		});
+	}
+
+	async function inputSubmit() {
 		if (current_input) {
 			messages.push({
 				type: 'user',
