@@ -2,10 +2,10 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SignIn } from '@auth/sveltekit/components';
-	import { redirect } from '@sveltejs/kit';
-	import { Button, Heading, Modal, P } from 'flowbite-svelte';
+	import { Button, Label, Modal, P, Textarea } from 'flowbite-svelte';
 	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
+	import { Content, Section } from 'flowbite-svelte-blocks';
 
 	let show_login_dialog = $state(false);
 
@@ -14,7 +14,25 @@
 	});
 </script>
 
+<Section name="content">
+	<Content>
+		{#snippet h2()}Welcome to the chat{/snippet}
+
+		<form>
+			<Label for="textarea-id" class="mb-2">Your message</Label>
+			<Textarea id="textarea-id" placeholder="Your message" rows={4} name="message">
+				{#snippet footer()}
+					<div class="flex items-center justify-between">
+						<Button type="submit">Submit</Button>
+					</div>
+				{/snippet}
+			</Textarea>
+		</form>
+	</Content>
+</Section>
+
 <!-- Smooth conditional login modal -->
+
 <Modal
 	title="Login required"
 	size="xs"
@@ -33,6 +51,3 @@
 		</SignIn>
 	</div>
 </Modal>
-
-<Heading>Welcome to the chat</Heading>
-<P>I'm a cookie monster.</P>
