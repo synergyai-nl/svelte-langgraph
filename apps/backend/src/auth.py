@@ -21,36 +21,38 @@ auth = Auth()
 async def get_current_user(authorization: str | None) -> MinimalUserDict:
     """Check if the user's token is valid."""
 
-    assert authorization
-    scheme, token = authorization.split()
-    assert scheme.lower() == "bearer"
+    return MinimalUserDict(identity="jantje", is_authenticated=True)
 
-    try:
-        claims = descope_client.validate_session(session_token=token)
-    except AuthException as e:
-        logger.exception(e)
-        raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
+    # assert authorization
+    # scheme, token = authorization.split()
+    # assert scheme.lower() == "bearer"
 
-    # Descope Default User JWT
-    # {
-    #   "amr": "[list-of-strings-of-identifiers-used]",
-    #   "drn": "[string-of-type-of-token]",
-    #   "exp": "[timestamp-of-expiration-time]",
-    #   "iat": "[timestamp-of-issued-time]",
-    #   "iss": "Peuc12vtopjqyKM1TedvWYm4Bdfe5yfe",
-    #   "sub": "[string-of-user-id]",
-    #   "dct": "string-tenant-id",
-    #   "roles": "[list-of-strings] //tenant level",
-    #   "permissions": "[list-of-strings] //tenant level",
-    #   "email": "{{user.email}}"
-    # }
+    # try:
+    #     claims = descope_client.validate_session(session_token=token)
+    # except AuthException as e:
+    #     logger.exception(e)
+    #     raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
 
-    user = MinimalUserDict(
-        identity=claims["sub"],
-        # display_name=
-        is_authenticated=True,
-        permissions=claims["permissions"],
-    )
+    # # Descope Default User JWT
+    # # {
+    # #   "amr": "[list-of-strings-of-identifiers-used]",
+    # #   "drn": "[string-of-type-of-token]",
+    # #   "exp": "[timestamp-of-expiration-time]",
+    # #   "iat": "[timestamp-of-issued-time]",
+    # #   "iss": "Peuc12vtopjqyKM1TedvWYm4Bdfe5yfe",
+    # #   "sub": "[string-of-user-id]",
+    # #   "dct": "string-tenant-id",
+    # #   "roles": "[list-of-strings] //tenant level",
+    # #   "permissions": "[list-of-strings] //tenant level",
+    # #   "email": "{{user.email}}"
+    # # }
+
+    # user = MinimalUserDict(
+    #     identity=claims["sub"],
+    #     # display_name=
+    #     is_authenticated=True,
+    #     permissions=claims["permissions"],
+    # )
 
     return user
 
