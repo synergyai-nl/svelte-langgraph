@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SignIn } from '@auth/sveltekit/components';
-	import { Button, Label, Modal, P, Textarea, Card } from 'flowbite-svelte';
+	import { Button, Modal, P, Textarea, Card, Spinner } from 'flowbite-svelte';
 	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
 	import { Content, Section } from 'flowbite-svelte-blocks';
 
 	let show_login_dialog = $state(false);
 	let current_input = $state('');
+	let is_streaming = $state(false);
 
 	interface Messsage {
 		type: 'ai' | 'user';
@@ -28,11 +29,14 @@
 	});
 
 	function inputSubmit() {
-		messages.push({
-			type: 'user',
-			text: current_input
-		});
-		current_input = '';
+		if (current_input) {
+			messages.push({
+				type: 'user',
+				text: current_input
+			});
+			current_input = '';
+			is_streaming = true;
+		}
 	}
 </script>
 
@@ -55,9 +59,9 @@
 		{/each}
 
 		<form class="py-8" onsubmit={inputSubmit}>
-			<Label for="user-input" class="mb-2">Your message</Label>
 			<Textarea
 				id="user-input"
+				disabled={is_streaming}
 				placeholder="Your message"
 				rows={2}
 				name="message"
@@ -65,7 +69,12 @@
 			>
 				{#snippet footer()}
 					<div class="flex items-center justify-end">
-						<Button type="submit">Submit</Button>
+						<Button type="submit" disabled={is_streaming}>
+							Submit
+							{#if is_streaming}
+								<Spinner class="ms-2" size="4" color="blue" />
+							{/if}
+						</Button>
 					</div>
 				{/snippet}
 			</Textarea>
