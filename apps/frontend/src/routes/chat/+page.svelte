@@ -61,13 +61,12 @@
 		});
 
 		for await (const chunk of streamResponse) {
-			console.log('Got chunk:', chunk);
+			console.debug('Got chunk:', chunk);
 
 			switch (chunk.event) {
 				case 'messages':
-					console.log('got message');
 					// Check if chunk.data[0] is defined and has content
-					if (!chunk.data || !chunk.data[0] || !chunk.data[0].content) {
+					if (!chunk.data || !chunk.data[0]) {
 						console.error('Invalid chunk data:', chunk);
 						continue; // Skip this iteration if data is invalid
 					}
@@ -105,8 +104,6 @@
 			messages.push(aimessage);
 
 			for await (const chunk of streamAnswer(current_input)) {
-				console.log('Received chunk:', chunk);
-
 				aimessage.text += chunk;
 
 				// Aparently changing by reference doesn't work.
@@ -118,6 +115,15 @@
 			is_streaming = false;
 		}
 	}
+	function scrollToMe(node) {
+		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+		return {
+			destroy() {
+				// Cleanup if needed
+			}
+		};
+	}
 </script>
 
 <Section name="content">
@@ -125,7 +131,7 @@
 		{#snippet h2()}Welcome to the chat{/snippet}
 
 		{#each messages as message}
-			<div class="flex items-center gap-4 py-4">
+			<div class="flex items-center gap-4 py-4" use:scrollToMe>
 				{#if message.type == 'user'}
 					<UserOutline size="xl" />
 				{/if}
