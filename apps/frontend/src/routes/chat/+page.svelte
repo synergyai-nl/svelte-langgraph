@@ -42,7 +42,7 @@
 			<Label for="user-input" class="mb-2">Your message</Label>
 			<Textarea id="user-input" placeholder="Your message" rows={2} name="message">
 				{#snippet footer()}
-					<div class="flex items-center justify-between">
+					<div class="flex items-center justify-end">
 						<Button type="submit">Submit</Button>
 					</div>
 				{/snippet}
