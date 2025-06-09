@@ -32,12 +32,12 @@
 <Section name="heroDefault">
 	<News>
 		<span class="bg-primary-600 mr-3 rounded-full px-4 py-1.5 text-xs text-white">New</span>
-		<span class="text-sm font-medium">Flowbite is out! See what's new</span>
+		<span class="text-sm font-medium">Completely revamped frontend</span>
 	</News>
 	<HeroHeader>
-		{#snippet h1()}We invest in the world’s potential{/snippet}
-		{#snippet paragraph()}Here at Flowbite we focus on markets where technology, innovation, and
-			capital can unlock long-term value and drive economic growth.{/snippet}
+		{#snippet h1()}People Engagement & Retention Made Easy{/snippet}
+		{#snippet paragraph()}Every member of your team making meaningful impact
+		{/snippet}
 	</HeroHeader>
 
 	<div

@@ -2,7 +2,7 @@
 	import '../app.tailwind.css';
 
 	import { SignIn, SignOut } from '@auth/sveltekit/components';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	import { MessagesOutline, ArrowRightOutline } from 'flowbite-svelte-icons';
 	import {
@@ -28,9 +28,9 @@
 		</span>
 	</NavBrand>
 	<div class="flex items-center md:order-2">
-		{#if $page.data.session}
-			{#if $page.data.session.user?.image}
-				<Avatar id="avatar-menu" src={$page.data.session.user.image} />
+		{#if page.data.session}
+			{#if page.data.session.user?.image}
+				<Avatar id="avatar-menu" src={page.data.session.user.image} />
 			{:else}
 				<Avatar id="avatar-menu" />
 			{/if}
@@ -39,12 +39,12 @@
 		{/if}
 		<NavHamburger />
 	</div>
-	{#if $page.data.session}
+	{#if page.data.session}
 		<Dropdown placement="bottom" triggeredBy="#avatar-menu">
 			<DropdownHeader>
-				<span class="block text-sm">{$page.data.session.user?.name ?? 'User'}</span>
+				<span class="block text-sm">{page.data.session.user?.name ?? 'User'}</span>
 				<span class="block truncate text-sm font-medium">
-					{$page.data.session.user?.email ?? 'email'}
+					{page.data.session.user?.email ?? 'email'}
 				</span>
 			</DropdownHeader>
 			<!--
