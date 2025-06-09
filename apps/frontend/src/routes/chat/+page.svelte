@@ -28,8 +28,11 @@
 	});
 
 	function inputSubmit() {
-		alert(current_input);
-		// current_input = '';
+		messages.push({
+			type: 'user',
+			text: current_input
+		});
+		current_input = '';
 	}
 </script>
 
