@@ -58,6 +58,10 @@
 			</div>
 		{/each}
 
+		{#if is_streaming}
+			<div class="text-center"><Spinner /></div>
+		{/if}
+
 		<form id="input_form" class="py-8" onsubmit={inputSubmit}>
 			<Textarea
 				id="user-input"
