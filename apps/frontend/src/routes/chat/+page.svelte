@@ -9,16 +9,14 @@
 	import { Client, type AIMessage } from '@langchain/langgraph-sdk';
 	import { AssistantsClient } from '@langchain/langgraph-sdk/client';
 	import type { MessageContentComplex, MessageContentText } from '@langchain/core/messages';
+	import { PUBLIC_LANGCHAIN_API_KEY, PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 
 	const client = new Client({
-		apiUrl: 'https://tenant-game-proceeds-inches.trycloudflare.com',
-
-		// Set CORS shit here
-		// defaultHeaders
-		apiKey: 'fooo'
-		// apiKey: page.data.session?.user.
-		// apiKey: process.env.LANGCHAIN_API_KEY,
-		// apiUrl: process.env.LANGGRAPH_API_URL
+		// Observe that this is insecure
+		// We need to find a way to pass Descope's auth token which we can verify on the
+		// the langgraph side.
+		apiKey: PUBLIC_LANGCHAIN_API_KEY,
+		apiUrl: PUBLIC_LANGGRAPH_API_URL
 	});
 
 	let show_login_dialog = $state(false);
