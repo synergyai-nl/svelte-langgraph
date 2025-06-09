@@ -6,10 +6,16 @@
 	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
 	import { Content, Section } from 'flowbite-svelte-blocks';
-	import { Client } from '@langchain/langgraph-sdk';
+	import { Client, type AIMessage } from '@langchain/langgraph-sdk';
+	import { AssistantsClient } from '@langchain/langgraph-sdk/client';
+	import type { MessageContentComplex, MessageContentText } from '@langchain/core/messages';
 
 	const client = new Client({
-		apiUrl: 'https://angry-fee-frontpage-publicity.trycloudflare.com'
+		apiUrl: 'https://tenant-game-proceeds-inches.trycloudflare.com',
+
+		// Set CORS shit here
+		// defaultHeaders
+		apiKey: 'fooo'
 		// apiKey: page.data.session?.user.
 		// apiKey: process.env.LANGCHAIN_API_KEY,
 		// apiUrl: process.env.LANGGRAPH_API_URL
@@ -41,24 +47,52 @@
 		const thread = await client.threads.create();
 		threadId = thread.thread_id;
 		const assistant = await client.assistants.create({
-			graphId: process.env.LANGGRAPH_GRAPH_ID as string
+			graphId: 'chat' // process.env.LANGGRAPH_GRAPH_ID as string
 		});
 		assistantId = assistant.assistant_id;
 	});
 
-	async function streamAnswer(input: string) {
-		const stream = client.runs.stream(threadId, assistantId, {
-			input,
-			streamMode: 'events'
+	async function* streamAnswer(input: string) {
+		const streamResponse = client.runs.stream(threadId, assistantId, {
+			input: {
+				messages: [{ role: 'user', content: input }]
+			},
+			streamMode: 'messages-tuple'
 		});
 
-		for await (const event of stream) {
-			console.log({
-				event: event.event,
-				data: event.data
-			});
-		}
+		for await (const chunk of streamResponse) {
+			console.log('Got chunk:', chunk);
 
+			switch (chunk.event) {
+				case 'messages':
+					// TODO: Check against ReferenceError: content is not defined
+					// Check if chunk.data[0] is defined and has content
+					if (!chunk.data || !chunk.data[0] || !chunk.data[0].content || !chunk.data[0].content) {
+						console.error('Invalid chunk data:', chunk);
+						continue; // Skip this iteration if data is invalid
+					}
+
+					// Extract the message content
+
+					const content = chunk.data[0].content as MessageContentText[];
+					if (content) {
+						for (let fragment of content) {
+							if (fragment['type'] === 'text') yield fragment['text'];
+						}
+						// yield message[0].text;
+					}
+
+					break;
+				case 'error':
+					console.error('Error:', chunk.data);
+					break;
+			}
+
+			// yield chunk.data['content'][0]['text'];
+			// console.log(`Receiving new event of type: ${chunk.event}...`);
+			// console.log(JSON.stringify(chunk.data));
+			// console.log('\n\n');
+		}
 		// const stream = client.runs.stream({
 		// 	assistantId: assistantId,
 		// 	threadId: threadId,
@@ -82,8 +116,6 @@
 		// 		console.error('Error:', event.error);
 		// 	}
 		// }
-
-		is_streaming = false;
 	}
 
 	async function inputSubmit() {
@@ -92,8 +124,22 @@
 				type: 'user',
 				text: current_input
 			});
-			current_input = '';
+
 			is_streaming = true;
+
+			let aimessage: Messsage = {
+				type: 'ai',
+				text: ''
+			};
+
+			messages.push(aimessage);
+
+			for await (const chunk of streamAnswer(current_input)) {
+				aimessage += chunk;
+			}
+
+			current_input = '';
+			is_streaming = false;
 		}
 	}
 </script>
