@@ -49,7 +49,10 @@
 	},
 	"dependencies": {
 		"@auth/sveltekit": "^1.9.2",
-		"@inlang/paraglide-js": "^2.0.0"
+		"@inlang/paraglide-js": "^2.0.0",
+		"@langchain/core": "^0.3.57",
+		"@langchain/langgraph-sdk": "^0.0.83",
+		"flowbite-svelte-blocks": "^2.0.0"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
