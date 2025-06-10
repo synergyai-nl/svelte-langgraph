@@ -16,6 +16,42 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - pnpm (Node.js package manager)
 
+## Configuration
+
+Both the frontend and backend require environment variables to be configured. Copy the example files and update them with your values:
+
+### Backend Environment Variables
+
+Copy the example file:
+```bash
+cd apps/backend
+cp .env.example .env
+```
+
+Configure the following variables in `apps/backend/.env`:
+
+- `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
+- `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude integration
+- `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
+- `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
+
+### Frontend Environment Variables
+
+Copy the example file:
+```bash
+cd apps/frontend
+cp .env.example .env
+```
+
+Configure the following variables in `apps/frontend/.env`:
+
+- `AUTH_TRUST_HOST=true` - Enable auth trust host for development
+- `AUTH_DESCOPE_ID` - Your Descope project ID
+- `AUTH_DESCOPE_SECRET` - Your Descope management key
+- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
+- `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
+- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
+
 ## Getting Started
 
 ### Backend Setup
