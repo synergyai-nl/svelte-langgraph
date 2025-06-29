@@ -10,8 +10,7 @@ from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
-
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
@@ -57,7 +56,7 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
     )
 
 
-def make_graph(config: RunnableConfig) -> CompiledGraph:
+def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     model = get_model()
     checkpointer = get_checkpointer()
 
