@@ -183,7 +183,13 @@
 				<div class="max-w-2xl mx-auto space-y-8 fade-slide-up">
 					<div class="space-y-4">
 						<h1 class="text-4xl md:text-5xl font-light text-gray-900 dark:text-white">
-							How can I help you today?
+							{#if page.data.session?.user?.name}
+								Hey {page.data.session.user.name}, how can I help you today?
+							{:else if page.data.session?.user?.email}
+								Hey {page.data.session.user.email.split('@')[0]}, how can I help you today?
+							{:else}
+								How can I help you today?
+							{/if}
 						</h1>
 						<p class="text-lg text-gray-600 dark:text-gray-400 font-light">
 							I'm here to assist with your questions, provide information, help with tasks, or engage in conversation.
