@@ -13,5 +13,5 @@ uv sync
 
 ### Development
 ```bash
-uv run langgraph dev
+uv run langgraph dev --no-browser
 ```
