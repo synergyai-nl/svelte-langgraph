@@ -85,11 +85,9 @@
 						for (let fragment of content) {
 							switch (fragment.type) {
 								case 'text':
-									console.debug('Got text');
 									yield { type: 'text', text: fragment.text };
 									break;
 								case 'tool_use':
-									console.debug('Got tool');
 									yield { type: 'tool', tool_name: fragment.name, tool_payload: fragment.input };
 									break;
 								case 'input_json_delta':
@@ -146,9 +144,7 @@
 					messages.push(aimessage);
 					messages = [...messages]; // Force reactivity
 				} else if (chunk.type === 'text') {
-					console.log('Adding text chunk:', chunk.text);
 					aimessage.text += chunk.text;
-					console.log('Updated aimessage.text:', aimessage.text);
 					
 					// Find the AI message (skip any tool messages that might be at the end)
 					let aiMessageIndex = -1;
