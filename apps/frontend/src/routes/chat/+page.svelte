@@ -212,11 +212,11 @@
 	}
 </style>
 
-<Section name="content">
-	<Content>
-		{#if !chat_started}
-			<!-- Greeting Page -->
-			<div class="min-h-[70vh] flex flex-col items-center justify-center text-center px-4">
+{#if !chat_started}
+	<!-- Greeting Page - Custom centered layout -->
+	<div class="min-h-screen flex flex-col items-center justify-center px-4">
+		<div class="w-full max-w-4xl mx-auto">
+			<div class="min-h-[70vh] flex flex-col items-center justify-center text-center">
 				<div class="max-w-2xl mx-auto space-y-8 fade-slide-up">
 					<div class="space-y-4">
 						<h1 class="text-4xl md:text-5xl font-light text-gray-900 dark:text-white">
@@ -245,18 +245,18 @@
 						
 						<button 
 							class="p-6 text-left border border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200 bg-white dark:bg-gray-800"
-							onclick={() => current_input = "Explain a complex topic in simple terms"}
-						>
-							<h3 class="font-medium text-gray-900 dark:text-white mb-2">Learn Something New</h3>
-							<p class="text-sm text-gray-600 dark:text-gray-400">Get clear explanations on topics you're curious about</p>
-						</button>
-						
-						<button 
-							class="p-6 text-left border border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200 bg-white dark:bg-gray-800"
 							onclick={() => current_input = "Help me write and improve some text"}
 						>
 							<h3 class="font-medium text-gray-900 dark:text-white mb-2">Writing Assistance</h3>
 							<p class="text-sm text-gray-600 dark:text-gray-400">Draft, edit, or improve emails, documents, and more</p>
+						</button>
+						
+						<button 
+							class="p-6 text-left border border-gray-200 dark:border-gray-700 rounded-xl hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200 bg-white dark:bg-gray-800"
+							onclick={() => current_input = "Explain a complex topic in simple terms"}
+						>
+							<h3 class="font-medium text-gray-900 dark:text-white mb-2">Learn Something New</h3>
+							<p class="text-sm text-gray-600 dark:text-gray-400">Get clear explanations on topics you're curious about</p>
 						</button>
 						
 						<button 
@@ -303,115 +303,118 @@
 					</Textarea>
 				</form>
 			</div>
-		{:else}
-			<!-- Chat Interface -->
-			<div class="flex justify-center items-center w-full min-h-[70vh]">
-				<div class="w-full max-w-4xl px-4 md:px-8">
-					{#each messages as message, index}
-						{#if !(index === 0 && message.text === 'How can I help you?')}
-							{#if message.type === 'tool'}
-								<!-- Subtle Inline Tool Message -->
-								<div class="mb-2 flex justify-start" use:scrollToMe>
-									<div class="flex items-start gap-3 w-full">
-										<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 dark:bg-gray-400 flex items-center justify-center">
-											<span class="text-white dark:text-gray-900 text-xs">🛠️</span>
-										</div>
-										<div class="relative">
-											<div
-												class="cursor-pointer inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-												onclick={() => message.collapsed = !message.collapsed}
+		</div>
+	</div>
+{:else}
+	<!-- Chat Interface - Custom layout without Section/Content constraints -->
+	<div class="h-screen flex flex-col">
+		<!-- Chat Messages Area - Scrollable -->
+		<div class="flex-1 overflow-y-auto pb-32">
+			<div class="w-full max-w-4xl mx-auto px-4 py-8">
+				{#each messages as message, index}
+					{#if !(index === 0 && message.text === 'How can I help you?')}
+						{#if message.type === 'tool'}
+							<!-- Tool Message -->
+							<div class="mb-2 flex justify-start" use:scrollToMe>
+								<div class="flex items-start gap-3 w-full max-w-[80%]">
+									<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-500 dark:bg-gray-400 flex items-center justify-center">
+										<span class="text-white dark:text-gray-900 text-xs">🛠️</span>
+									</div>
+									<div class="relative">
+										<div
+											class="cursor-pointer inline-flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+											onclick={() => message.collapsed = !message.collapsed}
+										>
+											<span class="text-gray-600 dark:text-gray-400">{message.text}</span>
+											<span class="text-xs font-mono text-gray-500 dark:text-gray-400">{message.tool_name}</span>
+											<svg
+												class="w-3 h-3 transition-transform duration-200"
+												style="transform: {message.collapsed ? 'rotate(-90deg)' : ''};"
+												viewBox="0 0 20 20"
+												fill="currentColor"
 											>
-												<span class="text-gray-600 dark:text-gray-400">{message.text}</span>
-												<span class="text-xs font-mono text-gray-500 dark:text-gray-400">{message.tool_name}</span>
-												<svg
-													class="w-3 h-3 transition-transform duration-200"
-													style="transform: {message.collapsed ? 'rotate(-90deg)' : ''};"
-													viewBox="0 0 20 20"
-													fill="currentColor"
-												>
-													<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-												</svg>
+												<path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+											</svg>
+										</div>
+										{#if !message.collapsed}
+											<div class="mt-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs">
+												<div class="text-gray-600 dark:text-gray-400 mb-1">
+													<span class="font-medium">Tool:</span> {message.tool_name}
+												</div>
+												{#if message.payload}
+													<pre class="mt-1 overflow-x-auto bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs text-gray-700 dark:text-gray-300">{JSON.stringify(message.payload, null, 2)}</pre>
+												{/if}
 											</div>
-											{#if !message.collapsed}
-												<div class="mt-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-xs">
-													<div class="text-gray-600 dark:text-gray-400 mb-1">
-														<span class="font-medium">Tool:</span> {message.tool_name}
-													</div>
-													{#if message.payload}
-														<pre class="mt-1 overflow-x-auto bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs text-gray-700 dark:text-gray-300">{JSON.stringify(message.payload, null, 2)}</pre>
-													{/if}
-												</div>
-											{/if}
-										</div>
-									</div>
-								</div>
-							{:else}
-								<!-- User/AI Message Bubble -->
-								<div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}" use:scrollToMe>
-									<div class="flex items-start gap-3 {message.type === 'user' ? 'max-w-[85%] flex-row-reverse' : 'max-w-[90%] flex-row'}">
-										<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-400 flex items-center justify-center">
-											<UserOutline size="sm" class="text-white dark:text-gray-900" />
-										</div>
-										<div class="relative w-full">
-											{#if message.type === 'ai' && is_streaming && index === messages.length - 1}
-												<div class="absolute -top-3 left-4 flex gap-1">
-													<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0s"></div>
-													<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0.2s"></div>
-													<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0.4s"></div>
-												</div>
-											{/if}
-											<Card class="p-4 text-sm shadow-sm {message.type === 'user' 
-												? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0 pulse-subtle' 
-												: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}">
-												<p class="whitespace-pre-wrap leading-relaxed">{message.text}</p>
-											</Card>
-										</div>
-									</div>
-								</div>
-							{/if}
-						{/if}
-					{/each}
-				</div>
-			</div>
-
-			<!-- Fixed Bottom Input for Chat -->
-			<div class="w-full">
-				<div class="max-w-4xl mx-auto px-4 md:px-8">
-					<form id="input_form" class="py-8" onsubmit={inputSubmit}>
-						<Textarea
-							id="user-input"
-							disabled={is_streaming}
-							placeholder="Message..."
-							rows={2}
-							name="message"
-							bind:value={current_input}
-							clearable
-							class="focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all duration-200 border-gray-300 dark:border-gray-600"
-							onkeypress={(event) => {
-								if (event.key === 'Enter' && event.shiftKey === false) inputSubmit();
-							}}
-						>
-							{#snippet footer()}
-								<div class="flex items-center justify-end">
-									<Button 
-										type="submit" 
-										disabled={is_streaming}
-										class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white border-0 shadow-sm transition-all duration-200"
-									>
-										Send
-										{#if is_streaming}
-											<Spinner class="ms-2" size="4" color="white" />
 										{/if}
-									</Button>
+									</div>
 								</div>
-							{/snippet}
-						</Textarea>
-					</form>
-				</div>
+							</div>
+						{:else}
+							<!-- User/AI Message -->
+							<div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}" use:scrollToMe>
+								<div class="flex items-start gap-3 {message.type === 'user' ? 'max-w-[70%] flex-row-reverse' : 'max-w-[80%] flex-row'}">
+									<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-400 flex items-center justify-center">
+										<UserOutline size="sm" class="text-white dark:text-gray-900" />
+									</div>
+									<div class="relative w-full">
+										{#if message.type === 'ai' && is_streaming && index === messages.length - 1}
+											<div class="absolute -top-3 left-4 flex gap-1">
+												<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0s"></div>
+												<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0.2s"></div>
+												<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0.4s"></div>
+											</div>
+										{/if}
+										<Card class="p-4 text-sm shadow-sm {message.type === 'user' 
+											? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0 pulse-subtle' 
+											: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}">
+											<p class="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+										</Card>
+									</div>
+								</div>
+							</div>
+						{/if}
+					{/if}
+				{/each}
 			</div>
-		{/if}
-	</Content>
-</Section>
+		</div>
+
+		<!-- Fixed Bottom Input -->
+		<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+			<div class="w-full max-w-4xl mx-auto px-4 py-4">
+				<form id="input_form" onsubmit={inputSubmit}>
+					<Textarea
+						id="user-input"
+						disabled={is_streaming}
+						placeholder="Message..."
+						rows={2}
+						name="message"
+						bind:value={current_input}
+						clearable
+						class="focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all duration-200 border-gray-300 dark:border-gray-600"
+						onkeypress={(event) => {
+							if (event.key === 'Enter' && event.shiftKey === false) inputSubmit();
+						}}
+					>
+						{#snippet footer()}
+							<div class="flex items-center justify-end">
+								<Button 
+									type="submit" 
+									disabled={is_streaming}
+									class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white border-0 shadow-sm transition-all duration-200"
+								>
+									Send
+									{#if is_streaming}
+										<Spinner class="ms-2" size="4" color="white" />
+									{/if}
+								</Button>
+							</div>
+						{/snippet}
+					</Textarea>
+				</form>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <!-- Smooth conditional login modal -->
 
