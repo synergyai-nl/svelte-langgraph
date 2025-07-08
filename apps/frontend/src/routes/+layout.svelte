@@ -3,6 +3,9 @@
 
 	import { SignIn, SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
+	import { theme } from '$lib/stores/theme';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 
 	import { MessagesOutline } from 'flowbite-svelte-icons';
 	import {
@@ -24,6 +27,10 @@
 	} from 'flowbite-svelte';
 
 	let { children } = $props();
+	
+	onMount(() => {
+		theme.initTheme();
+	});
 </script>
 
 <Navbar>
@@ -34,7 +41,10 @@
 		</span>
 	</NavBrand>
 
-	<div class="flex items-center md:order-2 relative group">
+	<div class="flex items-center gap-3 md:order-2 relative group">
+		<!-- Theme Toggle -->
+		<ThemeToggle />
+		
 		{#if page.data.session}
 			<button
 				id="avatar-menu"
