@@ -137,6 +137,13 @@
 						collapsed: true,
 					};
 					messages.push(toolMsg);
+					
+					// Create a new AI message after tool call
+					aimessage = {
+						type: 'ai',
+						text: ''
+					};
+					messages.push(aimessage);
 					messages = [...messages]; // Force reactivity
 				} else if (chunk.type === 'text') {
 					console.log('Adding text chunk:', chunk.text);
@@ -213,10 +220,10 @@
 </style>
 
 {#if !chat_started}
-	<!-- Greeting Page - Custom centered layout -->
-	<div class="min-h-screen flex flex-col items-center justify-center px-4">
+	<!-- Greeting Page -->
+	<div class="min-h-screen flex flex-col items-center justify-start pt-16">
 		<div class="w-full max-w-4xl mx-auto">
-			<div class="min-h-[70vh] flex flex-col items-center justify-center text-center">
+			<div class="flex flex-col items-center justify-center text-center">
 				<div class="max-w-2xl mx-auto space-y-8 fade-slide-up">
 					<div class="space-y-4">
 						<h1 class="text-4xl md:text-5xl font-light text-gray-900 dark:text-white">
@@ -270,43 +277,45 @@
 				</div>
 			</div>
 			
-			<!-- Centered Input for Greeting Page -->
-			<div class="max-w-2xl mx-auto px-4 pb-8">
-				<form id="input_form" onsubmit={inputSubmit}>
-					<Textarea
-						id="user-input"
-						disabled={is_streaming}
-						placeholder="Message..."
-						rows={2}
-						name="message"
-						bind:value={current_input}
-						clearable
-						class="focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all duration-200 border-gray-300 dark:border-gray-600"
-						onkeypress={(event) => {
-							if (event.key === 'Enter' && event.shiftKey === false) inputSubmit();
-						}}
-					>
-						{#snippet footer()}
-							<div class="flex items-center justify-end">
-								<Button 
-									type="submit" 
-									disabled={is_streaming}
-									class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white border-0 shadow-sm transition-all duration-200"
-								>
-									Send
-									{#if is_streaming}
-										<Spinner class="ms-2" size="4" color="white" />
-									{/if}
-								</Button>
-							</div>
-						{/snippet}
-					</Textarea>
-				</form>
-			</div>
+		</div>
+	</div>
+	
+	<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+		<div class="w-full max-w-4xl mx-auto px-4 py-4">
+			<form id="input_form" onsubmit={inputSubmit}>
+				<Textarea
+					id="user-input"
+					disabled={is_streaming}
+					placeholder="Message..."
+					rows={2}
+					name="message"
+					bind:value={current_input}
+					clearable
+					class="focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all duration-200 border-gray-300 dark:border-gray-600"
+					onkeypress={(event) => {
+						if (event.key === 'Enter' && event.shiftKey === false) inputSubmit();
+					}}
+				>
+					{#snippet footer()}
+						<div class="flex items-center justify-end">
+							<Button 
+								type="submit" 
+								disabled={is_streaming}
+								class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white border-0 shadow-sm transition-all duration-200"
+							>
+								Send
+								{#if is_streaming}
+									<Spinner class="ms-2" size="4" color="white" />
+								{/if}
+							</Button>
+						</div>
+					{/snippet}
+				</Textarea>
+			</form>
 		</div>
 	</div>
 {:else}
-	<!-- Chat Interface - Custom layout without Section/Content constraints -->
+	<!-- Chat Interface -->
 	<div class="h-screen flex flex-col">
 		<!-- Chat Messages Area - Scrollable -->
 		<div class="flex-1 overflow-y-auto pb-32">
@@ -341,8 +350,13 @@
 												<div class="text-gray-600 dark:text-gray-400 mb-1">
 													<span class="font-medium">Tool:</span> {message.tool_name}
 												</div>
-												{#if message.payload}
-													<pre class="mt-1 overflow-x-auto bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs text-gray-700 dark:text-gray-300">{JSON.stringify(message.payload, null, 2)}</pre>
+												{#if message.payload && Object.keys(message.payload).length > 0}
+													<div class="mt-1 text-gray-700 dark:text-gray-300">
+														<span class="font-medium">Parameters:</span>
+														<pre class="mt-1 overflow-x-auto bg-gray-100 dark:bg-gray-700 p-2 rounded text-xs">{JSON.stringify(message.payload, null, 2)}</pre>
+													</div>
+												{:else}
+													<div class="mt-1 text-gray-500 dark:text-gray-400 italic">No parameters</div>
 												{/if}
 											</div>
 										{/if}
@@ -352,7 +366,7 @@
 						{:else}
 							<!-- User/AI Message -->
 							<div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}" use:scrollToMe>
-								<div class="flex items-start gap-3 {message.type === 'user' ? 'max-w-[70%] flex-row-reverse' : 'max-w-[80%] flex-row'}">
+								<div class="flex items-start gap-3 {message.type === 'user' ? 'max-w-[70%] flex-row-reverse' : 'max-w-[80%]'}">
 									<div class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-600 dark:bg-gray-400 flex items-center justify-center">
 										<UserOutline size="sm" class="text-white dark:text-gray-900" />
 									</div>
@@ -364,7 +378,7 @@
 												<div class="w-2 h-2 bg-gray-500 rounded-full bubble-dance" style="animation-delay: 0.4s"></div>
 											</div>
 										{/if}
-										<Card class="p-4 text-sm shadow-sm {message.type === 'user' 
+										<Card class="p-4 text-sm shadow-sm w-full max-w-none {message.type === 'user' 
 											? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0 pulse-subtle' 
 											: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}">
 											<p class="whitespace-pre-wrap leading-relaxed">{message.text}</p>
