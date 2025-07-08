@@ -30,7 +30,7 @@
 	<ChevronDownOutline class="w-3 h-3" />
 </Button>
 
-<Dropdown class="w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+<Dropdown class="w-44 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" simple>
 	{#each themes as themeOption}
 		<DropdownItem
 			class="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 {currentTheme === themeOption.value ? 'bg-gray-50 dark:bg-gray-700' : ''}"
