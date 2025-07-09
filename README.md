@@ -139,7 +139,7 @@ You can preview the production build with `npm run preview`.
 ```
 svelte-langgraph/
 ├── apps/
-│   ├── backend/          # LangGraph Python server
+│   ├── backend/         # LangGraph Python server
 │   │   ├── src/         # Source code
 │   │   └── langgraph.json
 │   └── frontend/        # SvelteKit application
