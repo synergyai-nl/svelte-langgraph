@@ -23,12 +23,13 @@
 	let chat_started = $state(false);
 
 	interface BaseMessage {
-		type: 'ai' | 'user' | 'tool';
+		type: 'ai' | 'user';
 		text: string;
 	}
 
-	interface ToolMessage extends BaseMessage {
+	interface ToolMessage {
 		type: 'tool';
+		text: string;
 		tool_name: string;
 		payload?: Record<string, unknown>;
 		collapsed?: boolean; // For UI
@@ -167,7 +168,7 @@
 			is_streaming = false;
 		}
 	}
-	function scrollToMe(node) {
+	function scrollToMe(node: HTMLElement) {
 		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
 		return {
@@ -274,7 +275,7 @@
 							>
 								Send
 								{#if is_streaming}
-									<Spinner class="ms-2" size="4" color="white" />
+									<Spinner class="ms-2" size="4" color="primary" />
 								{/if}
 							</Button>
 						</div>
@@ -429,7 +430,7 @@
 								>
 									Send
 									{#if is_streaming}
-										<Spinner class="ms-2" size="4" color="white" />
+										<Spinner class="ms-2" size="4" color="primary" />
 									{/if}
 								</Button>
 							</div>

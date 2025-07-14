@@ -1,48 +1,48 @@
-[33m10:33:32 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+[33m10:38:07 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
 https://svelte.dev/e/a11y_click_events_have_key_events[39m
-302:                   </div>
-303:                   <div class="relative">
-304:                     <div
+303:                   </div>
+304:                   <div class="relative">
+305:                     <div
                              ^
-305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[33m10:33:32 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 `<div>` with a click handler must have an ARIA role
+306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[33m10:38:07 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 `<div>` with a click handler must have an ARIA role
 https://svelte.dev/e/a11y_no_static_element_interactions[39m
-302:                   </div>
-303:                   <div class="relative">
-304:                     <div
+303:                   </div>
+304:                   <div class="relative">
+305:                     <div
                              ^
-305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[33m10:33:32 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:496:1 Unused CSS selector ".pulse-subtle"
+306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[33m10:38:07 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:497:1 Unused CSS selector ".pulse-subtle"
 https://svelte.dev/e/css_unused_selector[39m
-494:   }
-495: 
-496:   .pulse-subtle {
+495:   }
+496: 
+497:   .pulse-subtle {
                     ^
-497:     animation: pulse-subtle 2s ease-in-out infinite;
-498:   }
-[33m10:33:41 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+498:     animation: pulse-subtle 2s ease-in-out infinite;
+499:   }
+[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
 https://svelte.dev/e/a11y_click_events_have_key_events[39m
-302:                   </div>
-303:                   <div class="relative">
-304:                     <div
+303:                   </div>
+304:                   <div class="relative">
+305:                     <div
                              ^
-305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[33m10:33:41 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 `<div>` with a click handler must have an ARIA role
+306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 `<div>` with a click handler must have an ARIA role
 https://svelte.dev/e/a11y_no_static_element_interactions[39m
-302:                   </div>
-303:                   <div class="relative">
-304:                     <div
+303:                   </div>
+304:                   <div class="relative">
+305:                     <div
                              ^
-305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[33m10:33:41 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:496:1 Unused CSS selector ".pulse-subtle"
+306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:497:1 Unused CSS selector ".pulse-subtle"
 https://svelte.dev/e/css_unused_selector[39m
-494:   }
-495: 
-496:   .pulse-subtle {
+495:   }
+496: 
+497:   .pulse-subtle {
                     ^
-497:     animation: pulse-subtle 2s ease-in-out infinite;
-498:   }
+498:     animation: pulse-subtle 2s ease-in-out infinite;
+499:   }

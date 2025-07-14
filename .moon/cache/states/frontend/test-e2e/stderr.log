@@ -1,48 +1,48 @@
-[2m[WebServer] [22m[33m10:33:33 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+[2m[WebServer] [22m[33m10:38:08 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
 [2m[WebServer] [22mhttps://svelte.dev/e/a11y_click_events_have_key_events[39m
-[2m[WebServer] [22m302:                   </div>
-[2m[WebServer] [22m303:                   <div class="relative">
-[2m[WebServer] [22m304:                     <div
+[2m[WebServer] [22m303:                   </div>
+[2m[WebServer] [22m304:                   <div class="relative">
+[2m[WebServer] [22m305:                     <div
 [2m[WebServer] [22m                             ^
-[2m[WebServer] [22m305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-[2m[WebServer] [22m306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[2m[WebServer] [22m[33m10:33:33 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 `<div>` with a click handler must have an ARIA role
+[2m[WebServer] [22m306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+[2m[WebServer] [22m307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[2m[WebServer] [22m[33m10:38:08 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 `<div>` with a click handler must have an ARIA role
 [2m[WebServer] [22mhttps://svelte.dev/e/a11y_no_static_element_interactions[39m
-[2m[WebServer] [22m302:                   </div>
-[2m[WebServer] [22m303:                   <div class="relative">
-[2m[WebServer] [22m304:                     <div
+[2m[WebServer] [22m303:                   </div>
+[2m[WebServer] [22m304:                   <div class="relative">
+[2m[WebServer] [22m305:                     <div
 [2m[WebServer] [22m                             ^
-[2m[WebServer] [22m305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-[2m[WebServer] [22m306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[2m[WebServer] [22m[33m10:33:33 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:496:1 Unused CSS selector ".pulse-subtle"
+[2m[WebServer] [22m306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+[2m[WebServer] [22m307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[2m[WebServer] [22m[33m10:38:08 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:497:1 Unused CSS selector ".pulse-subtle"
 [2m[WebServer] [22mhttps://svelte.dev/e/css_unused_selector[39m
-[2m[WebServer] [22m494:   }
-[2m[WebServer] [22m495: 
-[2m[WebServer] [22m496:   .pulse-subtle {
+[2m[WebServer] [22m495:   }
+[2m[WebServer] [22m496: 
+[2m[WebServer] [22m497:   .pulse-subtle {
 [2m[WebServer] [22m                    ^
-[2m[WebServer] [22m497:     animation: pulse-subtle 2s ease-in-out infinite;
-[2m[WebServer] [22m498:   }
-[2m[WebServer] [22m[33m10:33:42 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
+[2m[WebServer] [22m498:     animation: pulse-subtle 2s ease-in-out infinite;
+[2m[WebServer] [22m499:   }
+[2m[WebServer] [22m[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
 [2m[WebServer] [22mhttps://svelte.dev/e/a11y_click_events_have_key_events[39m
-[2m[WebServer] [22m302:                   </div>
-[2m[WebServer] [22m303:                   <div class="relative">
-[2m[WebServer] [22m304:                     <div
+[2m[WebServer] [22m303:                   </div>
+[2m[WebServer] [22m304:                   <div class="relative">
+[2m[WebServer] [22m305:                     <div
 [2m[WebServer] [22m                             ^
-[2m[WebServer] [22m305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-[2m[WebServer] [22m306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[2m[WebServer] [22m[33m10:33:42 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:304:10 `<div>` with a click handler must have an ARIA role
+[2m[WebServer] [22m306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+[2m[WebServer] [22m307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[2m[WebServer] [22m[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:305:10 `<div>` with a click handler must have an ARIA role
 [2m[WebServer] [22mhttps://svelte.dev/e/a11y_no_static_element_interactions[39m
-[2m[WebServer] [22m302:                   </div>
-[2m[WebServer] [22m303:                   <div class="relative">
-[2m[WebServer] [22m304:                     <div
+[2m[WebServer] [22m303:                   </div>
+[2m[WebServer] [22m304:                   <div class="relative">
+[2m[WebServer] [22m305:                     <div
 [2m[WebServer] [22m                             ^
-[2m[WebServer] [22m305:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-[2m[WebServer] [22m306:                       onclick={() => (message.collapsed = !message.collapsed)}
-[2m[WebServer] [22m[33m10:33:42 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:496:1 Unused CSS selector ".pulse-subtle"
+[2m[WebServer] [22m306:                       class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+[2m[WebServer] [22m307:                       onclick={() => (message.collapsed = !message.collapsed)}
+[2m[WebServer] [22m[33m10:38:18 AM [vite-plugin-svelte] src/routes/chat/+page.svelte:497:1 Unused CSS selector ".pulse-subtle"
 [2m[WebServer] [22mhttps://svelte.dev/e/css_unused_selector[39m
-[2m[WebServer] [22m494:   }
-[2m[WebServer] [22m495: 
-[2m[WebServer] [22m496:   .pulse-subtle {
+[2m[WebServer] [22m495:   }
+[2m[WebServer] [22m496: 
+[2m[WebServer] [22m497:   .pulse-subtle {
 [2m[WebServer] [22m                    ^
-[2m[WebServer] [22m497:     animation: pulse-subtle 2s ease-in-out infinite;
-[2m[WebServer] [22m498:   }
+[2m[WebServer] [22m498:     animation: pulse-subtle 2s ease-in-out infinite;
+[2m[WebServer] [22m499:   }

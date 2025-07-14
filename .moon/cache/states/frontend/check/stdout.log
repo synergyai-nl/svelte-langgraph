@@ -10,7 +10,7 @@ Getting Svelte diagnostics...
         runtime.overwriteServerAsyncLocalStorage(new AsyncLocalStorage());
 [39m
 
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:304:11
+/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:305:11
 [33mWarn[39m: Visible, non-interactive elements with a click event must be accompanied by a keyboard event handler. Consider whether an interactive element such as `<button type="button">` or `<a>` might be more appropriate
 https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
 [36m									<div class="relative">
@@ -38,7 +38,7 @@ https://svelte.dev/e/a11y_click_events_have_key_events (svelte)
 										{#if !message.collapsed}
 [39m
 
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:304:11
+/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:305:11
 [33mWarn[39m: `<div>` with a click handler must have an ARIA role
 https://svelte.dev/e/a11y_no_static_element_interactions (svelte)
 [36m									<div class="relative">
@@ -66,7 +66,7 @@ https://svelte.dev/e/a11y_no_static_element_interactions (svelte)
 										{#if !message.collapsed}
 [39m
 
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:496:2
+/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:497:2
 [33mWarn[39m: Unused CSS selector ".pulse-subtle"
 https://svelte.dev/e/css_unused_selector (svelte)
 [36m
@@ -74,99 +74,6 @@ https://svelte.dev/e/css_unused_selector (svelte)
 		animation: pulse-subtle 2s ease-in-out infinite;
 [39m
 
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:170:22
-[31mError[39m: Parameter 'node' implicitly has an 'any' type. (ts)
-[36m	}
-	function scrollToMe([35mnode[36m) {
-		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:277:41
-[31mError[39m: Type '"white"' is not assignable to type '"primary" | "secondary" | "gray" | "red" | "orange" | "amber" | "yellow" | "lime" | "green" | "emerald" | "teal" | "cyan" | "sky" | "blue" | "indigo" | "violet" | "purple" | "fuchsia" | "pink" | "rose" | undefined'. (ts)
-[36m								{#if is_streaming}
-									<Spinner class="ms-2" size="4" [35mcolor[36m="white" />
-								{/if}
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:306:36
-[31mError[39m: Property 'collapsed' does not exist on type 'Message'.
-  Property 'collapsed' does not exist on type 'BaseMessage'. (ts)
-[36m											class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-											onclick={() => (message.[35mcollapsed[36m = !message.collapsed)}
-										>
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:306:57
-[31mError[39m: Property 'collapsed' does not exist on type 'Message'.
-  Property 'collapsed' does not exist on type 'BaseMessage'. (ts)
-[36m											class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-											onclick={() => (message.collapsed = !message.[35mcollapsed[36m)}
-										>
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:310:23
-[31mError[39m: Property 'tool_name' does not exist on type 'Message'.
-  Property 'tool_name' does not exist on type 'BaseMessage'. (ts)
-[36m											<span class="font-mono text-xs text-gray-500 dark:text-gray-400"
-												>{message.[35mtool_name[36m}</span
-											>
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:314:40
-[31mError[39m: Property 'collapsed' does not exist on type 'Message'.
-  Property 'collapsed' does not exist on type 'BaseMessage'. (ts)
-[36m												class="h-3 w-3 transition-transform duration-200"
-												style="transform: {message.[35mcollapsed[36m ? 'rotate(-90deg)' : ''};"
-												viewBox="0 0 20 20"
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:325:25
-[31mError[39m: Property 'collapsed' does not exist on type 'Message'.
-  Property 'collapsed' does not exist on type 'BaseMessage'. (ts)
-[36m										</div>
-										{#if !message.[35mcollapsed[36m}
-											<div
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:331:23
-[31mError[39m: Property 'tool_name' does not exist on type 'Message'.
-  Property 'tool_name' does not exist on type 'BaseMessage'. (ts)
-[36m													<span class="font-medium">Tool:</span>
-													{message.[35mtool_name[36m}
-												</div>
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:333:26
-[31mError[39m: Property 'payload' does not exist on type 'Message'.
-  Property 'payload' does not exist on type 'BaseMessage'. (ts)
-[36m												</div>
-												{#if message.[35mpayload[36m && Object.keys(message.payload).length > 0}
-													<div class="mt-1 text-gray-700 dark:text-gray-300">
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:333:57
-[31mError[39m: Property 'payload' does not exist on type 'Message'.
-  Property 'payload' does not exist on type 'BaseMessage'. (ts)
-[36m												</div>
-												{#if message.payload && Object.keys(message.[35mpayload[36m).length > 0}
-													<div class="mt-1 text-gray-700 dark:text-gray-300">
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:338:25
-[31mError[39m: Property 'payload' does not exist on type 'Message'.
-  Property 'payload' does not exist on type 'BaseMessage'. (ts)
-[36m															class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">{JSON.stringify(
-																message.[35mpayload[36m,
-																null,
-[39m
-
-/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/[32msrc/routes/chat/+page.svelte[39m:432:42
-[31mError[39m: Type '"white"' is not assignable to type '"primary" | "secondary" | "gray" | "red" | "orange" | "amber" | "yellow" | "lime" | "green" | "emerald" | "teal" | "cyan" | "sky" | "blue" | "indigo" | "violet" | "purple" | "fuchsia" | "pink" | "rose" | undefined'. (ts)
-[36m									{#if is_streaming}
-										<Spinner class="ms-2" size="4" [35mcolor[36m="white" />
-									{/if}
-[39m
-
 ====================================
-[31msvelte-check found 13 errors and 3 warnings in 2 files
+[31msvelte-check found 1 error and 3 warnings in 2 files
 [39m

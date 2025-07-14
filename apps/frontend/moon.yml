@@ -1,77 +1,77 @@
-type: "application"
-language: "typescript"
-platform: "node"
-stack: "frontend"
+type: 'application'
+language: 'typescript'
+platform: 'node'
+stack: 'frontend'
 
-tags: ["sveltekit", "vite", "vitest"]
+tags: ['sveltekit', 'vite', 'vitest']
 
 tasks:
   dev:
-    command: "vite dev"
+    command: 'vite dev'
     inputs:
-      - "src/**/*"
-      - "package.json"
-      - "vite.config.ts"
-      - "svelte.config.js"
-      - "tsconfig.json"
+      - 'src/**/*'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'svelte.config.js'
+      - 'tsconfig.json'
     local: true
 
   build:
-    command: "vite build"
+    command: 'vite build'
     inputs:
-      - "src/**/*"
-      - "package.json"
-      - "vite.config.ts"
-      - "svelte.config.js"
-      - "tsconfig.json"
+      - 'src/**/*'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'svelte.config.js'
+      - 'tsconfig.json'
     outputs:
-      - "build"
-      - ".svelte-kit"
+      - 'build'
+      - '.svelte-kit'
 
   preview:
-    command: "vite preview"
+    command: 'vite preview'
     deps:
-      - "build"
+      - 'build'
 
   check:
-    command: "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+    command: 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json'
     inputs:
-      - "src/**/*"
-      - "tsconfig.json"
-      - "svelte.config.js"
+      - 'src/**/*'
+      - 'tsconfig.json'
+      - 'svelte.config.js'
 
   lint:
-    command: "prettier --check . && eslint ."
+    command: 'prettier --check . && eslint .'
     inputs:
-      - "src/**/*"
-      - "eslint.config.js"
-      - "package.json"
+      - 'src/**/*'
+      - 'eslint.config.js'
+      - 'package.json'
 
   format:
-    command: "prettier --write ."
+    command: 'prettier --write .'
     inputs:
-      - "src/**/*"
-      - "package.json"
+      - 'src/**/*'
+      - 'package.json'
 
   test:
     deps:
-      - "test-unit"
-      - "test-e2e"
+      - 'test-unit'
+      - 'test-e2e'
 
   test-unit:
     command:
-      - "vitest"
-      - "run"
+      - 'vitest'
+      - 'run'
       # Dont fail if a project has no tests
-      - "--passWithNoTests"
+      - '--passWithNoTests'
     inputs:
-      - "src/**/*"
-      - "package.json"
-      - "vitest-setup-client.ts"
+      - 'src/**/*'
+      - 'package.json'
+      - 'vitest-setup-client.ts'
 
   test-e2e:
-    command: "playwright test"
+    command: 'playwright test'
     inputs:
-      - "src/**/*"
-      - "e2e/**/*"
-      - "playwright.config.ts"
+      - 'src/**/*'
+      - 'e2e/**/*'
+      - 'playwright.config.ts'
