@@ -1,1 +1,0 @@
-[1m[43m DEPRECATED [49m[22m [33mThe `workspace` option is deprecated and will be removed in the next major. To hide this warning, rename `workspace` option to `projects`.[39m
