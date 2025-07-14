@@ -1,0 +1,5 @@
+node:
+  packageManager: 'pnpm'
+
+python:
+  packageManager: 'uv'

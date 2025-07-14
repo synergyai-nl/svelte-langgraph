@@ -1,0 +1,38 @@
+type: 'application'
+language: 'python'
+platform: 'python'
+
+tasks:
+  dev:
+    command: 'langgraph dev --no-browser'
+    inputs:
+      - 'src/**/*'
+      - 'pyproject.toml'
+      - 'langgraph.json'
+    local: true
+    
+  install:
+    command: 'uv sync'
+    inputs:
+      - 'pyproject.toml'
+      - 'uv.lock'
+    outputs:
+      - '.venv'
+    
+  lint:
+    command: 'uv run ruff check .'
+    inputs:
+      - 'src/**/*'
+      - 'pyproject.toml'
+    
+  format:
+    command: 'uv run ruff format .'
+    inputs:
+      - 'src/**/*'
+      - 'pyproject.toml'
+    
+  test:
+    command: 'echo "No tests configured yet"'
+    inputs:
+      - 'src/**/*'
+      - 'pyproject.toml'

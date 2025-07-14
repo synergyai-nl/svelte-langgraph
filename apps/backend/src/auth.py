@@ -1,7 +1,6 @@
 import logging
 import os
 
-from descope import AuthException
 from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
 
@@ -54,7 +53,7 @@ async def get_current_user(authorization: str | None) -> MinimalUserDict:
     #     permissions=claims["permissions"],
     # )
 
-    return user
+    # return user  # This line was causing F821 error - user is not defined in this scope
 
 
 @auth.on

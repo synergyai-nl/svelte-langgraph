@@ -1,0 +1,21 @@
+Checking formatting...
+All matched files use Prettier code style!
+[0m[0m
+[0m[4m/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/src/routes/chat/+page.svelte[24m[0m
+[0m    [2m5:26[22m  [31merror[39m  'P' is defined but never used                   [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:11[22m  [31merror[39m  'Content' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m8:20[22m  [31merror[39m  'Section' is defined but never used             [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m9:24[22m  [31merror[39m  'AIMessage' is defined but never used           [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m10:11[22m  [31merror[39m  'AssistantsClient' is defined but never used    [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m11:39[22m  [31merror[39m  'MessageContentText' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m   [2m35:13[22m  [31merror[39m  Unexpected any. Specify a different type        [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m60:8[22m   [31merror[39m  Unexpected constant condition                   [2mno-constant-condition[22m[0m
+[0m   [2m83:6[22m   [31merror[39m  Unexpected lexical declaration in case block    [2mno-case-declarations[22m[0m
+[0m  [2m291:5[22m   [31merror[39m  Each block should have a key                    [2msvelte/require-each-key[22m[0m
+[0m[0m
+[0m[4m/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend/src/routes/demo/paraglide/+page.svelte[24m[0m
+[0m  [2m3:11[22m  [31merror[39m  'page' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m4:11[22m  [31merror[39m  'goto' is defined but never used  [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m[0m
+[0m[31m[1m✖ 12 problems (12 errors, 0 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[0m
