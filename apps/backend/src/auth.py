@@ -1,15 +1,14 @@
 import logging
-import os
+# import os
 
-from descope import AuthException
 from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
 
-from descope import DescopeClient
+# from descope import DescopeClient
 
 logger = logging.getLogger(__name__)
 
-descope_client = DescopeClient(project_id=os.getenv("DESCOPE_PROJECT_ID", ""))
+# descope_client = DescopeClient(project_id=os.getenv("DESCOPE_PROJECT_ID", ""))
 
 # The "Auth" object is a container that LangGraph will use to mark our authentication function
 auth = Auth()
@@ -54,7 +53,7 @@ async def get_current_user(authorization: str | None) -> MinimalUserDict:
     #     permissions=claims["permissions"],
     # )
 
-    return user
+    # return user
 
 
 @auth.on

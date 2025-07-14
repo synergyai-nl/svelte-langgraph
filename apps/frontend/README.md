@@ -1,13 +1,16 @@
 # sv
+
 Svelte frontend project.
 
 ## Getting started
 
 ### Requirements
-* pnpm
-* Node 24 LTS
+
+- pnpm
+- Node 24 LTS
 
 ### Install deps
+
 ```bash
 pnpm install
 ```

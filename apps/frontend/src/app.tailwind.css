@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
@@ -36,9 +36,8 @@
 @source '../node_modules/flowbite-svelte-blocks/dist';
 
 @layer base {
-
 	/* disable chrome cancel button */
-	input[type="search"]::-webkit-search-cancel-button {
+	input[type='search']::-webkit-search-cancel-button {
 		display: none;
 	}
 }

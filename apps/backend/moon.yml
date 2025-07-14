@@ -1,0 +1,21 @@
+# https://moonrepo.dev/docs/config/project
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: python
+stack: backend
+type: application
+
+tasks:
+  format:
+    command: "ruff format"
+  lint:
+    command: "ruff check"
+  lint-fix:
+    extends: lint
+    args: "--fix"
+    local: true
+  typecheck:
+    command: "pyright"
+  dev:
+    command: "langgraph dev --no-browser"
+    preset: "watcher"

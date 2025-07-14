@@ -11,39 +11,35 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
 ## Prerequisites
 
-- Python 3.12
-- Node.js 24 LTS
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
-- pnpm (Node.js package manager)
+- [Install moonrepo](https://moonrepo.dev/docs/install), which installs all other dependencies:
+
+	* Python 3.12
+	* Node.js 24 LTS
+	* [uv](https://docs.astral.sh/uv/) (Python package manager)
+	* pnpm (Node.js package manager)
 
 ## Configuration
 
 Both the frontend and backend require environment variables to be configured. Copy the example files and update them with your values:
 
-### Backend Environment Variables
+### Environment Variables
 
 Copy the example file:
 ```bash
-cd apps/backend
 cp .env.example .env
 ```
 
-Configure the following variables in `apps/backend/.env`:
+#### Backend
+Configure the following variables in `.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
 - `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude integration
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
 
-### Frontend Environment Variables
+#### Frontend
 
-Copy the example file:
-```bash
-cd apps/frontend
-cp .env.example .env
-```
-
-Configure the following variables in `apps/frontend/.env`:
+Configure the following variables in `.env`:
 
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
 - `AUTH_DESCOPE_ID` - Your Descope project ID
@@ -54,43 +50,23 @@ Configure the following variables in `apps/frontend/.env`:
 
 ## Getting Started
 
-### Backend Setup
+### Start dev servers
 
-Navigate to the backend directory and install dependencies:
-
-```bash
-cd apps/backend
-uv sync
-```
-
-Start the development server:
+The following command ensures dependencies are installed and starts dev servers for frontend and backend, with hot reload:
 
 ```bash
-uv run langgraph dev
+moon :dev
 ```
 
-### Frontend Setup
+### Run local checks
 
-Navigate to the frontend directory and install dependencies:
+Run all checks (linting, type checking, formatting):
 
 ```bash
-cd apps/frontend
-pnpm install
+moon check --all
 ```
 
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Or open the app in a new browser tab:
-
-```bash
-npm run dev -- --open
-```
-
-## Development
+## Tooling
 
 ### Backend Development
 
@@ -107,17 +83,6 @@ The frontend is built with modern web technologies:
 - Flowbite for UI components
 - Playwright for end-to-end testing
 - Vitest for unit testing
-
-#### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run test` - Run all tests
-- `npm run test:unit` - Run unit tests
-- `npm run test:e2e` - Run end-to-end tests
-- `npm run lint` - Lint code
-- `npm run format` - Format code
 
 ## Production
 

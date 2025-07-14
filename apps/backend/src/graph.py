@@ -73,9 +73,9 @@ def make_graph(config: RunnableConfig) -> CompiledStateGraph:
 async def main():
     load_dotenv()
 
-    agent = make_graph()
-
     config = RunnableConfig(configurable={"thread_id": "1"})
+
+    agent = make_graph(config)
 
     user_input = input(f"{INITIAL_MESSAGE}\n")
 
