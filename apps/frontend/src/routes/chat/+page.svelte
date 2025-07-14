@@ -9,20 +9,49 @@
 	import { Client, type AIMessage } from '@langchain/langgraph-sdk';
 	import { AssistantsClient } from '@langchain/langgraph-sdk/client';
 	import type { MessageContentComplex, MessageContentText } from '@langchain/core/messages';
-	import { PUBLIC_LANGCHAIN_API_KEY, PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
-
-	const client = new Client({
-		// Observe that this is insecure
-		// We need to find a way to pass Descope's auth token which we can verify on the
-		// the langgraph side.
-		apiKey: PUBLIC_LANGCHAIN_API_KEY,
-		apiUrl: PUBLIC_LANGGRAPH_API_URL
-	});
+	import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 
 	let show_login_dialog = $state(false);
 	let current_input = $state('');
 	let is_streaming = $state(false);
 	let chat_started = $state(false);
+
+	interface LangGraphState {
+		client: Client;
+		threadId: string;
+		assistantId: string;
+	}
+
+	let langgraph: LangGraphState | null = $state(null);
+
+	$effect(() => {
+		// User logged in or switched accounts - initialize
+		(async () => {
+			const accessToken: string | null = page.data?.session?.accessToken;
+			console.log(accessToken);
+			if (accessToken) await initializeLangGraph(accessToken);
+		})();
+	});
+
+	async function initializeLangGraph(accessToken: string) {
+		const client = new Client({
+			defaultHeaders: {
+				Authorization: `Bearer ${accessToken}`
+			},
+			apiUrl: PUBLIC_LANGGRAPH_API_URL
+		});
+
+		const thread = await client.threads.create();
+		const assistant = await client.assistants.create({
+			graphId: 'chat'
+		});
+
+		langgraph = {
+			client,
+			threadId: thread.thread_id,
+			assistantId: assistant.assistant_id
+		};
+	}
 
 	interface BaseMessage {
 		type: 'ai' | 'user' | 'tool';
@@ -40,18 +69,8 @@
 
 	let messages = $state<Array<Message>>([{ type: 'ai', text: 'How can I help you?' }]);
 
-	let assistantId = $state('');
-	let threadId = $state('');
-
 	onMount(async () => {
 		if (!page.data.session) show_login_dialog = true;
-
-		const thread = await client.threads.create();
-		threadId = thread.thread_id;
-		const assistant = await client.assistants.create({
-			graphId: 'chat' // process.env.LANGGRAPH_GRAPH_ID as string
-		});
-		assistantId = assistant.assistant_id;
 	});
 
 	async function* streamAnswer(input: string) {
@@ -61,7 +80,9 @@
 			input_messages.push({ role: 'ai', content: 'How may I help you?' });
 		input_messages.push({ role: 'user', content: input });
 
-		const streamResponse = client.runs.stream(threadId, assistantId, {
+		if (!langgraph) throw new Error('LangGraph not initialized.');
+
+		const streamResponse = langgraph.client.runs.stream(langgraph.threadId, langgraph.assistantId, {
 			input: {
 				messages: input_messages
 			},
