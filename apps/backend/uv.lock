@@ -566,27 +566,6 @@ wheels = [
 ]
 
 [[package]]
-name = "my-first-langgraph"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "descope" },
-    { name = "langchain", extra = ["anthropic"] },
-    { name = "langgraph" },
-    { name = "langgraph-cli", extra = ["inmem"] },
-    { name = "python-dotenv" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "descope", specifier = ">=1.7.6" },
-    { name = "langchain", extras = ["anthropic"], specifier = ">=0.3.25" },
-    { name = "langgraph", specifier = ">=0.4.7" },
-    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.2.10" },
-    { name = "python-dotenv", specifier = ">=1.1.0" },
-]
-
-[[package]]
 name = "orjson"
 version = "3.10.18"
 source = { registry = "https://pypi.org/simple" }
@@ -823,6 +802,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/79/b9/6e672db4fec07349e7a8a8172c1a6ae235c58679ca29c3f86a61b5e59ff3/structlog-25.4.0.tar.gz", hash = "sha256:186cd1b0a8ae762e29417095664adf1d6a31702160a46dacb7796ea82f7409e4", size = 1369138, upload-time = "2025-06-02T08:21:12.971Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/4a/97ee6973e3a73c74c8120d59829c3861ea52210667ec3e7a16045c62b64d/structlog-25.4.0-py3-none-any.whl", hash = "sha256:fe809ff5c27e557d14e613f45ca441aabda051d119ee5a0102aaba6ce40eed2c", size = 68720, upload-time = "2025-06-02T08:21:11.43Z" },
+]
+
+[[package]]
+name = "svelte-langgraph-backend"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "descope" },
+    { name = "langchain", extra = ["anthropic"] },
+    { name = "langgraph" },
+    { name = "langgraph-cli", extra = ["inmem"] },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "descope", specifier = ">=1.7.6" },
+    { name = "langchain", extras = ["anthropic"], specifier = ">=0.3.25" },
+    { name = "langgraph", specifier = ">=0.4.7" },
+    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.2.10" },
+    { name = "python-dotenv", specifier = ">=1.1.0" },
 ]
 
 [[package]]

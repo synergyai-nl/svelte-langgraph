@@ -1,5 +1,9 @@
+$schema: "https://moonrepo.dev/schemas/toolchain.json"
+
 node:
-  packageManager: 'pnpm'
+  packageManager: "pnpm"
+  # rootPackageOnly: true
 
 python:
-  packageManager: 'uv'
+  packageManager: "uv"
+  # rootVenvOnly: true
