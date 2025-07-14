@@ -2,5 +2,8 @@
 __pycache__/
 .langgraph_api/
 
+# Claude Code local settings
+.claude/
+
 # Moonrepo cache
 .moon/cache/
