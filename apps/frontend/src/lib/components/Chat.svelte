@@ -28,9 +28,39 @@
 		userEmail?: string;
 		chatStarted: boolean;
 		onChatStart: () => void;
+		suggestions?: Array<{
+			title: string;
+			description: string;
+			suggestedText: string;
+		}>;
 	}
 
-	let { client, assistantId, threadId, userName, userEmail, chatStarted, onChatStart }: Props = $props();
+	let { client, assistantId, threadId, userName, userEmail, chatStarted, onChatStart, suggestions }: Props = $props();
+
+	const defaultSuggestions = [
+		{
+			title: "Creative Brainstorming",
+			description: "Generate ideas for projects, writing, or problem-solving",
+			suggestedText: "Help me brainstorm ideas for a creative project"
+		},
+		{
+			title: "Writing Assistance",
+			description: "Draft, edit, or improve emails, documents, and more",
+			suggestedText: "Help me write and improve some text"
+		},
+		{
+			title: "Learn Something New",
+			description: "Get clear explanations on topics you're curious about",
+			suggestedText: "Explain a complex topic in simple terms"
+		},
+		{
+			title: "Problem Solving",
+			description: "Break down challenges and find solutions together",
+			suggestedText: "Help me analyze and solve a problem"
+		}
+	];
+
+	const displaySuggestions = suggestions || defaultSuggestions;
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
@@ -147,33 +177,14 @@
 					</div>
 					
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-12">
-						<SuggestionCard
-							title="Creative Brainstorming"
-							description="Generate ideas for projects, writing, or problem-solving"
-							suggestedText="Help me brainstorm ideas for a creative project"
-							onclick={() => current_input = "Help me brainstorm ideas for a creative project"}
-						/>
-						
-						<SuggestionCard
-							title="Writing Assistance"
-							description="Draft, edit, or improve emails, documents, and more"
-							suggestedText="Help me write and improve some text"
-							onclick={() => current_input = "Help me write and improve some text"}
-						/>
-						
-						<SuggestionCard
-							title="Learn Something New"
-							description="Get clear explanations on topics you're curious about"
-							suggestedText="Explain a complex topic in simple terms"
-							onclick={() => current_input = "Explain a complex topic in simple terms"}
-						/>
-						
-						<SuggestionCard
-							title="Problem Solving"
-							description="Break down challenges and find solutions together"
-							suggestedText="Help me analyze and solve a problem"
-							onclick={() => current_input = "Help me analyze and solve a problem"}
-						/>
+						{#each displaySuggestions as suggestion}
+							<SuggestionCard
+								title={suggestion.title}
+								description={suggestion.description}
+								suggestedText={suggestion.suggestedText}
+								onclick={() => current_input = suggestion.suggestedText}
+							/>
+						{/each}
 					</div>
 				</div>
 			</div>
@@ -192,10 +203,10 @@
 				{#each messages as message, index}
 					{#if !(index === 0 && message.text === 'How can I help you?')}
 						{#if message.type === 'tool'}
-							<ToolMessage {message} {scrollToMe} />
+							<ToolMessage message={message} {scrollToMe} />
 						{:else}
 							<ChatMessage 
-								{message} 
+								message={message} 
 								isStreaming={is_streaming} 
 								isLastMessage={index === messages.length - 1}
 								{scrollToMe} 
