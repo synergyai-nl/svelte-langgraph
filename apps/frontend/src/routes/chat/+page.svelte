@@ -5,10 +5,8 @@
 	import { Button, Modal, P, Textarea, Card, Spinner } from 'flowbite-svelte';
 	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
-	import { Content, Section } from 'flowbite-svelte-blocks';
-	import { Client, type AIMessage } from '@langchain/langgraph-sdk';
-	import { AssistantsClient } from '@langchain/langgraph-sdk/client';
-	import type { MessageContentComplex, MessageContentText } from '@langchain/core/messages';
+	import { Client } from '@langchain/langgraph-sdk';
+	import type { MessageContentComplex } from '@langchain/core/messages';
 	import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 
 	let show_login_dialog = $state(false);
@@ -27,8 +25,7 @@
 	$effect(() => {
 		// User logged in or switched accounts - initialize
 		(async () => {
-			const accessToken: string | null = page.data?.session?.accessToken;
-			console.log(accessToken);
+			const accessToken: string | undefined = page.data.session?.accessToken;
 			if (accessToken) await initializeLangGraph(accessToken);
 		})();
 	});
@@ -187,7 +184,7 @@
 			is_streaming = false;
 		}
 	}
-	function scrollToMe(node) {
+	function scrollToMe(node: HTMLElement) {
 		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
 		return {
