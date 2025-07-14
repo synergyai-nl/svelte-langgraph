@@ -11,10 +11,12 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
 ## Prerequisites
 
-- Python 3.12
-- Node.js 24 LTS
-- [uv](https://docs.astral.sh/uv/) (Python package manager)
-- pnpm (Node.js package manager)
+- [Install moonrepo](https://moonrepo.dev/docs/install), which installs all other dependencies:
+
+	* Python 3.12
+	* Node.js 24 LTS
+	* [uv](https://docs.astral.sh/uv/) (Python package manager)
+	* pnpm (Node.js package manager)
 
 ## Configuration
 
@@ -54,43 +56,23 @@ Configure the following variables in `apps/frontend/.env`:
 
 ## Getting Started
 
-### Backend Setup
+### Start dev servers
 
-Navigate to the backend directory and install dependencies:
-
-```bash
-cd apps/backend
-uv sync
-```
-
-Start the development server:
+The following command ensures dependencies are installed and starts dev servers for frontend and backend, with hot reload:
 
 ```bash
-uv run langgraph dev
+moon :dev
 ```
 
-### Frontend Setup
+### Run local checks
 
-Navigate to the frontend directory and install dependencies:
+Run all checks (linting, type checking, formatting):
 
 ```bash
-cd apps/frontend
-pnpm install
+moon check --all
 ```
 
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Or open the app in a new browser tab:
-
-```bash
-npm run dev -- --open
-```
-
-## Development
+## Tooling
 
 ### Backend Development
 
@@ -107,17 +89,6 @@ The frontend is built with modern web technologies:
 - Flowbite for UI components
 - Playwright for end-to-end testing
 - Vitest for unit testing
-
-#### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run test` - Run all tests
-- `npm run test:unit` - Run unit tests
-- `npm run test:e2e` - Run end-to-end tests
-- `npm run lint` - Lint code
-- `npm run format` - Format code
 
 ## Production
 

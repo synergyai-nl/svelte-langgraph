@@ -5,11 +5,7 @@
 	import { page } from '$app/state';
 
 	import { MessagesOutline } from 'flowbite-svelte-icons';
-	import {
-		UserCircleSolid,
-		ClipboardListSolid,
-		ArrowRightAltSolid
-	} from 'flowbite-svelte-icons';
+	import { UserCircleSolid, ClipboardListSolid, ArrowRightAltSolid } from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -29,60 +25,63 @@
 <Navbar>
 	<NavBrand href="/">
 		<MessagesOutline class="me-3 h-6 sm:h-9" />
-		<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white">
+		<span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">
 			My AI Chat UI
 		</span>
 	</NavBrand>
 
-	<div class="flex items-center md:order-2 relative group">
+	<div class="group relative flex items-center md:order-2">
 		{#if page.data.session}
 			<button
 				id="avatar-menu"
-				class="flex items-center space-x-2 rounded-full hover:ring-2 focus:ring-2 ring-blue-500 transition duration-150"
+				class="flex items-center space-x-2 rounded-full ring-blue-500 transition duration-150 hover:ring-2 focus:ring-2"
 			>
 				{#if page.data.session.user?.image}
 					<Avatar src={page.data.session.user.image} />
 				{:else}
 					<Avatar />
 				{/if}
-				<span class="hidden sm:inline text-sm font-medium text-gray-800 dark:text-white">
+				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
 					Hi, {page.data.session.user?.name?.split(' ')[0] ?? 'User'}
 				</span>
 			</button>
 
-			<Dropdown
-				placement="bottom-end"
-				triggeredBy="#avatar-menu"
-				class="w-56 z-50"
-				simple
-			>
+			<Dropdown placement="bottom-end" triggeredBy="#avatar-menu" class="z-50 w-56" simple>
 				<!-- Header -->
 				<DropdownHeader>
 					<div class="flex flex-col">
 						<span class="text-sm font-semibold text-gray-900 dark:text-white">
 							{page.data.session.user?.name ?? 'User'}
 						</span>
-						<span class="text-xs truncate text-gray-500 dark:text-gray-400">
+						<span class="truncate text-xs text-gray-500 dark:text-gray-400">
 							{page.data.session.user?.email ?? 'email@example.com'}
 						</span>
 					</div>
 				</DropdownHeader>
 
 				<!-- Dashboard -->
-				<DropdownItem href="/dashboard" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+				<DropdownItem
+					href="/dashboard"
+					class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+				>
 					<ClipboardListSolid class="h-4 w-4 shrink-0" />
 					<span class="text-sm">Dashboard</span>
 				</DropdownItem>
 
 				<!-- Profile -->
-				<DropdownItem href="/profile" class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+				<DropdownItem
+					href="/profile"
+					class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+				>
 					<UserCircleSolid class="h-4 w-4 shrink-0" />
 					<span class="text-sm">Profile</span>
 				</DropdownItem>
 
 				<!-- Sign Out -->
 				<SignOut>
-					<DropdownItem class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-600/10">
+					<DropdownItem
+						class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-600/10"
+					>
 						<ArrowRightAltSolid class="h-4 w-4 shrink-0" />
 						<span class="text-sm">Sign out</span>
 					</DropdownItem>

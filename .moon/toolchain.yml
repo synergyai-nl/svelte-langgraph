@@ -1,0 +1,11 @@
+# https://moonrepo.dev/docs/config/toolchain
+$schema: "https://moonrepo.dev/schemas/toolchain.json"
+
+python:
+  version: "3.12"
+  packageManager: "uv"
+
+node:
+  version: "24"
+  packageManager: "pnpm"
+  inferTasksFromScripts: true
