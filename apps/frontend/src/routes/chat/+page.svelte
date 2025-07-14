@@ -2,13 +2,11 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { SignIn } from '@auth/sveltekit/components';
-	import { Button, Modal, P, Textarea, Card, Spinner } from 'flowbite-svelte';
+	import { Button, Modal, Textarea, Card, Spinner } from 'flowbite-svelte';
 	import { ExclamationCircleOutline, UserOutline } from 'flowbite-svelte-icons';
 	import { onMount } from 'svelte';
-	import { Content, Section } from 'flowbite-svelte-blocks';
-	import { Client, type AIMessage } from '@langchain/langgraph-sdk';
-	import { AssistantsClient } from '@langchain/langgraph-sdk/client';
-	import type { MessageContentComplex, MessageContentText } from '@langchain/core/messages';
+	import { Client } from '@langchain/langgraph-sdk';
+	import type { MessageContentComplex } from '@langchain/core/messages';
 	import { PUBLIC_LANGCHAIN_API_KEY, PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 
 	const client = new Client({
@@ -32,7 +30,7 @@
 	interface ToolMessage extends BaseMessage {
 		type: 'tool';
 		tool_name: string;
-		payload?: any;
+		payload?: Record<string, unknown>;
 		collapsed?: boolean; // For UI
 	}
 
@@ -57,7 +55,7 @@
 	async function* streamAnswer(input: string) {
 		let input_messages = [];
 
-		if ((input_messages.length = 0))
+		if (input_messages.length === 0)
 			input_messages.push({ role: 'ai', content: 'How may I help you?' });
 		input_messages.push({ role: 'user', content: input });
 
@@ -72,7 +70,7 @@
 			console.debug('Got chunk:', chunk);
 
 			switch (chunk.event) {
-				case 'messages':
+				case 'messages': {
 					// Check if chunk.data[0] is defined and has content
 					if (!chunk.data || !chunk.data[0]) {
 						console.error('Invalid chunk data:', chunk);
@@ -84,12 +82,14 @@
 					if (content) {
 						for (let fragment of content) {
 							switch (fragment.type) {
-								case 'text':
+								case 'text': {
 									yield { type: 'text', text: fragment.text };
 									break;
-								case 'tool_use':
+								}
+								case 'tool_use': {
 									yield { type: 'tool', tool_name: fragment.name, tool_payload: fragment.input };
 									break;
+								}
 								case 'input_json_delta':
 									break;
 								default:
@@ -99,6 +99,7 @@
 					}
 
 					break;
+				}
 				case 'error':
 					console.error('Error:', chunk.data);
 					break;
@@ -288,7 +289,7 @@
 		<!-- Chat Messages Area - Scrollable -->
 		<div class="flex-1 overflow-y-auto pb-32">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
-				{#each messages as message, index}
+				{#each messages as message, index (index)}
 					{#if !(index === 0 && message.text === 'How can I help you?')}
 						{#if message.type === 'tool'}
 							<!-- Tool Message -->
