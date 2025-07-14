@@ -37,7 +37,9 @@
 			<Card class="p-4 text-sm shadow-sm w-full max-w-none {message.type === 'user' 
 				? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-0 pulse-subtle' 
 				: 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}">
-				<p class="whitespace-pre-wrap leading-relaxed">{message.text}</p>
+				<p class="whitespace-pre-wrap leading-relaxed {message.type === 'user' 
+					? '' 
+					: 'text-gray-900 dark:text-gray-100'}">{message.text}</p>
 			</Card>
 		</div>
 	</div>
