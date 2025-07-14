@@ -1,0 +1,5 @@
+# https://moonrepo.dev/docs/config/tasks
+$schema: "https://moonrepo.dev/schemas/tasks.json"
+
+taskOptions:
+  envFile: .env

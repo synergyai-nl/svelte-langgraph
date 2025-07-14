@@ -22,30 +22,24 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
 Both the frontend and backend require environment variables to be configured. Copy the example files and update them with your values:
 
-### Backend Environment Variables
+### Environment Variables
 
 Copy the example file:
 ```bash
-cd apps/backend
 cp .env.example .env
 ```
 
-Configure the following variables in `apps/backend/.env`:
+#### Backend
+Configure the following variables in `.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
 - `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude integration
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
 
-### Frontend Environment Variables
+#### Frontend
 
-Copy the example file:
-```bash
-cd apps/frontend
-cp .env.example .env
-```
-
-Configure the following variables in `apps/frontend/.env`:
+Configure the following variables in `.env`:
 
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
 - `AUTH_DESCOPE_ID` - Your Descope project ID
