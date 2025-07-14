@@ -2,11 +2,7 @@
 	import { Card } from 'flowbite-svelte';
 	import { UserOutline } from 'flowbite-svelte-icons';
 	import LoadingIndicator from './LoadingIndicator.svelte';
-
-	interface BaseMessage {
-		type: 'ai' | 'user';
-		text: string;
-	}
+	import type {BaseMessage} from '$lib/types/messageTypes';
 
 	interface Props {
 		message: BaseMessage;
