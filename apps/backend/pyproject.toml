@@ -1,5 +1,5 @@
 [project]
-name = "my-first-langgraph"
+name = "svelte-langgraph-backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
