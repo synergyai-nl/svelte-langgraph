@@ -57,51 +57,12 @@ Configure the following variables in `apps/frontend/.env`:
 
 This project uses [moonrepo](https://moonrepo.dev/) for monorepo orchestration. You can run tasks across all projects or target specific projects.
 
-### Install Dependencies
-
-Install dependencies for all projects:
-
-```bash
-moon install
-```
-
 ### Development Servers
 
 Start both frontend and backend development servers:
 
 ```bash
-moon frontend:dev &
-moon backend:dev
-```
-
-Or start them individually:
-
-```bash
-# Backend (LangGraph server)
-moon backend:dev
-
-# Frontend (SvelteKit)
-moon frontend:dev
-```
-
-### Traditional Setup (without moonrepo)
-
-If you prefer to work without moonrepo, you can still use the traditional approach:
-
-#### Backend Setup
-
-```bash
-cd apps/backend
-uv sync
-uv run langgraph dev --no-browser
-```
-
-#### Frontend Setup
-
-```bash
-cd apps/frontend
-pnpm install
-npm run dev
+moon :dev
 ```
 
 ## Development
@@ -128,14 +89,14 @@ With moonrepo, you can run tasks across projects:
 
 ```bash
 # Run all tests across both projects
-moon test --all
+moon :test
 
 # Build all projects
-moon build --all
+moon :build
 
 # Lint and format all code
-moon lint --all
-moon format --all
+moon :lint
+moon :format
 
 # Check all projects (includes linting, formatting, type checking)
 moon check --all
@@ -169,17 +130,7 @@ moon backend:format        # Format code
 Build all projects for production:
 
 ```bash
-moon build --all
-```
-
-Or build individual projects:
-
-```bash
-# Frontend only
-moon frontend:build
-
-# Preview the production build
-moon frontend:preview
+moon :build
 ```
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
