@@ -1,6 +1,14 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import Descope from '@auth/sveltekit/providers/descope';
 
+// Add accessToken to Session type.
+// Ref: https://authjs.dev/getting-started/typescript#module-augmentation
+declare module '@auth/sveltekit' {
+	interface Session {
+		accessToken: string;
+	}
+}
+
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [Descope],
 	callbacks: {
