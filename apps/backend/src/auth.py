@@ -1,14 +1,16 @@
 import logging
-# import os
+import os
+
+from descope.exceptions import AuthException
+from descope.descope_client import DescopeClient
 
 from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
 
-# from descope import DescopeClient
 
 logger = logging.getLogger(__name__)
 
-# descope_client = DescopeClient(project_id=os.getenv("DESCOPE_PROJECT_ID", ""))
+descope_client = DescopeClient(project_id=os.getenv("DESCOPE_PROJECT_ID", ""))
 
 # The "Auth" object is a container that LangGraph will use to mark our authentication function
 auth = Auth()
@@ -20,40 +22,38 @@ auth = Auth()
 async def get_current_user(authorization: str | None) -> MinimalUserDict:
     """Check if the user's token is valid."""
 
-    return MinimalUserDict(identity="jantje", is_authenticated=True)
+    assert authorization
+    scheme, token = authorization.split()
+    assert scheme.lower() == "bearer"
 
-    # assert authorization
-    # scheme, token = authorization.split()
-    # assert scheme.lower() == "bearer"
+    try:
+        claims = descope_client.validate_session(session_token=token)
+    except AuthException as e:
+        logger.exception(e)
+        raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
 
-    # try:
-    #     claims = descope_client.validate_session(session_token=token)
-    # except AuthException as e:
-    #     logger.exception(e)
-    #     raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
+    # Descope Default User JWT
+    # {
+    #   "amr": "[list-of-strings-of-identifiers-used]",
+    #   "drn": "[string-of-type-of-token]",
+    #   "exp": "[timestamp-of-expiration-time]",
+    #   "iat": "[timestamp-of-issued-time]",
+    #   "iss": "Peuc12vtopjqyKM1TedvWYm4Bdfe5yfe",
+    #   "sub": "[string-of-user-id]",
+    #   "dct": "string-tenant-id",
+    #   "roles": "[list-of-strings] //tenant level",
+    #   "permissions": "[list-of-strings] //tenant level",
+    #   "email": "{{user.email}}"
+    # }
 
-    # # Descope Default User JWT
-    # # {
-    # #   "amr": "[list-of-strings-of-identifiers-used]",
-    # #   "drn": "[string-of-type-of-token]",
-    # #   "exp": "[timestamp-of-expiration-time]",
-    # #   "iat": "[timestamp-of-issued-time]",
-    # #   "iss": "Peuc12vtopjqyKM1TedvWYm4Bdfe5yfe",
-    # #   "sub": "[string-of-user-id]",
-    # #   "dct": "string-tenant-id",
-    # #   "roles": "[list-of-strings] //tenant level",
-    # #   "permissions": "[list-of-strings] //tenant level",
-    # #   "email": "{{user.email}}"
-    # # }
+    user = MinimalUserDict(
+        identity=claims["sub"],
+        # display_name=
+        is_authenticated=True,
+        permissions=claims["permissions"],
+    )
 
-    # user = MinimalUserDict(
-    #     identity=claims["sub"],
-    #     # display_name=
-    #     is_authenticated=True,
-    #     permissions=claims["permissions"],
-    # )
-
-    # return user
+    return user
 
 
 @auth.on
