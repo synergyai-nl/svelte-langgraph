@@ -3,17 +3,10 @@ language: 'typescript'
 platform: 'node'
 stack: 'frontend'
 
-tags: ['sveltekit', 'vite', 'vitest']
-
 tasks:
   dev:
     command: 'vite dev'
     inputs:
-      - 'src/**/*'
-      - 'package.json'
-      - 'vite.config.ts'
-      - 'svelte.config.js'
-      - 'tsconfig.json'
     local: true
 
   build:
@@ -32,6 +25,7 @@ tasks:
     command: 'vite preview'
     deps:
       - 'build'
+    local: true
 
   check:
     command: 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json'
