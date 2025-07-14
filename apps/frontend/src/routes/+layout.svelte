@@ -16,7 +16,8 @@
 		Dropdown,
 		DropdownHeader,
 		DropdownItem,
-		Avatar
+		Avatar,
+		DarkMode
 	} from 'flowbite-svelte';
 
 	let { children } = $props();
@@ -92,6 +93,7 @@
 				<Button slot="submitButton" size="sm">Sign in</Button>
 			</SignIn>
 		{/if}
+		<DarkMode />
 
 		<NavHamburger />
 	</div>
