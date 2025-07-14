@@ -1,17 +1,10 @@
 
-[1m[44m DEV [49m[22m [34mv3.2.0 [39m[90m/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend[39m
+[1m[46m RUN [49m[22m [36mv3.2.0 [39m[90m/Users/drbob/Development/svelte-langgraph/monorepo/apps/frontend[39m
 
- [32m✓[39m [30m[42m server [49m[39m src/demo.spec.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
- [31m❯[39m [30m[42m client [49m[39m src/routes/page.svelte.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 15[2mms[22m[39m
-[31m   [31m×[31m /+page.svelte[2m > [22mshould render h1[39m[32m 13[2mms[22m[39m
-[31m     → lifecycle_function_unavailable
-`mount(...)` is not available on the server
-https://svelte.dev/e/lifecycle_function_unavailable[39m
+ [32m✓[39m [30m[42m server [49m[39m src/demo.spec.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[42m client [49m[39m src/routes/page.svelte.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
 
-[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
-[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
-[2m   Start at [22m 10:16:09
-[2m   Duration [22m 14.35s[2m (transform 8.96s, setup 988ms, collect 11.50s, tests 20ms, environment 1.20s, prepare 535ms)[22m
-
-[1m[41m FAIL [49m[22m [31mTests failed. Watching for file changes...[39m
-       [2mpress [22m[1mh[22m[2m to show help[22m[2m, [22m[2mpress [22m[1mq[22m[2m to quit[22m
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 10:32:50
+[2m   Duration [22m 2.24s[2m (transform 429ms, setup 888ms, collect 37ms, tests 8ms, environment 774ms, prepare 283ms)[22m
