@@ -5,39 +5,20 @@
 	import ToolMessage from './ToolMessage.svelte';
 	import ChatInput from './ChatInput.svelte';
 	import SuggestionCard from './SuggestionCard.svelte';
-
-	interface BaseMessage {
-		type: 'ai' | 'user' | 'tool';
-		text: string;
-	}
-
-	interface ToolMessageType extends BaseMessage {
-		type: 'tool';
-		tool_name: string;
-		payload?: any;
-		collapsed?: boolean;
-	}
-
-	type Message = BaseMessage | ToolMessageType;
+	import type { Message, BaseMessage, ToolMessageType, ChatSuggestion } from '$lib/types/messageTypes';
 
 	interface Props {
-		client: Client;
+		langGraphClient: Client;
 		assistantId: string;
 		threadId: string;
 		userName?: string;
-		userEmail?: string;
 		chatStarted: boolean;
 		onChatStart: () => void;
-		suggestions?: Array<{
-			title: string;
-			description: string;
-			suggestedText: string;
-		}>;
+		suggestions?: ChatSuggestion[];
 	}
 
-	let { client, assistantId, threadId, userName, userEmail, chatStarted, onChatStart, suggestions }: Props = $props();
-
-	const defaultSuggestions = [
+	// Default suggestions as constants, outside the component.
+	const defaultSuggestions: ChatSuggestion[] = [
 		{
 			title: "Creative Brainstorming",
 			description: "Generate ideas for projects, writing, or problem-solving",
@@ -60,7 +41,16 @@
 		}
 	];
 
-	const displaySuggestions = suggestions || defaultSuggestions;
+
+	let { 
+		langGraphClient, 
+		assistantId, 
+		threadId, 
+		userName, 
+		chatStarted, 
+		onChatStart, 
+		suggestions = defaultSuggestions
+	}: Props = $props();
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
@@ -86,7 +76,7 @@
 
 			messages.push(aimessage);
 
-			for await (const chunk of streamAnswer(client, threadId, assistantId, current_input)) {
+			for await (const chunk of streamAnswer(langGraphClient, threadId, assistantId, current_input)) {
 				console.log('Processing chunk in inputSubmit:', chunk);
 				if (chunk.type === 'tool') {
 					const toolMsg: ToolMessageType = {
@@ -137,8 +127,6 @@
 	function getGreeting() {
 		if (userName) {
 			return `Hey ${userName}, how can I help you today?`;
-		} else if (userEmail) {
-			return `Hey ${userEmail.split('@')[0]}, how can I help you today?`;
 		} else {
 			return 'How can I help you today?';
 		}
@@ -177,7 +165,7 @@
 					</div>
 					
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-12">
-						{#each displaySuggestions as suggestion}
+						{#each suggestions as suggestion}
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
@@ -203,10 +191,10 @@
 				{#each messages as message, index}
 					{#if !(index === 0 && message.text === 'How can I help you?')}
 						{#if message.type === 'tool'}
-							<ToolMessage message={message} {scrollToMe} />
+							<ToolMessage message={message as ToolMessageType} {scrollToMe} />
 						{:else}
 							<ChatMessage 
-								message={message} 
+								message={message as BaseMessage} 
 								isStreaming={is_streaming} 
 								isLastMessage={index === messages.length - 1}
 								{scrollToMe} 

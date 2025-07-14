@@ -48,11 +48,10 @@
 	<ChatLoader />
 {:else}
 	<Chat
-		{client}
+		langGraphClient={client}
 		{assistantId}
 		{threadId}
-		userName={page.data.session?.user?.name}
-		userEmail={page.data.session?.user?.email}
+		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
 		chatStarted={chat_started}
 		onChatStart={handleChatStart}
 	/>
