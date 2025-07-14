@@ -1,0 +1,75 @@
+type: 'application'
+language: 'typescript'
+platform: 'node'
+
+tags: ['sveltekit', 'vite', 'vitest']
+
+tasks:
+  dev:
+    command: 'vite dev'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'svelte.config.js'
+      - 'tsconfig.json'
+    local: true
+
+  build:
+    command: 'vite build'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'
+      - 'vite.config.ts'
+      - 'svelte.config.js'
+      - 'tsconfig.json'
+    outputs:
+      - 'build'
+      - '.svelte-kit'
+
+  preview:
+    command: 'vite preview'
+    deps:
+      - 'build'
+
+  check:
+    command: 'svelte-kit sync && svelte-check --tsconfig ./tsconfig.json'
+    inputs:
+      - 'src/**/*'
+      - 'tsconfig.json'
+      - 'svelte.config.js'
+
+  lint:
+    command: 'prettier --check . && eslint .'
+    inputs:
+      - 'src/**/*'
+      - 'eslint.config.js'
+      - 'package.json'
+
+  format:
+    command: 'prettier --write .'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'
+
+  test:
+    command: 'npm run test:unit -- --run && npm run test:e2e'
+    inputs:
+      - 'src/**/*'
+      - 'e2e/**/*'
+      - 'package.json'
+      - 'vitest-setup-client.ts'
+
+  test-unit:
+    command: 'vitest'
+    inputs:
+      - 'src/**/*'
+      - 'package.json'
+      - 'vitest-setup-client.ts'
+
+  test-e2e:
+    command: 'playwright test'
+    inputs:
+      - 'src/**/*'
+      - 'e2e/**/*'
+      - 'playwright.config.ts'

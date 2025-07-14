@@ -1,0 +1,7 @@
+projects:
+  frontend: 'apps/frontend'
+  backend: 'apps/backend'
+
+vcs:
+  manager: 'git'
+  defaultBranch: 'main'
