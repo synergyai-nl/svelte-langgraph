@@ -41,7 +41,7 @@
 	</HeroHeader>
 
 	<div
-		class="mb-8 flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-x-4 sm:space-y-0 lg:mb-16"
+		class="mb-8 flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4 lg:mb-16"
 	>
 		<a href="/chat">
 			<Button size="lg" color="red">
@@ -50,7 +50,7 @@
 		</a>
 		<a href="/">
 			<Button size="lg" color="light">
-				<VideoCameraSolid size="xs" class="-ml-1 mr-2" />
+				<VideoCameraSolid size="xs" class="mr-2 -ml-1" />
 				Watch video
 			</Button>
 		</a>
@@ -59,7 +59,7 @@
 		{#snippet head()}FEATURED IN{/snippet}
 
 		<div class="mt-8 flex flex-wrap items-center justify-center text-gray-500 sm:justify-between">
-			<a href="/" class="mb-5 mr-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<svg
 					class="h-8"
 					viewBox="0 0 132 29"
@@ -96,7 +96,7 @@
 				>
 				<!-- <Youtube /> -->
 			</a>
-			<a href="/" class="mb-5 mr-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<!-- <ProductHunt /> -->
 				<svg
 					class="h-11"
@@ -117,7 +117,7 @@
 					></path></svg
 				>
 			</a>
-			<a href="/" class="mb-5 mr-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<!-- <Reddit /> -->
 				<svg
 					class="h-11"
