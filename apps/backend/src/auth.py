@@ -32,7 +32,10 @@ async def get_current_user(authorization: str | None) -> MinimalUserDict:
 
     assert authorization
     scheme, token = authorization.split(' ', 1)
-    assert scheme.lower() == "bearer"
+    if scheme.lower() != "bearer":
+        raise Auth.exceptions.HTTPException(
+            status_code=401, detail="Invalid auth scheme. Expected 'Bearer'."
+        )
 
     try:
         claims = descope_client.validate_session(
