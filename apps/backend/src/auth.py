@@ -31,7 +31,7 @@ async def get_current_user(authorization: str | None) -> MinimalUserDict:
         )
 
     assert authorization
-    scheme, token = authorization.split(' ', 1)
+    scheme, token = authorization.split(" ", 1)
     assert scheme.lower() == "bearer"
 
     try:
