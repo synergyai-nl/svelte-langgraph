@@ -60,7 +60,7 @@
 								)}</pre>
 						</div>
 					{:else}
-						<div class="mt-1 italic text-gray-500 dark:text-gray-400">No parameters</div>
+						<div class="mt-1 text-gray-500 italic dark:text-gray-400">No parameters</div>
 					{/if}
 				</div>
 			{/if}

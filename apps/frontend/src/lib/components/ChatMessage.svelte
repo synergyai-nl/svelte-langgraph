@@ -32,7 +32,7 @@
 				<Card
 					class="w-full max-w-none border-0 bg-gray-900  p-4 text-sm text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
 				>
-					<p class="whitespace-pre-wrap leading-relaxed">
+					<p class="leading-relaxed whitespace-pre-wrap">
 						{message.text}
 					</p>
 				</Card>
@@ -40,7 +40,7 @@
 				<Card
 					class="dark:bg-gray-800' w-full max-w-none border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-gray-700"
 				>
-					<p class="whitespace-pre-wrap leading-relaxed text-gray-900 dark:text-gray-100">
+					<p class="leading-relaxed whitespace-pre-wrap text-gray-900 dark:text-gray-100">
 						{message.text}
 					</p>
 				</Card>
