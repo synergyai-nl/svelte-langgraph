@@ -32,20 +32,21 @@
 		<div class="relative w-full">
 			{#if isWaiting}
 				<LoadingIndicator />
-			{/if}
-			<Card
-				class="w-full max-w-none p-4 text-sm shadow-sm {message.type === 'user'
-					? 'pulse-subtle border-0 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-					: 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'}"
-			>
-				<p
-					class="whitespace-pre-wrap leading-relaxed {message.type === 'user'
-						? ''
-						: 'text-gray-900 dark:text-gray-100'}"
+			{:else}
+				<Card
+					class="w-full max-w-none p-4 text-sm shadow-sm {message.type === 'user'
+						? 'pulse-subtle border-0 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
+						: 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'}"
 				>
-					{message.text}
-				</p>
-			</Card>
+					<p
+						class="whitespace-pre-wrap leading-relaxed {message.type === 'user'
+							? ''
+							: 'text-gray-900 dark:text-gray-100'}"
+					>
+						{message.text}
+					</p>
+				</Card>
+			{/if}
 		</div>
 	</div>
 </div>
