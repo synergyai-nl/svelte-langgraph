@@ -2,7 +2,6 @@
 	import { Card } from 'flowbite-svelte';
 	import { UserOutline } from 'flowbite-svelte-icons';
 	import { Spinner } from 'flowbite-svelte';
-
 	import type { BaseMessage } from '$lib/types/messageTypes';
 
 	interface Props {

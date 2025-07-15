@@ -17,5 +17,5 @@ tasks:
   typecheck:
     command: "pyright"
   dev:
-    command: "langgraph dev --no-browser"
+    command: "langgraph dev --no-browser --allow-blocking"
     preset: "watcher"
