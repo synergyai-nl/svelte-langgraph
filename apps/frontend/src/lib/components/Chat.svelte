@@ -11,6 +11,7 @@
 		ToolMessageType,
 		ChatSuggestion
 	} from '$lib/types/messageTypes';
+	import type { Attachment } from 'svelte/attachments';
 
 	interface Props {
 		langGraphClient: Client;
@@ -98,6 +99,15 @@
 			is_streaming = false;
 		}
 	}
+
+	function scrollToMe(message: BaseMessage): Attachment {
+		return (element) => {
+			// message is here purely to enable reactivity
+			if (message.text) {
+				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		};
+	}
 </script>
 
 {#if !chat_started}
@@ -134,14 +144,13 @@
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
 				{#each messages as message, index}
 					{#if !(index === 0 && message.text === 'How can I help you?')}
-						{#if message.type === 'tool'}
-							<ToolMessage message={message as ToolMessageType} />
-						{:else}
-							<ChatMessage
-								message={message as BaseMessage}
-								isLastMessage={index === messages.length - 1}
-							/>
-						{/if}
+						<div {@attach scrollToMe(message)}>
+							{#if message.type === 'tool'}
+								<ToolMessage message={message as ToolMessageType} />
+							{:else}
+								<ChatMessage message={message as BaseMessage} />
+							{/if}
+						</div>
 					{/if}
 				{/each}
 			</div>
