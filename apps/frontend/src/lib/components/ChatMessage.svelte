@@ -35,7 +35,7 @@
 				<Spinner />
 			{:else if message.type === 'user'}
 				<Card
-					class="pulse-subtle w-full max-w-none border-0 bg-gray-900  p-4 text-sm text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+					class="w-full max-w-none border-0 bg-gray-900  p-4 text-sm text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
 				>
 					<p class="whitespace-pre-wrap leading-relaxed">
 						{message.text}
@@ -53,19 +53,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	@keyframes pulse-subtle {
-		0%,
-		100% {
-			box-shadow: 0 0 0 rgba(0, 0, 0, 0.1);
-		}
-		50% {
-			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-		}
-	}
-
-	.pulse-subtle {
-		animation: pulse-subtle 2s ease-in-out infinite;
-	}
-</style>
