@@ -56,7 +56,7 @@
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
-	let messages = $state<Array<Message>>([{ type: 'ai', text: 'How can I help you?' }]);
+	let messages = $state<Array<Message>>([]);
 	let chat_started = $state(false);
 
 	async function inputSubmit() {
