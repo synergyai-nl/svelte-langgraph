@@ -16,7 +16,6 @@
 	});
 
 	let show_login_dialog = $state(false);
-	let chat_started = $state(false);
 	let assistantId = $state('');
 	let threadId = $state('');
 	let isLoading = $state(true);
@@ -37,12 +36,7 @@
 			isLoading = false;
 		}
 	});
-
-	function handleChatStart() {
-		chat_started = true;
-	}
 </script>
-
 
 {#if isLoading}
 	<ChatLoader />
@@ -52,8 +46,6 @@
 		{assistantId}
 		{threadId}
 		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
-		chatStarted={chat_started}
-		onChatStart={handleChatStart}
 	/>
 {/if}
 

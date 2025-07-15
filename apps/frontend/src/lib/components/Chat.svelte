@@ -5,7 +5,12 @@
 	import ToolMessage from './ToolMessage.svelte';
 	import ChatInput from './ChatInput.svelte';
 	import SuggestionCard from './SuggestionCard.svelte';
-	import type { Message, BaseMessage, ToolMessageType, ChatSuggestion } from '$lib/types/messageTypes';
+	import type {
+		Message,
+		BaseMessage,
+		ToolMessageType,
+		ChatSuggestion
+	} from '$lib/types/messageTypes';
 
 	interface Props {
 		langGraphClient: Client;
@@ -20,48 +25,44 @@
 	// Default suggestions as constants, outside the component.
 	const defaultSuggestions: ChatSuggestion[] = [
 		{
-			title: "Creative Brainstorming",
-			description: "Generate ideas for projects, writing, or problem-solving",
-			suggestedText: "Help me brainstorm ideas for a creative project"
+			title: 'Creative Brainstorming',
+			description: 'Generate ideas for projects, writing, or problem-solving',
+			suggestedText: 'Help me brainstorm ideas for a creative project'
 		},
 		{
-			title: "Writing Assistance",
-			description: "Draft, edit, or improve emails, documents, and more",
-			suggestedText: "Help me write and improve some text"
+			title: 'Writing Assistance',
+			description: 'Draft, edit, or improve emails, documents, and more',
+			suggestedText: 'Help me write and improve some text'
 		},
 		{
-			title: "Learn Something New",
+			title: 'Learn Something New',
 			description: "Get clear explanations on topics you're curious about",
-			suggestedText: "Explain a complex topic in simple terms"
+			suggestedText: 'Explain a complex topic in simple terms'
 		},
 		{
-			title: "Problem Solving",
-			description: "Break down challenges and find solutions together",
-			suggestedText: "Help me analyze and solve a problem"
+			title: 'Problem Solving',
+			description: 'Break down challenges and find solutions together',
+			suggestedText: 'Help me analyze and solve a problem'
 		}
 	];
 
-
-	let { 
-		langGraphClient, 
-		assistantId, 
-		threadId, 
-		userName, 
-		chatStarted, 
-		onChatStart, 
+	let {
+		langGraphClient,
+		assistantId,
+		threadId,
+		userName,
 		suggestions = defaultSuggestions
 	}: Props = $props();
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
 	let messages = $state<Array<Message>>([{ type: 'ai', text: 'How can I help you?' }]);
+	let chat_started = $state(false);
 
 	async function inputSubmit() {
 		if (current_input) {
-			if (!chatStarted) {
-				onChatStart();
-			}
-			
+			chat_started = true;
+
 			messages.push({
 				type: 'user',
 				text: current_input
@@ -76,7 +77,12 @@
 
 			messages.push(aimessage);
 
-			for await (const chunk of streamAnswer(langGraphClient, threadId, assistantId, current_input)) {
+			for await (const chunk of streamAnswer(
+				langGraphClient,
+				threadId,
+				assistantId,
+				current_input
+			)) {
 				console.log('Processing chunk in inputSubmit:', chunk);
 				if (chunk.type === 'tool') {
 					const toolMsg: ToolMessageType = {
@@ -84,10 +90,10 @@
 						text: "I'm using tools...",
 						tool_name: chunk.tool_name,
 						payload: chunk.tool_payload,
-						collapsed: true,
+						collapsed: true
 					};
 					messages.push(toolMsg);
-					
+
 					aimessage = {
 						type: 'ai',
 						text: ''
@@ -96,7 +102,7 @@
 					messages = [...messages];
 				} else if (chunk.type === 'text') {
 					aimessage.text += chunk.text;
-					
+
 					let aiMessageIndex = -1;
 					for (let i = messages.length - 1; i >= 0; i--) {
 						if (messages[i].type === 'ai') {
@@ -104,7 +110,7 @@
 							break;
 						}
 					}
-					
+
 					if (aiMessageIndex !== -1) {
 						messages[aiMessageIndex] = { ...aimessage };
 						messages = [...messages];
@@ -133,6 +139,62 @@
 	}
 </script>
 
+{#if !chat_started}
+	<div class="flex min-h-screen flex-col items-center justify-start pt-16">
+		<div class="mx-auto w-full max-w-4xl">
+			<div class="flex flex-col items-center justify-center text-center">
+				<div class="fade-slide-up mx-auto max-w-2xl space-y-8">
+					<div class="space-y-4">
+						<h1 class="text-4xl font-light text-gray-900 md:text-5xl dark:text-white">
+							{getGreeting()}
+						</h1>
+						<p class="text-lg font-light text-gray-600 dark:text-gray-400">
+							I'm here to assist with your questions, provide information, help with tasks, or
+							engage in conversation.
+						</p>
+					</div>
+
+					<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
+						{#each suggestions as suggestion}
+							<SuggestionCard
+								title={suggestion.title}
+								description={suggestion.description}
+								suggestedText={suggestion.suggestedText}
+								onclick={() => (current_input = suggestion.suggestedText)}
+							/>
+						{/each}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+{:else}
+	<div class="flex h-screen flex-col">
+		<div class="flex-1 overflow-y-auto pb-32">
+			<div class="mx-auto w-full max-w-4xl px-4 py-8">
+				{#each messages as message, index}
+					{#if !(index === 0 && message.text === 'How can I help you?')}
+						{#if message.type === 'tool'}
+							<ToolMessage message={message as ToolMessageType} {scrollToMe} />
+						{:else}
+							<ChatMessage
+								message={message as BaseMessage}
+								isStreaming={is_streaming}
+								isLastMessage={index === messages.length - 1}
+								{scrollToMe}
+							/>
+						{/if}
+					{/if}
+				{/each}
+			</div>
+		</div>
+
+		<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+	</div>
+{/if}
+
 <style>
 	@keyframes fade-slide-up {
 		from {
@@ -149,66 +211,3 @@
 		animation: fade-slide-up 0.6s ease-out;
 	}
 </style>
-
-{#if !chatStarted}
-	<div class="min-h-screen flex flex-col items-center justify-start pt-16">
-		<div class="w-full max-w-4xl mx-auto">
-			<div class="flex flex-col items-center justify-center text-center">
-				<div class="max-w-2xl mx-auto space-y-8 fade-slide-up">
-					<div class="space-y-4">
-						<h1 class="text-4xl md:text-5xl font-light text-gray-900 dark:text-white">
-							{getGreeting()}
-						</h1>
-						<p class="text-lg text-gray-600 dark:text-gray-400 font-light">
-							I'm here to assist with your questions, provide information, help with tasks, or engage in conversation.
-						</p>
-					</div>
-					
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-12">
-						{#each suggestions as suggestion}
-							<SuggestionCard
-								title={suggestion.title}
-								description={suggestion.description}
-								suggestedText={suggestion.suggestedText}
-								onclick={() => current_input = suggestion.suggestedText}
-							/>
-						{/each}
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-	
-	<ChatInput
-		bind:value={current_input}
-		isStreaming={is_streaming}
-		onSubmit={inputSubmit}
-	/>
-{:else}
-	<div class="h-screen flex flex-col">
-		<div class="flex-1 overflow-y-auto pb-32">
-			<div class="w-full max-w-4xl mx-auto px-4 py-8">
-				{#each messages as message, index}
-					{#if !(index === 0 && message.text === 'How can I help you?')}
-						{#if message.type === 'tool'}
-							<ToolMessage message={message as ToolMessageType} {scrollToMe} />
-						{:else}
-							<ChatMessage 
-								message={message as BaseMessage} 
-								isStreaming={is_streaming} 
-								isLastMessage={index === messages.length - 1}
-								{scrollToMe} 
-							/>
-						{/if}
-					{/if}
-				{/each}
-			</div>
-		</div>
-
-		<ChatInput
-			bind:value={current_input}
-			isStreaming={is_streaming}
-			onSubmit={inputSubmit}
-		/>
-	</div>
-{/if}
