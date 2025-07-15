@@ -129,7 +129,6 @@
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
-								suggestedText={suggestion.suggestedText}
 								onclick={() => (current_input = suggestion.suggestedText)}
 							/>
 						{/each}
