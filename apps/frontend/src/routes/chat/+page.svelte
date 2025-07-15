@@ -60,6 +60,16 @@
 			suggestedText: 'Help me analyze and solve a problem'
 		}
 	];
+
+	let greeting = $derived.by(() => {
+		const userName = page.data.session?.user?.name;
+
+		if (userName) {
+			return `Hey ${userName}, how can I help you today?`;
+		} else {
+			return 'How can I help you today?';
+		}
+	});
 </script>
 
 {#if isLoading}
@@ -69,7 +79,7 @@
 		langGraphClient={client}
 		{assistantId}
 		{threadId}
-		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
+		introTitle={greeting}
 		intro="I'm here to assist with your questions, provide information, help with tasks, or engage in conversation."
 		{suggestions}
 	/>

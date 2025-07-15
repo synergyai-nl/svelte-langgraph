@@ -16,18 +16,18 @@
 		langGraphClient: Client;
 		assistantId: string;
 		threadId: string;
-		userName?: string;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
+		introTitle?: string;
 	}
 
 	let {
 		langGraphClient,
 		assistantId,
 		threadId,
-		userName,
 		suggestions = [],
-		intro = ''
+		intro = '',
+		introTitle = ''
 	}: Props = $props();
 
 	let current_input = $state('');
@@ -105,14 +105,6 @@
 			destroy() {}
 		};
 	}
-
-	function getGreeting() {
-		if (userName) {
-			return `Hey ${userName}, how can I help you today?`;
-		} else {
-			return 'How can I help you today?';
-		}
-	}
 </script>
 
 {#if !chat_started}
@@ -122,7 +114,7 @@
 				<div class="fade-slide-up mx-auto max-w-2xl space-y-8">
 					<div class="space-y-4">
 						<h1 class="text-4xl font-light text-gray-900 md:text-5xl dark:text-white">
-							{getGreeting()}
+							{introTitle}
 						</h1>
 						<p class="text-lg font-light text-gray-600 dark:text-gray-400">
 							{intro}
