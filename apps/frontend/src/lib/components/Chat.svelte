@@ -146,7 +146,6 @@
 						{:else}
 							<ChatMessage
 								message={message as BaseMessage}
-								isStreaming={is_streaming}
 								isLastMessage={index === messages.length - 1}
 								{scrollToMe}
 							/>

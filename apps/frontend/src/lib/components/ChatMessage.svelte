@@ -6,12 +6,13 @@
 
 	interface Props {
 		message: BaseMessage;
-		isStreaming?: boolean;
 		isLastMessage?: boolean;
 		scrollToMe: (node: HTMLElement) => { destroy: () => void };
 	}
 
-	let { message, isStreaming = false, isLastMessage = false, scrollToMe }: Props = $props();
+	let { message, isLastMessage = false, scrollToMe }: Props = $props();
+
+	let isWaiting = $derived(message.type === 'ai' && isLastMessage && !message.text);
 </script>
 
 <div
@@ -29,7 +30,7 @@
 			<UserOutline size="sm" class="text-white dark:text-gray-900" />
 		</div>
 		<div class="relative w-full">
-			{#if message.type === 'ai' && isStreaming && isLastMessage}
+			{#if isWaiting}
 				<LoadingIndicator />
 			{/if}
 			<Card
@@ -38,7 +39,7 @@
 					: 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'}"
 			>
 				<p
-					class="leading-relaxed whitespace-pre-wrap {message.type === 'user'
+					class="whitespace-pre-wrap leading-relaxed {message.type === 'user'
 						? ''
 						: 'text-gray-900 dark:text-gray-100'}"
 				>
