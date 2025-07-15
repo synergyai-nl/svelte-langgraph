@@ -143,15 +143,13 @@
 		<div class="flex-1 overflow-y-auto pb-32">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
 				{#each messages as message, index}
-					{#if !(index === 0 && message.text === 'How can I help you?')}
-						<div {@attach scrollToMe(message)}>
-							{#if message.type === 'tool'}
-								<ToolMessage message={message as ToolMessageType} />
-							{:else}
-								<ChatMessage message={message as BaseMessage} />
-							{/if}
-						</div>
-					{/if}
+					<div {@attach scrollToMe(message)}>
+						{#if message.type === 'tool'}
+							<ToolMessage message={message as ToolMessageType} />
+						{:else}
+							<ChatMessage message={message as BaseMessage} />
+						{/if}
+					</div>
 				{/each}
 			</div>
 		</div>
