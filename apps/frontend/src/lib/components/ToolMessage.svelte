@@ -9,13 +9,12 @@
 
 	interface Props {
 		message: ToolMessage;
-		scrollToMe: (node: HTMLElement) => { destroy: () => void };
 	}
 
-	let { message, scrollToMe }: Props = $props();
+	let { message }: Props = $props();
 </script>
 
-<div class="mb-2 flex justify-start" use:scrollToMe>
+<div class="mb-2 flex justify-start">
 	<div class="flex w-full max-w-[80%] items-start gap-3">
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-500 dark:bg-gray-400"

@@ -11,60 +11,34 @@
 		ToolMessageType,
 		ChatSuggestion
 	} from '$lib/types/messageTypes';
+	import type { Attachment } from 'svelte/attachments';
 
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
 		threadId: string;
-		userName?: string;
-		chatStarted: boolean;
-		onChatStart: () => void;
 		suggestions?: ChatSuggestion[];
+		intro?: string;
+		introTitle?: string;
 	}
-
-	// Default suggestions as constants, outside the component.
-	const defaultSuggestions: ChatSuggestion[] = [
-		{
-			title: 'Creative Brainstorming',
-			description: 'Generate ideas for projects, writing, or problem-solving',
-			suggestedText: 'Help me brainstorm ideas for a creative project'
-		},
-		{
-			title: 'Writing Assistance',
-			description: 'Draft, edit, or improve emails, documents, and more',
-			suggestedText: 'Help me write and improve some text'
-		},
-		{
-			title: 'Learn Something New',
-			description: "Get clear explanations on topics you're curious about",
-			suggestedText: 'Explain a complex topic in simple terms'
-		},
-		{
-			title: 'Problem Solving',
-			description: 'Break down challenges and find solutions together',
-			suggestedText: 'Help me analyze and solve a problem'
-		}
-	];
 
 	let {
 		langGraphClient,
 		assistantId,
 		threadId,
-		userName,
-		chatStarted,
-		onChatStart,
-		suggestions = defaultSuggestions
+		suggestions = [],
+		intro = '',
+		introTitle = ''
 	}: Props = $props();
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
-	let messages = $state<Array<Message>>([{ type: 'ai', text: 'How can I help you?' }]);
+	let messages = $state<Array<Message>>([]);
+	let chat_started = $state(false);
 
 	async function inputSubmit() {
 		if (current_input) {
-			if (!chatStarted) {
-				onChatStart();
-			}
+			chat_started = true;
 
 			messages.push({
 				type: 'user',
@@ -126,34 +100,27 @@
 		}
 	}
 
-	function scrollToMe(node: HTMLElement) {
-		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		return {
-			destroy() {}
+	function scrollToMe(message: BaseMessage): Attachment {
+		return (element) => {
+			// message is here purely to enable reactivity
+			if (message.text) {
+				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
 		};
-	}
-
-	function getGreeting() {
-		if (userName) {
-			return `Hey ${userName}, how can I help you today?`;
-		} else {
-			return 'How can I help you today?';
-		}
 	}
 </script>
 
-{#if !chatStarted}
+{#if !chat_started}
 	<div class="flex min-h-screen flex-col items-center justify-start pt-16">
 		<div class="mx-auto w-full max-w-4xl">
 			<div class="flex flex-col items-center justify-center text-center">
 				<div class="fade-slide-up mx-auto max-w-2xl space-y-8">
 					<div class="space-y-4">
 						<h1 class="text-4xl font-light text-gray-900 md:text-5xl dark:text-white">
-							{getGreeting()}
+							{introTitle}
 						</h1>
 						<p class="text-lg font-light text-gray-600 dark:text-gray-400">
-							I'm here to assist with your questions, provide information, help with tasks, or
-							engage in conversation.
+							{intro}
 						</p>
 					</div>
 
@@ -162,7 +129,6 @@
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
-								suggestedText={suggestion.suggestedText}
 								onclick={() => (current_input = suggestion.suggestedText)}
 							/>
 						{/each}
@@ -171,32 +137,24 @@
 			</div>
 		</div>
 	</div>
-
-	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 {:else}
 	<div class="flex h-screen flex-col">
 		<div class="flex-1 overflow-y-auto pb-32">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
 				{#each messages as message, index}
-					{#if !(index === 0 && message.text === 'How can I help you?')}
+					<div {@attach scrollToMe(message)}>
 						{#if message.type === 'tool'}
-							<ToolMessage message={message as ToolMessageType} {scrollToMe} />
+							<ToolMessage message={message as ToolMessageType} />
 						{:else}
-							<ChatMessage
-								message={message as BaseMessage}
-								isStreaming={is_streaming}
-								isLastMessage={index === messages.length - 1}
-								{scrollToMe}
-							/>
+							<ChatMessage message={message as BaseMessage} />
 						{/if}
-					{/if}
+					</div>
 				{/each}
 			</div>
 		</div>
-
-		<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 	</div>
 {/if}
+<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 
 <style>
 	@keyframes fade-slide-up {

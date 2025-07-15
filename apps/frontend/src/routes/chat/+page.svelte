@@ -6,6 +6,7 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
+	import type { ChatSuggestion } from '$lib/types/messageTypes';
 
 	interface LangGraphState {
 		client: Client;
@@ -14,7 +15,6 @@
 	}
 
 	let show_login_dialog = $state(false);
-	let chat_started = $state(false);
 
 	let langgraph: LangGraphState | null = $state(null);
 
@@ -50,9 +50,38 @@
 		if (!page.data.session) show_login_dialog = true;
 	});
 
-	function handleChatStart() {
-		chat_started = true;
-	}
+	const suggestions: ChatSuggestion[] = [
+		{
+			title: 'Creative Brainstorming',
+			description: 'Generate ideas for projects, writing, or problem-solving',
+			suggestedText: 'Help me brainstorm ideas for a creative project'
+		},
+		{
+			title: 'Writing Assistance',
+			description: 'Draft, edit, or improve emails, documents, and more',
+			suggestedText: 'Help me write and improve some text'
+		},
+		{
+			title: 'Learn Something New',
+			description: "Get clear explanations on topics you're curious about",
+			suggestedText: 'Explain a complex topic in simple terms'
+		},
+		{
+			title: 'Problem Solving',
+			description: 'Break down challenges and find solutions together',
+			suggestedText: 'Help me analyze and solve a problem'
+		}
+	];
+
+	let greeting = $derived.by(() => {
+		const userName = page.data.session?.user?.name;
+
+		if (userName) {
+			return `Hey ${userName}, how can I help you today?`;
+		} else {
+			return 'How can I help you today?';
+		}
+	});
 </script>
 
 {#if !langgraph}
@@ -62,9 +91,9 @@
 		langGraphClient={langgraph.client}
 		assistantId={langgraph.assistantId}
 		threadId={langgraph.threadId}
-		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
-		chatStarted={chat_started}
-		onChatStart={handleChatStart}
+		introTitle={greeting}
+		intro="I'm here to assist with your questions, provide information, help with tasks, or engage in conversation."
+		{suggestions}
 	/>
 {/if}
 

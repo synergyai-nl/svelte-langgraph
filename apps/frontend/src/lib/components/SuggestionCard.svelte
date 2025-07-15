@@ -2,11 +2,10 @@
 	interface Props {
 		title: string;
 		description: string;
-		suggestedText: string;
 		onclick: () => void;
 	}
 
-	let { title, description, suggestedText, onclick }: Props = $props();
+	let { title, description, onclick }: Props = $props();
 </script>
 
 <button
