@@ -15,7 +15,6 @@
 	}
 
 	let show_login_dialog = $state(false);
-	let chat_started = $state(false);
 
 	let langgraph: LangGraphState | null = $state(null);
 
