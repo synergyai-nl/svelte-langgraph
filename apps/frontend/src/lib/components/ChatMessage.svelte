@@ -33,17 +33,19 @@
 		<div class="relative w-full">
 			{#if isWaiting}
 				<Spinner />
+			{:else if message.type === 'user'}
+				<Card
+					class="pulse-subtle w-full max-w-none border-0 bg-gray-900  p-4 text-sm text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+				>
+					<p class="whitespace-pre-wrap leading-relaxed">
+						{message.text}
+					</p>
+				</Card>
 			{:else}
 				<Card
-					class="w-full max-w-none p-4 text-sm shadow-sm {message.type === 'user'
-						? 'pulse-subtle border-0 bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-						: 'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'}"
+					class="dark:bg-gray-800' w-full max-w-none border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-gray-700"
 				>
-					<p
-						class="whitespace-pre-wrap leading-relaxed {message.type === 'user'
-							? ''
-							: 'text-gray-900 dark:text-gray-100'}"
-					>
+					<p class="whitespace-pre-wrap leading-relaxed text-gray-900 dark:text-gray-100">
 						{message.text}
 					</p>
 				</Card>
