@@ -17,8 +17,6 @@
 		assistantId: string;
 		threadId: string;
 		userName?: string;
-		chatStarted: boolean;
-		onChatStart: () => void;
 		suggestions?: ChatSuggestion[];
 	}
 
