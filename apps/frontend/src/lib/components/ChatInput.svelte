@@ -8,7 +8,12 @@
 		placeholder?: string;
 	}
 
-	let { value = $bindable(), isStreaming = false, onSubmit, placeholder = "Message..." }: Props = $props();
+	let {
+		value = $bindable(),
+		isStreaming = false,
+		onSubmit,
+		placeholder = 'Message...'
+	}: Props = $props();
 
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
@@ -18,8 +23,10 @@
 	}
 </script>
 
-<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
-	<div class="w-full max-w-4xl mx-auto px-4 py-4">
+<div
+	class="fixed right-0 bottom-0 left-0 border-t border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+>
+	<div class="mx-auto w-full max-w-4xl px-4 py-4">
 		<form id="input_form" onsubmit={onSubmit}>
 			<Textarea
 				id="user-input"
@@ -29,15 +36,15 @@
 				name="message"
 				bind:value
 				clearable
-				class="focus:ring-1 focus:ring-gray-300 focus:border-gray-300 transition-all duration-200 border-gray-300 dark:border-gray-600"
+				class="border-gray-300 transition-all duration-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-300 dark:border-gray-600"
 				onkeypress={handleKeyPress}
 			>
 				{#snippet footer()}
 					<div class="flex items-center justify-end">
-						<Button 
-							type="submit" 
+						<Button
+							type="submit"
 							disabled={isStreaming}
-							class="bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white border-0 shadow-sm transition-all duration-200"
+							class="border-0 bg-gray-900 text-white shadow-sm transition-all duration-200 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
 						>
 							Send
 							{#if isStreaming}
