@@ -135,8 +135,6 @@
 			</div>
 		</div>
 	</div>
-
-	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 {:else}
 	<div class="flex h-screen flex-col">
 		<div class="flex-1 overflow-y-auto pb-32">
@@ -157,10 +155,9 @@
 				{/each}
 			</div>
 		</div>
-
-		<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 	</div>
 {/if}
+<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
 
 <style>
 	@keyframes fade-slide-up {
