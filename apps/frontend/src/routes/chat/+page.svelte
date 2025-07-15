@@ -6,6 +6,7 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
+	import type { ChatSuggestion } from '$lib/types/messageTypes';
 
 	const client = new Client({
 		// Observe that this is insecure
@@ -36,6 +37,29 @@
 			isLoading = false;
 		}
 	});
+
+	const suggestions: ChatSuggestion[] = [
+		{
+			title: 'Creative Brainstorming',
+			description: 'Generate ideas for projects, writing, or problem-solving',
+			suggestedText: 'Help me brainstorm ideas for a creative project'
+		},
+		{
+			title: 'Writing Assistance',
+			description: 'Draft, edit, or improve emails, documents, and more',
+			suggestedText: 'Help me write and improve some text'
+		},
+		{
+			title: 'Learn Something New',
+			description: "Get clear explanations on topics you're curious about",
+			suggestedText: 'Explain a complex topic in simple terms'
+		},
+		{
+			title: 'Problem Solving',
+			description: 'Break down challenges and find solutions together',
+			suggestedText: 'Help me analyze and solve a problem'
+		}
+	];
 </script>
 
 {#if isLoading}
@@ -46,6 +70,7 @@
 		{assistantId}
 		{threadId}
 		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
+		{suggestions}
 	/>
 {/if}
 

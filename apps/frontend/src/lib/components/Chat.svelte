@@ -20,37 +20,7 @@
 		suggestions?: ChatSuggestion[];
 	}
 
-	// Default suggestions as constants, outside the component.
-	const defaultSuggestions: ChatSuggestion[] = [
-		{
-			title: 'Creative Brainstorming',
-			description: 'Generate ideas for projects, writing, or problem-solving',
-			suggestedText: 'Help me brainstorm ideas for a creative project'
-		},
-		{
-			title: 'Writing Assistance',
-			description: 'Draft, edit, or improve emails, documents, and more',
-			suggestedText: 'Help me write and improve some text'
-		},
-		{
-			title: 'Learn Something New',
-			description: "Get clear explanations on topics you're curious about",
-			suggestedText: 'Explain a complex topic in simple terms'
-		},
-		{
-			title: 'Problem Solving',
-			description: 'Break down challenges and find solutions together',
-			suggestedText: 'Help me analyze and solve a problem'
-		}
-	];
-
-	let {
-		langGraphClient,
-		assistantId,
-		threadId,
-		userName,
-		suggestions = defaultSuggestions
-	}: Props = $props();
+	let { langGraphClient, assistantId, threadId, userName, suggestions = [] }: Props = $props();
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
