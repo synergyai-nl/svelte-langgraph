@@ -98,13 +98,6 @@
 			is_streaming = false;
 		}
 	}
-
-	function scrollToMe(node: HTMLElement) {
-		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		return {
-			destroy() {}
-		};
-	}
 </script>
 
 {#if !chat_started}
@@ -147,7 +140,6 @@
 							<ChatMessage
 								message={message as BaseMessage}
 								isLastMessage={index === messages.length - 1}
-								{scrollToMe}
 							/>
 						{/if}
 					{/if}

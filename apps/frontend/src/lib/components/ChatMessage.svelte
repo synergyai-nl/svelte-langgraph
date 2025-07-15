@@ -8,12 +8,18 @@
 	interface Props {
 		message: BaseMessage;
 		isLastMessage?: boolean;
-		scrollToMe: (node: HTMLElement) => { destroy: () => void };
 	}
 
-	let { message, isLastMessage = false, scrollToMe }: Props = $props();
+	let { message, isLastMessage = false }: Props = $props();
 
 	let isWaiting = $derived(message.type === 'ai' && isLastMessage && !message.text);
+
+	function scrollToMe(node: HTMLElement) {
+		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		return {
+			destroy() {}
+		};
+	}
 </script>
 
 <div
