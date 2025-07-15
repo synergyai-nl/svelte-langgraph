@@ -3,6 +3,7 @@
 	import { UserOutline } from 'flowbite-svelte-icons';
 	import { Spinner } from 'flowbite-svelte';
 
+	import type { Attachment } from 'svelte/attachments';
 	import type { BaseMessage } from '$lib/types/messageTypes';
 
 	interface Props {
@@ -14,18 +15,16 @@
 
 	let isWaiting = $derived(message.type === 'ai' && isLastMessage && !message.text);
 
-	function scrollToMe(node: HTMLElement) {
-		node.scrollIntoView({ behavior: 'smooth', block: 'center' });
-		return {
-			destroy() {}
-		};
-	}
+	const scrollToMe: Attachment = (element) => {
+		// message.text is here to enable reactivity
+		if (message.text && isLastMessage) {
+			console.log('Scrolling this mother!');
+			element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
+	};
 </script>
 
-<div
-	class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}"
-	use:scrollToMe
->
+<div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
 	<div
 		class="flex items-start gap-3 {message.type === 'user'
 			? 'max-w-[70%] flex-row-reverse'
@@ -36,7 +35,7 @@
 		>
 			<UserOutline size="sm" class="text-white dark:text-gray-900" />
 		</div>
-		<div class="relative w-full">
+		<div class="relative w-full" {@attach scrollToMe}>
 			{#if isWaiting}
 				<Spinner />
 			{:else if message.type === 'user'}

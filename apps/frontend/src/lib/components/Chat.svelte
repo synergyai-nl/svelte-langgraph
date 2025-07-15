@@ -135,7 +135,7 @@
 				{#each messages as message, index}
 					{#if !(index === 0 && message.text === 'How can I help you?')}
 						{#if message.type === 'tool'}
-							<ToolMessage message={message as ToolMessageType} {scrollToMe} />
+							<ToolMessage message={message as ToolMessageType} />
 						{:else}
 							<ChatMessage
 								message={message as BaseMessage}
