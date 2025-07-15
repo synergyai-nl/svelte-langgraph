@@ -18,9 +18,17 @@
 		threadId: string;
 		userName?: string;
 		suggestions?: ChatSuggestion[];
+		intro?: string;
 	}
 
-	let { langGraphClient, assistantId, threadId, userName, suggestions = [] }: Props = $props();
+	let {
+		langGraphClient,
+		assistantId,
+		threadId,
+		userName,
+		suggestions = [],
+		intro = ''
+	}: Props = $props();
 
 	let current_input = $state('');
 	let is_streaming = $state(false);
@@ -117,8 +125,7 @@
 							{getGreeting()}
 						</h1>
 						<p class="text-lg font-light text-gray-600 dark:text-gray-400">
-							I'm here to assist with your questions, provide information, help with tasks, or
-							engage in conversation.
+							{intro}
 						</p>
 					</div>
 

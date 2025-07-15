@@ -70,6 +70,7 @@
 		{assistantId}
 		{threadId}
 		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
+		intro="I'm here to assist with your questions, provide information, help with tasks, or engage in conversation."
 		{suggestions}
 	/>
 {/if}
