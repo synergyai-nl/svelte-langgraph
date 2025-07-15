@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Card } from 'flowbite-svelte';
 	import { UserOutline } from 'flowbite-svelte-icons';
-	import LoadingIndicator from './LoadingIndicator.svelte';
+	import { Spinner } from 'flowbite-svelte';
+
 	import type { BaseMessage } from '$lib/types/messageTypes';
 
 	interface Props {
@@ -31,7 +32,7 @@
 		</div>
 		<div class="relative w-full">
 			{#if isWaiting}
-				<LoadingIndicator />
+				<Spinner />
 			{:else}
 				<Card
 					class="w-full max-w-none p-4 text-sm shadow-sm {message.type === 'user'
