@@ -2,40 +2,52 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { Client } from '@langchain/langgraph-sdk';
-	import { PUBLIC_LANGCHAIN_API_KEY, PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
+	import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 
-	const client = new Client({
-		// Observe that this is insecure
-		// We need to find a way to pass Descope's auth token which we can verify on the
-		// the langgraph side.
-		apiKey: PUBLIC_LANGCHAIN_API_KEY,
-		apiUrl: PUBLIC_LANGGRAPH_API_URL
-	});
+	interface LangGraphState {
+		client: Client;
+		threadId: string;
+		assistantId: string;
+	}
 
 	let show_login_dialog = $state(false);
 	let chat_started = $state(false);
-	let assistantId = $state('');
-	let threadId = $state('');
-	let isLoading = $state(true);
+
+	let langgraph: LangGraphState | null = $state(null);
+
+	$effect(() => {
+		// User logged in or switched accounts - initialize
+		(async () => {
+			const accessToken: string | undefined = page.data.session?.accessToken;
+			if (accessToken) await initializeLangGraph(accessToken);
+		})();
+	});
+
+	async function initializeLangGraph(accessToken: string) {
+		const client = new Client({
+			defaultHeaders: {
+				Authorization: `Bearer ${accessToken}`
+			},
+			apiUrl: PUBLIC_LANGGRAPH_API_URL
+		});
+
+		const thread = await client.threads.create();
+		const assistant = await client.assistants.create({
+			graphId: 'chat'
+		});
+
+		langgraph = {
+			client,
+			threadId: thread.thread_id,
+			assistantId: assistant.assistant_id
+		};
+	}
 
 	onMount(async () => {
 		if (!page.data.session) show_login_dialog = true;
-
-		try {
-			const thread = await client.threads.create();
-			threadId = thread.thread_id;
-			const assistant = await client.assistants.create({
-				graphId: 'chat' // process.env.LANGGRAPH_GRAPH_ID as string
-			});
-			assistantId = assistant.assistant_id;
-		} catch (error) {
-			console.error('Error initializing chat:', error);
-		} finally {
-			isLoading = false;
-		}
 	});
 
 	function handleChatStart() {
@@ -43,14 +55,13 @@
 	}
 </script>
 
-
-{#if isLoading}
+{#if !langgraph}
 	<ChatLoader />
 {:else}
 	<Chat
-		langGraphClient={client}
-		{assistantId}
-		{threadId}
+		langGraphClient={langgraph.client}
+		assistantId={langgraph.assistantId}
+		threadId={langgraph.threadId}
 		userName={page.data.session?.user?.name || page.data.session?.user?.email?.split('@')[0]}
 		chatStarted={chat_started}
 		onChatStart={handleChatStart}

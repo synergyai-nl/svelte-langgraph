@@ -1,20 +1,22 @@
-<div class="min-h-screen flex flex-col items-center justify-start pt-16">
-	<div class="w-full max-w-4xl mx-auto">
+<div class="flex min-h-screen flex-col items-center justify-start pt-16">
+	<div class="mx-auto w-full max-w-4xl">
 		<div class="flex flex-col items-center justify-center text-center">
-			<div class="max-w-2xl mx-auto space-y-8">
+			<div class="mx-auto max-w-2xl space-y-8">
 				<div class="space-y-4">
 					<!-- Loader for greeting -->
-					<div class="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+					<div class="h-12 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"></div>
 					<!-- Skeleton for description -->
-					<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse mx-auto w-3/4"></div>
+					<div
+						class="mx-auto h-6 w-3/4 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"
+					></div>
 				</div>
-				
+
 				<!-- Loader for suggestion cards -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-12">
+				<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
 					{#each Array(4) as _}
-						<div class="p-6 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse">
-							<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-							<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+						<div class="animate-pulse rounded-lg bg-gray-100 p-6 dark:bg-gray-800">
+							<div class="mb-2 h-6 rounded bg-gray-200 dark:bg-gray-700"></div>
+							<div class="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700"></div>
 						</div>
 					{/each}
 				</div>
@@ -24,8 +26,10 @@
 </div>
 
 <!-- Loader for chat input -->
-<div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t dark:border-gray-700 p-4">
-	<div class="max-w-4xl mx-auto">
-		<div class="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse"></div>
+<div
+	class="fixed right-0 bottom-0 left-0 border-t bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+>
+	<div class="mx-auto max-w-4xl">
+		<div class="h-12 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-700"></div>
 	</div>
 </div>
