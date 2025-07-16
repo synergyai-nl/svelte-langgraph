@@ -25,8 +25,8 @@
 			<button
 				type="button"
 				aria-expanded={!message.collapsed}
-				class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
-				on:click={() => (message.collapsed = !message.collapsed)}
+				class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+				onclick={() => (message.collapsed = !message.collapsed)}
 			>
 				<span class="text-gray-600 dark:text-gray-400">{message.text}</span>
 				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
@@ -42,7 +42,8 @@
 						clip-rule="evenodd"
 					/>
 				</svg>
-			</div>
+			</button>
+
 			{#if !message.collapsed}
 				<div
 					class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800"
