@@ -37,5 +37,11 @@ export default defineConfig({
 				}
 			}
 		]
+	},
+	resolve: {
+		alias: {
+			// Mock async_hooks for client-side and type checking
+			async_hooks: './src/lib/async_hooks_mock.ts'
+		}
 	}
 });
