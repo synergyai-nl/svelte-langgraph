@@ -7,9 +7,9 @@ export async function* streamAnswer(
 	assistantId: string,
 	input: string
 ) {
-	let input_messages = [];
+	const input_messages = [];
 
-	if ((input_messages.length = 0))
+	if (input_messages.length === 0)
 		input_messages.push({ role: 'ai', content: 'How may I help you?' });
 	input_messages.push({ role: 'user', content: input });
 
@@ -24,7 +24,7 @@ export async function* streamAnswer(
 		console.debug('Got chunk:', chunk);
 
 		switch (chunk.event) {
-			case 'messages':
+			case 'messages': {
 				if (!chunk.data || !chunk.data[0]) {
 					console.error('Invalid chunk data:', chunk);
 					continue;
@@ -32,7 +32,7 @@ export async function* streamAnswer(
 
 				const content = chunk.data[0].content as MessageContentComplex[];
 				if (content) {
-					for (let fragment of content) {
+					for (const fragment of content) {
 						switch (fragment.type) {
 							case 'text':
 								yield { type: 'text', text: fragment.text };
@@ -49,6 +49,7 @@ export async function* streamAnswer(
 				}
 
 				break;
+			}
 			case 'error':
 				console.error('Error:', chunk.data);
 				break;
