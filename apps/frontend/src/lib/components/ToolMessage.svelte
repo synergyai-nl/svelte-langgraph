@@ -1,11 +1,5 @@
 <script lang="ts">
-	interface ToolMessage {
-		type: 'tool';
-		text: string;
-		tool_name: string;
-		payload?: any;
-		collapsed?: boolean;
-	}
+	import type { ToolMessage } from '$lib/types/messageTypes';
 
 	interface Props {
 		message: ToolMessage;
