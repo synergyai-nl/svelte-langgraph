@@ -13,7 +13,8 @@
 
 				<!-- Loader for suggestion cards -->
 				<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-					{#each Array(4) as _unused, i (i)}
+					<!-- svelte-ignore no-unused-var -->
+					{#each Array(4) as _, i (i)}
 						<div class="animate-pulse rounded-lg bg-gray-100 p-6 dark:bg-gray-800">
 							<div class="mb-2 h-6 rounded bg-gray-200 dark:bg-gray-700"></div>
 							<div class="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700"></div>
