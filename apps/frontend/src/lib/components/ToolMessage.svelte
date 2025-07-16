@@ -22,9 +22,11 @@
 			<span class="text-xs text-white dark:text-gray-900">🛠️</span>
 		</div>
 		<div class="relative">
-			<div
-				class="inline-flex cursor-pointer items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-				onclick={() => (message.collapsed = !message.collapsed)}
+			<button
+				type="button"
+				aria-expanded={!message.collapsed}
+				class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500"
+				on:click={() => (message.collapsed = !message.collapsed)}
 			>
 				<span class="text-gray-600 dark:text-gray-400">{message.text}</span>
 				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
