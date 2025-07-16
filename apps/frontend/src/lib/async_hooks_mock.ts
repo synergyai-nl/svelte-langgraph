@@ -1,5 +1,5 @@
 // Mock implementation of async_hooks for client-side usage
-export class AsyncLocalStorage<T = any> {
+export class AsyncLocalStorage<T = unknown> {
 	private store: T | undefined;
 
 	getStore(): T | undefined {
