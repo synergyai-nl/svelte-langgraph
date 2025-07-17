@@ -14,33 +14,48 @@ export default defineConfig({
 		})
 	],
 	test: {
-		workspace: [
+		projects: [
 			{
-				extends: './vite.config.ts',
-				plugins: [svelteTesting()],
-				test: {
-					name: 'client',
-					environment: 'jsdom',
-					clearMocks: true,
-					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
-					exclude: ['src/lib/server/**'],
-					setupFiles: ['./vitest-setup-client.ts']
-				}
+				name: 'client',
+				environment: 'jsdom',
+				setupFiles: ['./vitest-setup-client.ts'],
+				clearMocks: true,
+				include: ['src/**/*.svelte.{spec,test}.{js,ts}'],
+				exclude: [
+					'src/lib/server/**',
+					'e2e/**',
+					'**/*.e2e.{spec,test}.{js,ts}',
+					'src/**/*.server.{spec,test}.{js,ts}'
+				],
+				plugins: [
+					tailwindcss(),
+					sveltekit(),
+					paraglideVitePlugin({
+						project: './project.inlang',
+						outdir: './src/lib/paraglide'
+					}),
+					svelteTesting() // This was missing proper placement
+				]
 			},
 			{
-				extends: './vite.config.ts',
-				test: {
-					name: 'server',
-					environment: 'node',
-					include: ['src/**/*.{test,spec}.{js,ts}'],
-					exclude: ['src/**/*.svelte.{test,spec}.{js,ts}']
-				}
+				name: 'server',
+				environment: 'node',
+				clearMocks: true,
+				include: ['src/**/*.{spec,test}.{js,ts}'],
+				exclude: ['src/**/*.svelte.{spec,test}.{js,ts}', 'e2e/**', '**/*.e2e.{spec,test}.{js,ts}'],
+				plugins: [
+					tailwindcss(),
+					sveltekit(),
+					paraglideVitePlugin({
+						project: './project.inlang',
+						outdir: './src/lib/paraglide'
+					})
+				]
 			}
 		]
 	},
 	resolve: {
 		alias: {
-			// Mock async_hooks for client-side and type checking
 			async_hooks: './src/lib/async_hooks_mock.ts'
 		}
 	}
