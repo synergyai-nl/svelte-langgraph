@@ -16,17 +16,19 @@ export default defineConfig({
 	test: {
 		projects: [
 			{
-				name: 'client',
-				environment: 'jsdom',
-				setupFiles: ['./vitest-setup-client.ts'],
-				clearMocks: true,
-				include: ['src/**/*.svelte.{spec,test}.{js,ts}'],
-				exclude: [
-					'src/lib/server/**',
-					'e2e/**',
-					'**/*.e2e.{spec,test}.{js,ts}',
-					'src/**/*.server.{spec,test}.{js,ts}'
-				],
+				test: {
+					name: 'client',
+					environment: 'jsdom',
+					setupFiles: ['./vitest-setup-client.ts'],
+					clearMocks: true,
+					include: ['src/**/*.svelte.{spec,test}.{js,ts}'],
+					exclude: [
+						'src/lib/server/**',
+						'e2e/**',
+						'**/*.e2e.{spec,test}.{js,ts}',
+						'src/**/*.server.{spec,test}.{js,ts}'
+					]
+				},
 				plugins: [
 					tailwindcss(),
 					sveltekit(),
@@ -38,11 +40,13 @@ export default defineConfig({
 				]
 			},
 			{
-				name: 'server',
-				environment: 'node',
-				clearMocks: true,
-				include: ['src/**/*.{spec,test}.{js,ts}'],
-				exclude: ['src/**/*.svelte.{spec,test}.{js,ts}', 'e2e/**', '**/*.e2e.{spec,test}.{js,ts}'],
+				test: {
+					name: 'server',
+					environment: 'node',
+					clearMocks: true,
+					include: ['src/**/*.{spec,test}.{js,ts}'],
+					exclude: ['src/**/*.svelte.{spec,test}.{js,ts}', 'e2e/**', '**/*.e2e.{spec,test}.{js,ts}']
+				},
 				plugins: [
 					tailwindcss(),
 					sveltekit(),
