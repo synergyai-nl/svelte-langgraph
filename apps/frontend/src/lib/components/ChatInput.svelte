@@ -48,7 +48,7 @@
 						>
 							Send
 							{#if isStreaming}
-								<Spinner class="ms-2" size="4" color="white" />
+								<Spinner class="ms-2" size="4" color="primary" />
 							{/if}
 						</Button>
 					</div>

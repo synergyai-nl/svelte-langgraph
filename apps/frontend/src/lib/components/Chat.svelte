@@ -125,7 +125,7 @@
 					</div>
 
 					<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each suggestions as suggestion}
+						{#each suggestions as suggestion (suggestion.suggestedText)}
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
@@ -141,7 +141,7 @@
 	<div class="flex h-screen flex-col">
 		<div class="flex-1 overflow-y-auto pb-32">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
-				{#each messages as message, index}
+				{#each messages as message, i (i)}
 					<div {@attach scrollToMe(message)}>
 						{#if message.type === 'tool'}
 							<ToolMessage message={message as ToolMessageType} />
