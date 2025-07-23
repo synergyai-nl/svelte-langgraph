@@ -26,6 +26,11 @@ jobs:
           version: 9.5.0
           run_install: false
 
+      - name: Setup UV
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install uv
+
       - name: Run moon ci
         run: moon ci
 
