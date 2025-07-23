@@ -5,13 +5,15 @@ export async function* streamAnswer(
 	client: Client,
 	threadId: string,
 	assistantId: string,
-	input: string
+	input: string | undefined,
+	messageId?: string
 ) {
 	const input_messages = [];
 
 	if (input_messages.length === 0)
 		input_messages.push({ role: 'ai', content: 'How may I help you?' });
-	input_messages.push({ role: 'user', content: input });
+	console.debug(input_messages)
+	input_messages.push({ role: 'user', content: input, ...(messageId ? { id: messageId } : {})});
 
 	const streamResponse = client.runs.stream(threadId, assistantId, {
 		input: {
@@ -30,15 +32,18 @@ export async function* streamAnswer(
 					continue;
 				}
 
-				const content = chunk.data[0].content as MessageContentComplex[];
+				const message = chunk.data[0];
+				const messageId = message.id;
+				const content = message.content as MessageContentComplex[];
+				
 				if (content) {
 					for (const fragment of content) {
 						switch (fragment.type) {
 							case 'text':
-								yield { type: 'text', text: fragment.text };
+								yield { type: 'text', text: fragment.text, messageId };
 								break;
 							case 'tool_use':
-								yield { type: 'tool', tool_name: fragment.name, tool_payload: fragment.input };
+								yield { type: 'tool', tool_name: fragment.name, tool_payload: fragment.input, messageId };
 								break;
 							case 'input_json_delta':
 								break;

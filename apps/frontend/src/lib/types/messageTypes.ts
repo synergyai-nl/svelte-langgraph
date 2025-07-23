@@ -1,6 +1,7 @@
 export interface BaseMessage {
 	type: 'ai' | 'user' | 'tool';
 	text: string;
+	id: string;
 }
 
 export interface ToolMessage {
