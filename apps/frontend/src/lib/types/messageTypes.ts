@@ -7,7 +7,7 @@ export interface BaseMessage {
 export interface ToolMessage {
 	text: string;
 	tool_name: string;
-	payload?: Record<string, unknown>; //Update this to a proper type
+	payload?: Record<string, unknown>;
 	collapsed?: boolean;
 }
 
