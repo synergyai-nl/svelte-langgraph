@@ -125,7 +125,7 @@
 					</div>
 
 					<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each suggestions as suggestion (suggestion.suggestedText)}
+						{#each suggestions as suggestion, index (index)}
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
