@@ -10,3 +10,7 @@ projects:
 vcs:
   manager: "git"
   defaultBranch: "main"
+  hooks:
+    pre-commit:
+      - 'moon run :lint :format --affected --status=staged'
+  syncHooks: true
