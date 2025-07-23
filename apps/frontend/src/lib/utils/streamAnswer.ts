@@ -43,7 +43,12 @@ export async function* streamAnswer(
 								yield { type: 'text', text: fragment.text, messageId };
 								break;
 							case 'tool_use':
-								yield { type: 'tool', tool_name: fragment.name, tool_payload: fragment.input, messageId };
+								yield {
+									type: 'tool',
+									tool_name: fragment.name,
+									tool_payload: fragment.input,
+									messageId
+								};
 								break;
 							case 'input_json_delta':
 								break;

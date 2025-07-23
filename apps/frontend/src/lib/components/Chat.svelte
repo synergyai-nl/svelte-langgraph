@@ -72,7 +72,7 @@
 						tool_name: chunk.tool_name,
 						payload: chunk.tool_payload,
 						collapsed: true,
-						id: chunk.messageId || crypto.randomUUID()
+						id: `${chunk.messageId || crypto.randomUUID()}-${chunk.tool_name}-${crypto.randomUUID().slice(0, 8)}`
 					};
 					messages.push(toolMsg);
 
