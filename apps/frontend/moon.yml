@@ -1,6 +1,38 @@
-# https://moonrepo.dev/docs/config/project
-$schema: 'https://moonrepo.dev/schemas/project.json'
+$schema: "https://moonrepo.dev/schemas/project.json"
 
 language: typescript
 stack: frontend
 type: application
+
+tasks:
+  sync:
+    command: pnpm exec svelte-kit sync
+    platform: node
+    options:
+      cache: false
+
+  check:
+    command: pnpm run check
+    deps:
+      - ~:sync
+
+  build:
+    command: pnpm run build
+    deps:
+      - ~:sync
+
+  test:
+    command: pnpm run test
+    deps:
+      - ~:build
+
+  lint:
+    command: pnpm run lint
+    deps:
+      - ~:sync
+
+  format:
+    command: pnpm run format
+
+  dev:
+    command: vite dev

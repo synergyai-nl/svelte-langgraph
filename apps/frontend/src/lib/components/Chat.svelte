@@ -42,23 +42,27 @@
 
 			messages.push({
 				type: 'user',
-				text: current_input
+				text: current_input,
+				id: crypto.randomUUID()
 			});
 
 			is_streaming = true;
 
 			let aimessage: Message = {
 				type: 'ai',
-				text: ''
+				text: '',
+				id: ''
 			};
 
 			messages.push(aimessage);
 
+			const userMessage = messages[messages.length - 2]; // Get the user message we just added
 			for await (const chunk of streamAnswer(
 				langGraphClient,
 				threadId,
 				assistantId,
-				current_input
+				current_input,
+				userMessage.id
 			)) {
 				console.log('Processing chunk in inputSubmit:', chunk);
 				if (chunk.type === 'tool') {
@@ -67,17 +71,22 @@
 						text: "I'm using tools...",
 						tool_name: chunk.tool_name,
 						payload: chunk.tool_payload,
-						collapsed: true
+						collapsed: true,
+						id: `${chunk.messageId || crypto.randomUUID()}-${chunk.tool_name}-${crypto.randomUUID().slice(0, 8)}`
 					};
 					messages.push(toolMsg);
 
 					aimessage = {
 						type: 'ai',
-						text: ''
+						text: '',
+						id: ''
 					};
 					messages.push(aimessage);
 					messages = [...messages];
 				} else if (chunk.type === 'text') {
+					if (!aimessage.id) {
+						aimessage.id = chunk.messageId || crypto.randomUUID();
+					}
 					aimessage.text += chunk.text;
 
 					let aiMessageIndex = -1;
@@ -125,7 +134,7 @@
 					</div>
 
 					<div class="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-						{#each suggestions as suggestion}
+						{#each suggestions as suggestion, index (index)}
 							<SuggestionCard
 								title={suggestion.title}
 								description={suggestion.description}
@@ -141,7 +150,7 @@
 	<div class="flex h-screen flex-col">
 		<div class="flex-1 overflow-y-auto pb-32">
 			<div class="mx-auto w-full max-w-4xl px-4 py-8">
-				{#each messages as message, index}
+				{#each messages as message (message.id)}
 					<div {@attach scrollToMe(message)}>
 						{#if message.type === 'tool'}
 							<ToolMessage message={message as ToolMessageType} />

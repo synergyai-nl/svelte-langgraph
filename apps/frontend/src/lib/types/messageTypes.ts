@@ -1,14 +1,17 @@
 export interface BaseMessage {
 	type: 'ai' | 'user' | 'tool';
 	text: string;
+	id: string;
 }
 
-export interface ToolMessageType extends BaseMessage {
-	type: 'tool';
+export interface ToolMessage {
+	text: string;
 	tool_name: string;
-	payload?: unknown; // prefer unknown over any for safety
+	payload?: Record<string, unknown>;
 	collapsed?: boolean;
 }
+
+export interface ToolMessageType extends BaseMessage, ToolMessage {}
 
 export type Message = BaseMessage | ToolMessageType;
 
