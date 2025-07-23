@@ -8,4 +8,3 @@ python:
 node:
   version: "24"
   packageManager: "pnpm"
-  inferTasksFromScripts: true
