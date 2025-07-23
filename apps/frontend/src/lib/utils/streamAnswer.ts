@@ -12,8 +12,8 @@ export async function* streamAnswer(
 
 	if (input_messages.length === 0)
 		input_messages.push({ role: 'ai', content: 'How may I help you?' });
-	console.debug(input_messages)
-	input_messages.push({ role: 'user', content: input, ...(messageId ? { id: messageId } : {})});
+	console.debug(input_messages);
+	input_messages.push({ role: 'user', content: input, ...(messageId ? { id: messageId } : {}) });
 
 	const streamResponse = client.runs.stream(threadId, assistantId, {
 		input: {
@@ -35,7 +35,7 @@ export async function* streamAnswer(
 				const message = chunk.data[0];
 				const messageId = message.id;
 				const content = message.content as MessageContentComplex[];
-				
+
 				if (content) {
 					for (const fragment of content) {
 						switch (fragment.type) {
