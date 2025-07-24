@@ -56,4 +56,5 @@ tasks:
       - '--write'
     local: true
 
-  # TODO: playwright/e2e
+  test-e2e:
+    command: playwright test
