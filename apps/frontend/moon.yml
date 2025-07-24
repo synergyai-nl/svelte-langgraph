@@ -4,20 +4,32 @@ language: typescript
 stack: frontend
 type: application
 
+fileGroups:
+  sources:
+    - 'src/**/*'
+    # Translations
+    - 'messages/*.json'
+    # Configs
+    - '**/*.config.*'
+    # Other files
+    - '**/*.{md,mdx,yml,yaml,json}'
+  tests:
+    - 'tests/**/*'
+    - 'e2e/**/*'
+
 tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
+  build:
+    outputs:
+      - 'build'
+      - 'src/lib/paraglide'
+
   lint:
     command: eslint .
     inputs:
-      # Source and test files
-      - 'src/**/*'
-      - 'tests/**/*'
-      - 'e2e/**/*'
-      # Other config files
-      - '*.config.*'
-      # Project configs, any format, any depth
-      - '**/eslint.config.js'
+      - '@group(sources)'
+      - '@group(tests)'
       # Root configs, any format
       # - '/eslint.config.js'
 
@@ -33,12 +45,8 @@ tasks:
     options:
       internal: true
     inputs:
-      # Source and test files
-      - 'src/**/*'
-      - 'tests/**/*'
-      - 'e2e/**/*'
-      # Config and other files
-      - '**/*.{md,mdx,yml,yaml,json}'
+      - '@group(sources)'
+      - '@group(tests)'
       - '.prettierignore'
       - '.prettierrc'
       # Root configs, any format
