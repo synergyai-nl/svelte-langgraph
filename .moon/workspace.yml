@@ -12,5 +12,5 @@ vcs:
   defaultBranch: "main"
   hooks:
     pre-commit:
-      - "moon run :lint-fix :format --affected --status=staged"
+      - "moon run :lint-fix :format-write --affected --status=staged"
   syncHooks: true
