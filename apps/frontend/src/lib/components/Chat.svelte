@@ -106,7 +106,6 @@
 			is_streaming = false;
 		}
 	}
-
 </script>
 
 {#if !chat_started}
@@ -122,4 +121,3 @@
 	</div>
 {/if}
 <ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
-
