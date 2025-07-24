@@ -8,7 +8,11 @@ tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
   lint:
-    command: eslint .
+    command: eslint
+    args:
+      - '.'
+      # Enable caching for this project
+      - '--cache'
     inputs:
       # Source and test files
       - 'src/**/*'
