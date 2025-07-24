@@ -8,15 +8,12 @@ tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
   lint:
-    command: eslint
-    args:
-      - '.'
-      # Enable caching for this project
-      - '--cache'
+    command: eslint .
     inputs:
       # Source and test files
       - 'src/**/*'
       - 'tests/**/*'
+      - 'e2e/**/*'
       # Other config files
       - '*.config.*'
       # Project configs, any format, any depth
@@ -26,10 +23,37 @@ tasks:
 
   lint-fix:
     extends: lint
-    args: '--fix'
+    args:
+      - '--cache'
+      - '--fix'
     local: true
 
+  prettier:
+    command: prettier .
+    options:
+      internal: true
+    inputs:
+      # Source and test files
+      - 'src/**/*'
+      - 'tests/**/*'
+      - 'e2e/**/*'
+      # Config and other files
+      - '**/*.{md,mdx,yml,yaml,json}'
+      - '.prettierignore'
+      - '.prettierrc'
+      # Root configs, any format
+      # - '/.prettierignore'
+      # - '/.prettierrc'
   format:
-    command: pnpm run format
+    extends: prettier
+    args:
+      - '--check'
+
+  format-write:
+    extends: prettier
+    args:
+      - '--cache'
+      - '--write'
+    local: true
 
   # TODO: playwright/e2e
