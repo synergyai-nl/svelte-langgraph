@@ -4,11 +4,21 @@ language: typescript
 stack: frontend
 type: application
 
-tags: ['vite', 'vitetest', 'sveltekit']
+tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
   lint:
     command: eslint .
+    inputs:
+      # Source and test files
+      - 'src/**/*'
+      - 'tests/**/*'
+      # Other config files
+      - '*.config.*'
+      # Project configs, any format, any depth
+      - '**/eslint.config.js'
+      # Root configs, any format
+      # - '/eslint.config.js'
 
   lint-fix:
     extends: lint
@@ -17,3 +27,5 @@ tasks:
 
   format:
     command: pnpm run format
+
+  # TODO: playwright/e2e
