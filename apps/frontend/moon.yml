@@ -1,14 +1,19 @@
-$schema: "https://moonrepo.dev/schemas/project.json"
+$schema: 'https://moonrepo.dev/schemas/project.json'
 
 language: typescript
 stack: frontend
 type: application
 
-tags: ["vite", "vitetest", "sveltekit"]
+tags: ['vite', 'vitetest', 'sveltekit']
 
 tasks:
   lint:
-    command: pnpm run lint
+    command: eslint .
+
+  lint-fix:
+    extends: lint
+    args: '--fix'
+    local: true
 
   format:
     command: pnpm run format
