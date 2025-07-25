@@ -6,8 +6,16 @@ stack: backend
 type: application
 
 tasks:
-  format:
+  ruff-format:
     command: "ruff format"
+    options:
+      internal: true
+  format:
+    extends: ruff-format
+    args: "--check"
+  format-write:
+    extends: ruff-format
+    local: true
   lint:
     command: "ruff check"
   lint-fix:

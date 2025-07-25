@@ -4,35 +4,65 @@ language: typescript
 stack: frontend
 type: application
 
+fileGroups:
+  sources:
+    - 'src/**/*'
+    # Translations
+    - 'messages/*.json'
+    # Configs
+    - '**/*.config.*'
+    # Other files
+    - '**/*.{md,mdx,yml,yaml,json}'
+  tests:
+    - 'tests/**/*'
+    - 'e2e/**/*'
+
+tags: ['vite', 'vitest', 'sveltekit']
+
 tasks:
-  sync:
-    command: pnpm exec svelte-kit sync
-    platform: node
-    options:
-      cache: false
-
-  check:
-    command: pnpm run check
-    deps:
-      - ~:sync
-
   build:
-    command: pnpm run build
-    deps:
-      - ~:sync
-
-  test:
-    command: pnpm run test
-    deps:
-      - ~:build
+    outputs:
+      - 'build'
+      - 'src/lib/paraglide'
 
   lint:
-    command: pnpm run lint
-    deps:
-      - ~:sync
+    command: eslint .
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      # Root configs, any format
+      # - '/eslint.config.js'
 
+  lint-fix:
+    extends: lint
+    args:
+      - '--cache'
+      - '--fix'
+    local: true
+
+  prettier:
+    command: prettier .
+    options:
+      internal: true
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '.prettierignore'
+      - '.prettierrc'
+      # Root configs, any format
+      # - '/.prettierignore'
+      # - '/.prettierrc'
   format:
-    command: pnpm run format
+    extends: prettier
+    args:
+      - '--check'
 
-  dev:
-    command: vite dev
+  format-write:
+    extends: prettier
+    args:
+      - '--cache'
+      - '--write'
+    local: true
+
+  test-e2e:
+    command: playwright test
