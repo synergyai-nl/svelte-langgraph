@@ -56,7 +56,7 @@
 		</a>
 	</div>
 	<HeroBody>
-		{#snippet head()}FEATURED IN{/snippet}
+		{#snippet head()}FEATURED IN something{/snippet}
 
 		<div class="mt-8 flex flex-wrap items-center justify-center text-gray-500 sm:justify-between">
 			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
