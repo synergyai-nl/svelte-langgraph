@@ -19,16 +19,18 @@
 	}
 </script>
 
-<div class="flex-1 overflow-y-auto pb-32">
-	<div class="mx-auto w-full max-w-4xl px-4 py-8">
-		{#each messages as message (message.id)}
-			<div {@attach scrollToMe(message)}>
-				{#if message.type === 'tool'}
-					<ToolMessage message={message as ToolMessageType} />
-				{:else}
-					<ChatMessage message={message as BaseMessage} />
-				{/if}
-			</div>
-		{/each}
+<div class="flex h-screen flex-col">
+	<div class="flex-1 overflow-y-auto pb-32">
+		<div class="mx-auto w-full max-w-4xl px-4 py-8">
+			{#each messages as message (message.id)}
+				<div {@attach scrollToMe(message)}>
+					{#if message.type === 'tool'}
+						<ToolMessage message={message as ToolMessageType} />
+					{:else}
+						<ChatMessage message={message as BaseMessage} />
+					{/if}
+				</div>
+			{/each}
+		</div>
 	</div>
 </div>

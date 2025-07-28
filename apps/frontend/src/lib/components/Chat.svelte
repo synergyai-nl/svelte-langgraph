@@ -6,7 +6,6 @@
 	import ChatSuggestions from './ChatSuggestions.svelte';
 	import type {
 		Message,
-		BaseMessage,
 		ToolMessageType,
 		ChatSuggestion
 	} from '$lib/types/messageTypes';
@@ -116,8 +115,6 @@
 		onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
 	/>
 {:else}
-	<div class="flex h-screen flex-col">
-		<ChatMessages {messages} />
-	</div>
+	<ChatMessages {messages} />
 {/if}
 <ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
