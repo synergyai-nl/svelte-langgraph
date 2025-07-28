@@ -28,6 +28,10 @@ tasks:
       - 'build'
       - 'src/lib/paraglide'
 
+  check:
+    deps:
+      - build
+
   lint:
     command: eslint .
     inputs:
