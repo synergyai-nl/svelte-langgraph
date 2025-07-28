@@ -13,6 +13,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: "moonrepo/setup-toolchain@v0"
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
       - run: "moon ci --color"
         env:
           PUBLIC_LANGGRAPH_API_URL: 'http://127.0.0.1:2024'
