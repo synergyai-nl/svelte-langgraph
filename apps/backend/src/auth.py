@@ -24,6 +24,8 @@ auth = Auth()
 async def get_current_user(authorization: str | None) -> MinimalUserDict:
     """Check if the user's token is valid."""
 
+    print("bogus change")
+
     if not authorization:
         logger.error("No authorization header provided.")
         raise Auth.exceptions.HTTPException(
