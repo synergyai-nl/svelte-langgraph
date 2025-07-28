@@ -36,7 +36,7 @@
 				name="message"
 				bind:value
 				clearable
-				class="border-gray-300 transition-all duration-200 focus:border-gray-300 focus:ring-1 focus:ring-gray-300 dark:border-gray-600"
+				class="w-full h-full block resize-none border-0 bg-inherit text-sm focus:outline-none focus:ring-0"
 				onkeypress={handleKeyPress}
 			>
 				{#snippet footer()}
