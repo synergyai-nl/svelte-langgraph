@@ -1,4 +1,4 @@
-name: "Moon CI"
+name: "Moon"
 on:
   push:
     branches:
