@@ -11,3 +11,9 @@ dependencies = [
     "langgraph-cli[inmem]>=0.2.10",
     "python-dotenv>=1.1.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.403",
+    "ruff>=0.12.5",
+]
