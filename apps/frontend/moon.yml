@@ -19,6 +19,9 @@ fileGroups:
 
 tags: ['vite', 'vitest', 'sveltekit']
 
+env:
+  PUBLIC_LANGGRAPH_API_URL: 'http://127.0.0.1:2024'
+
 tasks:
   build:
     outputs:
