@@ -109,8 +109,8 @@
 <Toaster
   position="top-center"
   toastOptions={{
-    duration: 4000,
-    className: 'mt-0 rounded-b-2xl px-4 py-2 text-sm shadow-md bg-white text-gray-900 dark:bg-zinc-900 dark:text-white'
+    style: 'border-radius: 1rem; background: #1a1a1a; color: #f4f4f4;',
+    duration: 4000
   }}
 />
 
