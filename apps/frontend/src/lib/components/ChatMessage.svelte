@@ -37,7 +37,7 @@
 				</Card>
 			{:else}
 				<Card
-					class="dark:bg-gray-800' w-full max-w-none border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-gray-700"
+					class="w-full max-w-none border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-800"
 				>
 					<p class="leading-relaxed whitespace-pre-wrap text-gray-900 dark:text-gray-100">
 						{message.text}
