@@ -11,6 +11,7 @@ declare module '@auth/sveltekit' {
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [Descope],
+	trustHost: true,
 	callbacks: {
 		session: async ({ session, token }) => {
 			if ('accessToken' in token) {
