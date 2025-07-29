@@ -24,7 +24,7 @@ tasks:
     command: "langgraph dev --no-browser"
     preset: "watcher"
   build:
-    command: "langgraph build"
+    command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
       - lint
       - typecheck
