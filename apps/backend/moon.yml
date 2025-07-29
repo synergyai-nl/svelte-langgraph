@@ -6,15 +6,11 @@ stack: backend
 type: application
 
 tasks:
-  ruff-format:
-    command: "ruff format"
-    options:
-      internal: true
   format:
-    extends: ruff-format
+    command: "ruff format"
     args: "--check"
   format-write:
-    extends: ruff-format
+    command: "ruff format"
     local: true
   lint:
     command: "ruff check"
