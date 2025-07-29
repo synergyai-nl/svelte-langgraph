@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 descope_project_id = os.getenv("DESCOPE_PROJECT_ID", "")
 
-descope_client = DescopeClient(project_id=descope_project_id)
+descope_client = DescopeClient(project_id=descope_project_id, jwt_validation_leeway=30)
 
 # Hack to fetch public keys in sync context, LangGraph errs on blocking I/O.
 # Normally, descope populates public keys during the first call of validate_session().
