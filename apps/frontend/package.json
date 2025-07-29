@@ -52,7 +52,7 @@
 		"@auth/sveltekit": "^1.9.2",
 		"@inlang/paraglide-js": "^2.0.0",
 		"@langchain/core": "^0.3.57",
-		"@langchain/langgraph-sdk": "^0.0.83",
+		"@langchain/langgraph-sdk": "^0.0.103",
 		"flowbite-svelte-blocks": "^2.0.0",
 		"svelte-french-toast": "^1.2.0"
 	},
