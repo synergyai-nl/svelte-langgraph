@@ -92,30 +92,11 @@ The frontend is built with modern web technologies:
 
 ## Production
 
-### Frontend Build
-
-To create a production version of the frontend:
+To run a production build of the project:
 
 ```bash
-cd apps/frontend
-npm run build
+moon :build
 ```
-
-You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
 
-## Project Structure
-
-```
-svelte-langgraph/
-├── apps/
-│   ├── backend/         # LangGraph Python server
-│   │   ├── src/         # Source code
-│   │   └── langgraph.json
-│   └── frontend/        # SvelteKit application
-│       ├── src/         # Source code
-│       ├── messages/    # Internationalization files
-│       └── e2e/         # End-to-end tests
-└── README.md
-```
