@@ -4,11 +4,7 @@
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions from './ChatSuggestions.svelte';
-	import type {
-		Message,
-		ToolMessageType,
-		ChatSuggestion
-	} from '$lib/types/messageTypes';
+	import type { Message, ToolMessageType, ChatSuggestion } from '$lib/types/messageTypes';
 
 	interface Props {
 		langGraphClient: Client;
