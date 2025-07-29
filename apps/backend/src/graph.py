@@ -1,9 +1,13 @@
 #!/usr/bin/env uv run python
 import asyncio
-import django
 import os
 
 from typing import Sequence
+
+from asgiref.sync import sync_to_async
+
+import django
+from django.db import close_old_connections
 
 from dotenv import load_dotenv
 
@@ -22,10 +26,15 @@ from langgraph.types import Checkpointer
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_app.settings")
 django.setup()
 
+# Needs to be imported _after_ Django setup.
 from weather.models import Locality  # noqa: E402
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
+
+
+async def aclose_old_connections():
+    return await sync_to_async(close_old_connections)()
 
 
 def get_prompt_template() -> ChatPromptTemplate:
@@ -44,7 +53,10 @@ def get_checkpointer() -> Checkpointer:
 
 async def get_weather(city: str) -> str:
     """Get weather for a given city."""
+    await aclose_old_connections()
     locality = await Locality.objects.filter(name__icontains=city).afirst()
+    await aclose_old_connections()
+
     if locality:
         return f"The weather in {city} is: {locality.get_weather()}"
 
