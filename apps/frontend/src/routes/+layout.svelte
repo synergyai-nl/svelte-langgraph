@@ -41,7 +41,7 @@
 					<Avatar size="sm" />
 				{/if}
 				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
-					Hi, {page.data.session.user?.name?.split(' ')[0] ?? 'User'}
+					Hi, {page.data.session.user?.name ?? 'User'}
 				</span>
 			</Button>
 
