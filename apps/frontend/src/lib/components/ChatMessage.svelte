@@ -31,11 +31,9 @@
 			{#if isWaiting}
 				<Spinner />
 			{:else if message.type === 'user'}
-				<Card
-					class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700"
-				>
+				<Card class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700">
 					<div class="prose prose-invert max-w-none leading-relaxed">
-						<Markdown md={message.text} {plugins}/>
+						<Markdown md={message.text} {plugins} />
 					</div>
 				</Card>
 			{:else}
@@ -43,7 +41,7 @@
 					class="w-full max-w-none border border-gray-200 bg-gray-50 p-4 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800"
 				>
 					<div class="prose prose-gray dark:prose-invert max-w-none leading-relaxed">
-						<Markdown md={message.text} {plugins}/>
+						<Markdown md={message.text} {plugins} />
 					</div>
 				</Card>
 			{/if}
