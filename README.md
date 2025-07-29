@@ -92,7 +92,7 @@ The frontend is built with modern web technologies:
 
 ## Production
 
-To run a production build of the project:
+To run a production build of the project (both frontend and backend components):
 
 ```bash
 moon :build
