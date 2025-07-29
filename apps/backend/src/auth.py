@@ -14,6 +14,11 @@ descope_project_id = os.getenv("DESCOPE_PROJECT_ID", "")
 
 descope_client = DescopeClient(project_id=descope_project_id)
 
+# Hack to fetch public keys in sync context, LangGraph errs on blocking I/O.
+# Normally, descope populates public keys during the first call of validate_session().
+# Eventually, we want to provide generic OpenID Connect auth support.
+descope_client._auth._fetch_public_keys()
+
 # The "Auth" object is a container that LangGraph will use to mark our authentication function
 auth = Auth()
 
