@@ -47,10 +47,8 @@ tasks:
       - '--fix'
     local: true
 
-  prettier:
+  format:
     command: prettier .
-    options:
-      internal: true
     inputs:
       - '@group(sources)'
       - '@group(tests)'
@@ -59,13 +57,19 @@ tasks:
       # Root configs, any format
       # - '/.prettierignore'
       # - '/.prettierrc'
-  format:
-    extends: prettier
     args:
       - '--check'
 
   format-write:
-    extends: prettier
+    command: prettier .
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+      - '.prettierignore'
+      - '.prettierrc'
+      # Root configs, any format
+      # - '/.prettierignore'
+      # - '/.prettierrc'
     args:
       - '--cache'
       - '--write'
