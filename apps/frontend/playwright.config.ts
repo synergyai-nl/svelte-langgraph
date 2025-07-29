@@ -5,5 +5,8 @@ export default defineConfig({
 		command: 'moon :preview',
 		port: 4173
 	},
-	testDir: 'e2e'
+	testDir: 'e2e',
+	use: {
+		baseURL: 'http://localhost:4173'
+	}
 });
