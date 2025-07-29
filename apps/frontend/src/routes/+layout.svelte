@@ -5,7 +5,6 @@
 	import { page } from '$app/state';
 
 	import { MessagesOutline } from 'flowbite-svelte-icons';
-	import { UserCircleSolid, ClipboardListSolid, ArrowRightToBracketOutline } from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -35,17 +34,15 @@
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
 			<!-- Avatar Button -->
-			<Button
-				color="alternative"
-				class="!p-1 rounded-full"
-				id="avatar-menu-button"
-			>
+			<Button color="alternative" class="rounded-full !p-1" id="avatar-menu-button">
 				{#if page.data.session.user?.image}
 					<Avatar src={page.data.session.user.image} size="sm" />
 				{:else}
 					<Avatar size="sm" />
 				{/if}
-				<span class="sr-only">Open user menu</span>
+				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
+					Hi, {page.data.session.user?.name?.split(' ')[0] ?? 'User'}
+				</span>
 			</Button>
 
 			<!-- Dropdown Menu -->
@@ -58,25 +55,25 @@
 						{page.data.session.user?.email ?? 'email@example.com'}
 					</span>
 				</DropdownHeader>
-				
+
 				<DropdownDivider />
-				
+
 				<DropdownItem href="/dashboard">
-					<ClipboardListSolid class="me-2 h-4 w-4" />
-					Dashboard
+					<span>Dashboard</span>
 				</DropdownItem>
-				
+
 				<DropdownItem href="/profile">
-					<UserCircleSolid class="me-2 h-4 w-4 " />
-					Profile
+					<span>Profile</span>
 				</DropdownItem>
-				
+
 				<DropdownDivider />
-				
-				<SignOut callbackUrl="/">
-					<DropdownItem slot="submitButton" class="text-red-600 dark:text-red-500 w-full">
-						<ArrowRightToBracketOutline class="me-2 h-4 w-4" />
-						Sign out
+
+				<SignOut>
+					<DropdownItem
+						slot="submitButton"
+						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
+					>
+						<span>Sign out</span>
 					</DropdownItem>
 				</SignOut>
 			</Dropdown>
@@ -85,7 +82,7 @@
 				<Button slot="submitButton" size="sm">Sign in</Button>
 			</SignIn>
 		{/if}
-		
+
 		<DarkMode class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
