@@ -1,5 +1,6 @@
 import { Client } from '@langchain/langgraph-sdk';
 import type { MessageContentComplex } from '@langchain/core/messages';
+import toast from 'svelte-french-toast';
 
 export async function* streamAnswer(
 	client: Client,
@@ -62,6 +63,7 @@ export async function* streamAnswer(
 			}
 			case 'error':
 				console.error('Error:', chunk.data);
+				toast.error('Failed to stream response. Please try again.');
 				break;
 		}
 	}

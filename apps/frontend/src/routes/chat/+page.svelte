@@ -7,6 +7,7 @@
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import type { ChatSuggestion } from '$lib/types/messageTypes';
+	import toast from 'svelte-french-toast';
 
 	interface LangGraphState {
 		client: Client;
@@ -27,23 +28,27 @@
 	});
 
 	async function initializeLangGraph(accessToken: string) {
-		const client = new Client({
-			defaultHeaders: {
-				Authorization: `Bearer ${accessToken}`
-			},
-			apiUrl: PUBLIC_LANGGRAPH_API_URL
-		});
+		try {
+			const client = new Client({
+				defaultHeaders: {
+					Authorization: `Bearer ${accessToken}`
+				},
+				apiUrl: PUBLIC_LANGGRAPH_API_URL
+			});
 
-		const thread = await client.threads.create();
-		const assistant = await client.assistants.create({
-			graphId: 'chat'
-		});
+			const thread = await client.threads.create();
+			const assistant = await client.assistants.create({ graphId: 'chat' });
 
-		langgraph = {
-			client,
-			threadId: thread.thread_id,
-			assistantId: assistant.assistant_id
-		};
+			langgraph = {
+				client,
+				threadId: thread.thread_id,
+				assistantId: assistant.assistant_id
+			};
+
+		} catch (error) {
+			console.error('LangGraph init failed:', error);
+			toast.error('Failed to initialize. Please try again.');
+		}
 	}
 
 	onMount(async () => {

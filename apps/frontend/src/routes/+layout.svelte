@@ -19,6 +19,7 @@
 		Avatar,
 		DarkMode
 	} from 'flowbite-svelte';
+	import { Toaster } from 'svelte-french-toast';
 
 	let { children } = $props();
 </script>
@@ -104,5 +105,13 @@
 		<NavLi href="/demo">Paraglide</NavLi>
 	</NavUl>
 </Navbar>
+
+<Toaster
+  position="top-center"
+  toastOptions={{
+    style: 'border-radius: 1rem; background: #1a1a1a; color: #f4f4f4;',
+    duration: 4000
+  }}
+/>
 
 {@render children()}
