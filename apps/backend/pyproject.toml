@@ -11,6 +11,7 @@ dependencies = [
     "langgraph-cli[inmem]>=0.2.10",
     "langgraph-api>=0.2.92",
     "python-dotenv>=1.1.0",
+    "django>=5.2.4",
 ]
 
 [dependency-groups]
