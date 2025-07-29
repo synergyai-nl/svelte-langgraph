@@ -3,6 +3,8 @@
 	import { UserOutline } from 'flowbite-svelte-icons';
 	import { Spinner } from 'flowbite-svelte';
 	import type { BaseMessage } from '$lib/types/messageTypes';
+	import Markdown from 'svelte-exmarkdown';
+	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 
 	interface Props {
 		message: BaseMessage;
@@ -11,6 +13,7 @@
 	let { message }: Props = $props();
 
 	let isWaiting = $derived(message.type === 'ai' && !message.text);
+	const plugins = [gfmPlugin()];
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
@@ -29,19 +32,19 @@
 				<Spinner />
 			{:else if message.type === 'user'}
 				<Card
-					class="w-full max-w-none border-0 bg-gray-900  p-4 text-sm text-white shadow-sm dark:bg-gray-100 dark:text-gray-900"
+					class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700"
 				>
-					<p class="leading-relaxed whitespace-pre-wrap">
-						{message.text}
-					</p>
+					<div class="prose prose-invert max-w-none leading-relaxed">
+						<Markdown md={message.text} {plugins}/>
+					</div>
 				</Card>
 			{:else}
 				<Card
-					class="w-full max-w-none border border-gray-200 bg-white p-4 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-800"
+					class="w-full max-w-none border border-gray-200 bg-gray-50 p-4 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800"
 				>
-					<p class="leading-relaxed whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-						{message.text}
-					</p>
+					<div class="prose prose-gray dark:prose-invert max-w-none leading-relaxed">
+						<Markdown md={message.text} {plugins}/>
+					</div>
 				</Card>
 			{/if}
 		</div>
