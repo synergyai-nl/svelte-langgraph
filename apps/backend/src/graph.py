@@ -1,5 +1,8 @@
 #!/usr/bin/env uv run python
 import asyncio
+import django
+import os
+
 from typing import Sequence
 
 from dotenv import load_dotenv
@@ -15,6 +18,11 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_app.settings")
+django.setup()
+
+from weather.models import Locality  # noqa: E402
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -34,9 +42,13 @@ def get_checkpointer() -> Checkpointer:
     return checkpointer
 
 
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get weather for a given city."""
-    return f"It's always sunny in {city}!"
+    locality = await Locality.objects.filter(name__icontains=city).afirst()
+    if locality:
+        return f"The weather in {city} is: {locality.get_weather()}"
+
+    return f"No information found on {city}"
 
 
 def get_model() -> BaseChatModel:
