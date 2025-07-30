@@ -23,3 +23,13 @@ tasks:
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
+  build:
+    command: "langgraph build --tag svelte-langgraph-backend --pull"
+    deps:
+      - lint
+      - typecheck
+  up:
+    command: "langgraph up"
+    preset: "server"
+    deps:
+      - build

@@ -75,5 +75,13 @@ tasks:
       - '--write'
     local: true
 
+  install-playwright:
+    command: npx playwright install chromium --with-deps
+    options:
+      internal: true
+
   test-e2e:
     command: playwright test
+    deps:
+      - build
+      - install-playwright
