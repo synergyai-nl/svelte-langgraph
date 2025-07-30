@@ -17,7 +17,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			if ('access_token' in token) {
 				return { ...session, accessToken: token.access_token };
 			}
-			console.log('Returning session', session);
 			return session;
 		},
 		// Ref: https://docs.descope.com/getting-started/nextauth/functions
