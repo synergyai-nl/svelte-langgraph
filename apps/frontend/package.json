@@ -53,7 +53,8 @@
 		"@inlang/paraglide-js": "^2.0.0",
 		"@langchain/core": "^0.3.57",
 		"@langchain/langgraph-sdk": "^0.0.103",
-		"flowbite-svelte-blocks": "^2.0.0"
+		"flowbite-svelte-blocks": "^2.0.0",
+		"svelte-exmarkdown": "^5.0.1"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
