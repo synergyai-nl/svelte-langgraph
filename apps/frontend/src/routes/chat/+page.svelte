@@ -8,43 +8,19 @@
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import type { ChatSuggestion } from '$lib/types/messageTypes';
 
-	interface LangGraphState {
-		client: Client;
-		threadId: string;
-		assistantId: string;
-	}
-
 	let show_login_dialog = $state(false);
-
-	let langgraph: LangGraphState | null = $state(null);
+	let client: Client | null = $state(null);
 
 	$effect(() => {
-		// User logged in or switched accounts - initialize
-		(async () => {
-			const accessToken: string | undefined = page.data.session?.accessToken;
-			if (accessToken) await initializeLangGraph(accessToken);
-		})();
+		if (page.data.session?.accessToken && page.data.langgraph) {
+			client = new Client({
+				defaultHeaders: {
+					Authorization: `Bearer ${page.data.session.accessToken}`
+				},
+				apiUrl: PUBLIC_LANGGRAPH_API_URL
+			});
+		}
 	});
-
-	async function initializeLangGraph(accessToken: string) {
-		const client = new Client({
-			defaultHeaders: {
-				Authorization: `Bearer ${accessToken}`
-			},
-			apiUrl: PUBLIC_LANGGRAPH_API_URL
-		});
-
-		const thread = await client.threads.create();
-		const assistant = await client.assistants.create({
-			graphId: 'chat'
-		});
-
-		langgraph = {
-			client,
-			threadId: thread.thread_id,
-			assistantId: assistant.assistant_id
-		};
-	}
 
 	onMount(async () => {
 		if (!page.data.session) show_login_dialog = true;
@@ -84,13 +60,13 @@
 	});
 </script>
 
-{#if !langgraph}
+{#if !client || !page.data.langgraph}
 	<ChatLoader />
 {:else}
 	<Chat
-		langGraphClient={langgraph.client}
-		assistantId={langgraph.assistantId}
-		threadId={langgraph.threadId}
+		langGraphClient={client}
+		assistantId={page.data.langgraph.assistantId}
+		threadId={page.data.langgraph.threadId}
 		introTitle={greeting}
 		intro="I'm here to assist with your questions, provide information, help with tasks, or engage in conversation."
 		{suggestions}
