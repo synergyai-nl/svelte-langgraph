@@ -24,7 +24,7 @@
 			Please sign in to continue.
 		</h3>
 		<SignIn provider="descope">
-			<Button slot="submitButton" size="sm">Sign in</Button>
+			<Button slot="submitButton" size="sm" tag="div">Sign in</Button>
 		</SignIn>
 	</div>
 </Modal>
