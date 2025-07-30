@@ -34,12 +34,13 @@
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
 			<!-- Avatar Button -->
-			<Button color="alternative" class="rounded-full !p-1" id="avatar-menu-button">
-				{#if page.data.session.user?.image}
-					<Avatar src={page.data.session.user.image} size="sm" />
-				{:else}
-					<Avatar size="sm" />
-				{/if}
+			<Button color="alternative" class="rounded-full p-1 pr-4" id="avatar-menu-button">
+				<Avatar
+					src={page.data.session.user?.image ? page.data.session.user.image : undefined}
+					size="sm"
+					class="me-2"
+				/>
+
 				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
 					Hi, {page.data.session.user?.name ?? 'User'}
 				</span>
