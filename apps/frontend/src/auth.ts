@@ -44,7 +44,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 					console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
 
 					try {
-						if (typeof token.refresh_token !== 'string') throw 'Token has no refresh token.';
+						if (typeof token.refresh_token !== 'string') throw new Error('Token has no refresh token.');
 
 						const response = await fetch('https://api.descope.com/oauth2/v1/token', {
 							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
