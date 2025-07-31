@@ -1,21 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { createLangGraphClient } from '$lib/langgraph/client';
-
-async function initializeLangGraph(accessToken: string): Promise<{
-	threadId: string;
-	assistantId: string;
-}> {
-	const client = createLangGraphClient(accessToken);
-
-	const thread = await client.threads.create();
-	const assistant = await client.assistants.create({ graphId: 'chat' });
-
-	return {
-		threadId: thread.thread_id,
-		assistantId: assistant.assistant_id
-	};
-}
+import { createThread } from '$lib/client/langgraphClient';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
@@ -27,13 +12,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	try {
-		const { threadId, assistantId } = await initializeLangGraph(session.accessToken);
+		// Create a LangGraph client, thread, and assistant
+		const langgraph = await createThread(session.accessToken);
+
 		return {
 			session,
-			langgraph: {
-				threadId: threadId,
-				assistantId: assistantId
-			}
+			langgraph
 		};
 	} catch (err) {
 		console.error('Failed to initialize chat:', err);

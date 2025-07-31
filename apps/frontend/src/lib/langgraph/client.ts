@@ -9,3 +9,18 @@ export function createLangGraphClient(accessToken: string): Client {
 		apiUrl: PUBLIC_LANGGRAPH_API_URL
 	});
 }
+
+export async function createThread(
+	accessToken: string,
+	graphId: string = 'chat'
+): Promise<{ threadId: string; assistantId: string }> {
+	const client = createLangGraphClient(accessToken);
+
+	const thread = await client.threads.create();
+	const assistant = await client.assistants.create({ graphId });
+
+	return {
+		threadId: thread.thread_id,
+		assistantId: assistant.assistant_id
+	};
+}
