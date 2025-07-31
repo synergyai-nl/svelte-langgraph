@@ -1,3 +1,4 @@
+import { sentrySvelteKit } from "@sentry/sveltekit";
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
@@ -11,6 +12,12 @@ export default defineConfig({
 		paraglideVitePlugin({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide'
+    	}),
+		sentrySvelteKit({
+			sourceMapsUploadOptions: {
+				org: "synergyai",
+				project: "sveltekit-langgraph"
+			}
 		})
 	],
 	test: {
