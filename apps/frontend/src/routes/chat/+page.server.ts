@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { createThread } from '$lib/client/langgraphClient';
+import { createThread } from  '$lib/langgraph/client';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
