@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/sveltekit';
-import { replayIntegration } from '@sentry/sveltekit';
 import { env } from '$env/dynamic/public';
 
 // Client-side Sentry initialization with replay integration for user session recording
@@ -17,7 +16,14 @@ export function initSentry() {
 		enableLogs: true,
 		replaysSessionSampleRate: 0.1,
 		replaysOnErrorSampleRate: 1.0,
-		integrations: [replayIntegration()]
+		integrations: [
+      Sentry.replayIntegration(),
+      Sentry.feedbackIntegration({
+        triggerLabel : "Feedback",
+        submitButtonLabel: "Send Feedback",
+        formTitle: "Send Feedback",
+        colorScheme: "system"})
+    ]
 	});
 }
 
