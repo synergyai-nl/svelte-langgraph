@@ -1,24 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { Client } from '@langchain/langgraph-sdk';
-	import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import type { ChatSuggestion } from '$lib/types/messageTypes';
+	import type { Client } from '@langchain/langgraph-sdk';
+	import { createLangGraphClient } from '$lib/langgraph/client';
 
 	let show_login_dialog = $state(false);
 	let client: Client | null = $state(null);
 
 	$effect(() => {
-		if (page.data.session?.accessToken && page.data.langgraph) {
-			client = new Client({
-				defaultHeaders: {
-					Authorization: `Bearer ${page.data.session.accessToken}`
-				},
-				apiUrl: PUBLIC_LANGGRAPH_API_URL
-			});
+		if (page.data.session?.accessToken) {
+			client = createLangGraphClient(page.data.session.accessToken);
 		}
 	});
 

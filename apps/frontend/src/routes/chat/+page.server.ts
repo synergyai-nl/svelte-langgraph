@@ -1,18 +1,12 @@
 import { error } from '@sveltejs/kit';
-import { Client } from '@langchain/langgraph-sdk';
-import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
 import type { PageServerLoad } from './$types';
+import { createLangGraphClient } from '$lib/langgraph/client';
 
 async function initializeLangGraph(accessToken: string): Promise<{
 	threadId: string;
 	assistantId: string;
 }> {
-	const client = new Client({
-		defaultHeaders: {
-			Authorization: `Bearer ${accessToken}`
-		},
-		apiUrl: PUBLIC_LANGGRAPH_API_URL
-	});
+	const client = createLangGraphClient(accessToken);
 
 	const thread = await client.threads.create();
 	const assistant = await client.assistants.create({ graphId: 'chat' });
