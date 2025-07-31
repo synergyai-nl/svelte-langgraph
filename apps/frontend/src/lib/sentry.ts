@@ -17,13 +17,14 @@ export function initSentry() {
 		replaysSessionSampleRate: 0.1,
 		replaysOnErrorSampleRate: 1.0,
 		integrations: [
-      Sentry.replayIntegration(),
-      Sentry.feedbackIntegration({
-        triggerLabel : "Feedback",
-        submitButtonLabel: "Send Feedback",
-        formTitle: "Send Feedback",
-        colorScheme: "system"})
-    ]
+			Sentry.replayIntegration(),
+			Sentry.feedbackIntegration({
+				triggerLabel: 'Feedback',
+				submitButtonLabel: 'Send Feedback',
+				formTitle: 'Send Feedback',
+				colorScheme: 'system'
+			})
+		]
 	});
 }
 
