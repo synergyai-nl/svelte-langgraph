@@ -10,13 +10,6 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-const clientId = env.AUTH_DESCOPE_ID;
-const clientSecret = env.AUTH_DESCOPE_SECRET;
-
-if (!clientId || !clientSecret) {
-	throw new Error('Missing Descope client credentials');
-}
-
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [Descope],
 	trustHost: true,
@@ -53,6 +46,14 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 					try {
 						if (typeof token.refresh_token !== 'string')
 							throw new Error('Token has no refresh token.');
+
+
+						const clientId = env.AUTH_DESCOPE_ID;
+						const clientSecret = env.AUTH_DESCOPE_SECRET;
+
+						if (!clientId || !clientSecret) {
+							throw new Error('Missing Descope client credentials');
+						}
 
 						const response = await fetch('https://api.descope.com/oauth2/v1/token', {
 							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
