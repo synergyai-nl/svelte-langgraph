@@ -47,7 +47,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 						if (typeof token.refresh_token !== 'string')
 							throw new Error('Token has no refresh token.');
 
-
 						const clientId = env.AUTH_DESCOPE_ID;
 						const clientSecret = env.AUTH_DESCOPE_SECRET;
 
