@@ -11,6 +11,8 @@ dependencies = [
     "langgraph-cli[inmem]>=0.2.10",
     "langgraph-api>=0.2.92",
     "python-dotenv>=1.1.0",
+    "sentry-sdk>=2.34.0",
+    "fastapi>=0.116.1"
 ]
 
 [dependency-groups]

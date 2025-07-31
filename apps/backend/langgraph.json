@@ -5,9 +5,13 @@
 	"graphs": {
 		"chat": "./src/graph.py:make_graph"
 	},
+	
 	"python_version": "3.13",
 	"env": ".env",
 	"auth": {
 		"path": "./src/auth.py:auth"
-	}
+	},
+	"http": {
+      "app": "./src/main.py:app"
+    }
 }
