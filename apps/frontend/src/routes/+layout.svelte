@@ -5,7 +5,6 @@
 	import { page } from '$app/state';
 
 	import { MessagesOutline } from 'flowbite-svelte-icons';
-	import { UserCircleSolid, ClipboardListSolid, ArrowRightAltSolid } from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -16,6 +15,7 @@
 		Dropdown,
 		DropdownHeader,
 		DropdownItem,
+		DropdownDivider,
 		Avatar,
 		DarkMode
 	} from 'flowbite-svelte';
@@ -31,60 +31,50 @@
 		</span>
 	</NavBrand>
 
-	<div class="group relative flex items-center md:order-2">
+	<div class="flex items-center md:order-2">
 		{#if page.data.session}
-			<button
-				id="avatar-menu"
-				class="flex items-center space-x-2 rounded-full ring-blue-500 transition duration-150 hover:ring-2 focus:ring-2"
-			>
-				{#if page.data.session.user?.image}
-					<Avatar src={page.data.session.user.image} />
-				{:else}
-					<Avatar />
-				{/if}
-				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
-					Hi, {page.data.session.user?.name?.split(' ')[0] ?? 'User'}
-				</span>
-			</button>
+			<!-- Avatar Button -->
+			<Button color="alternative" class="rounded-full p-1 pr-4" id="avatar-menu-button">
+				<Avatar
+					src={page.data.session.user?.image ? page.data.session.user.image : undefined}
+					size="sm"
+					class="me-2"
+				/>
 
-			<Dropdown placement="bottom-end" triggeredBy="#avatar-menu" class="z-50 w-56" simple>
-				<!-- Header -->
+				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
+					{page.data.session.user?.name ?? 'User'}
+				</span>
+			</Button>
+
+			<!-- Dropdown Menu -->
+			<Dropdown triggeredBy="#avatar-menu-button" placement="bottom-end" simple>
 				<DropdownHeader>
-					<div class="flex flex-col">
-						<span class="text-sm font-semibold text-gray-900 dark:text-white">
-							{page.data.session.user?.name ?? 'User'}
-						</span>
-						<span class="truncate text-xs text-gray-500 dark:text-gray-400">
-							{page.data.session.user?.email ?? 'email@example.com'}
-						</span>
-					</div>
+					<span class="block text-sm font-medium text-gray-900 dark:text-white">
+						{page.data.session.user?.name ?? 'User'}
+					</span>
+					<span class="block truncate text-sm text-gray-500 dark:text-gray-400">
+						{page.data.session.user?.email ?? 'email@example.com'}
+					</span>
 				</DropdownHeader>
 
-				<!-- Dashboard -->
-				<DropdownItem
-					href="/dashboard"
-					class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-				>
-					<ClipboardListSolid class="h-4 w-4 shrink-0" />
-					<span class="text-sm">Dashboard</span>
+				<DropdownDivider />
+
+				<DropdownItem href="/dashboard">
+					<span>Dashboard</span>
 				</DropdownItem>
 
-				<!-- Profile -->
-				<DropdownItem
-					href="/profile"
-					class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-				>
-					<UserCircleSolid class="h-4 w-4 shrink-0" />
-					<span class="text-sm">Profile</span>
+				<DropdownItem href="/profile">
+					<span>Profile</span>
 				</DropdownItem>
 
-				<!-- Sign Out -->
+				<DropdownDivider />
+
 				<SignOut>
 					<DropdownItem
-						class="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-600/10"
+						slot="submitButton"
+						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
 					>
-						<ArrowRightAltSolid class="h-4 w-4 shrink-0" />
-						<span class="text-sm">Sign out</span>
+						<span>Sign out</span>
 					</DropdownItem>
 				</SignOut>
 			</Dropdown>
@@ -93,9 +83,9 @@
 				<Button slot="submitButton" size="sm">Sign in</Button>
 			</SignIn>
 		{/if}
-		<DarkMode />
 
-		<NavHamburger />
+		<DarkMode class="ml-3" />
+		<NavHamburger class="ml-3" />
 	</div>
 
 	<NavUl>
