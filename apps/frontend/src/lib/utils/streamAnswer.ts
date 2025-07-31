@@ -1,5 +1,4 @@
 import { Client } from '@langchain/langgraph-sdk';
-import type { MessageContentComplex } from '@langchain/core/messages';
 
 export async function* streamAnswer(
 	client: Client,
@@ -34,28 +33,23 @@ export async function* streamAnswer(
 
 				const message = chunk.data[0];
 				const messageId = message.id;
-				const content = message.content as MessageContentComplex[];
 
-				if (content) {
-					for (const fragment of content) {
-						switch (fragment.type) {
-							case 'text':
-								yield { type: 'text', text: fragment.text, messageId };
-								break;
-							case 'tool_use':
-								yield {
-									type: 'tool',
-									tool_name: fragment.name,
-									tool_payload: fragment.input,
-									messageId
-								};
-								break;
-							case 'input_json_delta':
-								break;
-							default:
-								console.log('Unexpected fragment type:', fragment.type);
-						}
-					}
+				switch (message.type) {
+					// @ts-expect-error bug in LangGraph here - we're getting different values here from what's expected.
+					case 'AIMessageChunk':
+						// @ts-expect-error LangGraph
+						yield { type: 'text', text: message.content, messageId };
+						break;
+					case 'tool':
+						yield {
+							type: 'tool',
+							tool_name: message.name,
+							tool_payload: message.content,
+							messageId
+						};
+						break;
+					default:
+						console.log('Unexpected message:', message);
 				}
 
 				break;
