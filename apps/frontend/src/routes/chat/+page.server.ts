@@ -26,6 +26,8 @@ async function initializeLangGraph(accessToken: string): Promise<{
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
 
+	// If user is not authenticated, skip LangGraph setup.
+	// Returning `session: null` allows client to show login modal instead of erroring.
 	if (!session?.accessToken) {
 		return { session: null };
 	}
