@@ -14,7 +14,7 @@ const clientId = env.AUTH_DESCOPE_ID;
 const clientSecret = env.AUTH_DESCOPE_SECRET;
 
 if (!clientId || !clientSecret) {
-	throw new Error("Missing Descope client credentials");
+	throw new Error('Missing Descope client credentials');
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
