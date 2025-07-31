@@ -1,4 +1,4 @@
-import { handleErrorWithSentry } from "@sentry/sveltekit";
+import { handleErrorWithSentry } from '@sentry/sveltekit';
 import { initSentry } from '$lib/sentry';
 
 initSentry();
