@@ -24,8 +24,7 @@
 </script>
 
 <div
-	class="fixed right-0 bottom-0 left-0 border-t border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
->
+	class="fixed right-0 bottom-0 left-0 bg-transparent" >
 	<div class="mx-auto w-full max-w-4xl px-4 py-4">
 		<form id="input_form" onsubmit={onSubmit}>
 			<Textarea
