@@ -25,9 +25,12 @@
 
 <div class="fixed right-0 bottom-0 left-0 bg-transparent">
 	<div class="mx-auto w-full max-w-4xl px-4 py-4">
-		<form id="input_form" onsubmit={onSubmit} class="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 shadow-md dark:bg-gray-800"
+		<form
+			id="input_form"
+			onsubmit={onSubmit}
+			class="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 shadow-md dark:bg-gray-800"
 		>
-			<div class="flex-1 min-w-0">
+			<div class="min-w-0 flex-1">
 				<Textarea
 					id="user-input"
 					disabled={isStreaming}
@@ -36,8 +39,8 @@
 					name="message"
 					bind:value
 					clearable
-					classes={{ div: "w-full" }}
-					class="resize-none border-none bg-gray-50 dark:bg-gray-800 text-sm leading-6 text-gray-900 dark:text-white focus:ring-0 focus:outline-none"
+					classes={{ div: 'w-full' }}
+					class="resize-none border-none bg-gray-50 text-sm leading-6 text-gray-900 focus:ring-0 focus:outline-none dark:bg-gray-800 dark:text-white"
 					onkeypress={handleKeyPress}
 				/>
 			</div>
