@@ -40,7 +40,7 @@
 					bind:value
 					clearable
 					classes={{ div: 'w-full' }}
-					class="resize-none border-none bg-gray-50 text-sm leading-6 text-gray-900 focus:ring-0 focus:outline-none dark:bg-gray-800 dark:text-white"
+					class="w-full resize-none border-none bg-gray-50 text-sm leading-6 text-gray-900 focus:ring-0 focus:outline-none dark:bg-gray-800 dark:text-white"
 					onkeypress={handleKeyPress}
 				/>
 			</div>
