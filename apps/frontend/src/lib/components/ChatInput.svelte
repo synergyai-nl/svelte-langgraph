@@ -32,7 +32,7 @@
 		const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 24;
 		const maxRows = window.innerWidth < 640 ? 4 : 8; // 4 rows on mobile, 8 on desktop
 		const maxHeight = lineHeight * maxRows;
-		
+
 		textareaEl.style.height = 'auto';
 		textareaEl.style.height = Math.min(textareaEl.scrollHeight, maxHeight) + 'px';
 	}
