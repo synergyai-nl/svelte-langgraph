@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Button, Textarea, Spinner } from 'flowbite-svelte';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		value: string;
@@ -15,12 +16,40 @@
 		placeholder = 'Message...'
 	}: Props = $props();
 
+	let textareaEl: HTMLTextAreaElement | null = null;
+
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
 			event.preventDefault();
 			onSubmit();
+			value = '';
 		}
 	}
+
+	function autoResize() {
+		if (!textareaEl) return;
+
+		const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 24;
+		const maxRows = window.innerWidth < 640 ? 4 : 8; // 4 rows on mobile, 8 on desktop
+		const maxHeight = lineHeight * maxRows;
+		
+		textareaEl.style.height = 'auto';
+		textareaEl.style.height = Math.min(textareaEl.scrollHeight, maxHeight) + 'px';
+	}
+
+	onMount(() => {
+		textareaEl = document.getElementById('user-input') as HTMLTextAreaElement;
+		if (textareaEl) {
+			textareaEl.addEventListener('input', autoResize);
+			return () => textareaEl?.removeEventListener('input', autoResize);
+		}
+	});
+
+	$effect(() => {
+		if (value === '' && textareaEl) {
+			textareaEl.style.height = '';
+		}
+	});
 </script>
 
 <div class="fixed right-0 bottom-0 left-0 bg-transparent">
