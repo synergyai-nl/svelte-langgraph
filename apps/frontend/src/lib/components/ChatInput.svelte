@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button, Textarea, Spinner } from 'flowbite-svelte';
 	import { onMount } from 'svelte';
+	import {PaperPlaneSolid} from 'flowbite-svelte-icons';
 
 	interface Props {
 		value: string;
@@ -77,12 +78,12 @@
 				type="submit"
 				disabled={isStreaming}
 				size="sm"
-				class="shrink-0 rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-gray-800 disabled:opacity-60 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+				class="shrink-0 rounded-full bg-primary-600 hover:bg-primary-700 text-white shadow-md p-3 min-w-12 min-h-12 flex items-center justify-center"
 			>
 				{#if isStreaming}
-					<Spinner class="ms-2" size="4" color="primary" />
+					<Spinner size="4" color="primary" />
 				{:else}
-					Send
+					<PaperPlaneSolid class="rotate-45" />
 				{/if}
 			</Button>
 		</form>
