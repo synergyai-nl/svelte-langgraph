@@ -40,15 +40,6 @@
 		// Calculate number of lines (approximately)
 		const lines = Math.floor((scrollHeight - totalPadding) / lineHeight);
 
-		console.info(
-			lineHeight,
-			paddingTop,
-			paddingBottom,
-			computedStyle.paddingRight,
-			totalPadding,
-			lines
-		);
-
 		// Sticky expanded logic:
 		// - Expand when more than 2 lines
 		// - Only collapse when empty or single line (not just when <= 2 lines)
