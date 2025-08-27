@@ -1,117 +1,156 @@
 <script lang="ts">
-	import { Button, Textarea, Spinner } from 'flowbite-svelte';
-	import { onMount } from 'svelte';
+	import { Button, Spinner } from 'flowbite-svelte';
 	import { PaperPlaneSolid } from 'flowbite-svelte-icons';
-
-	interface Props {
-		value: string;
-		isStreaming?: boolean;
-		onSubmit: () => void;
-		placeholder?: string;
-	}
+	import { scale } from 'svelte/transition';
 
 	let {
-		value = $bindable(),
+		value = '',
 		isStreaming = false,
-		onSubmit,
+		onSubmit = () => {},
 		placeholder = 'Message...'
-	}: Props = $props();
+	} = $props();
 
-	let textareaEl: HTMLTextAreaElement | null = null;
+	let textareaEl: HTMLTextAreaElement;
 	let isExpanded = $state(false);
+	let textareaHeight = $state('auto');
 
 	function handleKeyPress(event: KeyboardEvent) {
-		if (event.key === 'Enter' && event.shiftKey === false) {
+		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
-			onSubmit();
-			value = '';
+			if (value.trim()) {
+				onSubmit();
+			}
 		}
 	}
 
 	function autoResize() {
 		if (!textareaEl) return;
 
-		const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 24;
-		const maxRows = window.innerWidth < 640 ? 4 : 8; // 4 rows on mobile, 8 on desktop
-		const maxHeight = lineHeight * maxRows;
-
-		// Set to a known single-line height first to get clean measurement
-		textareaEl.style.height = lineHeight + 'px';
-		const baseScrollHeight = textareaEl.scrollHeight;
-		
-		// Now reset to auto to get actual content height
+		// Reset height to get accurate scrollHeight
 		textareaEl.style.height = 'auto';
-		const fullScrollHeight = textareaEl.scrollHeight;
-		const newHeight = Math.min(fullScrollHeight, maxHeight);
-		textareaEl.style.height = newHeight + 'px';
+		const scrollHeight = textareaEl.scrollHeight;
 
-		// Use a more robust detection: compare actual content scroll height to base single-line height
-		// Only change state if there's a clear difference (more than 4px buffer)
-		const heightDifference = fullScrollHeight - baseScrollHeight;
-		
-		if (!isExpanded && heightDifference > 4) {
+		// Calculate line height and determine if we should expand
+		const computedStyle = getComputedStyle(textareaEl);
+		const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
+		const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+		const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+		const totalPadding = paddingTop + paddingBottom;
+
+		// Calculate number of lines (approximately)
+		const lines = Math.floor((scrollHeight - totalPadding) / lineHeight);
+
+		console.info(
+			lineHeight,
+			paddingTop,
+			paddingBottom,
+			computedStyle.paddingRight,
+			totalPadding,
+			lines
+		);
+
+		// Sticky expanded logic:
+		// - Expand when more than 2 lines
+		// - Only collapse when empty or single line (not just when <= 2 lines)
+		if (lines > 2) {
 			isExpanded = true;
-		} else if (isExpanded && heightDifference <= 2) {
+		} else if (value.trim() === '' || lines <= 1) {
 			isExpanded = false;
 		}
+		// If lines === 2 and already expanded, stay expanded (sticky behavior)
+
+		// Set max height (8 lines max)
+		const maxHeight = Math.min(scrollHeight, lineHeight * 8 + totalPadding);
+		textareaHeight = maxHeight + 'px';
+		textareaEl.style.height = textareaHeight;
 	}
 
-	onMount(() => {
-		textareaEl = document.getElementById('user-input') as HTMLTextAreaElement;
-		if (textareaEl) {
-			textareaEl.addEventListener('input', autoResize);
-			return () => textareaEl?.removeEventListener('input', autoResize);
+	$effect(() => {
+		if (value === '' && textareaEl) {
+			textareaEl.style.height = 'auto';
+			textareaHeight = 'auto';
+			isExpanded = false;
 		}
 	});
 
 	$effect(() => {
-		if (value === '' && textareaEl) {
-			textareaEl.style.height = '';
-			isExpanded = false;
+		if (textareaEl && value !== undefined) {
+			// Use setTimeout to ensure DOM is updated
+			setTimeout(autoResize, 0);
 		}
 	});
+
+	function handleSubmit(event: Event) {
+		event.preventDefault();
+		if (value.trim()) {
+			onSubmit();
+		}
+	}
 </script>
 
 <div class="fixed right-0 bottom-0 left-0 bg-transparent">
 	<div class="mx-auto w-full max-w-4xl px-4 py-4">
 		<form
-			id="input_form"
-			onsubmit={onSubmit}
-			class="rounded-xl bg-gray-50 px-3 py-2 shadow-md dark:bg-gray-800 transition-all duration-200"
+			onsubmit={handleSubmit}
+			class="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-md dark:border-gray-700 dark:bg-gray-900 dark:shadow-gray-800/20"
 		>
-			<div class="flex gap-2" class:flex-col={isExpanded} class:items-center={!isExpanded} class:items-stretch={isExpanded}>
-				<div class="min-w-0 flex-1 w-full">
-					<Textarea
-						id="user-input"
-						disabled={isStreaming}
-						{placeholder}
-						rows={1}
-						name="message"
-						bind:value
-						classes={{ div: 'w-full' }}
-						class="w-full resize-none border-none bg-gray-50 text-sm leading-6 text-gray-900 focus:ring-0 focus:outline-none dark:bg-gray-800 dark:text-white"
-						onkeypress={handleKeyPress}
-					/>
+			<div class="flex flex-col gap-2">
+				<!-- Textarea container -->
+				<div class="flex items-center gap-2" class:items-end={isExpanded}>
+					<div class="min-w-0 flex-1">
+						<textarea
+							bind:this={textareaEl}
+							bind:value
+							disabled={isStreaming}
+							{placeholder}
+							rows={1}
+							name="message"
+							class="w-full resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
+							style="height: {textareaHeight}; min-height: 24px;"
+							onkeydown={handleKeyPress}
+							oninput={autoResize}
+						></textarea>
+					</div>
+
+					<!-- Submit button - inline when collapsed -->
+					{#if !isExpanded}
+						<div class="flex shrink-0" transition:scale={{ duration: 400 }}>
+							<Button
+								type="submit"
+								disabled={isStreaming || !value.trim()}
+								size="sm"
+								class="bg-primary-600 hover:bg-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
+							>
+								{#if isStreaming}
+									<Spinner />
+								{:else}
+									<PaperPlaneSolid class="h-3 w-3 rotate-45" />
+								{/if}
+							</Button>
+						</div>
+					{/if}
 				</div>
 
-				<div 
-					class="transition-all duration-200 ease-out flex shrink-0"
-					class:justify-end={isExpanded}
-					class:justify-center={!isExpanded}
-				>
-					<Button
-						type="submit"
-						disabled={isStreaming}
-						size="sm"
-						class="bg-primary-600 hover:bg-primary-700 flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full p-3 text-white shadow-md transition-all duration-200"
-					>
-						{#if isStreaming}
-							<Spinner size="4" color="primary" />
-						{:else}
-							<PaperPlaneSolid class="rotate-45" />
-						{/if}
-					</Button>
-				</div>
+				<!-- Expanded button row -->
+				{#if isExpanded}
+					<div class="flex items-center justify-end gap-2">
+						<!-- Submit button - on new line when expanded -->
+						<div class="flex shrink-0" transition:scale={{ duration: 400 }}>
+							<Button
+								type="submit"
+								disabled={isStreaming || !value.trim()}
+								size="sm"
+								class="bg-primary-600 hover:bg-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
+							>
+								{#if isStreaming}
+									<Spinner />
+								{:else}
+									<PaperPlaneSolid class="h-3 w-3 rotate-45" />
+								{/if}
+							</Button>
+						</div>
+					</div>
+				{/if}
 			</div>
 		</form>
 	</div>
