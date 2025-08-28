@@ -3,19 +3,26 @@
 	import { PaperPlaneSolid } from 'flowbite-svelte-icons';
 	import { scale } from 'svelte/transition';
 
+	interface Props {
+		value: string;
+		isStreaming?: boolean;
+		onSubmit: () => void;
+		placeholder?: string;
+	}
+
 	let {
-		value = '',
+		value = $bindable(),
 		isStreaming = false,
 		onSubmit = () => {},
 		placeholder = 'Message...'
-	} = $props();
+	} : Props = $props();
 
-	let textareaEl: HTMLTextAreaElement;
+	let textareaEl: HTMLTextAreaElement | null = null;
 	let isExpanded = $state(false);
 	let textareaHeight = $state('auto');
 
 	function handleKeyPress(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
+		if (event.key === 'Enter' && event.shiftKey === false) {
 			event.preventDefault();
 			if (value.trim()) {
 				onSubmit();
