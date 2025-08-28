@@ -15,7 +15,7 @@
 		isStreaming = false,
 		onSubmit = () => {},
 		placeholder = 'Message...'
-	} : Props = $props();
+	}: Props = $props();
 
 	let textareaEl: HTMLTextAreaElement | null = null;
 	let isExpanded = $state(false);
