@@ -1,7 +1,12 @@
 <script lang="ts">
-	import { Button, Spinner } from 'flowbite-svelte';
-	import { PaperPlaneSolid } from 'flowbite-svelte-icons';
 	import { scale } from 'svelte/transition';
+	import SubmitButton from './SubmitButton.svelte';
+
+	// Constants
+	const MAX_LINES = 8;
+	const MIN_HEIGHT = 24;
+	const TRANSITION_DURATION = 400;
+	const DEFAULT_LINE_HEIGHT = 24;
 
 	interface Props {
 		value: string;
@@ -20,6 +25,7 @@
 	let textareaEl: HTMLTextAreaElement | null = null;
 	let isExpanded = $state(false);
 	let textareaHeight = $state('auto');
+	let resizeFrame: number;
 
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
@@ -39,7 +45,7 @@
 
 		// Calculate line height and determine if we should expand
 		const computedStyle = getComputedStyle(textareaEl);
-		const lineHeight = parseFloat(computedStyle.lineHeight) || 24;
+		const lineHeight = parseFloat(computedStyle.lineHeight) || DEFAULT_LINE_HEIGHT;
 		const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
 		const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
 		const totalPadding = paddingTop + paddingBottom;
@@ -57,8 +63,8 @@
 		}
 		// If lines === 2 and already expanded, stay expanded (sticky behavior)
 
-		// Set max height (8 lines max)
-		const maxHeight = Math.min(scrollHeight, lineHeight * 8 + totalPadding);
+		// Set max height
+		const maxHeight = Math.min(scrollHeight, lineHeight * MAX_LINES + totalPadding);
 		textareaHeight = maxHeight + 'px';
 		textareaEl.style.height = textareaHeight;
 	}
@@ -71,10 +77,14 @@
 		}
 	});
 
+	function scheduleResize() {
+		if (resizeFrame) cancelAnimationFrame(resizeFrame);
+		resizeFrame = requestAnimationFrame(autoResize);
+	}
+
 	$effect(() => {
-		if (textareaEl && value !== undefined) {
-			// Use setTimeout to ensure DOM is updated
-			setTimeout(autoResize, 0);
+		if (textareaEl) {
+			scheduleResize();
 		}
 	});
 
@@ -104,27 +114,16 @@
 							rows={1}
 							name="message"
 							class="w-full resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
-							style="height: {textareaHeight}; min-height: 24px;"
+							style="height: {textareaHeight}; min-height: {MIN_HEIGHT}px;"
 							onkeydown={handleKeyPress}
-							oninput={autoResize}
+							oninput={scheduleResize}
 						></textarea>
 					</div>
 
 					<!-- Submit button - inline when collapsed -->
 					{#if !isExpanded}
-						<div class="flex shrink-0" transition:scale={{ duration: 400 }}>
-							<Button
-								type="submit"
-								disabled={isStreaming || !value.trim()}
-								size="sm"
-								class="bg-primary-600 hover:bg-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
-							>
-								{#if isStreaming}
-									<Spinner />
-								{:else}
-									<PaperPlaneSolid class="h-3 w-3 rotate-45" />
-								{/if}
-							</Button>
+						<div class="flex shrink-0" transition:scale={{ duration: TRANSITION_DURATION }}>
+							<SubmitButton {isStreaming} disabled={isStreaming || !value.trim()} />
 						</div>
 					{/if}
 				</div>
@@ -133,19 +132,8 @@
 				{#if isExpanded}
 					<div class="flex items-center justify-end gap-2">
 						<!-- Submit button - on new line when expanded -->
-						<div class="flex shrink-0" transition:scale={{ duration: 400 }}>
-							<Button
-								type="submit"
-								disabled={isStreaming || !value.trim()}
-								size="sm"
-								class="bg-primary-600 hover:bg-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-0 text-white shadow-sm disabled:cursor-not-allowed disabled:bg-gray-300"
-							>
-								{#if isStreaming}
-									<Spinner />
-								{:else}
-									<PaperPlaneSolid class="h-3 w-3 rotate-45" />
-								{/if}
-							</Button>
+						<div class="flex shrink-0" transition:scale={{ duration: TRANSITION_DURATION }}>
+							<SubmitButton {isStreaming} disabled={isStreaming || !value.trim()} />
 						</div>
 					</div>
 				{/if}
