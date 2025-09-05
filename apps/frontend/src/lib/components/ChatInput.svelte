@@ -27,7 +27,7 @@
 <div class="fixed right-0 bottom-0 left-0 bg-transparent">
 	<div class="mx-auto w-full max-w-4xl px-4 py-4">
 		<form
-			id="input_form" 
+			id="input_form"
 			onsubmit={onSubmit}
 			class="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-md dark:border-gray-700 dark:bg-gray-900 dark:shadow-gray-800/20"
 		>
@@ -42,8 +42,7 @@
 						clearable
 						class="w-full resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
 						onkeydown={handleKeyPress}
-					>
-					</Textarea>
+					></Textarea>
 				</div>
 
 				<!-- Submit button -->
