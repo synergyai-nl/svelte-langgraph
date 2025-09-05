@@ -39,7 +39,7 @@
 						{placeholder}
 						rows={2}
 						name="message"
-						bind:value={value}
+						bind:value
 						clearable
 						class="w-full resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
 						onkeydown={handleKeyPress}
