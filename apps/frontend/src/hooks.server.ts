@@ -17,8 +17,5 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 	});
 
 // Chain the handles using sequence
-export const handle: Handle = sequence(
-	Sentry.sentryHandle(),
-	sequence(handleParaglide, handleAuth)
-);
+export const handle: Handle = sequence(Sentry.sentryHandle(), handleParaglide, handleAuth);
 export const handleError = Sentry.handleErrorWithSentry();
