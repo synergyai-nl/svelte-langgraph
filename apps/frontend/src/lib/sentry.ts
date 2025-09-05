@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/sveltekit';
 import { env } from '$env/dynamic/public';
+import { dev } from '$app/environment';
 
 export function initSentry({ server = false }: { server?: boolean } = {}) {
 	const dsn = env.PUBLIC_SENTRY_DSN;
@@ -12,6 +13,13 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 	Sentry.init({
 		dsn,
 		tracesSampleRate: 1.0,
+		/**
+		 * sendDefaultPii allows capturing user info (IP, browser data, etc).
+		 * Default to `true` in dev mode for easier debugging,
+		 * and can be overridden via PUBLIC_SENTRY_SEND_PII.
+		 */
+		sendDefaultPii:
+			env.PUBLIC_SENTRY_SEND_PII === 'true' || (env.PUBLIC_SENTRY_SEND_PII === undefined && dev),
 		enableLogs: true,
 		...(server
 			? {}
