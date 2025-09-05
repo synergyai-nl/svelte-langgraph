@@ -3,9 +3,9 @@ import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { handle as handleAuth } from './auth';
-import { initSentryServer } from '$lib/sentry';
+import { initSentry } from '$lib/sentry';
 
-initSentryServer();
+initSentry({server : true});
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
