@@ -13,12 +13,7 @@ export default defineConfig({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide'
 		}),
-		sentrySvelteKit({
-			sourceMapsUploadOptions: {
-				org: 'synergyai',
-				project: 'sveltekit-langgraph'
-			}
-		})
+		sentrySvelteKit()
 	],
 	test: {
 		projects: [
