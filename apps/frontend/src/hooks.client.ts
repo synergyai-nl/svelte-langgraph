@@ -1,6 +1,6 @@
 import { handleErrorWithSentry } from '@sentry/sveltekit';
 import { initSentry } from '$lib/sentry';
 
-initSentry({server : false});
+initSentry({ server: false });
 
 export const handleError = handleErrorWithSentry();

@@ -5,7 +5,7 @@ import { paraglideMiddleware } from '$lib/paraglide/server';
 import { handle as handleAuth } from './auth';
 import { initSentry } from '$lib/sentry';
 
-initSentry({server : true});
+initSentry({ server: true });
 
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {

@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/public';
 
 export function initSentry({ server = false }: { server?: boolean } = {}) {
 	const dsn = env.PUBLIC_SENTRY_DSN;
-	
+
 	if (!dsn) {
 		console.warn('Sentry DSN not configured');
 		return;
