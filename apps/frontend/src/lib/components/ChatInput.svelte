@@ -31,7 +31,7 @@
 			onsubmit={onSubmit}
 			class="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-md dark:border-gray-700 dark:bg-gray-900 dark:shadow-gray-800/20"
 		>
-			<div class="flex items-center gap-2">
+			<div class="flex gap-2">
 				<div class="min-w-0 flex-1">
 					<Textarea
 						id="user-input"
@@ -41,13 +41,13 @@
 						name="message"
 						bind:value
 						clearable
-						class="w-full resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
+						class="w-full flex items-center resize-none border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
 						onkeydown={handleKeyPress}
 					></Textarea>
 				</div>
 
 				<!-- Submit button -->
-				<div class="flex shrink-0">
+				<div class="flex shrink-0 items-start">
 					<SubmitButton {isStreaming} disabled={isStreaming || !value.trim()} />
 				</div>
 			</div>
