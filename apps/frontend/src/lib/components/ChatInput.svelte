@@ -10,12 +10,13 @@
 	}
 
 	let {
-		value = $bindable(),
+		value = $bindable(''),
 		isStreaming = false,
 		onSubmit,
 		placeholder = 'Message...'
 	}: Props = $props();
 
+	let isEmpty = $derived(!String(value ?? '').trim());
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
 			event.preventDefault();
@@ -48,7 +49,7 @@
 
 				<!-- Submit button -->
 				<div class="flex shrink-0 items-start">
-					<SubmitButton {isStreaming} disabled={isStreaming || !value.trim()} />
+					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} />
 				</div>
 			</div>
 		</form>
