@@ -21,7 +21,7 @@
 		"@eslint/js": "^9.18.0",
 		"@playwright/test": "^1.49.1",
 		"@sveltejs/adapter-node": "^5.2.12",
-		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/kit": "^2.37.1",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
@@ -51,9 +51,9 @@
 	"dependencies": {
 		"@auth/sveltekit": "^1.9.2",
 		"@inlang/paraglide-js": "^2.0.0",
-		"@langchain/core": "^0.3.57",
-		"@langchain/langgraph-sdk": "^0.0.103",
-		"flowbite-svelte-blocks": "^2.0.0",
+		"@langchain/core": "^0.3.75",
+		"@langchain/langgraph-sdk": "^0.1.1",
+		"flowbite-svelte-blocks": "^2.1.0",
 		"svelte-exmarkdown": "^5.0.1"
 	},
 	"pnpm": {
