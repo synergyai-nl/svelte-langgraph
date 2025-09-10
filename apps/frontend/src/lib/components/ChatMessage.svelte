@@ -32,7 +32,7 @@
 				<Spinner />
 			{:else if message.type === 'user'}
 				<Card class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700">
-					<div class="prose prose-invert max-w-none leading-relaxed">
+					<div class="prose prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
 						{message.text}
 					</div>
 				</Card>
