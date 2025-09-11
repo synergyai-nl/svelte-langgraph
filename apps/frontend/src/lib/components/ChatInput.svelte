@@ -16,7 +16,7 @@
 		placeholder = 'Message...'
 	}: Props = $props();
 
-	let isEmpty = $derived(!String(value ?? '').trim());
+	let isEmpty = $derived(!(value ?? '').trim());
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
 			event.preventDefault();
