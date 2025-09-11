@@ -42,13 +42,13 @@
 						name="message"
 						bind:value
 						clearable
-						class="flex w-full resize-none items-center border-none bg-transparent text-sm leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
+						class="flex w-full resize-none items-center border-none bg-transparent text-base leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none dark:text-white dark:placeholder-gray-400"
 						onkeydown={handleKeyPress}
 					></Textarea>
 				</div>
 
 				<!-- Submit button -->
-				<div class="flex shrink-0 items-start">
+				<div class="flex shrink-0 items-start pt-1">
 					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} />
 				</div>
 			</div>
