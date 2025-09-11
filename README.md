@@ -53,6 +53,11 @@ Configure the following variables in `apps/frontend/.env`:
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
+- `PUBLIC_SENTRY_DSN` - Public DSN for your Sentry project, for error tracking and user feedback.
+- `PUBLIC_SENTRY_SEND_PII` - Optional: Enable PII (Personally Identifiable Information) capture in Sentry.
+- `SENTRY_AUTH_TOKEN` - Sentry auth token for source map uploads.
+- `SENTRY_ORG` - Sentry org for source map uploads.
+- `SENTRY_PROJECT` - Sentry project for source map uploads.
 
 ## Getting Started
 
