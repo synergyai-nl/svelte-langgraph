@@ -19,6 +19,6 @@
 	{#if isStreaming}
 		<Spinner />
 	{:else}
-		<PaperPlaneSolid class="h-3 w-3 rotate-45" />
+		<PaperPlaneSolid class="h-4 w-4 rotate-45 translate-x-px -translate-y-px" />
 	{/if}
 </Button>
