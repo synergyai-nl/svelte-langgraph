@@ -50,6 +50,7 @@ Configure the following variables in `apps/frontend/.env`:
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
 - `AUTH_DESCOPE_ID` - Your Descope project ID
 - `AUTH_DESCOPE_SECRET` - Your Descope management key
+- `AUTH_DESCOPE_ISSUER` - Optional: Your Descope Issuer URL
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
