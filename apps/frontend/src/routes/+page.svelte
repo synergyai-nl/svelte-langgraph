@@ -1,6 +1,7 @@
 <script>
 	// import { SignIn, SignOut } from '@auth/sveltekit/components';
 	// import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
 
 	// import { ArrowRightOutline } from 'flowbite-svelte-icons';
 	// import { Alert, Button, Heading } from 'flowbite-svelte';
@@ -43,12 +44,12 @@
 	<div
 		class="mb-8 flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4 lg:mb-16"
 	>
-		<a href="/chat">
+		<a href={resolve('/chat')}>
 			<Button size="lg" color="red">
 				Get started <ArrowRightOutline size="md" class="-mr-1 ml-2" />
 			</Button>
 		</a>
-		<a href="/">
+		<a href={resolve('/')}>
 			<Button size="lg" color="light">
 				<VideoCameraSolid size="xs" class="mr-2 -ml-1" />
 				Watch video
@@ -59,7 +60,7 @@
 		{#snippet head()}FEATURED IN{/snippet}
 
 		<div class="mt-8 flex flex-wrap items-center justify-center text-gray-500 sm:justify-between">
-			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href={resolve('/')} class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<svg
 					class="h-8"
 					viewBox="0 0 132 29"
@@ -96,7 +97,7 @@
 				>
 				<!-- <Youtube /> -->
 			</a>
-			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href={resolve('/')} class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<!-- <ProductHunt /> -->
 				<svg
 					class="h-11"
@@ -117,7 +118,7 @@
 					></path></svg
 				>
 			</a>
-			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
+			<a href={resolve('/')} class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
 				<!-- <Reddit /> -->
 				<svg
 					class="h-11"

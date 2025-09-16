@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { SignIn } from '@auth/sveltekit/components';
 	import { Button, Modal } from 'flowbite-svelte';
 	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
@@ -13,7 +14,7 @@
 
 	function handleClose() {
 		onclose?.();
-		goto('/');
+		goto(resolve('/'));
 	}
 </script>
 
