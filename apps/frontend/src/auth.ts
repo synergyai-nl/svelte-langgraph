@@ -15,9 +15,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		Descope({
 			clientId: env.AUTH_DESCOPE_ID,
 			clientSecret: env.AUTH_DESCOPE_SECRET,
-			...(env.AUTH_DESCOPE_ISSUER
-				? { issuer: env.AUTH_DESCOPE_ISSUER }
-				: {})
+			...(env.AUTH_DESCOPE_ISSUER ? { issuer: env.AUTH_DESCOPE_ISSUER } : {})
 		})
 	],
 	trustHost: true,
