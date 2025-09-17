@@ -34,7 +34,7 @@ FROM base AS build
 COPY --from=skeleton /app/.moon/docker/workspace .
 
 # Install dependencies
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store  moon docker setup
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store moon docker setup
 
 # Copy project sources
 COPY --from=skeleton /app/.moon/docker/sources .
@@ -52,7 +52,13 @@ FROM node:24-alpine AS start
 
 # Copy built sources
 COPY --from=build /root/.proto /root/.proto
-COPY --from=build /app /app
+
+# Prod deps
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/apps/frontend/node_modules /app/apps/frontend/node_modules
+
+# App
+COPY --from=build /app/apps/frontend/build /app/apps/frontend/build
 
 CMD node /app/apps/frontend/build
 
