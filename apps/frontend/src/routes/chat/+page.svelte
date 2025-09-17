@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { Client } from '@langchain/langgraph-sdk';
-	import { PUBLIC_LANGGRAPH_API_URL } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
@@ -31,7 +31,7 @@
 			defaultHeaders: {
 				Authorization: `Bearer ${accessToken}`
 			},
-			apiUrl: PUBLIC_LANGGRAPH_API_URL
+			apiUrl: env.PUBLIC_LANGGRAPH_API_URL
 		});
 
 		const thread = await client.threads.create();
