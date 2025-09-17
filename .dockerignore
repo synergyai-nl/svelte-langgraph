@@ -1,0 +1,7 @@
+.moon/cache
+.git
+node_modules
+.DS_Store
+.ruff_cache
+apps/frontend/.svelte-kit/
+apps/frontend/build/
