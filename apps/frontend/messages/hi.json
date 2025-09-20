@@ -1,0 +1,14 @@
+{
+	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"hello_world": "नमस्ते, {name} hi से!",
+	"app_title": "मेरा AI चैट UI",
+	"nav_home": "होम",
+	"nav_chat": "चैट",
+	"nav_paraglide": "पैराग्लाइड",
+	"nav_dashboard": "डैशबोर्ड",
+	"nav_profile": "प्रोफाइल",
+	"auth_sign_in": "साइन इन",
+	"auth_sign_out": "साइन आउट",
+	"user_fallback": "यूजर",
+	"email_fallback": "email@example.com"
+}
