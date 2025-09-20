@@ -1,5 +1,1 @@
-<script>
-	import { resolve } from '$app/paths';
-</script>
-
-<a href={resolve('/demo/paraglide')}>paraglide</a>
+<a href="/demo/paraglide">paraglide</a>
