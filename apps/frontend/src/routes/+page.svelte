@@ -32,7 +32,9 @@
 
 <Section name="heroDefault">
 	<News>
-		<span class="bg-primary-600 mr-3 rounded-full px-4 py-1.5 text-xs text-white">{m.landing_news_new()}</span>
+		<span class="bg-primary-600 mr-3 rounded-full px-4 py-1.5 text-xs text-white"
+			>{m.landing_news_new()}</span
+		>
 		<span class="text-sm font-medium">{m.landing_news_text()}</span>
 	</News>
 	<HeroHeader>
@@ -46,7 +48,8 @@
 	>
 		<a href="/chat">
 			<Button size="lg" color="red">
-				{m.landing_cta_get_started()} <ArrowRightOutline size="md" class="-mr-1 ml-2" />
+				{m.landing_cta_get_started()}
+				<ArrowRightOutline size="md" class="-mr-1 ml-2" />
 			</Button>
 		</a>
 		<a href="/">
