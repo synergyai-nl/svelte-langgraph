@@ -35,5 +35,12 @@
 	"chat_suggestion_2_text": "Explain a complex topic in simple terms",
 	"chat_suggestion_3_title": "Problem Solving",
 	"chat_suggestion_3_description": "Break down challenges and find solutions together",
-	"chat_suggestion_3_text": "Help me analyze and solve a problem"
+	"chat_suggestion_3_text": "Help me analyze and solve a problem",
+	"landing_news_new": "New",
+	"landing_news_text": "Completely revamped frontend",
+	"landing_hero_title": "People Engagement & Retention Made Easy",
+	"landing_hero_subtitle": "Every member of your team making meaningful impact",
+	"landing_cta_get_started": "Get started",
+	"landing_cta_watch_video": "Watch video",
+	"landing_featured_in": "FEATURED IN"
 }
