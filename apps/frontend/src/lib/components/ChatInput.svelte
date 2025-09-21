@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Textarea } from 'flowbite-svelte';
 	import SubmitButton from './SubmitButton.svelte';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
 		value: string;
@@ -13,7 +14,7 @@
 		value = $bindable(''),
 		isStreaming = false,
 		onSubmit,
-		placeholder = 'Message...'
+		placeholder = m.chat_input_placeholder()
 	}: Props = $props();
 
 	let isEmpty = $derived(!(value ?? '').trim());
