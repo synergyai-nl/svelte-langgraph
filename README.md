@@ -50,7 +50,14 @@ Configure the following variables in `apps/frontend/.env`:
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
 - `AUTH_DESCOPE_ID` - Your Descope project ID
 - `AUTH_DESCOPE_SECRET` - Your Descope management key
-- `AUTH_DESCOPE_ISSUER` - Optional: Your Descope Issuer URL
+- `AUTH_DESCOPE_ISSUER` - Optional: The Descope Issuer URL for your project.  
+Normally you don’t need to set this, since the SDK defaults to the global US endpoint.  
+If your Descope tenant is in the **EU region** (or another region with a specific issuer),  
+you must set this to the region-specific issuer URL provided in your Descope console.  
+Can be found in your Descope account under the [Applications page](https://app.descope.com/applications).  
+Example for EU:  
+`AUTH_DESCOPE_ISSUER=https://api.euc1.descope.com/<your-project-id>`
+Only set this if your tenant requires it, otherwise leave it unset.
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
