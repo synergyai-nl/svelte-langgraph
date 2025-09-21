@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { resolve } from '$app/paths';
 </script>
 
 <div
@@ -17,7 +16,7 @@
 			Please try again later or go back to the homepage.
 		</p>
 		<a
-			href={resolve('/')}
+			href="/"
 			class="mt-8 inline-block rounded border border-gray-300 px-5 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
 		>
 			Return Home
