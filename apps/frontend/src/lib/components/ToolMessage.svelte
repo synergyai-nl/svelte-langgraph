@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ToolMessage } from '$lib/types/messageTypes';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
 		message: ToolMessage;
@@ -43,12 +44,12 @@
 					class="mt-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs dark:border-gray-700 dark:bg-gray-800"
 				>
 					<div class="mb-1 text-gray-600 dark:text-gray-400">
-						<span class="font-medium">Tool:</span>
+						<span class="font-medium">{m.tool_label()}</span>
 						{message.tool_name}
 					</div>
 					{#if message.payload && Object.keys(message.payload).length > 0}
 						<div class="mt-1 text-gray-700 dark:text-gray-300">
-							<span class="font-medium">Parameters:</span>
+							<span class="font-medium">{m.tool_parameters()}</span>
 							<pre
 								class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">{JSON.stringify(
 									message.payload,
@@ -57,7 +58,7 @@
 								)}</pre>
 						</div>
 					{:else}
-						<div class="mt-1 text-gray-500 italic dark:text-gray-400">No parameters</div>
+						<div class="mt-1 text-gray-500 italic dark:text-gray-400">{m.tool_no_parameters()}</div>
 					{/if}
 				</div>
 			{/if}

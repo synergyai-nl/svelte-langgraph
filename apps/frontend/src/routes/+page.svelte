@@ -8,6 +8,7 @@
 	import { Button } from 'flowbite-svelte';
 	import { ArrowRightOutline, VideoCameraSolid } from 'flowbite-svelte-icons';
 	// import { Youtube, ProductHunt, Reddit } from '../utils';
+	import * as m from '$lib/paraglide/messages.js';
 </script>
 
 <!-- <div class="text-center">
@@ -31,12 +32,14 @@
 
 <Section name="heroDefault">
 	<News>
-		<span class="bg-primary-600 mr-3 rounded-full px-4 py-1.5 text-xs text-white">New</span>
-		<span class="text-sm font-medium">Completely revamped frontend</span>
+		<span class="bg-primary-600 mr-3 rounded-full px-4 py-1.5 text-xs text-white"
+			>{m.landing_news_new()}</span
+		>
+		<span class="text-sm font-medium">{m.landing_news_text()}</span>
 	</News>
 	<HeroHeader>
-		{#snippet h1()}People Engagement & Retention Made Easy{/snippet}
-		{#snippet paragraph()}Every member of your team making meaningful impact
+		{#snippet h1()}{m.landing_hero_title()}{/snippet}
+		{#snippet paragraph()}{m.landing_hero_subtitle()}
 		{/snippet}
 	</HeroHeader>
 
@@ -45,18 +48,19 @@
 	>
 		<a href="/chat">
 			<Button size="lg" color="red">
-				Get started <ArrowRightOutline size="md" class="-mr-1 ml-2" />
+				{m.landing_cta_get_started()}
+				<ArrowRightOutline size="md" class="-mr-1 ml-2" />
 			</Button>
 		</a>
 		<a href="/">
 			<Button size="lg" color="light">
 				<VideoCameraSolid size="xs" class="mr-2 -ml-1" />
-				Watch video
+				{m.landing_cta_watch_video()}
 			</Button>
 		</a>
 	</div>
 	<HeroBody>
-		{#snippet head()}FEATURED IN{/snippet}
+		{#snippet head()}{m.landing_featured_in()}{/snippet}
 
 		<div class="mt-8 flex flex-wrap items-center justify-center text-gray-500 sm:justify-between">
 			<a href="/" class="mr-5 mb-5 hover:text-gray-800 lg:mb-0 dark:hover:text-gray-400">
