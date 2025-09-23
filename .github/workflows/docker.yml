@@ -2,6 +2,9 @@ name: docker
 
 on:
   push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
   docker:
@@ -26,3 +29,6 @@ jobs:
           tags: ghcr.io/synergyai-nl/svelte-langgraph-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          # No progress indicators for downloads
+          BUILDKIT_PROGRESS: plain
