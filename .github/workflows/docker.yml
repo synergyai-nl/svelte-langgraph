@@ -26,7 +26,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: "{context}/apps/frontend/Dockerfile"
+          file: "{{defaultContext}}/apps/frontend/Dockerfile"
           push: true
           tags: ghcr.io/synergyai-nl/svelte-langgraph-frontend:latest
           cache-from: type=gha
