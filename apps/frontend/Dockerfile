@@ -67,5 +67,5 @@ COPY --from=build /app/apps/frontend/node_modules /app/apps/frontend/node_module
 # App
 COPY --from=build /app/apps/frontend/build /app/apps/frontend/build
 
-CMD node /app/apps/frontend/build
+CMD ["node", "/app/apps/frontend/build"]
 
