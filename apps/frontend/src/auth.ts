@@ -11,7 +11,13 @@ declare module '@auth/sveltekit' {
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [Descope],
+	providers: [
+		Descope({
+			clientId: env.AUTH_DESCOPE_ID,
+			clientSecret: env.AUTH_DESCOPE_SECRET,
+			...(env.AUTH_DESCOPE_ISSUER ? { issuer: env.AUTH_DESCOPE_ISSUER } : {})
+		})
+	],
 	trustHost: true,
 	callbacks: {
 		session: async ({ session, token }) => {
