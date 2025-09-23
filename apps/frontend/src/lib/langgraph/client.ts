@@ -11,11 +11,9 @@ export function createLangGraphClient(accessToken: string): Client {
 }
 
 export async function createThread(
-	accessToken: string,
+	client: Client,
 	graphId: string = 'chat'
 ): Promise<{ threadId: string; assistantId: string }> {
-	const client = createLangGraphClient(accessToken);
-
 	const thread = await client.threads.create();
 	const assistant = await client.assistants.create({ graphId });
 

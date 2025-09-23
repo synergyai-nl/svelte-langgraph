@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { createThread } from '$lib/langgraph/client';
+import { createThread, createLangGraphClient } from '$lib/langgraph/client';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const session = await locals.auth();
@@ -14,7 +14,8 @@ export const load: PageServerLoad = async ({ locals }) => {
 		// Pre-creates a LangGraph thread and assistant on page load to improve perceived performance.
 		// This is a tradeoff: it enables instant chat start, but creates a thread even if the user doesn't chat.
 		// Revisit if lazy-init becomes more appropriate.
-		const langgraph = await createThread(session.accessToken);
+		const client = createLangGraphClient(session.accessToken);
+		const langgraph = await createThread(client);
 
 		return {
 			session,
