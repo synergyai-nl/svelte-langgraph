@@ -5,6 +5,7 @@
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions from './ChatSuggestions.svelte';
 	import type { Message, ToolMessageType, ChatSuggestion } from '$lib/types/messageTypes';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
 		langGraphClient: Client;
@@ -61,7 +62,7 @@
 				if (chunk.type === 'tool') {
 					const toolMsg: ToolMessageType = {
 						type: 'tool',
-						text: "I'm using tools...",
+						text: m.tools_using(),
 						tool_name: chunk.tool_name,
 						payload: chunk.tool_payload,
 						collapsed: true,

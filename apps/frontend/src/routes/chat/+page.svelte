@@ -7,6 +7,7 @@
 	import type { ChatSuggestion } from '$lib/types/messageTypes';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import { createLangGraphClient } from '$lib/langgraph/client';
+	import * as m from '$lib/paraglide/messages.js';
 
 	let show_login_dialog = $state(false);
 	let client: Client | null = $state(null);
@@ -23,24 +24,24 @@
 
 	const suggestions: ChatSuggestion[] = [
 		{
-			title: 'Creative Brainstorming',
-			description: 'Generate ideas for projects, writing, or problem-solving',
-			suggestedText: 'Help me brainstorm ideas for a creative project'
+			title: m.chat_suggestion_0_title(),
+			description: m.chat_suggestion_0_description(),
+			suggestedText: m.chat_suggestion_0_text()
 		},
 		{
-			title: 'Writing Assistance',
-			description: 'Draft, edit, or improve emails, documents, and more',
-			suggestedText: 'Help me write and improve some text'
+			title: m.chat_suggestion_1_title(),
+			description: m.chat_suggestion_1_description(),
+			suggestedText: m.chat_suggestion_1_text()
 		},
 		{
-			title: 'Learn Something New',
-			description: "Get clear explanations on topics you're curious about",
-			suggestedText: 'Explain a complex topic in simple terms'
+			title: m.chat_suggestion_2_title(),
+			description: m.chat_suggestion_2_description(),
+			suggestedText: m.chat_suggestion_2_text()
 		},
 		{
-			title: 'Problem Solving',
-			description: 'Break down challenges and find solutions together',
-			suggestedText: 'Help me analyze and solve a problem'
+			title: m.chat_suggestion_3_title(),
+			description: m.chat_suggestion_3_description(),
+			suggestedText: m.chat_suggestion_3_text()
 		}
 	];
 
@@ -48,9 +49,9 @@
 		const userName = page.data.session?.user?.name;
 
 		if (userName) {
-			return `Hey ${userName}, how can I help you today?`;
+			return m.chat_greeting_hello({ name: userName });
 		} else {
-			return 'How can I help you today?';
+			return m.chat_greeting_anonymous();
 		}
 	});
 </script>
@@ -63,7 +64,7 @@
 		assistantId={page.data.langgraph.assistantId}
 		threadId={page.data.langgraph.threadId}
 		introTitle={greeting}
-		intro="I'm here to assist with your questions, provide information, help with tasks, or engage in conversation."
+		intro={m.chat_intro()}
 		{suggestions}
 	/>
 {/if}
