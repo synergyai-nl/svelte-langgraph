@@ -50,6 +50,13 @@ RUN moon docker prune
 
 FROM node:24-alpine AS start
 
+# Install tzdata and set specific timezone
+RUN apk add --no-cache tzdata \
+	&& cp /usr/share/zoneinfo/UTC /etc/localtime \
+	&& echo "UTC" > /etc/timezone \
+	&& apk del tzdata
+ENV TZ=UTC
+
 # Copy built sources
 COPY --from=build /root/.proto /root/.proto
 
