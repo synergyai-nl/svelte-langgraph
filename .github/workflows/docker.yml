@@ -24,3 +24,5 @@ jobs:
           file: apps/frontend/Dockerfile
           push: true
           tags: ghcr.io/synergyai-nl/svelte-langgraph-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
