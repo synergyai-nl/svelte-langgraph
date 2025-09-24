@@ -11,6 +11,7 @@ declare module '@auth/sveltekit' {
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
+	debug: true,
 	providers: [
 		Descope({
 			clientId: env.AUTH_DESCOPE_ID,
