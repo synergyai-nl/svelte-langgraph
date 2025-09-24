@@ -12,6 +12,7 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 
 	Sentry.init({
 		dsn,
+		debug: true,
 		tracesSampleRate: 1.0,
 		/**
 		 * sendDefaultPii allows capturing user info (IP, browser data, etc).
@@ -22,7 +23,12 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 			env.PUBLIC_SENTRY_SEND_PII === 'true' || (env.PUBLIC_SENTRY_SEND_PII === undefined && dev),
 		enableLogs: true,
 		...(server
-			? {}
+			? {
+					integrations: [
+						// send console.log, console.warn, and console.error calls as logs to Sentry
+						Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error', 'info'] })
+					]
+				}
 			: {
 					replaysSessionSampleRate: 0.1,
 					replaysOnErrorSampleRate: 1.0,
@@ -33,7 +39,9 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 							submitButtonLabel: 'Send Feedback',
 							formTitle: 'Send Feedback',
 							colorScheme: 'system'
-						})
+						}),
+						// send console.log, console.warn, and console.error calls as logs to Sentry
+						Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error', 'info'] })
 					]
 				})
 	});
