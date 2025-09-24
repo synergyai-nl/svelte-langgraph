@@ -1,4 +1,4 @@
-import { Client } from '@langchain/langgraph-sdk';
+import type { Client } from '@langchain/langgraph-sdk';
 import type { MessageContentComplex } from '@langchain/core/messages';
 
 export async function* streamAnswer(
