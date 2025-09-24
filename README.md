@@ -33,7 +33,8 @@ cp .env.example .env
 Configure the following variables in `apps/backend/.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
-- `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude integration
+- `OPENROUTER_API_KEY` - Your OpenRouter API key for AI model access
+- `MODEL_NAME` - OpenRouter model to use (defaults to `x-ai/grok-4-fast:free`)
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
 
@@ -90,7 +91,7 @@ moon check --all
 ### Backend Development
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
-- LangChain with Anthropic integration
+- LangChain with OpenRouter integration
 - Descope for authentication
 - Python-dotenv for environment management
 

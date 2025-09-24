@@ -1,5 +1,6 @@
 #!/usr/bin/env uv run python
 import asyncio
+import os
 from typing import Sequence
 
 from dotenv import load_dotenv
@@ -40,7 +41,14 @@ def get_weather(city: str) -> str:
 
 
 def get_model() -> BaseChatModel:
-    model = init_chat_model("claude-3-5-haiku-latest", temperature=0.9)
+    model_name = os.getenv("MODEL_NAME", "x-ai/grok-4-fast:free")
+    model = init_chat_model(
+        model_name,
+        model_provider="openai",
+        temperature=0.9,
+        openai_api_base="https://openrouter.ai/api/v1",
+        openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+    )
     return model
 
 
