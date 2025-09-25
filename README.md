@@ -33,8 +33,9 @@ cp .env.example .env
 Configure the following variables in `apps/backend/.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
-- `OPENROUTER_API_KEY` - Your OpenRouter API key for AI model access
-- `MODEL_NAME` - OpenRouter model to use (defaults to `x-ai/grok-4-fast:free`)
+- `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenRouter, OpenAI)
+- `OPENAI_API_BASE` - OpenAI-compatible API base URL (defaults to OpenRouter)
+- `MODEL_NAME` - OpenAI-compatible model to use (defaults to `x-ai/grok-4-fast:free`)
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
 
@@ -91,7 +92,7 @@ moon check --all
 ### Backend Development
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
-- LangChain with OpenRouter integration
+- LangChain with OpenAI-compatible integration (OpenRouter, OpenAI, etc.)
 - Descope for authentication
 - Python-dotenv for environment management
 
