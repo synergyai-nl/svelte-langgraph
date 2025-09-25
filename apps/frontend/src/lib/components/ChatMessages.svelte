@@ -6,9 +6,10 @@
 
 	interface Props {
 		messages: Array<Message>;
+		isStreaming?: boolean;
 	}
 
-	let { messages }: Props = $props();
+	let { messages, isStreaming = false }: Props = $props();
 
 	function scrollToMe(message: BaseMessage): Attachment {
 		return (element) => {
@@ -27,7 +28,7 @@
 					{#if message.type === 'tool'}
 						<ToolMessage message={message as ToolMessageType} />
 					{:else}
-						<ChatMessage message={message as BaseMessage} />
+						<ChatMessage message={message as BaseMessage} {isStreaming} />
 					{/if}
 				</div>
 			{/each}

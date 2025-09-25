@@ -8,11 +8,12 @@
 
 	interface Props {
 		message: BaseMessage;
+		isStreaming?: boolean;
 	}
 
-	let { message }: Props = $props();
+	let { message, isStreaming = false }: Props = $props();
 
-	let isWaiting = $derived(message.type === 'ai' && !message.text);
+	let isWaiting = $derived(message.type === 'ai' && !message.text && isStreaming);
 	const plugins = [gfmPlugin()];
 </script>
 
