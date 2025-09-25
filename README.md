@@ -34,10 +34,49 @@ Configure the following variables in `apps/backend/.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenRouter, OpenAI)
-- `OPENAI_API_BASE` - OpenAI-compatible API base URL (defaults to OpenRouter)
+- `OPENAI_BASE_URL` - OpenAI-compatible API base URL (defaults to OpenRouter)
 - `MODEL_NAME` - OpenAI-compatible model to use (defaults to `x-ai/grok-4-fast:free`)
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
+
+### AI Provider Configuration
+
+This application supports multiple OpenAI-compatible providers. Configure your preferred provider using the environment variables above.
+
+#### Using OpenRouter (Default)
+OpenRouter provides access to multiple AI models including free options:
+
+```bash
+# .env
+OPENAI_API_KEY=your_openrouter_api_key
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+MODEL_NAME=x-ai/grok-4-fast:free  # Free Grok model
+```
+
+Popular OpenRouter models:
+- `x-ai/grok-4-fast:free` - Free Grok model (default)
+- `meta-llama/llama-3.2-3b-instruct:free` - Free Llama model
+- `anthropic/claude-3.5-sonnet` - Claude 3.5 Sonnet (paid)
+
+#### Using OpenAI
+To use OpenAI directly:
+
+```bash
+# .env
+OPENAI_API_KEY=your_openai_api_key
+# OPENAI_BASE_URL not needed for OpenAI (uses default)
+MODEL_NAME=gpt-4o-mini
+```
+
+#### Using Other Providers
+Any OpenAI-compatible provider can be used by setting the appropriate `OPENAI_BASE_URL`:
+
+```bash
+# .env
+OPENAI_API_KEY=your_provider_api_key
+OPENAI_BASE_URL=https://your-provider.com/v1
+MODEL_NAME=your-model-name
+```
 
 ### Frontend Environment Variables
 

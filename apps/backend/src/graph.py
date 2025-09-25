@@ -46,8 +46,7 @@ def get_model() -> BaseChatModel:
         model_name,
         model_provider="openai",
         temperature=0.9,
-        base_url=os.getenv("OPENAI_API_BASE", "https://openrouter.ai/api/v1"),
-        api_key=os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
     )
     return model
 
