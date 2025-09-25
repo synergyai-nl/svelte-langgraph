@@ -46,16 +46,16 @@
 		"typescript": "^5.0.0",
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.2.6",
-		"vitest": "^3.0.0"
-	},
-	"dependencies": {
+		"vitest": "^3.0.0",
 		"@auth/sveltekit": "^1.9.2",
 		"@inlang/paraglide-js": "^2.0.0",
 		"@langchain/core": "^0.3.57",
 		"@langchain/langgraph-sdk": "^0.0.103",
-		"@sentry/sveltekit": "^10.0.0",
 		"flowbite-svelte-blocks": "^2.0.0",
 		"svelte-exmarkdown": "^5.0.1"
+	},
+	"dependencies": {
+		"@sentry/sveltekit": "^10.0.0"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
