@@ -112,6 +112,6 @@
 		onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
 	/>
 {:else}
-	<ChatMessages {messages} />
+	<ChatMessages {messages} isStreaming={is_streaming} />
 {/if}
 <ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />

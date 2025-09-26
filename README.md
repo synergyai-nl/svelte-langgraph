@@ -151,11 +151,23 @@ The frontend is built with modern web technologies:
 
 ## Production
 
-To run a production build of the project (both frontend and backend components):
-
-```bash
-moon :build
+To run a Docker build of the project, use Docker Compose:
+```
+docker compose build
 ```
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+To run it:
+```
+docker compose up [--build]
+```
 
+For now, we will not be running the backend in Docker, so to test with the dev backend, it's required to make it available to the Docker container and inform the Docker container of your IP:
+
+```
+moon backend:dev -- --host 0.0.0.0
+```
+
+And in a different terminal:
+```
+PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2024 docker compose up --build
+```
