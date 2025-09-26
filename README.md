@@ -33,9 +33,9 @@ cp .env.example .env
 Configure the following variables in `apps/backend/.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
-- `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenRouter, OpenAI)
-- `OPENAI_BASE_URL` - OpenAI-compatible API base URL (defaults to OpenRouter)
-- `MODEL_NAME` - OpenAI-compatible model to use (defaults to `x-ai/grok-4-fast:free`)
+- `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
+- `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
+- `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
 
@@ -43,39 +43,44 @@ Configure the following variables in `apps/backend/.env`:
 
 This application supports multiple OpenAI-compatible providers. Configure your preferred provider using the environment variables above.
 
-#### Using OpenRouter (Default)
+#### Using OpenAI (Default)
+To use OpenAI directly (no additional configuration needed):
+
+```bash
+# .env
+OPENAI_API_KEY=your_openai_api_key
+# OPENAI_BASE_URL not needed for OpenAI (uses default)
+CHAT_MODEL_NAME=gpt-4o-mini  # Default OpenAI model
+```
+
+Popular OpenAI models:
+- `gpt-4o-mini` - Fast, cost-effective model (default)
+- `gpt-4o` - Most capable model
+- `gpt-3.5-turbo` - Legacy model
+
+#### Using OpenRouter
 OpenRouter provides access to multiple AI models including free options:
 
 ```bash
 # .env
 OPENAI_API_KEY=your_openrouter_api_key
 OPENAI_BASE_URL=https://openrouter.ai/api/v1
-MODEL_NAME=x-ai/grok-4-fast:free  # Free Grok model
+CHAT_MODEL_NAME=x-ai/grok-4-fast:free  # Free Grok model
 ```
 
 Popular OpenRouter models:
-- `x-ai/grok-4-fast:free` - Free Grok model (default)
+- `x-ai/grok-4-fast:free` - Free Grok model
 - `meta-llama/llama-3.2-3b-instruct:free` - Free Llama model
 - `anthropic/claude-3.5-sonnet` - Claude 3.5 Sonnet (paid)
 
-#### Using OpenAI
-To use OpenAI directly:
+#### Using Ollama
+For local AI models using Ollama:
 
 ```bash
 # .env
-OPENAI_API_KEY=your_openai_api_key
-# OPENAI_BASE_URL not needed for OpenAI (uses default)
-MODEL_NAME=gpt-4o-mini
-```
-
-#### Using Other Providers
-Any OpenAI-compatible provider can be used by setting the appropriate `OPENAI_BASE_URL`:
-
-```bash
-# .env
-OPENAI_API_KEY=your_provider_api_key
-OPENAI_BASE_URL=https://your-provider.com/v1
-MODEL_NAME=your-model-name
+OPENAI_API_KEY=ollama  # Can be any value for local usage
+OPENAI_BASE_URL=http://localhost:11434/v1
+CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 ```
 
 ### Frontend Environment Variables

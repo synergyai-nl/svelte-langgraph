@@ -41,12 +41,11 @@ def get_weather(city: str) -> str:
 
 
 def get_model() -> BaseChatModel:
-    model_name = os.getenv("MODEL_NAME", "x-ai/grok-4-fast:free")
+    model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     model = init_chat_model(
         model_name,
         model_provider="openai",
         temperature=0.9,
-        base_url=os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1"),
     )
     return model
 
