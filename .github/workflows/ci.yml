@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  ci:
-    name: "CI"
+  ci-job:
+    name: "CI Job"
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
@@ -31,6 +31,14 @@ jobs:
           matrix: ${{ toJSON(matrix) }}
       - uses: appthrust/moon-ci-retrospect@v1
         if: success() || failure()
+
+  ci:
+    name: "CI"
+    runs-on: ubuntu-latest
+    needs: [ci-job]
+    if: always()
+    steps:
+      - run: ${{!contains(needs.*.result, 'failure')}}
 
   build:
     name: "Docker Build"
