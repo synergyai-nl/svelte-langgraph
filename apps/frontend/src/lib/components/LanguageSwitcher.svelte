@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { locale, availableLocales } from '$lib/stores/locale';
-	import { setLocale, type Locale } from '$lib/paraglide/runtime.js';
+	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
 	import { Button, Dropdown, DropdownItem } from 'flowbite-svelte';
 	import { GlobeOutline } from 'flowbite-svelte-icons';
 
@@ -8,7 +7,7 @@
 
 	const localeNames: Record<string, string> = {
 		en: 'English',
-		nl: 'Nederlands',
+		nl: 'Dutch',
 		hi: 'हिन्दी'
 	};
 
@@ -26,13 +25,13 @@
 	<GlobeOutline />
 </Button>
 <Dropdown simple>
-	{#each availableLocales as localeCode (localeCode)}
+	{#each locales as localeCode (localeCode)}
 		<DropdownItem onclick={() => switchLanguage(localeCode)}>
 			<span
 				class="flex w-full items-center justify-between text-sm font-medium text-gray-900 dark:text-white"
 			>
 				{localeNames[localeCode as Locale] || localeCode}
-				{#if $locale === localeCode}
+				{#if getLocale() === localeCode}
 					<span class=" ml-2">✓</span>
 				{/if}
 			</span>
