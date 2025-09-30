@@ -72,11 +72,6 @@
 
 				<DropdownDivider />
 
-				<div class="px-4 py-3">
-					<LanguageSwitcher />
-				</div>
-
-				<DropdownDivider />
 				<SignOut>
 					<DropdownItem
 						slot="submitButton"
@@ -91,7 +86,7 @@
 				<Button slot="submitButton" size="sm">{m.auth_sign_in()}</Button>
 			</SignIn>
 		{/if}
-
+		<LanguageSwitcher class="ml-3 p-2" />
 		<DarkMode class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>

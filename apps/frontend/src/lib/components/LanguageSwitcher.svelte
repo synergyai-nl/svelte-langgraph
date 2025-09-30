@@ -2,15 +2,15 @@
 	import { locale, availableLocales } from '$lib/stores/locale';
 	import { setLocale, type Locale } from '$lib/paraglide/runtime.js';
 	import { Button, Dropdown, DropdownItem } from 'flowbite-svelte';
-	import { ChevronDownOutline } from 'flowbite-svelte-icons';
+	import { GlobeOutline } from 'flowbite-svelte-icons';
+
+	let { class: className = '' } = $props();
 
 	const localeNames: Record<string, string> = {
 		en: 'English',
 		nl: 'Dutch',
 		hi: 'हिन्दी'
 	};
-
-	let currentLocale = $derived($locale);
 
 	async function switchLanguage(newLocale: Locale) {
 		try {
@@ -22,11 +22,10 @@
 	}
 </script>
 
-<Button>
-	{localeNames[currentLocale] || currentLocale}
-	<ChevronDownOutline class="ms-2 h-6 w-6 text-white dark:text-white" />
+<Button class={className} color="light" outline={false}>
+	<GlobeOutline />
 </Button>
-<Dropdown>
+<Dropdown simple>
 	{#each availableLocales as localeCode (localeCode)}
 		<DropdownItem onclick={() => switchLanguage(localeCode)}>
 			<span
