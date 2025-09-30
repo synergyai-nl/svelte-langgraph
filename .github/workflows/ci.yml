@@ -94,8 +94,10 @@ jobs:
         run: |
           curl -L https://github.com/nexaa-cloud/nexaa-cli/releases/download/v1.0.37/nexaa-v1.0.37-linux-amd64.tar.gz | tar xz
           chmod +x nexaa-v1.0.37-linux-amd64/nexaa-cli
-          nexaa-v1.0.37-linux-amd64/nexaa-cli login --username admin@synergyai.nl --password ${{ secrets.TILAA_PASSWORD }}
+          nexaa-v1.0.37-linux-amd64/nexaa-cli login --username admin@synergyai.nl
           nexaa-v1.0.37-linux-amd64/nexaa-cli container modify \
             --namespace svelte-langgraph \
             --name frontend \
             --image ${{ needs.build.outputs.image_version }}
+        env:
+          NEXAA_PASSWORD: ${{ secrets.TILAA_PASSWORD }}
