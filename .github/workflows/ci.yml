@@ -44,7 +44,7 @@ jobs:
     name: "Docker Build"
     runs-on: ubuntu-latest
     outputs:
-      image_version: ${{ steps.meta.output.version }}
+      image_version: ${{ steps.meta.outputs.version }}
     steps:
       - name: "Checkout repo"
         uses: actions/checkout@v5
