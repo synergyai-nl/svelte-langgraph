@@ -6,7 +6,7 @@
 
 	const localeNames: Record<string, string> = {
 		en: 'English',
-		nl: 'Dutch',
+		nl: 'Nederlands',
 		hi: 'हिन्दी'
 	};
 
