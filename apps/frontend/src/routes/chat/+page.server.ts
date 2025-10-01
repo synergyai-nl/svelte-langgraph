@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	} catch (err) {
 		console.error('Failed to initialize chat:', err);
-		error(500, {
+		error(400, {
 			message: 'Failed to initialize chat'
 		});
 	}
