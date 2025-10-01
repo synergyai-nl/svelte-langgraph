@@ -5,13 +5,11 @@ export async function* streamAnswer(
 	client: Client,
 	threadId: string,
 	assistantId: string,
-	input: string | undefined,
+	input: string,
 	messageId?: string
 ) {
 	const input_messages = [];
 
-	if (input_messages.length === 0)
-		input_messages.push({ role: 'ai', content: 'How may I help you?' });
 	console.debug(input_messages);
 	input_messages.push({ role: 'user', content: input, ...(messageId ? { id: messageId } : {}) });
 
