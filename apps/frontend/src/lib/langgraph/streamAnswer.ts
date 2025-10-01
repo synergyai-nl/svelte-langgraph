@@ -6,12 +6,12 @@ export async function* streamAnswer(
 	threadId: string,
 	assistantId: string,
 	input: string,
-	messageId?: string
+	messageId: string
 ) {
 	const input_messages = [];
 
 	console.debug(input_messages);
-	input_messages.push({ role: 'user', content: input, ...(messageId ? { id: messageId } : {}) });
+	input_messages.push({ role: 'user', content: input, id: messageId });
 
 	const streamResponse = client.runs.stream(threadId, assistantId, {
 		input: {
