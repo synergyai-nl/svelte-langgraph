@@ -72,7 +72,12 @@
 
 				<DropdownDivider />
 
-				<SignOut>
+				<SignOut
+					options={{
+						redirectTo: '/',
+						redirect: true
+					}}
+				>
 					<DropdownItem
 						slot="submitButton"
 						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
