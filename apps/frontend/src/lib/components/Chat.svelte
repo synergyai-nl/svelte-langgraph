@@ -43,7 +43,7 @@
 			// New message
 			messages.push(chunk);
 		} else {
-			// Update existingg message
+			// Update existing message
 			const existing = messages[messageIndex];
 			if (chunk.text) {
 				existing.text += chunk.text;
