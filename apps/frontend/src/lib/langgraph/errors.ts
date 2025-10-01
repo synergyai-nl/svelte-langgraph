@@ -17,12 +17,12 @@ export class InvalidData extends LangGraphError {
 	}
 }
 
-export class StreamErorr extends LangGraphError {
+export class StreamError extends LangGraphError {
 	err_event: ErrorStreamEvent;
 
 	constructor(message: string, err_event: ErrorStreamEvent) {
 		super(message);
 		this.err_event = err_event;
-		Object.setPrototypeOf(this, StreamErorr.prototype);
+		Object.setPrototypeOf(this, StreamError.prototype);
 	}
 }

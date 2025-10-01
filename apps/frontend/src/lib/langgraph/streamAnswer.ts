@@ -1,7 +1,7 @@
 import type { Message } from '$lib/langgraph/types';
 import type { Client, HumanMessage } from '@langchain/langgraph-sdk';
 import { YieldMessages } from './utils';
-import { InvalidData, StreamErorr } from './errors';
+import { InvalidData, StreamError } from './errors';
 
 export async function* streamAnswer(
 	client: Client,
@@ -36,7 +36,7 @@ export async function* streamAnswer(
 				break;
 			}
 			case 'error':
-				throw new StreamErorr('Error in LangGraph stream.', chunk);
+				throw new StreamError('Error in LangGraph stream.', chunk);
 		}
 	}
 }
