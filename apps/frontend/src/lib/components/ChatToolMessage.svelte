@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ToolMessage } from '$lib/types/messageTypes';
+	import type { ToolMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 
 	import {

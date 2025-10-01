@@ -1,8 +1,17 @@
-import type { Message } from '$lib/types/messageTypes';
-import type { Message as LangGraphMessage } from '@langchain/langgraph-sdk';
+import type {
+	Message as LangGraphMessage,
+	AIMessage as LangGraphAIMessage,
+	ToolMessage as LangGraphToolMessage
+} from '@langchain/langgraph-sdk';
 
 import { InvalidData } from './errors';
-import type { FixedMessage } from './types';
+import type { Message } from './types';
+
+interface FixedAIMessage extends Omit<LangGraphAIMessage, 'type'> {
+	type: 'AIMessageChunk';
+}
+
+type FixedMessage = FixedAIMessage | LangGraphToolMessage;
 
 export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, unknown> {
 	const fixed = m as FixedMessage;

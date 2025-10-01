@@ -4,8 +4,8 @@
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
-	import ChatSuggestions from './ChatSuggestions.svelte';
-	import type { Message, ChatSuggestion, UserMessage } from '$lib/types/messageTypes';
+	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
+	import type { Message, UserMessage } from '$lib/langgraph/types';
 	import ChatError from './ChatError.svelte';
 
 	interface Props {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Card } from 'flowbite-svelte';
 	import { UserOutline } from 'flowbite-svelte-icons';
-	import type { BaseMessage } from '$lib/types/messageTypes';
+	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 

@@ -4,7 +4,6 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import type { ChatSuggestion } from '$lib/types/messageTypes';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import { createLangGraphClient } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
@@ -22,7 +21,7 @@
 		if (!page.data.session) show_login_dialog = true;
 	});
 
-	const suggestions: ChatSuggestion[] = [
+	const suggestions = [
 		{
 			title: m.chat_suggestion_0_title(),
 			description: m.chat_suggestion_0_description(),

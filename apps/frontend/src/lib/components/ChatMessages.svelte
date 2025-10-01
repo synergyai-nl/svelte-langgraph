@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
-	import type { Message, BaseMessage } from '$lib/types/messageTypes';
+	import type { Message, BaseMessage } from '$lib/langgraph/types';
 	import ChatWaiting from './ChatWaiting.svelte';
 	import type { Attachment } from 'svelte/attachments';
 

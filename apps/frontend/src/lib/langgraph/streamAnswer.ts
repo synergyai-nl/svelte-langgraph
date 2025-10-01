@@ -1,4 +1,4 @@
-import type { Message } from '$lib/types/messageTypes';
+import type { Message } from '$lib/langgraph/types';
 import type { Client, HumanMessage } from '@langchain/langgraph-sdk';
 import { YieldMessages } from './utils';
 import { InvalidData, StreamErorr } from './errors';
