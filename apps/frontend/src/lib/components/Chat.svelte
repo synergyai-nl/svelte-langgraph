@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Client } from '@langchain/langgraph-sdk';
-	import { streamAnswer } from '../utils/streamAnswer.js';
+	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions from './ChatSuggestions.svelte';
