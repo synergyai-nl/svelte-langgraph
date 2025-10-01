@@ -1,20 +1,21 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
-	import ToolMessage from './ToolMessage.svelte';
-	import type { Message, BaseMessage, ToolMessageType } from '$lib/types/messageTypes';
+	import ChatToolMessage from './ChatToolMessage.svelte';
+	import type { Message, BaseMessage } from '$lib/types/messageTypes';
+	import ChatWaiting from './ChatWaiting.svelte';
 	import type { Attachment } from 'svelte/attachments';
 
 	interface Props {
 		messages: Array<Message>;
-		isStreaming?: boolean;
+		finalAnswerStarted: boolean;
 	}
 
-	let { messages, isStreaming = false }: Props = $props();
+	let { messages, finalAnswerStarted }: Props = $props();
 
 	function scrollToMe(message: BaseMessage): Attachment {
 		return (element) => {
 			if (message.text) {
-				element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+				element.scrollIntoView({ behavior: 'smooth', block: 'end' });
 			}
 		};
 	}
@@ -26,12 +27,15 @@
 			{#each messages as message (message.id)}
 				<div {@attach scrollToMe(message)}>
 					{#if message.type === 'tool'}
-						<ToolMessage message={message as ToolMessageType} />
-					{:else}
-						<ChatMessage message={message as BaseMessage} {isStreaming} />
+						<ChatToolMessage {message} />
+					{:else if message.text}
+						<ChatMessage {message} />
 					{/if}
 				</div>
 			{/each}
+			{#if !finalAnswerStarted}
+				<ChatWaiting />
+			{/if}
 		</div>
 	</div>
 </div>

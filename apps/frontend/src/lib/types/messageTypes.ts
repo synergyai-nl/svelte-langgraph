@@ -1,19 +1,25 @@
 export interface BaseMessage {
-	type: 'ai' | 'user' | 'tool';
+	type: string;
 	text: string;
 	id: string;
 }
 
-export interface ToolMessage {
-	text: string;
-	tool_name: string;
-	payload?: Record<string, unknown>;
-	collapsed?: boolean;
+export interface AIMessage extends BaseMessage {
+	type: 'ai';
 }
 
-export interface ToolMessageType extends BaseMessage, ToolMessage {}
+export interface UserMessage extends BaseMessage {
+	type: 'user';
+}
 
-export type Message = BaseMessage | ToolMessageType;
+export interface ToolMessage extends BaseMessage {
+	type: 'tool';
+	tool_name: string;
+	payload?: Record<string, unknown>;
+	status?: 'success' | 'error';
+}
+
+export type Message = AIMessage | UserMessage | ToolMessage;
 
 export interface ChatSuggestion {
 	title: string;

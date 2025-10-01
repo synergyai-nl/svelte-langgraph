@@ -6,7 +6,8 @@ export function createLangGraphClient(accessToken: string): Client {
 		defaultHeaders: {
 			Authorization: `Bearer ${accessToken}`
 		},
-		apiUrl: env.PUBLIC_LANGGRAPH_API_URL
+		apiUrl: env.PUBLIC_LANGGRAPH_API_URL,
+		timeoutMs: 2000
 	});
 }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env uv run python
 import asyncio
 import os
+import random
 from typing import Sequence
 
 from dotenv import load_dotenv
@@ -35,8 +36,10 @@ def get_checkpointer() -> Checkpointer:
     return checkpointer
 
 
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get weather for a given city."""
+    await asyncio.sleep(random.randint(1, 10))
+
     return f"It's always sunny in {city}!"
 
 

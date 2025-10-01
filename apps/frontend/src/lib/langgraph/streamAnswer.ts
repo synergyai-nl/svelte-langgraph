@@ -1,5 +1,7 @@
-import type { Client } from '@langchain/langgraph-sdk';
-import type { MessageContentComplex } from '@langchain/core/messages';
+import type { Message } from '$lib/types/messageTypes';
+import type { Client, HumanMessage } from '@langchain/langgraph-sdk';
+import { YieldMessages } from './utils';
+import { InvalidData, StreamErorr } from './errors';
 
 export async function* streamAnswer(
 	client: Client,
@@ -7,15 +9,14 @@ export async function* streamAnswer(
 	assistantId: string,
 	input: string,
 	messageId: string
-) {
-	const input_messages = [];
+): AsyncGenerator<Message, void, unknown> {
+	const input_message: HumanMessage = { type: 'human', content: input, id: messageId };
 
-	console.debug(input_messages);
-	input_messages.push({ role: 'user', content: input, id: messageId });
+	console.debug('User input:', input_message);
 
 	const streamResponse = client.runs.stream(threadId, assistantId, {
 		input: {
-			messages: input_messages
+			messages: [input_message]
 		},
 		streamMode: 'messages-tuple'
 	});
@@ -26,41 +27,16 @@ export async function* streamAnswer(
 		switch (chunk.event) {
 			case 'messages': {
 				if (!chunk.data || !chunk.data[0]) {
-					console.error('Invalid chunk data:', chunk);
-					continue;
+					console.error('Invalid chunk data.', chunk);
+					throw new InvalidData('Invalid chunk data.', chunk);
 				}
 
-				const message = chunk.data[0];
-				const messageId = message.id;
-				const content = message.content as MessageContentComplex[];
-
-				if (content) {
-					for (const fragment of content) {
-						switch (fragment.type) {
-							case 'text':
-								yield { type: 'text', text: fragment.text, messageId };
-								break;
-							case 'tool_use':
-								yield {
-									type: 'tool',
-									tool_name: fragment.name,
-									tool_payload: fragment.input,
-									messageId
-								};
-								break;
-							case 'input_json_delta':
-								break;
-							default:
-								console.log('Unexpected fragment type:', fragment.type);
-						}
-					}
-				}
+				for (const message of YieldMessages(chunk.data[0])) yield message;
 
 				break;
 			}
 			case 'error':
-				console.error('Error:', chunk.data);
-				break;
+				throw new StreamErorr('Error in LangGraph stream.', chunk);
 		}
 	}
 }
