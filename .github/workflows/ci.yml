@@ -100,4 +100,4 @@ jobs:
             --name frontend \
             --image ${{ needs.build.outputs.image_version }}
         env:
-          NEXAA_PASSWORD: ${{ secrets.TILAA_PASSWORD }}
+          TILAA_PASSWORD: ${{ secrets.TILAA_PASSWORD }}
