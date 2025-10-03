@@ -7,6 +7,9 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+env:
+  DOCKER_IMAGE_NAME: ghcr.io/synergyai-nl/svelte-langgraph-frontend
+
 jobs:
   ci-job:
     name: "CI Job"
@@ -32,14 +35,6 @@ jobs:
       - uses: appthrust/moon-ci-retrospect@v1
         if: success() || failure()
 
-  ci:
-    name: "CI"
-    runs-on: ubuntu-latest
-    needs: [ci-job]
-    if: always()
-    steps:
-      - run: ${{!contains(needs.*.result, 'failure')}}
-
   build:
     name: "Docker Build"
     runs-on: ubuntu-latest
@@ -62,7 +57,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/synergyai-nl/svelte-langgraph-frontend
+          images: ${{ env.DOCKER_IMAGE_NAME }}
           tags: type=raw,value=build-${{ github.run_number }}-{{sha}}
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -77,6 +72,14 @@ jobs:
         env:
           # No progress indicators for downloads
           BUILDKIT_PROGRESS: plain
+
+  ci:
+    name: "CI"
+    runs-on: ubuntu-latest
+    needs: [ci-job, build]
+    if: always()
+    steps:
+      - run: ${{!contains(needs.*.result, 'failure')}}
 
   deploy:
     name: "Deploy"
@@ -98,6 +101,6 @@ jobs:
           nexaa-v1.0.37-linux-amd64/nexaa-cli container modify \
             --namespace svelte-langgraph \
             --name frontend \
-            --image ${{ needs.build.outputs.image_version }}
+            --image ${{ env.DOCKER_IMAGE_NAME }}:${{ needs.build.outputs.image_version }}
         env:
           TILAA_PASSWORD: ${{ secrets.TILAA_PASSWORD }}
