@@ -21,7 +21,7 @@ tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
   start:
-    command: node build
+    command: node --env-file=.env build
     deps:
       - build
     local: true
