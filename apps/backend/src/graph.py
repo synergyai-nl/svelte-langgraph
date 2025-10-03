@@ -1,5 +1,7 @@
 #!/usr/bin/env uv run python
 import asyncio
+import os
+import random
 from typing import Sequence
 
 from dotenv import load_dotenv
@@ -34,13 +36,20 @@ def get_checkpointer() -> Checkpointer:
     return checkpointer
 
 
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get weather for a given city."""
+    await asyncio.sleep(random.randint(1, 10))
+
     return f"It's always sunny in {city}!"
 
 
 def get_model() -> BaseChatModel:
-    model = init_chat_model("claude-3-5-haiku-latest", temperature=0.9)
+    model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    model = init_chat_model(
+        model_name,
+        model_provider="openai",
+        temperature=0.9,
+    )
     return model
 
 

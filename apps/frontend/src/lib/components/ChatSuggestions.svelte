@@ -1,6 +1,11 @@
 <script lang="ts">
 	import SuggestionCard from './SuggestionCard.svelte';
-	import type { ChatSuggestion } from '$lib/types/messageTypes';
+
+	export interface ChatSuggestion {
+		title: string;
+		description: string;
+		suggestedText: string;
+	}
 
 	interface Props {
 		suggestions: ChatSuggestion[];
