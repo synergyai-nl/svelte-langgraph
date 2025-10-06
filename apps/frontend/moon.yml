@@ -7,8 +7,6 @@ type: application
 fileGroups:
   sources:
     - 'src/**/*'
-    # Translations
-    - 'messages/*.json'
     # Configs
     - '**/*.config.*'
     # Other files
@@ -16,6 +14,9 @@ fileGroups:
   tests:
     - 'tests/**/*'
     - 'e2e/**/*'
+  messages:
+    - 'project.inlang'
+    - 'messages'
 
 tags: ['vite', 'vitest', 'sveltekit']
 
@@ -29,6 +30,9 @@ tasks:
       envFile: true
 
   build:
+    inputs:
+      - '@group(sources)'
+      - '@group(messages)'
     outputs:
       - 'build'
       - 'src/lib/paraglide'
@@ -40,6 +44,7 @@ tasks:
   lint:
     command: eslint .
     inputs:
+      - '@group(messages)'
       - '@group(sources)'
       - '@group(tests)'
       # Root configs, any format
@@ -53,8 +58,9 @@ tasks:
     local: true
 
   format:
-    command: prettier .
+    command: prettier
     inputs:
+      - '@group(messages)'
       - '@group(sources)'
       - '@group(tests)'
       - '.prettierignore'
@@ -63,22 +69,18 @@ tasks:
       # - '/.prettierignore'
       # - '/.prettierrc'
     args:
+      - '.'
       - '--check'
 
   format-write:
-    command: prettier .
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-      - '.prettierignore'
-      - '.prettierrc'
-      # Root configs, any format
-      # - '/.prettierignore'
-      # - '/.prettierrc'
+    extends: format
     args:
+      - '.'
       - '--cache'
       - '--write'
     local: true
+    options:
+      mergeArgs: 'replace'
 
   install-playwright:
     command: npx playwright install chromium --with-deps
