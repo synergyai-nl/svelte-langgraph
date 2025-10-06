@@ -35,6 +35,11 @@ export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, un
 			for (const tool_call of fixed.tool_calls) {
 				console.warn('Processing tool call:', tool_call);
 
+				if (tool_call.name === '') {
+					console.warn('Ignoring tool_call with empty name', fixed);
+					continue;
+				}
+
 				if (typeof tool_call.id !== 'string') {
 					throw new InvalidData('No id in tool_call.', fixed);
 				}
