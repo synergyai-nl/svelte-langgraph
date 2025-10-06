@@ -24,7 +24,7 @@ importers:
         specifier: ^9.18.0
         version: 9.31.0
       '@inlang/paraglide-js':
-        specifier: ^2.0.0
+        specifier: ^2.2.0
         version: 2.2.0
       '@langchain/core':
         specifier: ^0.3.78
