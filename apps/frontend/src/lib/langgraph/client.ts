@@ -16,7 +16,6 @@ export async function getOrCreateThread(
 	graphId: string = 'chat'
 ): Promise<{ threadId: string; assistantId: string }> {
 	// Search for existing thread first
-	console.info('im searching for thread');
 	const existingThreads = await client.threads.search({
 		status: 'idle',
 		limit: 1,
