@@ -4,17 +4,28 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import type { Client } from '@langchain/langgraph-sdk';
-	import { createLangGraphClient } from '$lib/langgraph/client';
+	import { getAssistantId, createClient, getThreadId } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
+	import type { Client } from '@langchain/langgraph-sdk';
 
 	let show_login_dialog = $state(false);
-	let client: Client | null = $state(null);
+
+	// Updates client whenever accessToken changes
+	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
+	let assistantId = $state<string | null>(null);
+	let threadId = $state<string | null>(null);
+
+	async function initLangGraph(client: Client) {
+		try {
+			assistantId = await getAssistantId(client, 'chat');
+			threadId = await getThreadId(client);
+		} catch (err) {
+			console.log(err);
+		}
+	}
 
 	$effect(() => {
-		if (page.data.session?.accessToken) {
-			client = createLangGraphClient(page.data.session.accessToken);
-		}
+		if ((assistantId === null || threadId === null) && client) initLangGraph(client);
 	});
 
 	onMount(async () => {
@@ -55,17 +66,18 @@
 	});
 </script>
 
-{#if !client || !page.data.langgraph}
-	<ChatLoader />
-{:else}
+{#if assistantId && threadId && client}
+	<!-- We're all set up -->
 	<Chat
 		langGraphClient={client}
-		assistantId={page.data.langgraph.assistantId}
-		threadId={page.data.langgraph.threadId}
+		{assistantId}
+		{threadId}
 		introTitle={greeting}
 		intro={m.chat_intro()}
 		{suggestions}
 	/>
+{:else}
+	<ChatLoader />
 {/if}
 
 <LoginModal bind:open={show_login_dialog} />
