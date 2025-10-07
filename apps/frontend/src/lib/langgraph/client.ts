@@ -2,6 +2,8 @@ import { Client } from '@langchain/langgraph-sdk';
 import { env } from '$env/dynamic/public';
 
 export function createClient(accessToken: string): Client {
+	console.assert(accessToken, 'No access token specified.');
+
 	return new Client({
 		defaultHeaders: {
 			Authorization: `Bearer ${accessToken}`
@@ -14,15 +16,11 @@ export function createClient(accessToken: string): Client {
 export async function getAssistantId(client: Client, graphId: string = 'chat'): Promise<string> {
 	const assistant = await client.assistants.create({ graphId });
 
-	return {
-		assistantId: assistant.assistant_id
-	};
+	return assistant.assistant_id;
 }
 
 export async function getThreadId(client: Client): Promise<string> {
 	const thread = await client.threads.create();
 
-	return {
-		threadId: thread.thread_id
-	};
+	return thread.thread_id;
 }
