@@ -9,12 +9,13 @@
 	import ChatError from './ChatError.svelte';
 
 	interface Props {
-		langGraphClient: Client;
-		assistantId: string;
-		threadId: string;
+		langGraphClient: Client | null;
+		assistantId?: string;
+		threadId?: string;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;
+		isReady?: boolean;
 	}
 
 	let {
@@ -23,7 +24,8 @@
 		threadId,
 		suggestions = [],
 		intro = '',
-		introTitle = ''
+		introTitle = '',
+		isReady = true
 	}: Props = $props();
 
 	let current_input = $state('');
@@ -61,6 +63,9 @@
 	}
 
 	async function inputSubmit() {
+		// Guardrail to prevent any submissions before client is available.
+		if (!langGraphClient || !threadId || !assistantId) return;
+
 		if (current_input) {
 			chat_started = true;
 
@@ -108,4 +113,4 @@
 {:else}
 	<ChatMessages {messages} finalAnswerStarted={final_answer_started} />
 {/if}
-<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+<ChatInput bind:value={current_input} isStreaming={is_streaming} {isReady} onSubmit={inputSubmit} />

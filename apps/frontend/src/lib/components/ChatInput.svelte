@@ -8,13 +8,15 @@
 		isStreaming?: boolean;
 		onSubmit: () => void;
 		placeholder?: string;
+		isReady?: boolean;
 	}
 
 	let {
 		value = $bindable(''),
 		isStreaming = false,
 		onSubmit,
-		placeholder = m.chat_input_placeholder()
+		placeholder = m.chat_input_placeholder(),
+		isReady = true
 	}: Props = $props();
 
 	let isEmpty = $derived(!(value ?? '').trim());
@@ -50,7 +52,7 @@
 
 				<!-- Submit button -->
 				<div class="flex shrink-0 items-start pt-1 pr-3">
-					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} />
+					<SubmitButton {isStreaming} disabled={!isReady || isStreaming || isEmpty} />
 				</div>
 			</div>
 		</form>

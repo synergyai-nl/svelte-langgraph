@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import Chat from '$lib/components/Chat.svelte';
-	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import { createLangGraphClient } from '$lib/langgraph/client';
@@ -55,17 +54,14 @@
 	});
 </script>
 
-{#if !client || !page.data.langgraph}
-	<ChatLoader />
-{:else}
-	<Chat
-		langGraphClient={client}
-		assistantId={page.data.langgraph.assistantId}
-		threadId={page.data.langgraph.threadId}
-		introTitle={greeting}
-		intro={m.chat_intro()}
-		{suggestions}
-	/>
-{/if}
+<Chat
+	langGraphClient={client}
+	assistantId={page.data.langgraph?.assistantId}
+	threadId={page.data.langgraph?.threadId}
+	introTitle={greeting}
+	intro={m.chat_intro()}
+	{suggestions}
+	isReady={!!(client && page.data.langgraph)}
+/>
 
 <LoginModal bind:open={show_login_dialog} />
