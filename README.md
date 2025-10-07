@@ -2,6 +2,11 @@
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
+## Demo
+
+![](demo-video.mov)
+https://svelte-langgraph-demo.synergyai.nl/
+
 ## Architecture
 
 - **Backend**: Python 3.12 + LangGraph server for AI workflow management
@@ -12,11 +17,10 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 ## Prerequisites
 
 - [Install moonrepo](https://moonrepo.dev/docs/install), which installs all other dependencies:
-
-	* Python 3.12
-	* Node.js 24 LTS
-	* [uv](https://docs.astral.sh/uv/) (Python package manager)
-	* pnpm (Node.js package manager)
+  - Python 3.12
+  - Node.js 24 LTS
+  - [uv](https://docs.astral.sh/uv/) (Python package manager)
+  - pnpm (Node.js package manager)
 
 ## Configuration
 
@@ -25,6 +29,7 @@ Both the frontend and backend require environment variables to be configured. Co
 ### Backend Environment Variables
 
 Copy the example file:
+
 ```bash
 cd apps/backend
 cp .env.example .env
@@ -44,6 +49,7 @@ Configure the following variables in `apps/backend/.env`:
 This application supports multiple OpenAI-compatible providers. Configure your preferred provider using the environment variables above.
 
 #### Using OpenAI (Default)
+
 To use OpenAI directly (no additional configuration needed):
 
 ```bash
@@ -54,11 +60,13 @@ CHAT_MODEL_NAME=gpt-4o-mini  # Default OpenAI model
 ```
 
 Popular OpenAI models:
+
 - `gpt-4o-mini` - Fast, cost-effective model (default)
 - `gpt-4o` - Most capable model
 - `gpt-3.5-turbo` - Legacy model
 
 #### Using OpenRouter
+
 OpenRouter provides access to multiple AI models including free options:
 
 ```bash
@@ -69,11 +77,13 @@ CHAT_MODEL_NAME=x-ai/grok-4-fast:free  # Free Grok model
 ```
 
 Popular OpenRouter models:
+
 - `x-ai/grok-4-fast:free` - Free Grok model
 - `meta-llama/llama-3.2-3b-instruct:free` - Free Llama model
 - `anthropic/claude-3.5-sonnet` - Claude 3.5 Sonnet (paid)
 
 #### Using Ollama
+
 For local AI models using Ollama:
 
 ```bash
@@ -86,6 +96,7 @@ CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 ### Frontend Environment Variables
 
 Copy the example file:
+
 ```bash
 cd apps/frontend
 cp .env.example .env
@@ -97,13 +108,13 @@ Configure the following variables in `apps/frontend/.env`:
 - `AUTH_DESCOPE_ID` - Your Descope project ID
 - `AUTH_DESCOPE_SECRET` - Your Descope management key
 - `AUTH_DESCOPE_ISSUER` - Optional: The Descope Issuer URL for your project.  
-Normally you don’t need to set this, since the SDK defaults to the global US endpoint.  
-If your Descope tenant is in the **EU region** (or another region with a specific issuer),  
-you must set this to the region-specific issuer URL provided in your Descope console.  
-Can be found in your Descope account under the [Applications page](https://app.descope.com/applications).  
-Example for EU:  
-`AUTH_DESCOPE_ISSUER=https://api.euc1.descope.com/<your-project-id>`
-Only set this if your tenant requires it, otherwise leave it unset.
+  Normally you don’t need to set this, since the SDK defaults to the global US endpoint.  
+  If your Descope tenant is in the **EU region** (or another region with a specific issuer),  
+  you must set this to the region-specific issuer URL provided in your Descope console.  
+  Can be found in your Descope account under the [Applications page](https://app.descope.com/applications).  
+  Example for EU:  
+  `AUTH_DESCOPE_ISSUER=https://api.euc1.descope.com/<your-project-id>`
+  Only set this if your tenant requires it, otherwise leave it unset.
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
@@ -136,6 +147,7 @@ moon check --all
 ### Backend Development
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
+
 - LangChain with OpenAI-compatible integration (OpenRouter, OpenAI, etc.)
 - Descope for authentication
 - Python-dotenv for environment management
@@ -143,6 +155,7 @@ The backend uses LangGraph for AI workflow orchestration with the following key 
 ### Frontend Development
 
 The frontend is built with modern web technologies:
+
 - SvelteKit for the application framework
 - Tailwind CSS for styling
 - Flowbite for UI components
@@ -152,11 +165,13 @@ The frontend is built with modern web technologies:
 ## Production
 
 To run a Docker build of the project, use Docker Compose:
+
 ```
 docker compose build
 ```
 
 To run it:
+
 ```
 docker compose up [--build]
 ```
@@ -168,6 +183,7 @@ moon backend:dev -- --host 0.0.0.0
 ```
 
 And in a different terminal:
+
 ```
 PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2024 docker compose up --build
 ```
