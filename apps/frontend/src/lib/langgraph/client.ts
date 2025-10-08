@@ -25,10 +25,11 @@ export async function getOrCreateThread(
 
 	let threadId;
 	if (existingThreads.length > 0) {
-		// Use existing thread
-		threadId = existingThreads[0].thread_id;
+		const existingThread = existingThreads[0];
+		console.info('Using existing thread', existingThread);
+		threadId = existingThread.thread_id;
 	} else {
-		// Create new thread if none exists
+		console.info('No existing thread found, creating anew');
 		const thread = await client.threads.create();
 		threadId = thread.thread_id;
 	}
@@ -38,10 +39,11 @@ export async function getOrCreateThread(
 
 	let assistantId: string;
 	if (existingAssistants.length > 0) {
-		// Use existing assistant
-		assistantId = existingAssistants[0].assistant_id;
+		const existingAssistant = existingAssistants[0];
+		console.info('Using existing assistant', existingAssistant);
+		assistantId = existingAssistant.assistant_id;
 	} else {
-		// Create new assistant if none exists
+		console.info('No existing assistant found, creating anew');
 		const assistant = await client.assistants.create({ graphId });
 		assistantId = assistant.assistant_id;
 	}
