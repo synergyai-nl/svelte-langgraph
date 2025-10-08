@@ -5,7 +5,7 @@
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getAssistantId, createClient, getThreadId } from '$lib/langgraph/client';
+	import { getOrCreateAssistant, createClient, getOrCreateThread } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
@@ -20,8 +20,8 @@
 
 	async function initLangGraph(client: Client) {
 		try {
-			assistantId = await getAssistantId(client, 'chat');
-			threadId = await getThreadId(client);
+			assistantId = await getOrCreateAssistant(client, 'chat');
+			threadId = await getOrCreateThread(client);
 		} catch (err) {
 			if (err instanceof Error) initialization_error = err;
 			error(500, {
