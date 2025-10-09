@@ -171,3 +171,39 @@ And in a different terminal:
 ```
 PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2024 docker compose up --build
 ```
+
+### Internationalization with Paraglide
+
+This project uses [Paraglide-JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) for type-safe internationalization. Paraglide offers a developer-friendly approach where you can:
+
+- **Add or modify translations** without touching code - just edit JSON files
+- **Add new languages** by creating a new JSON file and updating one config line
+- **Change locale names** (e.g., "English" → "Inglés") without any code changes
+
+#### Message Files
+
+All translations are stored in `apps/frontend/messages/`:
+
+Each file contains key-value pairs for all UI text:
+```json
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "hello_world": "Hello, {name}!",
+  "local_name": "English"
+}
+```
+
+The `local_name` key is special - it defines how each language refers to itself in the language switcher.
+
+#### Adding a New Language
+
+1. Create a new JSON file in `apps/frontend/messages/` (e.g., `fr.json` for French)
+2. Copy the structure from `en.json` and translate all values
+3. Add the locale code to `apps/frontend/project.inlang/settings.json`:
+```json
+{
+  "locales": ["en", "nl", "hi", "fr"]
+}
+```
+
+That's it! The language will automatically appear in the language switcher with the name specified in `local_name`.
