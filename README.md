@@ -3,8 +3,6 @@
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
 ## Demo
-https://github.com/user-attachments/assets/9de147ed-c4b4-41a8-b528-51b2c76b8667
-
 https://svelte-langgraph-demo.synergyai.nl/
 
 ## Architecture
