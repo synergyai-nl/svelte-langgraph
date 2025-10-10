@@ -25,7 +25,7 @@
 			{m.login_modal_message()}
 		</h3>
 		<SignIn provider="descope">
-			<Button slot="submitButton" size="sm" tag="div">{m.auth_sign_in}</Button>
+			<Button slot="submitButton" size="sm" tag="div">{m.auth_sign_in()}</Button>
 		</SignIn>
 	</div>
 </Modal>
