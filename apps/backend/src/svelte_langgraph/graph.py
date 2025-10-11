@@ -1,13 +1,7 @@
-#!/usr/bin/env uv run python
 import asyncio
-import os
 import random
 from typing import Sequence
 
-from dotenv import load_dotenv
-
-from langchain.chat_models import init_chat_model
-from langchain.chat_models.base import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -17,6 +11,8 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
+
+from .models import get_chat_model
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -43,16 +39,6 @@ async def get_weather(city: str) -> str:
     return f"It's always sunny in {city}!"
 
 
-def get_model() -> BaseChatModel:
-    model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
-    model = init_chat_model(
-        model_name,
-        model_provider="openai",
-        temperature=0.9,
-    )
-    return model
-
-
 def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessage]:
     assert "configurable" in config
     assert isinstance(state["messages"], list)
@@ -66,7 +52,7 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
 
 
 def make_graph(config: RunnableConfig) -> CompiledStateGraph:
-    model = get_model()
+    model = get_chat_model()
     checkpointer = get_checkpointer()
 
     agent = create_react_agent(
@@ -77,29 +63,3 @@ def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     )
 
     return agent
-
-
-async def main():
-    load_dotenv()
-
-    config = RunnableConfig(configurable={"thread_id": "1"})
-
-    agent = make_graph(config)
-
-    user_input = input(f"{INITIAL_MESSAGE}\n")
-
-    while True:
-        async for chunk, metadata in agent.astream(
-            {"messages": [{"role": "user", "content": user_input}]},
-            config,
-            stream_mode="messages",
-        ):
-            assert isinstance(chunk, BaseMessage)
-
-            print(chunk.text(), end="")
-
-        user_input = input("\n")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
