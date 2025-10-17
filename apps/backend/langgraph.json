@@ -3,11 +3,11 @@
 		"."
 	],
 	"graphs": {
-		"chat": "./src/svelte_langgraph/graph.py:make_graph"
+		"chat": "svelte_langgraph.graph:make_graph"
 	},
 	"python_version": "3.13",
 	"env": ".env",
 	"auth": {
-		"path": "./src/svelte_langgraph/auth.py:auth"
+		"path": "svelte_langgraph.auth:auth"
 	}
 }
