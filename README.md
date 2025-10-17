@@ -118,6 +118,23 @@ Configure the following variables in `apps/frontend/.env`:
 
 ## Getting Started
 
+### Local Development with OIDC Mock Provider
+
+For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
+
+**What it does:**
+- Provides a complete OIDC discovery endpoint (`.well-known/openid-configuration`)
+- Issues JWT tokens with configurable user claims
+- Supports the authorization code flow with PKCE
+- No client registration required - accepts any client ID/secret
+- Automatically started with `moon :dev` for seamless development
+
+**Configuration:**
+- **Issuer**: `http://localhost:8080`
+- **Client ID**: Any value (e.g., `svelte-langgraph`)
+- **Client Secret**: Any value (e.g., `secret`)
+- **Test User**: `test-user` (subject claim in JWT)
+
 ### Start dev servers
 
 The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
@@ -130,14 +147,6 @@ This automatically starts:
 - **Frontend** dev server at `http://localhost:5173`
 - **Backend** LangGraph server at `http://localhost:2024`
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
-
-The OIDC mock provider is configured with:
-- **Issuer**: `http://localhost:8080`
-- **Client ID**: Any value (e.g., `svelte-langgraph`)
-- **Client Secret**: Any value (e.g., `secret`)
-- **Test User**: `test-user` (subject claim in JWT)
-
-The mock provider doesn't require client registration by default, so you can use any client ID and secret in your `.env` files.
 
 Make sure to configure your `.env` files to point to the OIDC mock provider (see Configuration section above).
 
