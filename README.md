@@ -118,32 +118,26 @@ Configure the following variables in `apps/frontend/.env`:
 
 ## Getting Started
 
-### Local Development with OIDC Mock Provider
+### Start dev servers
 
-For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This runs as a Python process alongside the backend dev server.
-
-To start the OIDC mock provider:
+The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
 
 ```bash
-cd apps/backend
-uv run oidc-provider-mock --port 8080 --host 0.0.0.0 --user test-user
+moon :dev
 ```
 
-The mock OIDC provider will be available at `http://localhost:8080` with the following configuration:
+This automatically starts:
+- **Frontend** dev server at `http://localhost:5173`
+- **Backend** LangGraph server at `http://localhost:2024`
+- **OIDC mock provider** at `http://localhost:8080` (for local authentication)
+
+The OIDC mock provider is configured with:
 - **Issuer**: `http://localhost:8080`
 - **Client ID**: Any value (e.g., `svelte-langgraph`)
 - **Client Secret**: Any value (e.g., `secret`)
 - **Test User**: `test-user` (subject claim in JWT)
 
 The mock provider doesn't require client registration by default, so you can use any client ID and secret in your `.env` files.
-
-### Start dev servers
-
-The following command ensures dependencies are installed and starts dev servers for frontend and backend, with hot reload:
-
-```bash
-moon :dev
-```
 
 Make sure to configure your `.env` files to point to the OIDC mock provider (see Configuration section above).
 
