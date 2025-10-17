@@ -20,9 +20,15 @@ tasks:
     local: true
   typecheck:
     command: "pyright"
+  oidc-mock:
+    command: "oidc-provider-mock --port 8080 --host 0.0.0.0 --user test-user"
+    preset: "server"
+    local: true
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
+    deps:
+      - oidc-mock
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
