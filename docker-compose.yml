@@ -1,19 +1,4 @@
 services:
-  oidc-provider:
-    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
-    ports:
-      - "8080:8080"
-    environment:
-      - SERVER_PORT=8080
-      - JSON_CONFIG_PATH=/tmp/config.json
-    volumes:
-      - ./oidc-config.json:/tmp/config.json
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/default/.well-known/openid-configuration"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   frontend:
     ports:
       - "3000:3000"
@@ -21,6 +6,3 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
     env_file: "apps/frontend/.env"
-    depends_on:
-      oidc-provider:
-        condition: service_healthy
