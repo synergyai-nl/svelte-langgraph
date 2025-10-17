@@ -5,12 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "descope>=1.7.6",
+    "authlib>=1.4.0",
     "langchain[openai]==0.3.27",
     "langgraph==0.6.8",
     "langgraph-cli[inmem]==0.4.2",
     "langgraph-api==0.4.31",
     "python-dotenv>=1.1.0",
+    "requests>=2.32.0",
 ]
 
 [dependency-groups]

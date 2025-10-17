@@ -1,21 +1,36 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
-import Descope from '@auth/sveltekit/providers/descope';
+import type { OIDCConfig } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
 
-// Add accessToken to Session type.
-// Ref: https://authjs.dev/getting-started/typescript#module-augmentation
 declare module '@auth/sveltekit' {
 	interface Session {
 		accessToken: string;
 	}
 }
 
+function GenericOIDC(config: {
+	clientId: string;
+	clientSecret: string;
+	issuer: string;
+}): OIDCConfig<Record<string, unknown>> {
+	return {
+		id: 'oidc',
+		name: 'OIDC',
+		type: 'oidc',
+		checks: ['pkce', 'state'],
+		client: {
+			token_endpoint_auth_method: 'client_secret_post'
+		},
+		options: config
+	};
+}
+
 export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [
-		Descope({
-			clientId: env.AUTH_DESCOPE_ID,
-			clientSecret: env.AUTH_DESCOPE_SECRET,
-			...(env.AUTH_DESCOPE_ISSUER ? { issuer: env.AUTH_DESCOPE_ISSUER } : {})
+		GenericOIDC({
+			clientId: env.AUTH_OIDC_CLIENT_ID || '',
+			clientSecret: env.AUTH_OIDC_CLIENT_SECRET || '',
+			issuer: env.AUTH_OIDC_ISSUER || ''
 		})
 	],
 	trustHost: true,
@@ -26,7 +41,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			}
 			return session;
 		},
-		// Ref: https://docs.descope.com/getting-started/nextauth/functions
 		jwt: async ({ token, account }) => {
 			if (account) {
 				console.info('Initial login');
@@ -49,19 +63,21 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 				} else {
 					console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
 
-					const clientId = env.AUTH_DESCOPE_ID;
-					const clientSecret = env.AUTH_DESCOPE_SECRET;
+					const clientId = env.AUTH_OIDC_CLIENT_ID;
+					const clientSecret = env.AUTH_OIDC_CLIENT_SECRET;
+					const issuer = env.AUTH_OIDC_ISSUER;
 
-					// Must check for required env vars to avoid type error at URLSearchParams.
-					if (!clientId || !clientSecret) {
-						throw new Error('Missing Descope client credentials');
+					if (!clientId || !clientSecret || !issuer) {
+						throw new Error('Missing OIDC client credentials');
 					}
 
 					try {
 						if (typeof token.refresh_token !== 'string')
 							throw new Error('Token has no refresh token.');
 
-						const response = await fetch('https://api.descope.com/oauth2/v1/token', {
+						const tokenEndpoint = `${issuer}/token`;
+
+						const response = await fetch(tokenEndpoint, {
 							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 							body: new URLSearchParams({
 								client_id: clientId,
