@@ -1,8 +1,8 @@
 import logging
 import os
 
-from descope.exceptions import AuthException
-from descope.descope_client import DescopeClient
+from authlib.jose import JsonWebToken, JWTClaims, KeySet
+from authlib.jose.errors import JoseError
 
 from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
@@ -10,24 +10,42 @@ from langgraph_sdk.auth.types import MinimalUserDict
 
 logger = logging.getLogger(__name__)
 
-descope_project_id = os.getenv("DESCOPE_PROJECT_ID", "")
+oidc_issuer = os.getenv("OIDC_ISSUER", "")
+oidc_audience = os.getenv("OIDC_AUDIENCE", "")
 
-descope_client = DescopeClient(project_id=descope_project_id, jwt_validation_leeway=30)
+jwt = JsonWebToken(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"])
 
-# Hack to fetch public keys in sync context, LangGraph errs on blocking I/O.
-# Normally, descope populates public keys during the first call of validate_session().
-# Eventually, we want to provide generic OpenID Connect auth support.
-descope_client._auth._fetch_public_keys()
-
-# The "Auth" object is a container that LangGraph will use to mark our authentication function
 auth = Auth()
 
 
-# The `authenticate` decorator tells LangGraph to call this function as middleware
-# for every request. This will determine whether the request is allowed or not
+def get_jwks_uri(issuer: str) -> str:
+    """Get JWKS URI from OIDC discovery endpoint."""
+    import requests
+
+    discovery_url = f"{issuer}/.well-known/openid-configuration"
+    response = requests.get(discovery_url)
+    response.raise_for_status()
+    config = response.json()
+    return config["jwks_uri"]
+
+
+def get_jwks(jwks_uri: str) -> KeySet:
+    """Fetch JWKS from the provider."""
+    import requests
+
+    response = requests.get(jwks_uri)
+    response.raise_for_status()
+    jwks_dict = response.json()
+    return KeySet(jwks_dict["keys"])
+
+
+jwks_uri = get_jwks_uri(oidc_issuer) if oidc_issuer else ""
+jwks_data = get_jwks(jwks_uri) if jwks_uri else KeySet([])
+
+
 @auth.authenticate
 async def get_current_user(authorization: str | None) -> MinimalUserDict:
-    """Check if the user's token is valid."""
+    """Check if the user's token is valid using OIDC."""
 
     if not authorization:
         logger.error("No authorization header provided.")
@@ -42,32 +60,18 @@ async def get_current_user(authorization: str | None) -> MinimalUserDict:
         )
 
     try:
-        claims = descope_client.validate_session(
-            session_token=token, audience=descope_project_id
+        claims: JWTClaims = jwt.decode(
+            token, jwks_data, claims_options={"iss": {"value": oidc_issuer}}
         )
-    except AuthException as e:
+        claims.validate()
+    except JoseError as e:
         logger.exception(e)
         raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
 
-    # Descope Default User JWT
-    # {
-    #   "amr": "[list-of-strings-of-identifiers-used]",
-    #   "drn": "[string-of-type-of-token]",
-    #   "exp": "[timestamp-of-expiration-time]",
-    #   "iat": "[timestamp-of-issued-time]",
-    #   "iss": "Peuc12vtopjqyKM1TedvWYm4Bdfe5yfe",
-    #   "sub": "[string-of-user-id]",
-    #   "dct": "string-tenant-id",
-    #   "roles": "[list-of-strings] //tenant level",
-    #   "permissions": "[list-of-strings] //tenant level",
-    #   "email": "{{user.email}}"
-    # }
-
     user = MinimalUserDict(
         identity=claims["sub"],
-        # display_name=
         is_authenticated=True,
-        permissions=claims["permissions"],
+        permissions=claims.get("permissions", []),
     )
 
     return user

@@ -9,7 +9,7 @@ https://svelte-langgraph-demo.synergyai.nl/
 
 - **Backend**: Python 3.12 + LangGraph server for AI workflow management
 - **Frontend**: SvelteKit + TypeScript with Tailwind CSS and Flowbite components
-- **Authentication**: Descope integration
+- **Authentication**: Generic OIDC (OpenID Connect) integration
 - **Internationalization**: Paraglide-JS for multi-language support
 
 ## Prerequisites
@@ -35,7 +35,8 @@ cp .env.example .env
 
 Configure the following variables in `apps/backend/.env`:
 
-- `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
+- `OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080/default` for local mock)
+- `OIDC_AUDIENCE` - The audience/client ID for your application (e.g., `svelte-langgraph`)
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
@@ -103,19 +104,12 @@ cp .env.example .env
 Configure the following variables in `apps/frontend/.env`:
 
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
-- `AUTH_DESCOPE_ID` - Your Descope project ID
-- `AUTH_DESCOPE_SECRET` - Your Descope management key
-- `AUTH_DESCOPE_ISSUER` - Optional: The Descope Issuer URL for your project.  
-  Normally you don’t need to set this, since the SDK defaults to the global US endpoint.  
-  If your Descope tenant is in the **EU region** (or another region with a specific issuer),  
-  you must set this to the region-specific issuer URL provided in your Descope console.  
-  Can be found in your Descope account under the [Applications page](https://app.descope.com/applications).  
-  Example for EU:  
-  `AUTH_DESCOPE_ISSUER=https://api.euc1.descope.com/<your-project-id>`
-  Only set this if your tenant requires it, otherwise leave it unset.
+- `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
+- `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
+- `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080/default` for local mock)
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
-- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:8123`)
+- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for your Sentry project, for error tracking and user feedback.
 - `PUBLIC_SENTRY_SEND_PII` - Optional: Enable PII (Personally Identifiable Information) capture in Sentry.
 - `SENTRY_AUTH_TOKEN` - Sentry auth token for source map uploads.
@@ -124,6 +118,21 @@ Configure the following variables in `apps/frontend/.env`:
 
 ## Getting Started
 
+### Local Development with OIDC Mock Provider
+
+For local development and testing, the project includes a mock OIDC provider using `mock-oauth2-server`. This is automatically started when using Docker Compose.
+
+To start all services including the OIDC mock provider:
+
+```bash
+docker compose up oidc-provider
+```
+
+The mock OIDC provider will be available at `http://localhost:8080/default` with the following default configuration:
+- **Issuer**: `http://localhost:8080/default`
+- **Client ID**: `svelte-langgraph`
+- **Client Secret**: `secret`
+
 ### Start dev servers
 
 The following command ensures dependencies are installed and starts dev servers for frontend and backend, with hot reload:
@@ -131,6 +140,8 @@ The following command ensures dependencies are installed and starts dev servers 
 ```bash
 moon :dev
 ```
+
+Make sure to configure your `.env` files to point to the OIDC mock provider (see Configuration section above).
 
 ### Run local checks
 
@@ -147,7 +158,7 @@ moon check --all
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
 
 - LangChain with OpenAI-compatible integration (OpenRouter, OpenAI, etc.)
-- Descope for authentication
+- Authlib for OIDC/JWT authentication
 - Python-dotenv for environment management
 
 ### Frontend Development

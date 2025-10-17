@@ -1,0 +1,34 @@
+{
+  "interactiveLogin": true,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "tokenExpiry": 3600,
+      "requestMappings": [
+        {
+          "requestParam": "grant_type",
+          "match": "authorization_code",
+          "claims": {
+            "sub": "user123",
+            "aud": ["svelte-langgraph"],
+            "email": "user@example.com",
+            "name": "Test User",
+            "permissions": []
+          }
+        },
+        {
+          "requestParam": "grant_type",
+          "match": "refresh_token",
+          "claims": {
+            "sub": "user123",
+            "aud": ["svelte-langgraph"],
+            "email": "user@example.com",
+            "name": "Test User",
+            "permissions": []
+          }
+        }
+      ]
+    }
+  ]
+}
