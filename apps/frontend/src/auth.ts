@@ -8,31 +8,23 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-function GenericOIDC(config: {
-	clientId: string;
-	clientSecret: string;
-	issuer: string;
-}): OIDCConfig<Record<string, unknown>> {
-	return {
-		id: 'oidc',
-		name: 'OIDC',
-		type: 'oidc',
-		checks: ['pkce', 'state'],
-		client: {
-			token_endpoint_auth_method: 'client_secret_post'
-		},
-		options: config
-	};
-}
+const oidcProvider: OIDCConfig<Record<string, unknown>> = {
+	id: 'oidc',
+	name: 'OIDC',
+	type: 'oidc',
+	checks: ['pkce', 'state'],
+	client: {
+		token_endpoint_auth_method: 'client_secret_post'
+	},
+	options: {
+		clientId: env.AUTH_OIDC_CLIENT_ID || '',
+		clientSecret: env.AUTH_OIDC_CLIENT_SECRET || '',
+		issuer: env.AUTH_OIDC_ISSUER || ''
+	}
+};
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [
-		GenericOIDC({
-			clientId: env.AUTH_OIDC_CLIENT_ID || '',
-			clientSecret: env.AUTH_OIDC_CLIENT_SECRET || '',
-			issuer: env.AUTH_OIDC_ISSUER || ''
-		})
-	],
+	providers: [oidcProvider],
 	trustHost: true,
 	callbacks: {
 		session: async ({ session, token }) => {
@@ -75,7 +67,9 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 						if (typeof token.refresh_token !== 'string')
 							throw new Error('Token has no refresh token.');
 
-						const tokenEndpoint = `${issuer}/token`;
+						const discoveryResponse = await fetch(`${issuer}/.well-known/openid-configuration`);
+						const discoveryData = await discoveryResponse.json();
+						const tokenEndpoint = discoveryData.token_endpoint;
 
 						const response = await fetch(tokenEndpoint, {
 							headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

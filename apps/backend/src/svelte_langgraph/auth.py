@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 oidc_issuer = os.getenv("OIDC_ISSUER", "")
 oidc_audience = os.getenv("OIDC_AUDIENCE", "")
 
-jwt = JsonWebToken(["RS256"])
+jwt = JsonWebToken(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"])
 
 auth = Auth()
 
