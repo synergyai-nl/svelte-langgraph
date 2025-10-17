@@ -35,7 +35,7 @@ cp .env.example .env
 
 Configure the following variables in `apps/backend/.env`:
 
-- `OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080/default` for local mock)
+- `OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
 - `OIDC_AUDIENCE` - The audience/client ID for your application (e.g., `svelte-langgraph`)
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
@@ -106,7 +106,7 @@ Configure the following variables in `apps/frontend/.env`:
 - `AUTH_TRUST_HOST=true` - Enable auth trust host for development
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
-- `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080/default` for local mock)
+- `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
 - `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
@@ -120,18 +120,22 @@ Configure the following variables in `apps/frontend/.env`:
 
 ### Local Development with OIDC Mock Provider
 
-For local development and testing, the project includes a mock OIDC provider using `mock-oauth2-server`. This is automatically started when using Docker Compose.
+For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This runs as a Python process alongside the backend dev server.
 
-To start all services including the OIDC mock provider:
+To start the OIDC mock provider:
 
 ```bash
-docker compose up oidc-provider
+cd apps/backend
+uv run oidc-provider-mock --port 8080 --host 0.0.0.0 --user test-user
 ```
 
-The mock OIDC provider will be available at `http://localhost:8080/default` with the following default configuration:
-- **Issuer**: `http://localhost:8080/default`
-- **Client ID**: `svelte-langgraph`
-- **Client Secret**: `secret`
+The mock OIDC provider will be available at `http://localhost:8080` with the following configuration:
+- **Issuer**: `http://localhost:8080`
+- **Client ID**: Any value (e.g., `svelte-langgraph`)
+- **Client Secret**: Any value (e.g., `secret`)
+- **Test User**: `test-user` (subject claim in JWT)
+
+The mock provider doesn't require client registration by default, so you can use any client ID and secret in your `.env` files.
 
 ### Start dev servers
 

@@ -16,6 +16,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "oidc-provider-mock>=0.3.0",
     "pyright>=1.1.403",
     "ruff>=0.12.5",
 ]
