@@ -2,6 +2,7 @@ import logging
 import os
 
 from authlib.jose import JsonWebToken, JWTClaims, KeySet
+from authlib.jose.rfc7517 import JsonWebKey
 from authlib.jose.errors import JoseError
 
 from langgraph_sdk import Auth
@@ -36,7 +37,8 @@ def get_jwks(jwks_uri: str) -> KeySet:
     response = requests.get(jwks_uri)
     response.raise_for_status()
     jwks_dict = response.json()
-    return KeySet(jwks_dict["keys"])
+    keys = [JsonWebKey.import_key(key) for key in jwks_dict["keys"]]
+    return KeySet(keys)
 
 
 jwks_uri = get_jwks_uri(oidc_issuer) if oidc_issuer else ""

@@ -28,8 +28,8 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 	trustHost: true,
 	callbacks: {
 		session: async ({ session, token }) => {
-			if ('access_token' in token) {
-				return { ...session, accessToken: token.access_token };
+			if ('id_token' in token) {
+				return { ...session, accessToken: token.id_token };
 			}
 			return session;
 		},
@@ -41,7 +41,7 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 
 				return {
 					...token,
-					access_token: account.access_token,
+					id_token: account.id_token,
 					expires_at: Math.floor(Date.now() / 1000 + account.expires_in),
 					refresh_token: account.refresh_token
 				};
@@ -82,16 +82,16 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 							method: 'POST'
 						});
 
-						const tokens = await response.json();
+					const tokens = await response.json();
 
-						if (!response.ok) throw tokens;
+					if (!response.ok) throw tokens;
 
-						return {
-							...token,
-							access_token: tokens.access_token,
-							expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
-							refresh_token: tokens.refresh_token ?? token.refresh_token
-						};
+					return {
+						...token,
+						id_token: tokens.id_token,
+						expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+						refresh_token: tokens.refresh_token ?? token.refresh_token
+					};
 					} catch (error) {
 						console.error('Error refreshing access token', error);
 						return { ...token, error: 'RefreshAccessTokenError' };
