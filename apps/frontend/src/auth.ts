@@ -82,16 +82,16 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 							method: 'POST'
 						});
 
-					const tokens = await response.json();
+						const tokens = await response.json();
 
-					if (!response.ok) throw tokens;
+						if (!response.ok) throw tokens;
 
-					return {
-						...token,
-						id_token: tokens.id_token,
-						expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
-						refresh_token: tokens.refresh_token ?? token.refresh_token
-					};
+						return {
+							...token,
+							id_token: tokens.id_token,
+							expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+							refresh_token: tokens.refresh_token ?? token.refresh_token
+						};
 					} catch (error) {
 						console.error('Error refreshing access token', error);
 						return { ...token, error: 'RefreshAccessTokenError' };
