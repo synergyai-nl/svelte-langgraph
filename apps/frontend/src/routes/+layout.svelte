@@ -85,16 +85,6 @@
 
 				<DropdownDivider />
 
-				<DropdownItem href="/dashboard">
-					<span>{m.nav_dashboard()}</span>
-				</DropdownItem>
-
-				<DropdownItem href="/profile">
-					<span>{m.nav_profile()}</span>
-				</DropdownItem>
-
-				<DropdownDivider />
-
 				<SignOut
 					options={{
 						redirectTo: '/',
