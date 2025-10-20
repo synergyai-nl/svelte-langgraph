@@ -22,7 +22,9 @@ def make_tool_call(name: str, arguments: str, call_id: str) -> dict:
     }
 
 
-def make_message(content: str | None = None, tool_calls: list[dict] | None = None) -> dict:
+def make_message(
+    content: str | None = None, tool_calls: list[dict] | None = None
+) -> dict:
     """Create a message structure."""
     message: dict = {"role": "assistant"}
     message["content"] = content
@@ -139,7 +141,11 @@ def openai_single_tool_call():
                             )
                         )
                     ],
-                    usage={"prompt_tokens": 15, "completion_tokens": 25, "total_tokens": 40},
+                    usage={
+                        "prompt_tokens": 15,
+                        "completion_tokens": 25,
+                        "total_tokens": 40,
+                    },
                 ),
             ),
         ]
@@ -190,7 +196,11 @@ def openai_parallel_tool_calls():
                             )
                         )
                     ],
-                    usage={"prompt_tokens": 15, "completion_tokens": 25, "total_tokens": 40},
+                    usage={
+                        "prompt_tokens": 15,
+                        "completion_tokens": 25,
+                        "total_tokens": 40,
+                    },
                 ),
             ),
         ]
