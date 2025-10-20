@@ -201,17 +201,16 @@ async def test_parallel_tool_calls(
     3. Both tool responses are processed
     4. The agent generates a final response incorporating both tool outputs
     """
-    with patch("src.svelte_langgraph.graph.create_agent") as mock_create_agent:
-        try:
-            from langchain.agents import create_agent as real_create_agent
-        except ImportError:
-            from langgraph.prebuilt import create_react_agent as real_create_agent
+    with patch(
+        "src.svelte_langgraph.graph.create_react_agent"
+    ) as mock_create_react_agent:
+        from langgraph.prebuilt import create_react_agent as real_create_react_agent
 
         def create_agent_with_extra_tools(*args, **kwargs):
             kwargs["tools"] = [get_weather, get_time]
-            return real_create_agent(*args, **kwargs)
+            return real_create_react_agent(*args, **kwargs)
 
-        mock_create_agent.side_effect = create_agent_with_extra_tools
+        mock_create_react_agent.side_effect = create_agent_with_extra_tools
 
         agent = make_graph(thread_config)
 
@@ -291,17 +290,16 @@ async def test_parallel_tools_execution_order(
     2. Tool responses are collected before generating final response
     3. The conversation flow is correct
     """
-    with patch("src.svelte_langgraph.graph.create_agent") as mock_create_agent:
-        try:
-            from langchain.agents import create_agent as real_create_agent
-        except ImportError:
-            from langgraph.prebuilt import create_react_agent as real_create_agent
+    with patch(
+        "src.svelte_langgraph.graph.create_react_agent"
+    ) as mock_create_react_agent:
+        from langgraph.prebuilt import create_react_agent as real_create_react_agent
 
         def create_agent_with_extra_tools(*args, **kwargs):
             kwargs["tools"] = [get_weather, get_time]
-            return real_create_agent(*args, **kwargs)
+            return real_create_react_agent(*args, **kwargs)
 
-        mock_create_agent.side_effect = create_agent_with_extra_tools
+        mock_create_react_agent.side_effect = create_agent_with_extra_tools
 
         agent = make_graph(thread_config)
 

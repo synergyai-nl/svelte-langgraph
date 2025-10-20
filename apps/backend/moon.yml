@@ -19,11 +19,9 @@ tasks:
     args: "--fix"
     local: true
   typecheck:
-    command: "uv"
-    args: "run --group dev pyright"
+    command: "pyright"
   test:
-    command: "uv"
-    args: "run --group dev pytest tests/"
+    command: "pytest tests/"
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
