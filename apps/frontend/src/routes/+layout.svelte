@@ -121,7 +121,6 @@
 	<NavUl>
 		<NavLi href="/">{m.nav_home()}</NavLi>
 		<NavLi href="/chat">{m.nav_chat()}</NavLi>
-		<NavLi href="/demo">{m.nav_paraglide()}</NavLi>
 	</NavUl>
 </Navbar>
 
