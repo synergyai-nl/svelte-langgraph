@@ -19,7 +19,8 @@ tasks:
     args: "--fix"
     local: true
   typecheck:
-    command: "pyright"
+    command: "uv"
+    args: "run --group dev --group test pyright"
   test:
     command: "uv"
     args: "run --group test pytest tests/"
