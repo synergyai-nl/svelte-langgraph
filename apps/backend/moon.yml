@@ -21,7 +21,7 @@ tasks:
   typecheck:
     command: "pyright"
   test:
-    command: "pytest tests/"
+    command: "pytest"
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
