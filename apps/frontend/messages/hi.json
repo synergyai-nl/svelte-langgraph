@@ -1,7 +1,7 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"hello_world": "नमस्ते, {name} जी!",
-	"app_title": "मेरा कृत्रिम बुद्धिमत्ता संवाद मंच",
+	"app_title": "svelte-langgraph",
 	"nav_home": "मुखपृष्ठ",
 	"nav_chat": "संवाद",
 	"nav_paraglide": "पैराग्लाइड",

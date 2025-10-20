@@ -1,7 +1,7 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"hello_world": "Hallo, {name} van nl!",
-	"app_title": "Mijn AI Chat UI",
+	"app_title": "svelte-langgraph",
 	"nav_home": "Thuis",
 	"nav_chat": "Chat",
 	"nav_paraglide": "Paraglide",
