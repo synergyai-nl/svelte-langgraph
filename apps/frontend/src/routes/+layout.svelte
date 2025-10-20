@@ -4,6 +4,7 @@
 	import { SignIn, SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
+	import { onMount } from 'svelte';
 
 	import { MessagesOutline } from 'flowbite-svelte-icons';
 	import {
@@ -17,13 +18,35 @@
 		DropdownHeader,
 		DropdownItem,
 		DropdownDivider,
-		Avatar,
-		DarkMode
+		Avatar
 	} from 'flowbite-svelte';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 
 	let { children } = $props();
+
+	// Auto dark mode based on browser preference
+	onMount(() => {
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+		const updateTheme = (e: MediaQueryList | MediaQueryListEvent) => {
+			if (e.matches) {
+				document.documentElement.classList.add('dark');
+			} else {
+				document.documentElement.classList.remove('dark');
+			}
+		};
+
+		// Set initial theme
+		updateTheme(mediaQuery);
+
+		// Listen for changes
+		mediaQuery.addEventListener('change', updateTheme);
+
+		return () => {
+			mediaQuery.removeEventListener('change', updateTheme);
+		};
+	});
 </script>
 
 <Navbar>
@@ -92,7 +115,6 @@
 			</SignIn>
 		{/if}
 		<LanguageSwitcher class="ml-3 p-2" />
-		<DarkMode class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
 
