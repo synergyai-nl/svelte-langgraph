@@ -1,21 +1,32 @@
-name: "Moon"
+name: "CI"
+
 on:
   push:
-    branches:
-      - "main"
+    branches: ["main"]
   pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  DOCKER_IMAGE_NAME: ghcr.io/synergyai-nl/svelte-langgraph-frontend
+
 jobs:
-  ci:
-    name: "CI"
+  ci-job:
+    name: "CI Job"
     runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        index: [0, 1]
     steps:
-      - uses: "actions/checkout@v4"
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: "moonrepo/setup-toolchain@v0"
-      - run: "moon ci --color"
+      - uses: moonrepo/setup-toolchain@v0
+        with:
+          cache-base: main
+      - run: "moon ci --color --job ${{ matrix.index }} --jobTotal 2"
         env:
-          PUBLIC_LANGGRAPH_API_URL: 'http://127.0.0.1:2024'
+          PUBLIC_LANGGRAPH_API_URL: "http://127.0.0.1:2024"
       - uses: moonrepo/run-report-action@v1
         if: success() || failure()
         with:
@@ -23,3 +34,73 @@ jobs:
           matrix: ${{ toJSON(matrix) }}
       - uses: appthrust/moon-ci-retrospect@v1
         if: success() || failure()
+
+  build:
+    name: "Docker Build"
+    runs-on: ubuntu-latest
+    outputs:
+      image_version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v5
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE_NAME }}
+          tags: type=raw,value=build-${{ github.run_number }}-{{sha}}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: "./apps/frontend/Dockerfile"
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+        env:
+          # No progress indicators for downloads
+          BUILDKIT_PROGRESS: plain
+
+  ci:
+    name: "CI"
+    runs-on: ubuntu-latest
+    needs: [ci-job, build]
+    if: always()
+    steps:
+      - run: ${{!contains(needs.*.result, 'failure')}}
+
+  deploy:
+    name: "Deploy"
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - ci
+    environment: demo
+    concurrency:
+      group: demo
+      cancel-in-progress: true
+    if: success() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to Nexaa
+        run: |
+          curl -L https://github.com/nexaa-cloud/nexaa-cli/releases/download/v1.0.37/nexaa-v1.0.37-linux-amd64.tar.gz | tar xz
+          chmod +x nexaa-v1.0.37-linux-amd64/nexaa-cli
+          nexaa-v1.0.37-linux-amd64/nexaa-cli login --username admin@synergyai.nl
+          nexaa-v1.0.37-linux-amd64/nexaa-cli container modify \
+            --namespace svelte-langgraph \
+            --name frontend \
+            --image ${{ env.DOCKER_IMAGE_NAME }}:${{ needs.build.outputs.image_version }}
+        env:
+          TILAA_PASSWORD: ${{ secrets.TILAA_PASSWORD }}

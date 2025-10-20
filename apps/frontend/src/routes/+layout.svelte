@@ -21,6 +21,8 @@
 		DarkMode
 	} from 'flowbite-svelte';
 
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+
 	let { children } = $props();
 </script>
 
@@ -70,7 +72,12 @@
 
 				<DropdownDivider />
 
-				<SignOut>
+				<SignOut
+					options={{
+						redirectTo: '/',
+						redirect: true
+					}}
+				>
 					<DropdownItem
 						slot="submitButton"
 						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
@@ -84,7 +91,7 @@
 				<Button slot="submitButton" size="sm">{m.auth_sign_in()}</Button>
 			</SignIn>
 		{/if}
-
+		<LanguageSwitcher class="ml-3 p-2" />
 		<DarkMode class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>

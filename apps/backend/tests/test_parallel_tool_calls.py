@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from unittest.mock import patch
 
-from src.graph import make_graph, get_weather
+from src.svelte_langgraph.graph import make_graph, get_weather
 
 
 def get_time(city: str) -> str:
@@ -25,7 +25,7 @@ async def test_parallel_tool_calls(
     3. Both tool responses are processed
     4. The agent generates a final response incorporating both tool outputs
     """
-    with patch("src.graph.create_agent") as mock_create_agent:
+    with patch("src.svelte_langgraph.graph.create_agent") as mock_create_agent:
         try:
             from langchain.agents import create_agent as real_create_agent
         except ImportError:
@@ -115,7 +115,7 @@ async def test_parallel_tools_execution_order(
     2. Tool responses are collected before generating final response
     3. The conversation flow is correct
     """
-    with patch("src.graph.create_agent") as mock_create_agent:
+    with patch("src.svelte_langgraph.graph.create_agent") as mock_create_agent:
         try:
             from langchain.agents import create_agent as real_create_agent
         except ImportError:

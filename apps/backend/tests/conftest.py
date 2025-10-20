@@ -8,7 +8,7 @@ import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
 
-from src.graph import make_graph
+from src.svelte_langgraph.graph import make_graph
 
 
 @pytest.fixture(scope="function", autouse=True)

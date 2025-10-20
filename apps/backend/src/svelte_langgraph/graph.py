@@ -1,12 +1,7 @@
-#!/usr/bin/env uv run python
 import asyncio
-import os
+import random
 from typing import Sequence
 
-from dotenv import load_dotenv
-
-from langchain.chat_models import init_chat_model
-from langchain.chat_models.base import BaseChatModel
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -20,6 +15,8 @@ try:
 except ImportError:
     from langgraph.prebuilt import create_react_agent as create_agent
     from langgraph.prebuilt.chat_agent_executor import AgentState
+
+from .models import get_chat_model
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -39,16 +36,11 @@ def get_checkpointer() -> Checkpointer:
     return checkpointer
 
 
-def get_weather(city: str) -> str:
+async def get_weather(city: str) -> str:
     """Get weather for a given city."""
+    await asyncio.sleep(random.randint(1, 10))
+
     return f"It's always sunny in {city}!"
-
-
-def get_model() -> BaseChatModel:
-    model_name = os.getenv("CHAT_MODEL_NAME", "claude-3-5-haiku-latest")
-    temperature = float(os.getenv("CHAT_MODEL_TEMPERATURE", "0.9"))
-    model = init_chat_model(model_name, temperature=temperature)
-    return model
 
 
 def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessage]:
@@ -64,7 +56,7 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
 
 
 def make_graph(config: RunnableConfig) -> CompiledStateGraph:
-    model = get_model()
+    model = get_chat_model()
     checkpointer = get_checkpointer()
 
     agent = create_agent(
@@ -75,29 +67,3 @@ def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     )
 
     return agent
-
-
-async def main():
-    load_dotenv()
-
-    config = RunnableConfig(configurable={"thread_id": "1"})
-
-    agent = make_graph(config)
-
-    user_input = input(f"{INITIAL_MESSAGE}\n")
-
-    while True:
-        async for chunk, metadata in agent.astream(
-            {"messages": [{"role": "user", "content": user_input}]},
-            config,
-            stream_mode="messages",
-        ):
-            assert isinstance(chunk, BaseMessage)
-
-            print(chunk.text(), end="")
-
-        user_input = input("\n")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

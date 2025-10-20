@@ -25,6 +25,7 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 # Paraglide
+project.inlang/cache
 src/lib/paraglide
 
 # Sentry Config File
