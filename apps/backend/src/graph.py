@@ -1,5 +1,6 @@
 #!/usr/bin/env uv run python
 import asyncio
+import os
 from typing import Sequence
 
 from dotenv import load_dotenv
@@ -11,10 +12,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
-from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
+
+try:
+    from langchain.agents import create_agent, AgentState
+except ImportError:
+    from langgraph.prebuilt import create_react_agent as create_agent
+    from langgraph.prebuilt.chat_agent_executor import AgentState
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -40,7 +45,9 @@ def get_weather(city: str) -> str:
 
 
 def get_model() -> BaseChatModel:
-    model = init_chat_model("claude-3-5-haiku-latest", temperature=0.9)
+    model_name = os.getenv("CHAT_MODEL_NAME", "claude-3-5-haiku-latest")
+    temperature = float(os.getenv("CHAT_MODEL_TEMPERATURE", "0.9"))
+    model = init_chat_model(model_name, temperature=temperature)
     return model
 
 
@@ -50,17 +57,17 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
 
     template = get_prompt_template()
 
-    return (
-        template.format_messages(user_name=config["configurable"].get("user_name"))
-        + state["messages"]
+    prompt_messages = template.format_messages(
+        user_name=config["configurable"].get("user_name")
     )
+    return list(prompt_messages) + list(state["messages"])
 
 
 def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     model = get_model()
     checkpointer = get_checkpointer()
 
-    agent = create_react_agent(
+    agent = create_agent(
         model=model,
         tools=[get_weather],
         prompt=get_prompt,  # type: ignore reportArgumentType

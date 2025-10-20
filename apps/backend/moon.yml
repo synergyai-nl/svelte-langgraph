@@ -20,6 +20,9 @@ tasks:
     local: true
   typecheck:
     command: "pyright"
+  test:
+    command: "uv"
+    args: "run --group test pytest tests/"
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
