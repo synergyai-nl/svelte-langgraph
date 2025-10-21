@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Card, Button } from 'flowbite-svelte';
 	import { ExclamationCircleOutline, RefreshOutline } from 'flowbite-svelte-icons';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		error: Error;
@@ -28,7 +29,7 @@
 					<div class="flex gap-2 pt-1">
 						<Button size="sm" color="dark" outline onclick={onRetry}>
 							<RefreshOutline class="me-2 h-4 w-4" />
-							Retry
+							{m.chat_error_retry()}
 						</Button>
 					</div>
 				</div>
