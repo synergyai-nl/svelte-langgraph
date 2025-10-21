@@ -19,7 +19,6 @@
 		DropdownDivider,
 		Avatar,
 		DarkMode
-
 	} from 'flowbite-svelte';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
@@ -91,7 +90,7 @@
 				<DropdownDivider />
 				<button
 					type="button"
-					class="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between text-left text-sm text-gray-700 dark:text-gray-200"
+					class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
 					onclick={() => {
 						document.documentElement.classList.toggle('dark');
 						isDarkMode = !isDarkMode;
@@ -111,10 +110,10 @@
 					<button
 						slot="submitButton"
 						type="submit"
-						class="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between text-left text-sm text-red-600 dark:text-red-500"
+						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-500 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-						<ArrowLeftToBracketOutline class="shrink-0 h-5 w-5" />
+						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0" />
 					</button>
 				</SignOut>
 			</Dropdown>
