@@ -80,6 +80,7 @@
 							color="alternative"
 							size="xs"
 							title={m.message_copy()}
+							disabled
 						>
 							<ClipboardOutline size="xs" />
 						</Button>
@@ -89,6 +90,7 @@
 							color="alternative"
 							size="xs"
 							title={m.message_regenerate()}
+							disabled
 						>
 							<ArrowsRepeatOutline size="xs" />
 						</Button>
@@ -99,6 +101,7 @@
 								color="alternative"
 								size="xs"
 								title={m.message_feedback_good()}
+								disabled
 							>
 								<ThumbsUpOutline size="xs" />
 							</Button>
@@ -108,6 +111,7 @@
 								color="alternative"
 								size="xs"
 								title={m.message_feedback_bad()}
+								disabled
 							>
 								<ThumbsDownOutline size="xs" />
 							</Button>
@@ -135,6 +139,7 @@
 							color="alternative"
 							size="xs"
 							title={m.message_edit()}
+							disabled
 						>
 							<PenOutline size="xs" />
 						</Button>
