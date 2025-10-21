@@ -6,7 +6,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { onMount } from 'svelte';
 
-	import { MessagesOutline } from 'flowbite-svelte-icons';
+	import { ArrowLeftToBracketOutline, MessagesOutline } from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -16,14 +16,17 @@
 		NavHamburger,
 		Dropdown,
 		DropdownHeader,
-		DropdownItem,
 		DropdownDivider,
-		Avatar
+		Avatar,
+		DarkMode
+
 	} from 'flowbite-svelte';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 
 	let { children } = $props();
+
+	let isDarkMode = $state(true);
 
 	// Auto dark mode based on browser preference
 	onMount(() => {
@@ -32,8 +35,10 @@
 		const updateTheme = (e: MediaQueryList | MediaQueryListEvent) => {
 			if (e.matches) {
 				document.documentElement.classList.add('dark');
+				isDarkMode = true;
 			} else {
 				document.documentElement.classList.remove('dark');
+				isDarkMode = false;
 			}
 		};
 
@@ -84,6 +89,18 @@
 				</DropdownHeader>
 
 				<DropdownDivider />
+				<button
+					type="button"
+					class="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between text-left text-sm text-gray-700 dark:text-gray-200"
+					onclick={() => {
+						document.documentElement.classList.toggle('dark');
+						isDarkMode = !isDarkMode;
+					}}
+				>
+					<span>{isDarkMode ? m.light_mode() : m.dark_mode()}</span>
+					<DarkMode class="text-primary-500 dark:text-primary-600 pointer-events-none" />
+				</button>
+				<DropdownDivider />
 
 				<SignOut
 					options={{
@@ -91,12 +108,14 @@
 						redirect: true
 					}}
 				>
-					<DropdownItem
+					<button
 						slot="submitButton"
-						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
+						type="submit"
+						class="w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center justify-between text-left text-sm text-red-600 dark:text-red-500"
 					>
 						<span>{m.auth_sign_out()}</span>
-					</DropdownItem>
+						<ArrowLeftToBracketOutline class="shrink-0 h-5 w-5" />
+					</button>
 				</SignOut>
 			</Dropdown>
 		{:else}

@@ -40,5 +40,7 @@
 	"landing_cta_watch_video": "Video bekijken",
 	"landing_featured_in": "UITGELICHT IN",
 	"tool_result": "Resultaat:",
-	"local_name": "Nederland"
+	"local_name": "Nederland",
+	"dark_mode": "Donkere Modus",
+	"light_mode": "Lichte Modus"
 }

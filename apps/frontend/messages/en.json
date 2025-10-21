@@ -40,5 +40,7 @@
 	"landing_cta_get_started": "Get started",
 	"landing_cta_watch_video": "Watch video",
 	"landing_featured_in": "FEATURED IN",
-	"local_name": "English"
+	"local_name": "English",
+	"dark_mode": "Dark Mode",
+	"light_mode": "Light Mode"
 }
