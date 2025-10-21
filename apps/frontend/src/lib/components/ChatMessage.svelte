@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Card } from 'flowbite-svelte';
+	import { Card, Button } from 'flowbite-svelte';
 	import {
 		UserOutline,
 		PenOutline,
@@ -74,45 +74,43 @@
 							? '0'
 							: '-4px'});"
 					>
-						<button
+						<Button
 							onclick={handleCopy}
-							class="rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+							class="p-1.5!"
+							color="alternative"
+							size="xs"
 							title={m.message_copy()}
-							type="button"
 						>
-							<ClipboardOutline size="xs" class="text-gray-600 dark:text-gray-400" />
-						</button>
-						<button
+							<ClipboardOutline size="xs" />
+						</Button>
+						<Button
 							onclick={() => onRegenerate?.(message)}
-							class="rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+							class="p-1.5!"
+							color="alternative"
+							size="xs"
 							title={m.message_regenerate()}
-							type="button"
 						>
-							<ArrowsRepeatOutline size="xs" class="text-gray-600 dark:text-gray-400" />
-						</button>
+							<ArrowsRepeatOutline size="xs" />
+						</Button>
 						<div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
-							<button
+							<Button
 								onclick={() => handleFeedback('up')}
-								class="rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 {feedbackGiven ===
-								'up'
-									? 'bg-gray-200 dark:bg-gray-700'
-									: ''}"
+								class="p-1.5! {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+								color="alternative"
+								size="xs"
 								title={m.message_feedback_good()}
-								type="button"
 							>
-								<ThumbsUpOutline size="xs" class="text-gray-600 dark:text-gray-400" />
-							</button>
-							<button
+								<ThumbsUpOutline size="xs" />
+							</Button>
+							<Button
 								onclick={() => handleFeedback('down')}
-								class="rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 {feedbackGiven ===
-								'down'
-									? 'bg-gray-200 dark:bg-gray-700'
-									: ''}"
+								class="p-1.5! {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+								color="alternative"
+								size="xs"
 								title={m.message_feedback_bad()}
-								type="button"
 							>
-								<ThumbsDownOutline size="xs" class="text-gray-600 dark:text-gray-400" />
-							</button>
+								<ThumbsDownOutline size="xs" />
+							</Button>
 						</div>
 					</div>
 				{:else}
@@ -131,14 +129,15 @@
 							? '0'
 							: '-4px'});"
 					>
-						<button
+						<Button
 							onclick={() => onEdit?.(message)}
-							class="rounded p-1.5 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+							class="p-1.5!"
+							color="alternative"
+							size="xs"
 							title={m.message_edit()}
-							type="button"
 						>
-							<PenOutline size="xs" class="text-gray-600 dark:text-gray-400" />
-						</button>
+							<PenOutline size="xs" />
+						</Button>
 					</div>
 				{/if}
 			</div>
