@@ -44,5 +44,10 @@
 	"landing_cta_watch_video": "Video bekijken",
 	"landing_featured_in": "UITGELICHT IN",
 	"tool_result": "Resultaat:",
-	"local_name": "Nederland"
+	"local_name": "Nederland",
+	"message_copy": "Kopiëren naar klembord",
+	"message_regenerate": "Opnieuw proberen",
+	"message_feedback_good": "Goed antwoord",
+	"message_feedback_bad": "Slecht antwoord",
+	"message_edit": "Bewerken"
 }

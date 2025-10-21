@@ -44,5 +44,10 @@
 	"landing_cta_get_started": "Get started",
 	"landing_cta_watch_video": "Watch video",
 	"landing_featured_in": "FEATURED IN",
-	"local_name": "English"
+	"local_name": "English",
+	"message_copy": "Copy to clipboard",
+	"message_regenerate": "Re-Try",
+	"message_feedback_good": "Good Response",
+	"message_feedback_bad": "Bad Response",
+	"message_edit": "Edit"
 }
