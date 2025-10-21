@@ -1,12 +1,10 @@
 <script lang="ts">
-	import { error } from '@sveltejs/kit';
 	import { Client } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, UserMessage } from '$lib/langgraph/types';
-	import ChatError from './ChatError.svelte';
 
 	interface Props {
 		langGraphClient: Client;
@@ -32,6 +30,7 @@
 	let messages = $state<Array<Message>>([]);
 	let chat_started = $state(false);
 	let generation_error = $state<Error | null>(null);
+	let last_user_message = $state<string>('');
 
 	function updateMessages(chunk: Message) {
 		console.debug('Processing chunk in inputSubmit:', chunk);
@@ -70,10 +69,12 @@
 				id: crypto.randomUUID()
 			};
 			messages.push(userMessage);
+			last_user_message = current_input; // Store for retry
 			current_input = '';
 
 			is_streaming = true;
 			final_answer_started = false;
+			generation_error = null; // Clear previous errors
 
 			try {
 				for await (const chunk of streamAnswer(
@@ -86,12 +87,16 @@
 					updateMessages(chunk);
 			} catch (err) {
 				if (err instanceof Error) generation_error = err;
-				error(500, {
-					message: 'Error during generation'
-				});
 			} finally {
 				is_streaming = false;
 			}
+		}
+	}
+
+	function retryGeneration() {
+		if (last_user_message) {
+			current_input = last_user_message;
+			inputSubmit();
 		}
 	}
 </script>
@@ -103,9 +108,12 @@
 		{intro}
 		onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
 	/>
-{:else if generation_error}
-	<ChatError error={generation_error} />
 {:else}
-	<ChatMessages {messages} finalAnswerStarted={final_answer_started} />
+	<ChatMessages
+		{messages}
+		finalAnswerStarted={final_answer_started}
+		{generation_error}
+		onRetryError={retryGeneration}
+	/>
 {/if}
 <ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />

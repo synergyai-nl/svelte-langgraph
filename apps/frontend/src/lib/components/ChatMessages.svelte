@@ -3,14 +3,17 @@
 	import ChatToolMessage from './ChatToolMessage.svelte';
 	import type { Message, BaseMessage } from '$lib/langgraph/types';
 	import ChatWaiting from './ChatWaiting.svelte';
+	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import type { Attachment } from 'svelte/attachments';
 
 	interface Props {
 		messages: Array<Message>;
 		finalAnswerStarted: boolean;
+		generation_error?: Error | null;
+		onRetryError?: () => void;
 	}
 
-	let { messages, finalAnswerStarted }: Props = $props();
+	let { messages, finalAnswerStarted, generation_error = null, onRetryError }: Props = $props();
 
 	function scrollToMe(message: BaseMessage): Attachment {
 		return (element) => {
@@ -33,7 +36,9 @@
 					{/if}
 				</div>
 			{/each}
-			{#if !finalAnswerStarted}
+			{#if generation_error && onRetryError}
+				<ChatErrorMessage error={generation_error} onRetry={onRetryError} />
+			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}
 		</div>
