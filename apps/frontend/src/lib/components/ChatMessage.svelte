@@ -29,6 +29,7 @@
 	let feedbackGiven = $state<'up' | 'down' | null>(null);
 
 	function handleCopy() {
+		//TODO: Tooltips
 		navigator.clipboard.writeText(message.text);
 		onCopy?.(message.text);
 	}
