@@ -1,12 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hallo, {name} van nl!",
 	"app_title": "svelte-langgraph",
 	"nav_home": "Thuis",
 	"nav_chat": "Chat",
-	"nav_paraglide": "Paraglide",
-	"nav_dashboard": "Dashboard",
-	"nav_profile": "Profiel",
 	"auth_sign_in": "Inloggen",
 	"auth_sign_out": "Uitloggen",
 	"user_fallback": "Gebruiker",
