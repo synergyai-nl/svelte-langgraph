@@ -16,7 +16,6 @@
 	interface Props {
 		message: BaseMessage;
 		onEdit?: (message: BaseMessage) => void;
-		onCopy?: (text: string) => void;
 		onRegenerate?: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
