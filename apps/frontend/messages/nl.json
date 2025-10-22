@@ -1,12 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hallo, {name} van nl!",
-	"app_title": "Mijn AI Chat UI",
+	"app_title": "svelte-langgraph",
 	"nav_home": "Thuis",
 	"nav_chat": "Chat",
-	"nav_paraglide": "Paraglide",
-	"nav_dashboard": "Dashboard",
-	"nav_profile": "Profiel",
 	"auth_sign_in": "Inloggen",
 	"auth_sign_out": "Uitloggen",
 	"user_fallback": "Gebruiker",
@@ -44,5 +40,7 @@
 	"landing_cta_watch_video": "Video bekijken",
 	"landing_featured_in": "UITGELICHT IN",
 	"tool_result": "Resultaat:",
-	"local_name": "Nederland"
+	"local_name": "Nederland",
+	"dark_mode": "Donkere Modus",
+	"light_mode": "Lichte Modus"
 }
