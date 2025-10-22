@@ -4,14 +4,13 @@
 		UserOutline,
 		PenOutline,
 		ClipboardOutline,
-		ArrowsRepeatOutline,
-		ThumbsUpOutline,
-		ThumbsDownOutline
+		ArrowsRepeatOutline
 	} from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import * as m from '$lib/paraglide/messages.js';
+	import FeedbackButtons from './FeedbackButtons.svelte';
 
 	interface Props {
 		message: BaseMessage;
@@ -25,15 +24,9 @@
 	const plugins = [gfmPlugin()];
 
 	let isHovered = $state(false);
-	let feedbackGiven = $state<'up' | 'down' | null>(null);
 
 	function handleCopy() {
 		navigator.clipboard.writeText(message.text);
-	}
-
-	function handleFeedback(type: 'up' | 'down') {
-		feedbackGiven = feedbackGiven === type ? null : type;
-		onFeedback?.(message, type);
 	}
 </script>
 
@@ -91,28 +84,7 @@
 						>
 							<ArrowsRepeatOutline size="xs" />
 						</Button>
-						<div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
-							<Button
-								onclick={() => handleFeedback('up')}
-								class="p-1.5! {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-								color="alternative"
-								size="xs"
-								title={m.message_feedback_good()}
-								disabled
-							>
-								<ThumbsUpOutline size="xs" />
-							</Button>
-							<Button
-								onclick={() => handleFeedback('down')}
-								class="p-1.5! {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-								color="alternative"
-								size="xs"
-								title={m.message_feedback_bad()}
-								disabled
-							>
-								<ThumbsDownOutline size="xs" />
-							</Button>
-						</div>
+						<FeedbackButtons {message} {onFeedback} />
 					</div>
 				{:else}
 					<Card
