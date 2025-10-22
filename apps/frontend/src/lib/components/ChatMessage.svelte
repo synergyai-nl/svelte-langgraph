@@ -20,7 +20,7 @@
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
-	let { message, onEdit, onCopy, onRegenerate, onFeedback }: Props = $props();
+	let { message, onEdit, onRegenerate, onFeedback }: Props = $props();
 
 	const plugins = [gfmPlugin()];
 
@@ -30,7 +30,6 @@
 	function handleCopy() {
 		//TODO: Tooltips
 		navigator.clipboard.writeText(message.text);
-		onCopy?.(message.text);
 	}
 
 	function handleFeedback(type: 'up' | 'down') {
