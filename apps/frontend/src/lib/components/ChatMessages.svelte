@@ -21,21 +21,17 @@
 	}
 </script>
 
-<div class="flex h-screen flex-col">
-	<div class="flex-1 overflow-y-auto pb-32">
-		<div class="mx-auto w-full max-w-4xl px-4 py-8">
-			{#each messages as message (message.id)}
-				<div {@attach scrollToMe(message)}>
-					{#if message.type === 'tool'}
-						<ChatToolMessage {message} />
-					{:else if message.text}
-						<ChatMessage {message} />
-					{/if}
-				</div>
-			{/each}
-			{#if !finalAnswerStarted}
-				<ChatWaiting />
+<div class="mx-auto w-full max-w-4xl px-4 py-8">
+	{#each messages as message (message.id)}
+		<div {@attach scrollToMe(message)}>
+			{#if message.type === 'tool'}
+				<ChatToolMessage {message} />
+			{:else if message.text}
+				<ChatMessage {message} />
 			{/if}
 		</div>
-	</div>
+	{/each}
+	{#if !finalAnswerStarted}
+		<ChatWaiting />
+	{/if}
 </div>
