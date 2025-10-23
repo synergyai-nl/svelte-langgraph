@@ -9,8 +9,11 @@ function getFromEnv(variable_name: string): string {
 	return val;
 }
 
-export const providerConfig: GenericOIDCUserConfig = {
-	clientId: getFromEnv('AUTH_OIDC_CLIENT_ID'),
-	clientSecret: getFromEnv('AUTH_OIDC_CLIENT_SECRET'),
-	issuer: getFromEnv('AUTH_OIDC_ISSUER')
-};
+// Lazy evaluation: only read env vars when this function is called at runtime
+export function getProviderConfig(): GenericOIDCUserConfig {
+	return {
+		clientId: getFromEnv('AUTH_OIDC_CLIENT_ID'),
+		clientSecret: getFromEnv('AUTH_OIDC_CLIENT_SECRET'),
+		issuer: getFromEnv('AUTH_OIDC_ISSUER')
+	};
+}
