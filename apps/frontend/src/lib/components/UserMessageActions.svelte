@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button } from 'flowbite-svelte';
+	import { Button, Tooltip } from 'flowbite-svelte';
 	import { PenOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -23,8 +23,8 @@
 		color="alternative"
 		size="xs"
 		title={m.message_edit()}
-		disabled
 	>
 		<PenOutline size="xs" />
 	</Button>
+	<Tooltip type="auto">Coming Soon !</Tooltip>
 </div>

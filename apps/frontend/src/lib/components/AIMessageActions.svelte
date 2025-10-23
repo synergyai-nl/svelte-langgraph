@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button } from 'flowbite-svelte';
+	import { Button, Tooltip } from 'flowbite-svelte';
 	import { ClipboardOutline, ArrowsRepeatOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -43,5 +43,7 @@
 	>
 		<ArrowsRepeatOutline size="xs" />
 	</Button>
+	<Tooltip type="auto">Coming Soon !</Tooltip>
 	<FeedbackButtons {message} {onFeedback} />
+	<Tooltip type="auto">Coming Soon !</Tooltip>
 </div>
