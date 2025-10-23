@@ -1,4 +1,6 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
+import type { Account, Session } from '@auth/sveltekit';
+import type { JWT } from '@auth/core/jwt';
 import { env } from '$env/dynamic/private';
 import { GenericOIDCProvider } from '$lib/auth/provider';
 
@@ -8,14 +10,14 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-async function sessionCallback({ session, token }) {
+async function sessionCallback({ session, token }: { session: Session; token: JWT }) {
 	if ('id_token' in token) {
 		return { ...session, accessToken: token.id_token };
 	}
 	return session;
 }
 
-async function JWTCallback({ token, account }) {
+async function JWTCallback({ token, account }: { token: JWT; account?: Account | null }) {
 	if (account) {
 		console.info('Initial login');
 
