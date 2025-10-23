@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.tailwind.css';
 
-	import { SignIn, SignOut } from '@auth/sveltekit/components';
+	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -22,6 +22,7 @@
 	} from 'flowbite-svelte';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	let { children } = $props();
 </script>
@@ -87,9 +88,7 @@
 				</SignOut>
 			</Dropdown>
 		{:else}
-			<SignIn provider="descope">
-				<Button slot="submitButton" size="sm">{m.auth_sign_in()}</Button>
-			</SignIn>
+			<SignInButton />
 		{/if}
 		<LanguageSwitcher class="ml-3 p-2" />
 		<DarkMode class="ml-3" />
