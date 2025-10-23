@@ -1,8 +1,7 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
-import type { Account, Session } from '@auth/sveltekit';
-import type { JWT } from '@auth/core/jwt';
-import { env } from '$env/dynamic/private';
 import { GenericOIDCProvider } from '$lib/auth/provider';
+import { JWTCallback, sessionCallback } from './callbacks';
+import { providerConfig } from './config';
 
 declare module '@auth/sveltekit' {
 	interface Session {
@@ -10,87 +9,8 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-async function sessionCallback({ session, token }: { session: Session; token: JWT }) {
-	if ('id_token' in token) {
-		return { ...session, accessToken: token.id_token };
-	}
-	return session;
-}
-
-async function JWTCallback({ token, account }: { token: JWT; account?: Account | null }) {
-	if (account) {
-		console.info('Initial login');
-
-		if (account.expires_in === undefined) throw Error('Account has no expiration set.');
-
-		return {
-			...token,
-			id_token: account.id_token,
-			expires_at: Math.floor(Date.now() / 1000 + account.expires_in),
-			refresh_token: account.refresh_token
-		};
-	} else {
-		if (typeof token.expires_at !== 'number') throw Error('Token has no expiration set.');
-
-		if (Date.now() < token.expires_at * 1000) {
-			console.debug('Returning valid token');
-
-			return token;
-		} else {
-			console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
-
-			const clientId = env.AUTH_OIDC_CLIENT_ID;
-			const clientSecret = env.AUTH_OIDC_CLIENT_SECRET;
-			const issuer = env.AUTH_OIDC_ISSUER;
-
-			if (!clientId || !clientSecret || !issuer) {
-				throw new Error('Missing OIDC client credentials');
-			}
-
-			try {
-				if (typeof token.refresh_token !== 'string') throw new Error('Token has no refresh token.');
-
-				const discoveryResponse = await fetch(`${issuer}/.well-known/openid-configuration`);
-				const discoveryData = await discoveryResponse.json();
-				const tokenEndpoint = discoveryData.token_endpoint;
-
-				const response = await fetch(tokenEndpoint, {
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-					body: new URLSearchParams({
-						client_id: clientId,
-						client_secret: clientSecret,
-						grant_type: 'refresh_token',
-						refresh_token: token.refresh_token
-					}),
-					method: 'POST'
-				});
-
-				const tokens = await response.json();
-
-				if (!response.ok) throw tokens;
-
-				return {
-					...token,
-					id_token: tokens.id_token,
-					expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
-					refresh_token: tokens.refresh_token ?? token.refresh_token
-				};
-			} catch (error) {
-				console.error('Error refreshing access token', error);
-				return { ...token, error: 'RefreshAccessTokenError' };
-			}
-		}
-	}
-}
-
 export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [
-		GenericOIDCProvider({
-			clientId: env.AUTH_OIDC_CLIENT_ID,
-			clientSecret: env.AUTH_OIDC_CLIENT_SECRET,
-			issuer: env.AUTH_OIDC_ISSUER
-		})
-	],
+	providers: [GenericOIDCProvider(providerConfig)],
 	trustHost: true,
 	callbacks: {
 		session: sessionCallback,
