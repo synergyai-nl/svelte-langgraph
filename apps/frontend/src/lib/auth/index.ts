@@ -1,7 +1,7 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
 import { GenericOIDCProvider } from '$lib/auth/provider';
 import { JWTCallback, sessionCallback } from './callbacks';
-import { providerConfig } from './config';
+import { getProviderConfig } from './config';
 
 declare module '@auth/sveltekit' {
 	interface Session {
@@ -10,7 +10,7 @@ declare module '@auth/sveltekit' {
 }
 
 export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [GenericOIDCProvider(providerConfig)],
+	providers: [GenericOIDCProvider(getProviderConfig())],
 	trustHost: true,
 	callbacks: {
 		session: sessionCallback,

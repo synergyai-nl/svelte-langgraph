@@ -1,6 +1,7 @@
 import type { Account, Session } from '@auth/sveltekit';
 import type { JWT } from '@auth/core/jwt';
-import { providerConfig } from './config';
+import { getProviderConfig } from './config';
+import type { GenericOIDCUserConfig } from './types';
 
 export async function sessionCallback({ session, token }: { session: Session; token: JWT }) {
 	if ('id_token' in token) {
@@ -14,11 +15,9 @@ function getExpiresAt(expires_in: number): number {
 }
 
 let tokenEndpoint: string;
-async function getTokenEndpoint(): Promise<string> {
+async function getTokenEndpoint(config: GenericOIDCUserConfig): Promise<string> {
 	if (!tokenEndpoint) {
-		const discoveryResponse = await fetch(
-			`${providerConfig.issuer}/.well-known/openid-configuration`
-		);
+		const discoveryResponse = await fetch(`${config.issuer}/.well-known/openid-configuration`);
 		const discoveryData = await discoveryResponse.json();
 		tokenEndpoint = discoveryData.token_endpoint;
 
@@ -32,13 +31,14 @@ async function getTokenEndpoint(): Promise<string> {
 async function refreshAccessToken(token: JWT): Promise<JWT> {
 	if (typeof token.refresh_token !== 'string') throw new Error('Token has no refresh token.');
 
-	const tokenEndpoint = await getTokenEndpoint();
+	const config = getProviderConfig();
+	const tokenEndpoint = await getTokenEndpoint(config);
 
 	const response = await fetch(tokenEndpoint, {
 		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 		body: new URLSearchParams({
-			client_id: providerConfig.clientId,
-			client_secret: providerConfig.clientSecret,
+			client_id: config.clientId,
+			client_secret: config.clientSecret,
 			grant_type: 'refresh_token',
 			refresh_token: token.refresh_token
 		}),
