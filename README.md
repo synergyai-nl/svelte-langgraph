@@ -36,7 +36,6 @@ cp .env.example .env
 Configure the following variables in `apps/backend/.env`:
 
 - `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
-- `AUTH_OIDC_AUDIENCE` - The audience/client ID for your application (e.g., `svelte-langgraph`)
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
