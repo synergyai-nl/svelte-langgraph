@@ -9,11 +9,14 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [GenericOIDCProvider(getProviderConfig())],
-	trustHost: true,
-	callbacks: {
-		session: sessionCallback,
-		jwt: JWTCallback
-	}
+export const { handle, signIn, signOut } = SvelteKitAuth(async () => {
+	const authOptions = {
+		providers: [GenericOIDCProvider(getProviderConfig())],
+		trustHost: true,
+		callbacks: {
+			session: sessionCallback,
+			jwt: JWTCallback
+		}
+	};
+	return authOptions;
 });
