@@ -9,6 +9,50 @@ export async function sessionCallback({ session, token }: { session: Session; to
 	return session;
 }
 
+let tokenEndpoint: string;
+async function getTokenEndpoint(): Promise<string> {
+	if (!tokenEndpoint) {
+		const discoveryResponse = await fetch(
+			`${providerConfig.issuer}/.well-known/openid-configuration`
+		);
+		const discoveryData = await discoveryResponse.json();
+		tokenEndpoint = discoveryData.token_endpoint;
+
+		if (typeof tokenEndpoint !== "string") throw new Error('Invalid value returned for token endpoint.');
+	}
+
+	return tokenEndpoint;	
+}
+
+async function refreshAccessToken(token: JWT): Promise<JWT> {
+	if (typeof token.refresh_token !== 'string') throw new Error('Token has no refresh token.');
+
+	const tokenEndpoint = await getTokenEndpoint();
+
+	const response = await fetch(tokenEndpoint, {
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: new URLSearchParams({
+			client_id: providerConfig.clientId,
+			client_secret: providerConfig.clientSecret,
+			grant_type: 'refresh_token',
+			refresh_token: token.refresh_token
+		}),
+		method: 'POST'
+	});
+
+	const tokens = await response.json();
+
+	if (!response.ok) throw tokens;
+
+	return {
+		...token,
+		id_token: tokens.id_token,
+		expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+		refresh_token: tokens.refresh_token ?? token.refresh_token
+	};
+
+}
+
 export async function JWTCallback({ token, account }: { token: JWT; account?: Account | null }) {
 	if (account) {
 		console.info('Initial login');
@@ -32,35 +76,7 @@ export async function JWTCallback({ token, account }: { token: JWT; account?: Ac
 			console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
 
 			try {
-				if (typeof token.refresh_token !== 'string') throw new Error('Token has no refresh token.');
-
-				const discoveryResponse = await fetch(
-					`${providerConfig.issuer}/.well-known/openid-configuration`
-				);
-				const discoveryData = await discoveryResponse.json();
-				const tokenEndpoint = discoveryData.token_endpoint;
-
-				const response = await fetch(tokenEndpoint, {
-					headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-					body: new URLSearchParams({
-						client_id: providerConfig.clientId,
-						client_secret: providerConfig.clientSecret,
-						grant_type: 'refresh_token',
-						refresh_token: token.refresh_token
-					}),
-					method: 'POST'
-				});
-
-				const tokens = await response.json();
-
-				if (!response.ok) throw tokens;
-
-				return {
-					...token,
-					id_token: tokens.id_token,
-					expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
-					refresh_token: tokens.refresh_token ?? token.refresh_token
-				};
+				refreshAccessToken(token);
 			} catch (error) {
 				console.error('Error refreshing access token', error);
 				return { ...token, error: 'RefreshAccessTokenError' };
