@@ -1,12 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!",
-	"app_title": "My AI Chat UI",
+	"app_title": "svelte-langgraph",
 	"nav_home": "Home",
 	"nav_chat": "Chat",
-	"nav_paraglide": "Paraglide",
-	"nav_dashboard": "Dashboard",
-	"nav_profile": "Profile",
 	"auth_sign_in": "Sign in",
 	"auth_sign_out": "Sign out",
 	"user_fallback": "User",
@@ -45,9 +41,11 @@
 	"landing_cta_watch_video": "Watch video",
 	"landing_featured_in": "FEATURED IN",
 	"local_name": "English",
-	"message_copy": "Copy to clipboard",
-	"message_regenerate": "Re-Try",
-	"message_feedback_good": "Good Response",
-	"message_feedback_bad": "Bad Response",
-	"message_edit": "Edit"
+	"dark_mode": "Dark Mode",
+	"light_mode": "Light Mode",
+	"message_copy": "क्लिपबोर्ड पर कॉपी करें",
+	"message_regenerate": "पुनः प्रयास करें",
+	"message_feedback_good": "अच्छा उत्तर",
+	"message_feedback_bad": "कमज़ोर उत्तर",
+	"message_edit": "संपादित करें"
 }

@@ -1,12 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "नमस्ते, {name} जी!",
-	"app_title": "मेरा कृत्रिम बुद्धिमत्ता संवाद मंच",
+	"app_title": "svelte-langgraph",
 	"nav_home": "मुखपृष्ठ",
 	"nav_chat": "संवाद",
-	"nav_paraglide": "पैराग्लाइड",
-	"nav_dashboard": "नियंत्रण-पट्ट",
-	"nav_profile": "प्रयोक्ता विवरण",
 	"auth_sign_in": "प्रवेश करें",
 	"auth_sign_out": "बाहर निकलें",
 	"user_fallback": "उपयोगकर्ता",
@@ -44,9 +40,12 @@
 	"landing_cta_watch_video": "वीडियो देखें",
 	"landing_featured_in": "में प्रदर्शित",
 	"local_name": "हिन्दी",
-	"message_copy": "क्लिपबोर्ड पर कॉपी करें",
-	"message_regenerate": "पुनः प्रयास करें",
-	"message_feedback_good": "अच्छा उत्तर",
-	"message_feedback_bad": "कमज़ोर उत्तर",
-	"message_edit": "संपादित करें"
+	"dark_mode": "रात्रि रूप",
+	"light_mode": "दिवस रूप",
+	"message_copy": "Copy to clipboard",
+	"message_regenerate": "Re-Try",
+	"message_feedback_good": "Good Response",
+	"message_feedback_bad": "Bad Response",
+	"message_edit": "Edit",
+	"tool_result": "Result:"
 }
