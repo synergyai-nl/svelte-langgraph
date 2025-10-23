@@ -1,6 +1,6 @@
 import { SvelteKitAuth } from '@auth/sveltekit';
-import type { OIDCConfig } from '@auth/sveltekit/providers';
 import { env } from '$env/dynamic/private';
+import { GenericOIDCProvider } from '$lib/auth/provider';
 
 declare module '@auth/sveltekit' {
 	interface Session {
@@ -8,23 +8,14 @@ declare module '@auth/sveltekit' {
 	}
 }
 
-const oidcProvider: OIDCConfig<Record<string, unknown>> = {
-	id: 'oidc',
-	name: 'OIDC',
-	type: 'oidc',
-	checks: ['pkce', 'state'],
-	client: {
-		token_endpoint_auth_method: 'client_secret_post'
-	},
-	options: {
-		clientId: env.AUTH_OIDC_CLIENT_ID || '',
-		clientSecret: env.AUTH_OIDC_CLIENT_SECRET || '',
-		issuer: env.AUTH_OIDC_ISSUER || ''
-	}
-};
-
 export const { handle, signIn, signOut } = SvelteKitAuth({
-	providers: [oidcProvider],
+	providers: [
+		GenericOIDCProvider({
+			clientId: env.AUTH_OIDC_CLIENT_ID,
+			clientSecret: env.AUTH_OIDC_CLIENT_SECRET,
+			issuer: env.AUTH_OIDC_ISSUER
+		})
+	],
 	trustHost: true,
 	callbacks: {
 		session: async ({ session, token }) => {
