@@ -1,12 +1,8 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"hello_world": "Hello, {name} from en!",
-	"app_title": "My AI Chat UI",
+	"app_title": "svelte-langgraph",
 	"nav_home": "Home",
 	"nav_chat": "Chat",
-	"nav_paraglide": "Paraglide",
-	"nav_dashboard": "Dashboard",
-	"nav_profile": "Profile",
 	"auth_sign_in": "Sign in",
 	"auth_sign_out": "Sign out",
 	"user_fallback": "User",
@@ -44,5 +40,7 @@
 	"landing_cta_get_started": "Get started",
 	"landing_cta_watch_video": "Watch video",
 	"landing_featured_in": "FEATURED IN",
-	"local_name": "English"
+	"local_name": "English",
+	"dark_mode": "Dark Mode",
+	"light_mode": "Light Mode"
 }

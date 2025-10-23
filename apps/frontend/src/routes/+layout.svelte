@@ -4,8 +4,9 @@
 	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
+	import { onMount } from 'svelte';
 
-	import { MessagesOutline } from 'flowbite-svelte-icons';
+	import { ArrowLeftToBracketOutline, MessagesOutline } from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -15,7 +16,6 @@
 		NavHamburger,
 		Dropdown,
 		DropdownHeader,
-		DropdownItem,
 		DropdownDivider,
 		Avatar,
 		DarkMode
@@ -25,6 +25,33 @@
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	let { children } = $props();
+
+	let isDarkMode = $state(true);
+
+	// Auto dark mode based on browser preference
+	onMount(() => {
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+		const updateTheme = (e: MediaQueryList | MediaQueryListEvent) => {
+			if (e.matches) {
+				document.documentElement.classList.add('dark');
+				isDarkMode = true;
+			} else {
+				document.documentElement.classList.remove('dark');
+				isDarkMode = false;
+			}
+		};
+
+		// Set initial theme
+		updateTheme(mediaQuery);
+
+		// Listen for changes
+		mediaQuery.addEventListener('change', updateTheme);
+
+		return () => {
+			mediaQuery.removeEventListener('change', updateTheme);
+		};
+	});
 </script>
 
 <Navbar>
@@ -62,15 +89,17 @@
 				</DropdownHeader>
 
 				<DropdownDivider />
-
-				<DropdownItem href="/dashboard">
-					<span>{m.nav_dashboard()}</span>
-				</DropdownItem>
-
-				<DropdownItem href="/profile">
-					<span>{m.nav_profile()}</span>
-				</DropdownItem>
-
+				<button
+					type="button"
+					class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
+					onclick={() => {
+						document.documentElement.classList.toggle('dark');
+						isDarkMode = !isDarkMode;
+					}}
+				>
+					<span>{isDarkMode ? m.light_mode() : m.dark_mode()}</span>
+					<DarkMode class="text-primary-500 dark:text-primary-600 pointer-events-none" />
+				</button>
 				<DropdownDivider />
 
 				<SignOut
@@ -79,26 +108,26 @@
 						redirect: true
 					}}
 				>
-					<DropdownItem
+					<button
 						slot="submitButton"
-						class="!flex !w-full !items-center !justify-start text-red-600 dark:text-red-500"
+						type="submit"
+						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-500 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-					</DropdownItem>
+						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0" />
+					</button>
 				</SignOut>
 			</Dropdown>
 		{:else}
 			<SignInButton />
 		{/if}
 		<LanguageSwitcher class="ml-3 p-2" />
-		<DarkMode class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
 
 	<NavUl>
 		<NavLi href="/">{m.nav_home()}</NavLi>
 		<NavLi href="/chat">{m.nav_chat()}</NavLi>
-		<NavLi href="/demo">{m.nav_paraglide()}</NavLi>
 	</NavUl>
 </Navbar>
 
