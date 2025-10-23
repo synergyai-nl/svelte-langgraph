@@ -41,13 +41,11 @@
 	"landing_featured_in": "UITGELICHT IN",
 	"tool_result": "Resultaat:",
 	"local_name": "Nederland",
-	"hello_world": "Hallo, {name} van nl!",
-	"nav_paraglide": "Paraglide",
-	"nav_dashboard": "Dashboard",
-	"nav_profile": "Profiel",
 	"message_copy": "Kopiëren naar klembord",
 	"message_regenerate": "Opnieuw proberen",
 	"message_feedback_good": "Goed antwoord",
 	"message_feedback_bad": "Slecht antwoord",
-	"message_edit": "Bewerken"
+	"message_edit": "Bewerken",
+	"dark_mode": "Donkere modus",
+	"light_mode": "Lichte modus"
 }

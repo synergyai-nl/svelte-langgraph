@@ -42,10 +42,10 @@
 	"local_name": "हिन्दी",
 	"dark_mode": "रात्रि रूप",
 	"light_mode": "दिवस रूप",
-	"message_copy": "Copy to clipboard",
-	"message_regenerate": "Re-Try",
-	"message_feedback_good": "Good Response",
-	"message_feedback_bad": "Bad Response",
-	"message_edit": "Edit",
-	"tool_result": "Result:"
+	"message_copy": "क्लिपबोर्ड पर कॉपी करें",
+	"message_regenerate": "पुनः प्रयास करें",
+	"message_feedback_good": "अच्छा उत्तर",
+	"message_feedback_bad": "कमज़ोर उत्तर",
+	"message_edit": "संपादित करें",
+	"tool_result": "परिणाम:"
 }
