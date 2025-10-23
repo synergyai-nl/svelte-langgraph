@@ -4,7 +4,7 @@ import type { GenericOIDCUserConfig } from './types';
 function getFromEnv(variable_name: string): string {
 	const val = env[variable_name];
 
-	if (!val) throw Error(`Required environment varible '${variable_name}' not defined.`);
+	if (!val) throw Error(`Required environment variable '${variable_name}' not defined.`);
 
 	return val;
 }
