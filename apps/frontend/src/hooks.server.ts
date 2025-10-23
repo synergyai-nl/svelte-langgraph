@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/sveltekit';
 import type { Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { paraglideMiddleware } from '$lib/paraglide/server';
-import { handle as handleAuth } from './auth';
+import { handle as handleAuth } from '$lib/auth';
 import { initSentry } from '$lib/sentry';
 
 initSentry({ server: true });
