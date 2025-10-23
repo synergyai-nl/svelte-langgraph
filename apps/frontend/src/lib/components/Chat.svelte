@@ -96,16 +96,20 @@
 	}
 </script>
 
-{#if !chat_started}
-	<ChatSuggestions
-		{suggestions}
-		{introTitle}
-		{intro}
-		onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
-	/>
-{:else if generation_error}
-	<ChatError error={generation_error} />
-{:else}
-	<ChatMessages {messages} finalAnswerStarted={final_answer_started} />
-{/if}
-<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+<div class="flex h-[calc(100vh-4rem)] flex-col">
+	<div class="flex-1 overflow-y-auto pb-24">
+		{#if !chat_started}
+			<ChatSuggestions
+				{suggestions}
+				{introTitle}
+				{intro}
+				onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
+			/>
+		{:else if generation_error}
+			<ChatError error={generation_error} />
+		{:else}
+			<ChatMessages {messages} finalAnswerStarted={final_answer_started} />
+		{/if}
+	</div>
+	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+</div>
