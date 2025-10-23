@@ -18,6 +18,8 @@ jwt = JsonWebToken(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"])
 
 auth = Auth()
 
+REQUEST_TIMEOUT = 20
+
 
 def get_issuer() -> str:
     oidc_issuer = os.getenv("AUTH_OIDC_ISSUER")
@@ -31,7 +33,7 @@ def get_jwks_uri(issuer: str) -> str:
     """Get JWKS URI from OIDC discovery endpoint."""
 
     discovery_url = f"{issuer}/.well-known/openid-configuration"
-    response = requests.get(discovery_url)
+    response = requests.get(discovery_url, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
     config = response.json()
     return config["jwks_uri"]
@@ -40,7 +42,7 @@ def get_jwks_uri(issuer: str) -> str:
 def get_jwks(jwks_uri: str) -> KeySet:
     """Fetch JWKS from the provider."""
 
-    response = requests.get(jwks_uri)
+    response = requests.get(jwks_uri, timeout=REQUEST_TIMEOUT)
     response.raise_for_status()
     jwks_dict = response.json()
     keys = [JsonWebKey.import_key(key) for key in jwks_dict["keys"]]
