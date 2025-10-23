@@ -47,7 +47,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 
 	const tokens = await response.json();
 
-	if (!response.ok) throw tokens;
+	if (!response.ok) throw new Error(`Request error updating token: ${tokens}`);
 
 	return {
 		...token,
@@ -80,7 +80,7 @@ export async function JWTCallback({ token, account }: { token: JWT; account?: Ac
 			console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
 
 			try {
-				refreshAccessToken(token);
+				return refreshAccessToken(token);
 			} catch (error) {
 				console.error('Error refreshing access token', error);
 				return { ...token, error: 'RefreshAccessTokenError' };
