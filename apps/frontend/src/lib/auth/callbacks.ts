@@ -17,8 +17,12 @@ function getExpiresAt(expires_in: number): number {
 let tokenEndpoint: string;
 async function getTokenEndpoint(config: GenericOIDCUserConfig): Promise<string> {
 	if (!tokenEndpoint) {
-		const discoveryResponse = await fetch(`${config.issuer}/.well-known/openid-configuration`);
-		const discoveryData = await discoveryResponse.json();
+		const response = await fetch(`${config.issuer}/.well-known/openid-configuration`);
+
+		if (!response.ok) throw new Error(`Request error getting token endpoint: ${response}`);
+
+		const discoveryData = await response.json();
+
 		tokenEndpoint = discoveryData.token_endpoint;
 
 		if (typeof tokenEndpoint !== 'string')
@@ -45,15 +49,28 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 		method: 'POST'
 	});
 
+	if (!response.ok) throw new Error(`Request error updating token: ${response}`);
+
 	const tokens = await response.json();
 
-	if (!response.ok) throw new Error(`Request error updating token: ${tokens}`);
+	const id_token = tokens.id_token;
+	const expires_in = tokens.expires_in;
+	const refresh_token = tokens.refresh_token;
+
+	if (typeof id_token !== 'string')
+		throw new Error(`Invalid value returned for id_token: ${id_token}`);
+
+	if (typeof expires_in !== 'number')
+		throw new Error(`Invalid value returned for expires_in: ${expires_in}`);
+
+	if (refresh_token && typeof refresh_token !== 'string')
+		throw new Error(`Invalid value returned for expires_in: ${refresh_token}`);
 
 	return {
 		...token,
-		id_token: tokens.id_token,
-		expires_at: getExpiresAt(tokens.expires_in),
-		refresh_token: tokens.refresh_token ?? token.refresh_token
+		id_token: id_token,
+		expires_at: getExpiresAt(expires_in),
+		refresh_token: refresh_token ?? token.refresh_token
 	};
 }
 
