@@ -9,6 +9,10 @@ export async function sessionCallback({ session, token }: { session: Session; to
 	return session;
 }
 
+function getExpiresAt(expires_in: number): number {
+	return Math.floor(Date.now() / 1000 + expires_in);
+}
+
 let tokenEndpoint: string;
 async function getTokenEndpoint(): Promise<string> {
 	if (!tokenEndpoint) {
@@ -18,10 +22,11 @@ async function getTokenEndpoint(): Promise<string> {
 		const discoveryData = await discoveryResponse.json();
 		tokenEndpoint = discoveryData.token_endpoint;
 
-		if (typeof tokenEndpoint !== "string") throw new Error('Invalid value returned for token endpoint.');
+		if (typeof tokenEndpoint !== 'string')
+			throw new Error('Invalid value returned for token endpoint.');
 	}
 
-	return tokenEndpoint;	
+	return tokenEndpoint;
 }
 
 async function refreshAccessToken(token: JWT): Promise<JWT> {
@@ -47,10 +52,9 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 	return {
 		...token,
 		id_token: tokens.id_token,
-		expires_at: Math.floor(Date.now() / 1000 + tokens.expires_in),
+		expires_at: getExpiresAt(tokens.expires_in),
 		refresh_token: tokens.refresh_token ?? token.refresh_token
 	};
-
 }
 
 export async function JWTCallback({ token, account }: { token: JWT; account?: Account | null }) {
@@ -62,7 +66,7 @@ export async function JWTCallback({ token, account }: { token: JWT; account?: Ac
 		return {
 			...token,
 			id_token: account.id_token,
-			expires_at: Math.floor(Date.now() / 1000 + account.expires_in),
+			expires_at: getExpiresAt(account.expires_in),
 			refresh_token: account.refresh_token
 		};
 	} else {
