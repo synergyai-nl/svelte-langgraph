@@ -1,6 +1,8 @@
 import logging
 import os
 
+import requests
+
 from authlib.jose import JsonWebToken, JWTClaims, KeySet
 from authlib.jose.rfc7517 import JsonWebKey
 from authlib.jose.errors import JoseError
@@ -21,7 +23,6 @@ auth = Auth()
 
 def get_jwks_uri(issuer: str) -> str:
     """Get JWKS URI from OIDC discovery endpoint."""
-    import requests
 
     discovery_url = f"{issuer}/.well-known/openid-configuration"
     response = requests.get(discovery_url)
@@ -32,7 +33,6 @@ def get_jwks_uri(issuer: str) -> str:
 
 def get_jwks(jwks_uri: str) -> KeySet:
     """Fetch JWKS from the provider."""
-    import requests
 
     response = requests.get(jwks_uri)
     response.raise_for_status()
