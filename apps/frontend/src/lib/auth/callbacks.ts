@@ -64,7 +64,7 @@ async function refreshAccessToken(token: JWT): Promise<JWT> {
 		throw new Error(`Invalid value returned for expires_in: ${expires_in}`);
 
 	if (refresh_token && typeof refresh_token !== 'string')
-		throw new Error(`Invalid value returned for expires_in: ${refresh_token}`);
+		throw new Error(`Invalid value returned for refresh_token: ${refresh_token}`);
 
 	return {
 		...token,
