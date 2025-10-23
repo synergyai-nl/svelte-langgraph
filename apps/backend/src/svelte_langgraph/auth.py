@@ -13,12 +13,18 @@ from langgraph_sdk.auth.types import MinimalUserDict
 
 logger = logging.getLogger(__name__)
 
-oidc_issuer = os.getenv("AUTH_OIDC_ISSUER", "")
-oidc_audience = os.getenv("AUTH_OIDC_AUDIENCE", "")
 
 jwt = JsonWebToken(["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"])
 
 auth = Auth()
+
+
+def get_issuer() -> str:
+    oidc_issuer = os.getenv("AUTH_OIDC_ISSUER")
+    if not oidc_issuer:
+        raise Exception("AUTH_OIDC_ISSUER not defined.")
+
+    return oidc_issuer
 
 
 def get_jwks_uri(issuer: str) -> str:
@@ -41,8 +47,9 @@ def get_jwks(jwks_uri: str) -> KeySet:
     return KeySet(keys)
 
 
-jwks_uri = get_jwks_uri(oidc_issuer) if oidc_issuer else ""
-jwks_data = get_jwks(jwks_uri) if jwks_uri else KeySet([])
+oidc_issuer = get_issuer()
+jwks_uri = get_jwks_uri(oidc_issuer)
+jwks_data = get_jwks(jwks_uri)
 
 
 @auth.authenticate
