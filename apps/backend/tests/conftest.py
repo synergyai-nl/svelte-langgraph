@@ -140,10 +140,10 @@ def openai_single_tool_call(mock_completion):
             tool_calls=[
                 ToolCall(
                     call_id="call_1",
-                    function={
-                        "name": "get_weather",
-                        "arguments": '{"city": "Paris"}',
-                    },
+                    function=Function(
+                        name="get_weather",
+                        arguments='{"city": "Paris"}',
+                    ),
                 )
             ],
             finish_reason="tool_calls",
@@ -172,17 +172,17 @@ def openai_parallel_tool_calls(mock_completion):
             tool_calls=[
                 ToolCall(
                     call_id="call_1",
-                    function={
-                        "name": "get_weather",
-                        "arguments": '{"city": "Paris"}',
-                    },
+                    function=Function(
+                        name="get_weather",
+                        arguments='{"city": "Paris"}',
+                    ),
                 ),
                 ToolCall(
                     call_id="call_2",
-                    function={
-                        "name": "get_time",
-                        "arguments": '{"city": "Paris"}',
-                    },
+                    function=Function(
+                        name="get_time",
+                        arguments='{"city": "Paris"}',
+                    ),
                 ),
             ],
             finish_reason="tool_calls",
