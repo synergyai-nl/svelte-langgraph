@@ -22,6 +22,15 @@ tasks:
     command: "pyright"
   test:
     command: "pytest"
+    args: '.'
+  test-watch:
+    extends: test
+    command: "ptw"
+    preset: "watcher"
+    args:
+      - '-v'
+      - '--now'
+      - '--clear'
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
