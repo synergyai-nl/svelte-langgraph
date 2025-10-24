@@ -1,6 +1,6 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"app_title": "svelte-langgraph",
+	"app_title": "Mijn AI Chat UI",
 	"nav_home": "Thuis",
 	"nav_chat": "Chat",
 	"auth_sign_in": "Inloggen",
@@ -41,6 +41,12 @@
 	"landing_featured_in": "UITGELICHT IN",
 	"tool_result": "Resultaat:",
 	"local_name": "Nederland",
-	"dark_mode": "Donkere Modus",
-	"light_mode": "Lichte Modus"
+	"message_copy": "Kopiëren naar klembord",
+	"message_regenerate": "Opnieuw proberen",
+	"message_feedback_good": "Goed antwoord",
+	"message_feedback_bad": "Slecht antwoord",
+	"message_edit": "Bewerken",
+	"dark_mode": "Donkere modus",
+	"light_mode": "Lichte modus",
+	"message_copied": "Gekopieerd"
 }
