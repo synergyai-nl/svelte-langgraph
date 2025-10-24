@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures for LangGraph tests."""
 
+from typing import Literal
 from uuid import uuid4
 
 import pytest
@@ -7,7 +8,12 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+)
+
 from src.svelte_langgraph.graph import make_graph
 
 OPENAI_TEST_BASE_URL = "https://api.openai.test"
@@ -48,36 +54,57 @@ class Message(BaseModel):
     tool_calls: list[ToolCall] = []
 
 
+FinishReason = Literal["stop", "tool_calls"]
+
+
+class Choice(BaseModel):
+    index: int = 0
+    message: Message
+    finish_reason: FinishReason
+
+
+class ResponseJSON(BaseModel):
+    response_id: str = Field(serialization_alias="id")
+    object_type: str = Field(serialization_alias="object")
+    created: int
+    model: str = "gpt-4o-mini"
+    choices: list[Choice]
+    usage: dict
+
+    model_config = ConfigDict(serialize_by_alias=True)
+
+
+class CompletionResponse(Response):
+    def __init__(self, status_code: int, json: ResponseJSON) -> None:
+        super().__init__(status_code, json=json.model_dump())
+
+
 def make_completion_response(
-    message: Message,
-    finish_reason: str = "stop",
+    message_content: str | None = None,
+    finish_reason: FinishReason = "stop",
     response_id: str = "chatcmpl-test",
+    tool_calls: list[ToolCall] = [],
     created: int = 1234567890,
-    model: str = "gpt-4o-mini",
-    usage: dict | None = None,
-) -> dict:
-    """Create a complete OpenAI API response."""
-    if usage is None:
-        usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+    usage: dict = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+):
+    """Create OpenAI API response."""
 
-    choices = [
-        {
-            "index": 0,
-            "message": message.model_dump(),
-            "finish_reason": finish_reason,
-        }
-    ]
+    message = Message(content=message_content, tool_calls=tool_calls)
 
-    response_json = {
-        "id": response_id,
-        "object": "chat.completion",
-        "created": created,
-        "model": model,
-        "choices": choices,
-        "usage": usage,
-    }
+    choices = [Choice(message=message, finish_reason=finish_reason)]
 
-    return Response(200, json=response_json)
+    response = CompletionResponse(
+        200,
+        json=ResponseJSON(
+            response_id=response_id,
+            object_type="chat.completion",
+            choices=choices,
+            created=created,
+            usage=usage,
+        ),
+    )
+
+    return response
 
 
 @pytest.fixture
@@ -97,13 +124,10 @@ async def agent(thread_config: RunnableConfig):
 @pytest.fixture
 def openai_basic_conversation(mock_completion):
     """Mock OpenAI API for basic conversation without tool calls."""
-    mock_completion.mock(
-        return_value=make_completion_response(
-            message=Message(
-                content="Hello! I'm doing great, thanks for asking. How can I help you today?"
-            )
-        ),
+    response = make_completion_response(
+        "Hello! I'm doing great, thanks for asking. How can I help you today?"
     )
+    mock_completion.mock(return_value=response)
     yield mock_completion
 
 
@@ -113,25 +137,21 @@ def openai_single_tool_call(mock_completion):
     mock_completion.side_effect = [
         make_completion_response(
             response_id="chatcmpl-test-1",
-            message=Message(
-                tool_calls=[
-                    ToolCall(
-                        call_id="call_1",
-                        function={
-                            "name": "get_weather",
-                            "arguments": '{"city": "Paris"}',
-                        },
-                    )
-                ]
-            ),
+            tool_calls=[
+                ToolCall(
+                    call_id="call_1",
+                    function={
+                        "name": "get_weather",
+                        "arguments": '{"city": "Paris"}',
+                    },
+                )
+            ],
             finish_reason="tool_calls",
         ),
         make_completion_response(
             response_id="chatcmpl-test-2",
             created=1234567891,
-            message=Message(
-                content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing."
-            ),
+            message_content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing.",
             usage={
                 "prompt_tokens": 15,
                 "completion_tokens": 25,
@@ -149,32 +169,28 @@ def openai_parallel_tool_calls(mock_completion):
     mock_completion.side_effect = [
         make_completion_response(
             response_id="chatcmpl-test-1",
-            message=Message(
-                tool_calls=[
-                    ToolCall(
-                        call_id="call_1",
-                        function={
-                            "name": "get_weather",
-                            "arguments": '{"city": "Paris"}',
-                        },
-                    ),
-                    ToolCall(
-                        call_id="call_2",
-                        function={
-                            "name": "get_time",
-                            "arguments": '{"city": "Paris"}',
-                        },
-                    ),
-                ]
-            ),
+            tool_calls=[
+                ToolCall(
+                    call_id="call_1",
+                    function={
+                        "name": "get_weather",
+                        "arguments": '{"city": "Paris"}',
+                    },
+                ),
+                ToolCall(
+                    call_id="call_2",
+                    function={
+                        "name": "get_time",
+                        "arguments": '{"city": "Paris"}',
+                    },
+                ),
+            ],
             finish_reason="tool_calls",
         ),
         make_completion_response(
             response_id="chatcmpl-test-2",
             created=1234567891,
-            message=Message(
-                content="In Paris, it's always sunny and the time is 14:30! Great time to visit the Eiffel Tower."
-            ),
+            message_content="In Paris, it's always sunny and the time is 14:30! Great time to visit the Eiffel Tower.",
             usage={
                 "prompt_tokens": 15,
                 "completion_tokens": 25,
