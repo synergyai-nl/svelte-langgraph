@@ -43,9 +43,10 @@
 	"local_name": "English",
 	"dark_mode": "Dark Mode",
 	"light_mode": "Light Mode",
-	"message_copy": "क्लिपबोर्ड पर कॉपी करें",
-	"message_regenerate": "पुनः प्रयास करें",
-	"message_feedback_good": "अच्छा उत्तर",
-	"message_feedback_bad": "कमज़ोर उत्तर",
-	"message_edit": "संपादित करें"
+	"message_copy": "Copy to clipboard",
+	"message_regenerate": "Re-Try",
+	"message_feedback_good": "Good Response",
+	"message_feedback_bad": "Bad Response",
+	"message_edit": "Edit",
+	"message_copied": "Copied"
 }
