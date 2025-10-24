@@ -68,7 +68,7 @@ def make_completion_response(
         }
     ]
 
-    resposne_json = {
+    response_json = {
         "id": response_id,
         "object": "chat.completion",
         "created": created,
@@ -77,7 +77,7 @@ def make_completion_response(
         "usage": usage,
     }
 
-    return Response(200, json=resposne_json)
+    return Response(200, json=response_json)
 
 
 @pytest.fixture
