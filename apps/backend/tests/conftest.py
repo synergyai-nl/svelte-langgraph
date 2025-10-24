@@ -16,21 +16,39 @@ from pydantic import (
 
 from src.svelte_langgraph.graph import make_graph
 
-OPENAI_TEST_BASE_URL = "https://api.openai.test"
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
+
+
+@pytest.fixture(
+    params=[None, "https://openrouter.ai/api/v1", "http://localhost:11434/v1"],
+    scope="module",
+)
+def openai_base_url(request):
+    yield request.param
 
 
 @pytest.fixture
-def mock_completion():
+def mock_completion(openai_base_url):
     """Mock OpenAI API endpoint."""
-    with respx.mock(base_url="https://api.openai.test") as respx_mock:
+
+    actual_base_url = openai_base_url
+    if not actual_base_url:
+        # No base URL set: OpenAI base URL default
+        actual_base_url = DEFAULT_BASE_URL
+
+    with respx.mock(base_url=actual_base_url) as respx_mock:
         yield respx_mock.post("/chat/completions")
 
 
 @pytest.fixture(scope="function", autouse=True)
-def env_setup(monkeypatch):
+def env_setup(monkeypatch, openai_base_url):
     """Set up environment variables for testing."""
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-    monkeypatch.setenv("OPENAI_BASE_URL", OPENAI_TEST_BASE_URL)
+
+    if openai_base_url:
+        # Only set if specified
+        monkeypatch.setenv("OPENAI_BASE_URL", openai_base_url)
+
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("CHAT_MODEL_TEMPERATURE", "0")
 
