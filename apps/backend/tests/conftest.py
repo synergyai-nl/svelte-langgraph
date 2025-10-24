@@ -7,7 +7,7 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from src.svelte_langgraph.graph import make_graph
 
 OPENAI_TEST_BASE_URL = "https://api.openai.test"
@@ -39,18 +39,17 @@ class ToolCall(BaseModel):
     type: str = "function"
     function: Function
 
+    model_config = ConfigDict(serialize_by_alias=True)
 
-def make_message(content: str | None = None, tool_calls: list[ToolCall] = []) -> dict:
-    """Create a message structure."""
-    message: dict = {"role": "assistant"}
-    message["content"] = content
-    message["tool_calls"] = [call.model_dump(by_alias=True) for call in tool_calls]
 
-    return message
+class Message(BaseModel):
+    role: str = "assistant"
+    content: str | None = None
+    tool_calls: list[ToolCall] = []
 
 
 def make_completion_response(
-    message: dict,
+    message: Message,
     finish_reason: str = "stop",
     response_id: str = "chatcmpl-test",
     created: int = 1234567890,
@@ -61,7 +60,13 @@ def make_completion_response(
     if usage is None:
         usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
 
-    choices = [{"index": 0, "message": message, "finish_reason": finish_reason}]
+    choices = [
+        {
+            "index": 0,
+            "message": message.model_dump(),
+            "finish_reason": finish_reason,
+        }
+    ]
 
     resposne_json = {
         "id": response_id,
@@ -94,7 +99,7 @@ def openai_basic_conversation(mock_completion):
     """Mock OpenAI API for basic conversation without tool calls."""
     mock_completion.mock(
         return_value=make_completion_response(
-            message=make_message(
+            message=Message(
                 content="Hello! I'm doing great, thanks for asking. How can I help you today?"
             )
         ),
@@ -108,7 +113,7 @@ def openai_single_tool_call(mock_completion):
     mock_completion.side_effect = [
         make_completion_response(
             response_id="chatcmpl-test-1",
-            message=make_message(
+            message=Message(
                 tool_calls=[
                     ToolCall(
                         call_id="call_1",
@@ -124,7 +129,7 @@ def openai_single_tool_call(mock_completion):
         make_completion_response(
             response_id="chatcmpl-test-2",
             created=1234567891,
-            message=make_message(
+            message=Message(
                 content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing."
             ),
             usage={
@@ -144,7 +149,7 @@ def openai_parallel_tool_calls(mock_completion):
     mock_completion.side_effect = [
         make_completion_response(
             response_id="chatcmpl-test-1",
-            message=make_message(
+            message=Message(
                 tool_calls=[
                     ToolCall(
                         call_id="call_1",
@@ -167,7 +172,7 @@ def openai_parallel_tool_calls(mock_completion):
         make_completion_response(
             response_id="chatcmpl-test-2",
             created=1234567891,
-            message=make_message(
+            message=Message(
                 content="In Paris, it's always sunny and the time is 14:30! Great time to visit the Eiffel Tower."
             ),
             usage={
