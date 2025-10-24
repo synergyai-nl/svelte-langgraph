@@ -7,6 +7,7 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
+from pydantic import BaseModel, Field
 from src.svelte_langgraph.graph import make_graph
 
 OPENAI_TEST_BASE_URL = "https://api.openai.test"
@@ -28,23 +29,23 @@ def env_setup(monkeypatch):
     monkeypatch.setenv("CHAT_MODEL_TEMPERATURE", "0")
 
 
-def make_tool_call(name: str, arguments: str, call_id: str) -> dict:
-    """Create a tool call structure."""
-    return {
-        "id": call_id,
-        "type": "function",
-        "function": {"name": name, "arguments": arguments},
-    }
+class Function(BaseModel):
+    name: str
+    arguments: str
 
 
-def make_message(
-    content: str | None = None, tool_calls: list[dict] | None = None
-) -> dict:
+class ToolCall(BaseModel):
+    call_id: str = Field(serialization_alias="id")
+    type: str = "function"
+    function: Function
+
+
+def make_message(content: str | None = None, tool_calls: list[ToolCall] = []) -> dict:
     """Create a message structure."""
     message: dict = {"role": "assistant"}
     message["content"] = content
-    if tool_calls is not None:
-        message["tool_calls"] = tool_calls
+    message["tool_calls"] = [call.model_dump(by_alias=True) for call in tool_calls]
+
     return message
 
 
@@ -109,10 +110,12 @@ def openai_single_tool_call(mock_completion):
             response_id="chatcmpl-test-1",
             message=make_message(
                 tool_calls=[
-                    make_tool_call(
-                        name="get_weather",
-                        arguments='{"city": "Paris"}',
+                    ToolCall(
                         call_id="call_1",
+                        function={
+                            "name": "get_weather",
+                            "arguments": '{"city": "Paris"}',
+                        },
                     )
                 ]
             ),
@@ -143,15 +146,19 @@ def openai_parallel_tool_calls(mock_completion):
             response_id="chatcmpl-test-1",
             message=make_message(
                 tool_calls=[
-                    make_tool_call(
-                        name="get_weather",
-                        arguments='{"city": "Paris"}',
+                    ToolCall(
                         call_id="call_1",
+                        function={
+                            "name": "get_weather",
+                            "arguments": '{"city": "Paris"}',
+                        },
                     ),
-                    make_tool_call(
-                        name="get_time",
-                        arguments='{"city": "Paris"}',
+                    ToolCall(
                         call_id="call_2",
+                        function={
+                            "name": "get_time",
+                            "arguments": '{"city": "Paris"}',
+                        },
                     ),
                 ]
             ),
