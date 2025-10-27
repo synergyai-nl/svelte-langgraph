@@ -33,9 +33,35 @@ cp .env.example .env
 Configure the following variables in `apps/backend/.env`:
 
 - `DESCOPE_PROJECT_ID` - Your Descope project ID for authentication
-- `ANTHROPIC_API_KEY` - Your Anthropic API key for Claude integration
+- `OPENAI_API_KEY` - Your OpenAI API key (or compatible provider key)
+- `CHAT_MODEL_NAME` - The chat model to use (default: `gpt-4o-mini`)
+- `OPENAI_BASE_URL` - Optional: Custom base URL for OpenAI-compatible providers
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
 - `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
+
+#### Supported LLM Providers
+
+The backend supports multiple OpenAI-compatible providers through environment configuration:
+
+**OpenAI (default)**
+```bash
+OPENAI_API_KEY=your-openai-api-key
+CHAT_MODEL_NAME=gpt-4o-mini  # or gpt-4o, gpt-3.5-turbo, etc.
+```
+
+**OpenRouter**
+```bash
+OPENAI_API_KEY=your-openrouter-api-key
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+CHAT_MODEL_NAME=anthropic/claude-3.5-sonnet  # or any OpenRouter model
+```
+
+**Ollama (local)**
+```bash
+OPENAI_API_KEY=ollama  # any non-empty value
+OPENAI_BASE_URL=http://localhost:11434/v1
+CHAT_MODEL_NAME=llama3.2  # or any locally installed Ollama model
+```
 
 ### Frontend Environment Variables
 
@@ -90,7 +116,7 @@ moon check --all
 ### Backend Development
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
-- LangChain with Anthropic integration
+- LangChain with OpenAI integration (supports OpenAI, OpenRouter, Ollama, and other OpenAI-compatible providers)
 - Descope for authentication
 - Python-dotenv for environment management
 

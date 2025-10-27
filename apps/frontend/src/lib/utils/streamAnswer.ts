@@ -1,5 +1,4 @@
 import type { Client } from '@langchain/langgraph-sdk';
-import type { MessageContentComplex } from '@langchain/core/messages';
 
 export async function* streamAnswer(
 	client: Client,
@@ -34,27 +33,44 @@ export async function* streamAnswer(
 
 				const message = chunk.data[0];
 				const messageId = message.id;
-				const content = message.content as MessageContentComplex[];
+				const content = message.content;
 
-				if (content) {
+				if (typeof content === 'string') {
+					yield { type: 'text', text: content, messageId };
+				} else if (Array.isArray(content)) {
 					for (const fragment of content) {
-						switch (fragment.type) {
-							case 'text':
-								yield { type: 'text', text: fragment.text, messageId };
-								break;
-							case 'tool_use':
-								yield {
-									type: 'tool',
-									tool_name: fragment.name,
-									tool_payload: fragment.input,
-									messageId
-								};
-								break;
-							case 'input_json_delta':
-								break;
-							default:
-								console.log('Unexpected fragment type:', fragment.type);
+						if (typeof fragment === 'string') {
+							yield { type: 'text', text: fragment, messageId };
+						} else if (fragment && typeof fragment === 'object') {
+							switch (fragment.type) {
+								case 'text':
+									yield { type: 'text', text: fragment.text, messageId };
+									break;
+								case 'tool_use':
+									yield {
+										type: 'tool',
+										tool_name: fragment.name,
+										tool_payload: fragment.input,
+										messageId
+									};
+									break;
+								case 'input_json_delta':
+									break;
+								default:
+									console.log('Unexpected fragment type:', fragment.type);
+							}
 						}
+					}
+				}
+
+				if (message.tool_calls && Array.isArray(message.tool_calls)) {
+					for (const toolCall of message.tool_calls) {
+						yield {
+							type: 'tool',
+							tool_name: toolCall.name,
+							tool_payload: toolCall.args,
+							messageId
+						};
 					}
 				}
 
