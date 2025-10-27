@@ -59,17 +59,32 @@
 		messages = [...messages];
 	}
 
-	async function inputSubmit() {
+	async function submitInputOrRetry(isRetry = false) {
 		if (current_input) {
 			chat_started = true;
 
-			const userMessage: UserMessage = {
-				type: 'user',
-				text: current_input,
-				id: crypto.randomUUID()
-			};
-			messages.push(userMessage);
-			last_user_message = current_input; // Store for retry
+			let messageText: string;
+			let messageId: string;
+
+			if (!isRetry) {
+				// New message: create and push to messages array
+				const userMessage: UserMessage = {
+					type: 'user',
+					text: current_input,
+					id: crypto.randomUUID()
+				};
+				messages.push(userMessage);
+				last_user_message = current_input; // Store for retry
+				messageText = userMessage.text;
+				messageId = userMessage.id;
+			} else {
+				// Retry: reuse existing message
+				const lastUserMsg = messages.findLast((m) => m.type === 'user');
+				if (!lastUserMsg) return;
+				messageText = lastUserMsg.text;
+				messageId = lastUserMsg.id;
+			}
+
 			current_input = '';
 
 			is_streaming = true;
@@ -81,8 +96,8 @@
 					langGraphClient,
 					threadId,
 					assistantId,
-					userMessage.text,
-					userMessage.id
+					messageText,
+					messageId
 				))
 					updateMessages(chunk);
 			} catch (err) {
@@ -96,7 +111,7 @@
 	function retryGeneration() {
 		if (last_user_message) {
 			current_input = last_user_message;
-			inputSubmit();
+			submitInputOrRetry(true);
 		}
 	}
 </script>
@@ -106,7 +121,10 @@
 		{suggestions}
 		{introTitle}
 		{intro}
-		onSuggestionClick={(suggestedText) => (current_input = suggestedText)}
+		onSuggestionClick={(suggestedText) => {
+			current_input = suggestedText;
+			submitInputOrRetry();
+		}}
 	/>
 {:else}
 	<ChatMessages
@@ -116,4 +134,4 @@
 		onRetryError={retryGeneration}
 	/>
 {/if}
-<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={inputSubmit} />
+<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={submitInputOrRetry} />
