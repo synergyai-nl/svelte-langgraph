@@ -7,7 +7,7 @@ requires-python = "==3.12.*"
 dependencies = [
     "descope>=1.7.6",
     "langchain[openai]>=0.3.25",
-    "langgraph>=0.4.7",
+    "langgraph>=0.5.4",
     "langgraph-cli[inmem]>=0.2.10",
     "langgraph-api>=0.2.92",
     "python-dotenv>=1.1.0",
