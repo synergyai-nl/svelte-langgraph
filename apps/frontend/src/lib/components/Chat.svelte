@@ -80,7 +80,9 @@
 			} else {
 				// Retry: reuse existing message
 				const lastUserMsg = messages.findLast((m) => m.type === 'user');
-				if (!lastUserMsg) return;
+				if (!lastUserMsg || !lastUserMsg.text || !lastUserMsg.id ) {
+      				throw new Error('Retry attempted but no or invalid user message found');
+  				}
 				messageText = lastUserMsg.text;
 				messageId = lastUserMsg.id;
 			}
