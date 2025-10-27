@@ -5,6 +5,7 @@
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, UserMessage } from '$lib/langgraph/types';
+	import { error } from '@sveltejs/kit';
 
 	interface Props {
 		langGraphClient: Client;
@@ -29,7 +30,7 @@
 	let final_answer_started = $state(false);
 	let messages = $state<Array<Message>>([]);
 	let chat_started = $state(false);
-	let generation_error = $state<Error | null>(null);
+	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
 
 	function updateMessages(chunk: Message) {
@@ -81,7 +82,9 @@
 				// Retry: reuse existing message
 				const lastUserMsg = messages.findLast((m) => m.type === 'user');
 				if (!lastUserMsg || !lastUserMsg.text || !lastUserMsg.id) {
-					throw new Error('Retry attempted but no or invalid user message found');
+					error(500, {
+						message: 'Retry attempted but no or invalid user message found'
+					});
 				}
 				messageText = lastUserMsg.text;
 				messageId = lastUserMsg.id;
@@ -91,7 +94,7 @@
 
 			is_streaming = true;
 			final_answer_started = false;
-			generation_error = null; // Clear previous errors
+			generationError = null; // Clear previous errors
 
 			try {
 				for await (const chunk of streamAnswer(
@@ -103,7 +106,10 @@
 				))
 					updateMessages(chunk);
 			} catch (err) {
-				if (err instanceof Error) generation_error = err;
+				if (err instanceof Error) generationError = err;
+				error(500, {
+					message: 'Error during generation'
+				});
 			} finally {
 				is_streaming = false;
 			}
@@ -132,7 +138,7 @@
 	<ChatMessages
 		{messages}
 		finalAnswerStarted={final_answer_started}
-		{generation_error}
+		{generationError}
 		onRetryError={retryGeneration}
 	/>
 {/if}

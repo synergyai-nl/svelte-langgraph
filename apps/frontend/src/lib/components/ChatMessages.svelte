@@ -9,11 +9,11 @@
 	interface Props {
 		messages: Array<Message>;
 		finalAnswerStarted: boolean;
-		generation_error?: Error | null;
+		generationError?: Error | null;
 		onRetryError?: () => void;
 	}
 
-	let { messages, finalAnswerStarted, generation_error = null, onRetryError }: Props = $props();
+	let { messages, finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
 
 	function scrollToMe(message: BaseMessage): Attachment {
 		return (element) => {
@@ -36,8 +36,8 @@
 					{/if}
 				</div>
 			{/each}
-			{#if generation_error && onRetryError}
-				<ChatErrorMessage error={generation_error} onRetry={onRetryError} />
+			{#if generationError && onRetryError}
+				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
 			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}
