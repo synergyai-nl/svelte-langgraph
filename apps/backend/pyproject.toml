@@ -21,3 +21,6 @@ dev = [
     "respx>=0.21.0",
     "ruff>=0.12.5",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

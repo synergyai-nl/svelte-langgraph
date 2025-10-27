@@ -1,7 +1,5 @@
 """Pytest configuration and fixtures for LangGraph tests."""
 
-import importlib.util
-import sys
 from typing import Literal
 from uuid import uuid4
 
@@ -16,24 +14,7 @@ from pydantic import (
     Field,
 )
 
-
-def load_module(source, module_name):
-    """
-    reads file source and loads it as a module
-
-    :param source: file to load
-    :param module_name: name of module to register in sys.modules
-    :return: loaded module
-    """
-
-    spec = importlib.util.spec_from_file_location(module_name, source)
-    assert spec
-    assert spec.loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-
-    return module
+import graph
 
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
@@ -41,26 +22,19 @@ DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
 @pytest.fixture
 def graph_import():
-    try:
-        graph_module = load_module("src/graph.py", "graph")
-        module_import_path = "graph"
-
-    except FileNotFoundError:
-        from svelte_langgraph import graph  # type: ignore[import-not-found]
-
-        graph_module = graph
-        module_import_path = "svelte_langgraph.graph"
-
-    yield graph_module, module_import_path
+    """Import the graph module."""
+    yield graph, "graph"
 
 
 @pytest.fixture
 def graph_import_path(graph_import):
+    """Get the graph module import path."""
     yield graph_import[1]
 
 
 @pytest.fixture
 def graph_module(graph_import):
+    """Get the graph module."""
     yield graph_import[0]
 
 
