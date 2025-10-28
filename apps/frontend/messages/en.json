@@ -42,5 +42,6 @@
 	"landing_featured_in": "FEATURED IN",
 	"local_name": "English",
 	"dark_mode": "Dark Mode",
-	"light_mode": "Light Mode"
+	"light_mode": "Light Mode",
+	"chat_error_retry": "Retry"
 }
