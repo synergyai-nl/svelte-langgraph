@@ -7,10 +7,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
-from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
+from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt.chat_agent_executor import AgentState
 
 from .models import get_chat_model
 
@@ -58,7 +58,7 @@ def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     agent = create_react_agent(
         model=model,
         tools=[get_weather],
-        prompt=get_prompt,  # type: ignore reportArgumentType
+        prompt=get_prompt,  # type: ignore[arg-type]
         checkpointer=checkpointer,
     )
 
