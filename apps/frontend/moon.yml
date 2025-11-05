@@ -36,6 +36,8 @@ tasks:
     outputs:
       - 'build'
       - 'src/lib/paraglide'
+    options:
+      retryCount: 1
 
   check:
     deps:
