@@ -43,5 +43,12 @@
 	"local_name": "English",
 	"dark_mode": "Dark Mode",
 	"light_mode": "Light Mode",
-	"chat_error_retry": "Retry"
+	"message_copy": "Copy to clipboard",
+	"message_regenerate": "Re-Try",
+	"message_feedback_good": "Good Response",
+	"message_feedback_bad": "Bad Response",
+	"message_edit": "Edit",
+	"message_copied": "Copied",
+	"chat_error_retry": "Retry",
+	"coming_soon": "Coming Soon!"
 }
