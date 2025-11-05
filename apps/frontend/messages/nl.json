@@ -48,5 +48,6 @@
 	"message_edit": "Bewerken",
 	"dark_mode": "Donkere modus",
 	"light_mode": "Lichte modus",
-	"message_copied": "Gekopieerd"
+	"message_copied": "Gekopieerd",
+	"chat_error_retry": "Opnieuw proberen"
 }

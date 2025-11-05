@@ -48,5 +48,6 @@
 	"message_feedback_good": "Good Response",
 	"message_feedback_bad": "Bad Response",
 	"message_edit": "Edit",
-	"message_copied": "Copied"
+	"message_copied": "Copied",
+	"chat_error_retry": "Retry"
 }
