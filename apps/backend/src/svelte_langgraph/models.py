@@ -1,7 +1,6 @@
 import os
 
-from langchain.chat_models import init_chat_model
-from langchain.chat_models.base import BaseChatModel
+from langchain.chat_models import BaseChatModel, init_chat_model
 
 
 def get_chat_model() -> BaseChatModel:
