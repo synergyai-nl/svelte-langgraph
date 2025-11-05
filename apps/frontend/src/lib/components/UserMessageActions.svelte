@@ -26,5 +26,5 @@
 	>
 		<PenOutline size="xs" />
 	</Button>
-	<Tooltip type="auto">Coming Soon !</Tooltip>
+	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
 </div>

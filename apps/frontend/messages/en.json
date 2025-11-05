@@ -49,5 +49,6 @@
 	"message_feedback_bad": "Bad Response",
 	"message_edit": "Edit",
 	"message_copied": "Copied",
-	"chat_error_retry": "Retry"
+	"chat_error_retry": "Retry",
+	"coming_soon": "Coming Soon!"
 }
