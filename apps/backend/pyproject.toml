@@ -5,16 +5,18 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "descope>=1.7.6",
+    "authlib>=1.4.0",
     "langchain[openai]==1.0.*",
     "langgraph==1.0.*",
     "langgraph-cli[inmem]==0.4.*",
     "langgraph-api==0.5.3",
     "python-dotenv>=1.1.0",
+    "requests>=2.32.0",
 ]
 
 [dependency-groups]
 dev = [
+    "oidc-provider-mock>=0.3.0",
     "pyright>=1.1.403",
     "ruff>=0.12.5",
 ]

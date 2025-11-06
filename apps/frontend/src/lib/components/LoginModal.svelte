@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { SignIn } from '@auth/sveltekit/components';
-	import { Button, Modal } from 'flowbite-svelte';
+	import { Modal } from 'flowbite-svelte';
 	import { ExclamationCircleOutline } from 'flowbite-svelte-icons';
 	import * as m from '$lib/paraglide/messages.js';
+	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	interface Props {
 		open: boolean;
@@ -24,8 +24,6 @@
 		<h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
 			{m.login_modal_message()}
 		</h3>
-		<SignIn provider="descope">
-			<Button slot="submitButton" size="sm" tag="div">{m.auth_sign_in()}</Button>
-		</SignIn>
+		<SignInButton />
 	</div>
 </Modal>
