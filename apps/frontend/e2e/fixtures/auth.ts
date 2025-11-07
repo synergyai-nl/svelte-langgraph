@@ -70,8 +70,11 @@ export async function signOut(page: Page) {
 	// Click avatar menu
 	await page.locator('#avatar-menu-button').click();
 
-	// Click sign out button in dropdown
-	await page.getByRole('menuitem', { name: /sign out/i }).click();
+	// Wait for dropdown to open
+	await page.waitForTimeout(500);
+
+	// Click sign out button in dropdown (use .last() since there are 2 sign-out buttons)
+	await page.getByRole('button', { name: /sign out/i }).last().click();
 
 	// Wait for redirect to home page
 	await page.waitForURL('/', { timeout: 5000 });
