@@ -126,7 +126,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 - Issues JWT tokens with configurable user claims
 - Supports the authorization code flow with PKCE
 - No client registration required - accepts any client ID/secret
-- Automatically started with `moon :dev` for seamless development
+- Can be started independently with `moon backend:oidc-mock`
 
 **Configuration:**
 - **Issuer**: `http://localhost:8080`
@@ -136,7 +136,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 
 ### Start dev servers
 
-The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
+The following command ensures dependencies are installed and starts dev servers for frontend and backend with hot reload:
 
 ```bash
 moon :dev
@@ -145,9 +145,19 @@ moon :dev
 This automatically starts:
 - **Frontend** dev server at `http://localhost:5173`
 - **Backend** LangGraph server at `http://localhost:2024`
+
+For local development with authentication, also start the OIDC mock provider:
+
+```bash
+moon backend:oidc-mock
+```
+
+This starts:
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
 
 Make sure to configure your `.env` files to point to the OIDC mock provider (see Configuration section above).
+
+**Note:** E2E tests automatically start the OIDC mock provider, so you don't need to run it separately for testing.
 
 ### Run local checks
 

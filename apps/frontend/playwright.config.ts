@@ -30,6 +30,14 @@ export default defineConfig({
 	],
 	webServer: [
 		{
+			command: 'moon backend:oidc-mock',
+			url: 'http://127.0.0.1:8080/.well-known/openid-configuration',
+			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
+			stdout: 'pipe',
+			stderr: 'pipe'
+		},
+		{
 			command: 'moon backend:dev',
 			url: 'http://127.0.0.1:2024',
 			timeout: 120000,
