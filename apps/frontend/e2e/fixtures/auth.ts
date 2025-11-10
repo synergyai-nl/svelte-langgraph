@@ -11,27 +11,6 @@ export const OIDC_CONFIG = {
 };
 
 /**
- * Wait for OIDC mock provider to be ready
- */
-async function waitForOIDCProvider(page: Page, timeout = 30000): Promise<void> {
-	const startTime = Date.now();
-	while (Date.now() - startTime < timeout) {
-		try {
-			const response = await page.request.get(
-				`${OIDC_CONFIG.issuer}/.well-known/openid-configuration`
-			);
-			if (response.ok()) {
-				return;
-			}
-		} catch (error) {
-			// Provider not ready yet, continue waiting
-		}
-		await page.waitForTimeout(500);
-	}
-	throw new Error(`OIDC provider not ready after ${timeout}ms`);
-}
-
-/**
  * Helper to complete OIDC authentication flow
  * The oidc-provider-mock automatically authenticates the test-user
  */
