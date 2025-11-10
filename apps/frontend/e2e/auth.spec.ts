@@ -2,11 +2,15 @@ import { test, expect } from '@playwright/test';
 import { authenticateUser, signOut, OIDC_CONFIG } from './fixtures/auth';
 
 test.describe('When unauthenticated', async () => {
-	test.describe('Sign-in Flow', () => {
-		test('should display sign-in button when not authenticated', async ({ page }) => {
+	test.describe('On the home page', async () => {
+		test.beforeEach(async ({page}) => {
 			await page.goto('/');
 
-			// Verify sign-in button is visible
+			// Verify we start unauthenticated
+			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+		})
+
+		test('should display sign-in button', async ({ page }) => {
 			const signInButton = page.getByRole('button', { name: /sign in/i });
 			await expect(signInButton).toBeVisible();
 
@@ -15,12 +19,6 @@ test.describe('When unauthenticated', async () => {
 		});
 
 		test('should successfully sign in with OIDC provider', async ({ page }) => {
-			// Navigate to home page
-			await page.goto('/');
-
-			// Verify we start unauthenticated
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-
 			// Perform authentication
 			await authenticateUser(page);
 
@@ -34,8 +32,6 @@ test.describe('When unauthenticated', async () => {
 		});
 
 		test('should redirect back to app after successful OIDC authentication', async ({ page }) => {
-			await page.goto('/');
-
 			// Start authentication flow
 			await page.getByRole('button', { name: /sign in/i }).click();
 
@@ -53,7 +49,9 @@ test.describe('When unauthenticated', async () => {
 			// Verify authentication was successful
 			await expect(page.locator('#avatar-menu-button')).toBeVisible();
 		});
+	});
 
+	test.describe('Sign-in Flow', () => {
 		test('should include access token in session after sign-in', async ({ page }) => {
 			await authenticateUser(page);
 
@@ -186,31 +184,31 @@ test.describe('When authenticated', async () => {
 		});
 	});
 
-	test.describe('Protected Routes', () => {
-		test('should allow access to chat page when authenticated', async ({ page }) => {
-			// Navigate to protected chat page
-			await page.goto('/chat');
+	test.describe('Navigating to "/chat/"', () => {
+		let page: Page;
 
-			// Should not show login modal
-			const loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
-			await expect(loginModal).not.toBeVisible();
+		test.beforeAll(async () => {
+			page = await browser.newPage();
 
-			// Should show chat interface
-			await expect(page.locator('h1')).toBeVisible();
-		});
-
-		test('should load chat with user greeting when authenticated', async ({ page }) => {
 			await page.goto('/chat');
 
 			// Wait for chat to initialize
 			await page.waitForTimeout(2000);
+		});
 
-			// Should show the greeting heading (avoiding specific i18n text checks)
+		test('should not show login modal', async () => {
+			// Should not show login modal
+			const loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
+			await expect(loginModal).not.toBeVisible();
+		});
+
+		test('should show chat interface', async () => {
+			await expect(page.locator('h1')).toBeVisible();
+		});
+
+		test('should show the greeting heading (avoiding specific i18n text checks)', async () => {
 			const greeting = page.locator('h1').first();
 			await expect(greeting).toBeVisible({ timeout: 15000 });
-
-			// Should not show login modal when authenticated
-			await expect(page.getByRole('dialog')).not.toBeVisible();
 		});
 	});
 
