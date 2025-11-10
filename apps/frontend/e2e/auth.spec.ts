@@ -189,15 +189,7 @@ test.describe('OIDC Authentication', () => {
 			await page.goto('/chat');
 
 			// Sign out
-			await page.locator('#avatar-menu-button').click();
-			await page
-				.getByRole('button', { name: /sign out/i })
-				.last()
-				.click();
-
-			// Should redirect to home page
-			await page.waitForURL('/', { timeout: 5000 });
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+			await signOut(page);
 		});
 
 		test('should not allow access to protected routes after sign-out', async ({ page }) => {
