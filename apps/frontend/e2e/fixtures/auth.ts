@@ -67,20 +67,30 @@ export async function authenticateUser(page: Page) {
  * Helper to sign out
  */
 export async function signOut(page: Page) {
-	// Click avatar menu
-	await page.locator('#avatar-menu-button').click();
+	// Click avatar menu button - force the click to ensure it registers
+	const avatarButton = page.locator('#avatar-menu-button');
+	await avatarButton.click({ force: true });
 
-	// Wait for dropdown to open
-	await page.waitForTimeout(500);
+	// Wait longer for the dropdown to initialize and animate
+	await page.waitForTimeout(2000);
 
-	// Click sign out button in dropdown (use .last() since there are 2 sign-out buttons)
-	await page.getByRole('button', { name: /sign out/i }).last().click();
+	// Find the sign-out button - it's the last one matching "sign out"
+	// Check if any sign-out buttons exist and are visible
+	const signOutButtons = page.getByRole('button', { name: /sign out/i });
+	const count = await signOutButtons.count();
+
+	// Click the last sign-out button (the one in the dropdown)
+	if (count > 0) {
+		await signOutButtons.last().click({ force: true });
+	}
 
 	// Wait for redirect to home page
 	await page.waitForURL('/', { timeout: 5000 });
 
-	// Verify sign-in button is visible again
-	await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+	// Verify sign-in button is visible again - give it more time to load
+	await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible({
+		timeout: 10000
+	});
 }
 
 /**

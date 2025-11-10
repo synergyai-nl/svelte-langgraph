@@ -35,7 +35,9 @@ export default defineConfig({
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
-			stderr: 'pipe'
+			stderr: 'pipe',
+			// Kill server when playwright exits
+			ignoreHTTPSErrors: false
 		},
 		{
 			command: 'moon backend:dev',

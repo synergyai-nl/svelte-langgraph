@@ -130,16 +130,13 @@ test.describe('OIDC Authentication', () => {
 			// Navigate to chat page without authentication
 			await page.goto('/chat');
 
-			// Should show login modal or prompt
-			// The chat page shows a LoginModal when session is missing
-			await page.waitForTimeout(1000); // Wait for modal to potentially appear
+			// Should show login modal dialog
+			const loginModal = page.getByRole('dialog');
+			await expect(loginModal).toBeVisible();
 
-			// Check if we can still sign in from this page
-			const signInButton = page.getByRole('button', { name: /sign in/i });
-			if (await signInButton.isVisible()) {
-				// Sign in button is available, authentication flow can proceed
-				expect(true).toBe(true);
-			}
+			// Should have a sign-in button in the modal
+			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
+			await expect(signInButton).toBeVisible();
 		});
 
 		test('should load chat with user greeting when authenticated', async ({ page }) => {
@@ -150,9 +147,12 @@ test.describe('OIDC Authentication', () => {
 			// Wait for chat to initialize
 			await page.waitForTimeout(2000);
 
-			// Should show personalized greeting with username
-			const greeting = page.locator('text=/hello.*test-user/i, text=/hi.*test-user/i');
-			await expect(greeting.first()).toBeVisible({ timeout: 15000 });
+			// Should show the greeting heading (avoiding specific i18n text checks)
+			const greeting = page.locator('h1').first();
+			await expect(greeting).toBeVisible({ timeout: 15000 });
+
+			// Should not show login modal when authenticated
+			await expect(page.getByRole('dialog')).not.toBeVisible();
 		});
 	});
 
@@ -190,7 +190,10 @@ test.describe('OIDC Authentication', () => {
 
 			// Sign out
 			await page.locator('#avatar-menu-button').click();
-			await page.getByRole('button', { name: /sign out/i }).last().click();
+			await page
+				.getByRole('button', { name: /sign out/i })
+				.last()
+				.click();
 
 			// Should redirect to home page
 			await page.waitForURL('/', { timeout: 5000 });

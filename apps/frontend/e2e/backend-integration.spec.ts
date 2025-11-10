@@ -190,7 +190,10 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 
 			// Step 5: Sign out
 			await page.locator('#avatar-menu-button').click();
-			await page.getByRole('button', { name: /sign out/i }).last().click();
+			await page
+				.getByRole('button', { name: /sign out/i })
+				.last()
+				.click();
 
 			// Step 6: Verify signed out
 			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
