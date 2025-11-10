@@ -1,87 +1,85 @@
 import { test, expect } from '@playwright/test';
 import { authenticateUser, signOut, OIDC_CONFIG } from './fixtures/auth';
 
-test.describe('OIDC Authentication', () => {
-	test.describe('When unauthenticated', async () => {
-		test.describe('Sign-in Flow', () => {
-			test('should display sign-in button when not authenticated', async ({ page }) => {
-				await page.goto('/');
+test.describe('When unauthenticated', async () => {
+	test.describe('Sign-in Flow', () => {
+		test('should display sign-in button when not authenticated', async ({ page }) => {
+			await page.goto('/');
 
-				// Verify sign-in button is visible
-				const signInButton = page.getByRole('button', { name: /sign in/i });
-				await expect(signInButton).toBeVisible();
+			// Verify sign-in button is visible
+			const signInButton = page.getByRole('button', { name: /sign in/i });
+			await expect(signInButton).toBeVisible();
 
-				// Verify avatar menu is not visible
-				await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-			});
-
-			test('should successfully sign in with OIDC provider', async ({ page }) => {
-				// Navigate to home page
-				await page.goto('/');
-
-				// Verify we start unauthenticated
-				await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-
-				// Perform authentication
-				await authenticateUser(page);
-
-				// Verify successful authentication
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-				await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
-
-				// Verify user info is displayed
-				const avatarButton = page.locator('#avatar-menu-button');
-				await expect(avatarButton).toContainText(/test-user/i);
-			});
-
-			test('should redirect back to app after successful OIDC authentication', async ({ page }) => {
-				await page.goto('/');
-
-				// Start authentication flow
-				await page.getByRole('button', { name: /sign in/i }).click();
-
-				// Wait for navigation to OIDC provider
-				await page.waitForURL(/localhost:8080/, { timeout: 10000 });
-
-				// Complete authentication by clicking the test-user button
-				const testUserButton = page.getByRole('button', { name: 'test-user' });
-				await testUserButton.waitFor({ state: 'visible', timeout: 5000 });
-				await testUserButton.click();
-
-				// Should eventually redirect back to the app (home page)
-				await page.waitForURL('/', { timeout: 15000 });
-
-				// Verify authentication was successful
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-			});
-
-			test('should include access token in session after sign-in', async ({ page }) => {
-				await authenticateUser(page);
-
-				// Verify authentication works by accessing a protected page (chat)
-				await page.goto('/chat');
-				await page.waitForTimeout(2000);
-
-				// If auth is working, the page should load and show the chat interface
-				// Check for chat-specific elements
-				const h1 = page.locator('h1');
-				await expect(h1).toBeVisible();
-			});
+			// Verify avatar menu is not visible
+			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
 		});
 
-		test.describe('Protected Routes', () => {
-			test('should show login modal on chat page when not authenticated', async ({ page }) => {
-				// Navigate to chat page without authentication
-				await page.goto('/chat');
+		test('should successfully sign in with OIDC provider', async ({ page }) => {
+			// Navigate to home page
+			await page.goto('/');
 
-				// Should show login modal dialog
-				const loginModal = page.getByRole('dialog');
-				await expect(loginModal).toBeVisible();
+			// Verify we start unauthenticated
+			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
 
-				// Should have a sign-in button in the modal
-				const signInButton = loginModal.getByRole('button', { name: /sign in/i });
-				await expect(signInButton).toBeVisible();
-			});
+			// Perform authentication
+			await authenticateUser(page);
+
+			// Verify successful authentication
+			await expect(page.locator('#avatar-menu-button')).toBeVisible();
+			await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
+
+			// Verify user info is displayed
+			const avatarButton = page.locator('#avatar-menu-button');
+			await expect(avatarButton).toContainText(/test-user/i);
+		});
+
+		test('should redirect back to app after successful OIDC authentication', async ({ page }) => {
+			await page.goto('/');
+
+			// Start authentication flow
+			await page.getByRole('button', { name: /sign in/i }).click();
+
+			// Wait for navigation to OIDC provider
+			await page.waitForURL(/localhost:8080/, { timeout: 10000 });
+
+			// Complete authentication by clicking the test-user button
+			const testUserButton = page.getByRole('button', { name: 'test-user' });
+			await testUserButton.waitFor({ state: 'visible', timeout: 5000 });
+			await testUserButton.click();
+
+			// Should eventually redirect back to the app (home page)
+			await page.waitForURL('/', { timeout: 15000 });
+
+			// Verify authentication was successful
+			await expect(page.locator('#avatar-menu-button')).toBeVisible();
+		});
+
+		test('should include access token in session after sign-in', async ({ page }) => {
+			await authenticateUser(page);
+
+			// Verify authentication works by accessing a protected page (chat)
+			await page.goto('/chat');
+			await page.waitForTimeout(2000);
+
+			// If auth is working, the page should load and show the chat interface
+			// Check for chat-specific elements
+			const h1 = page.locator('h1');
+			await expect(h1).toBeVisible();
+		});
+	});
+
+	test.describe('Protected Routes', () => {
+		test('should show login modal on chat page when not authenticated', async ({ page }) => {
+			// Navigate to chat page without authentication
+			await page.goto('/chat');
+
+			// Should show login modal dialog
+			const loginModal = page.getByRole('dialog');
+			await expect(loginModal).toBeVisible();
+
+			// Should have a sign-in button in the modal
+			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
+			await expect(signInButton).toBeVisible();
 		});
 	});
 
