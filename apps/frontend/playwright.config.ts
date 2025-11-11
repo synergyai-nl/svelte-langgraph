@@ -13,13 +13,15 @@ const testEnv = {
 
 export default defineConfig({
 	testDir: 'e2e',
-	fullyParallel: false, // Run tests serially to avoid conflicts with shared backend
-	forbidOnly: !!process.env.CI,
+  	// Run all tests in parallel.
+  	fullyParallel: true,
+  	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
-	workers: 1, // Single worker to avoid OIDC mock conflicts
-	reporter: [['html', { open: 'never' }]],
+	// Opt out of parallel tests on CI.
+	workers: process.env.CI ? 1 : undefined,
+  	reporter: [['html', { open: 'never' }]],
 	use: {
-		baseURL: 'http://localhost:5173',
+		baseURL: 'http://localhost:4173',
 		trace: 'on-first-retry'
 	},
 	projects: [
@@ -30,6 +32,7 @@ export default defineConfig({
 	],
 	webServer: [
 		{
+			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			url: 'http://127.0.0.1:8080/.well-known/openid-configuration',
 			timeout: 120000,
@@ -41,6 +44,7 @@ export default defineConfig({
 			ignoreHTTPSErrors: false
 		},
 		{
+			name: 'backend',
 			command: 'moon backend:dev',
 			url: 'http://127.0.0.1:2024',
 			timeout: 120000,
@@ -54,8 +58,9 @@ export default defineConfig({
 			}
 		},
 		{
-			command: 'moon frontend:dev',
-			url: 'http://localhost:5173',
+			name: 'frontend',
+			command: 'moon frontend:preview',
+			url: 'http://localhost:4173',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
