@@ -147,6 +147,10 @@ test.describe('When authenticated', async () => {
 		await authenticateUser(page);
 	});
 
+	test('avatar should be visible', async ({page}) => {
+		await expect(page.locator('#avatar-menu-button')).toBeVisible();
+	});
+
 	test.describe('Session', () => {
 		test('should persist across page navigation', async ({ page }) => {
 			// Navigate to different pages
@@ -215,45 +219,30 @@ test.describe('When authenticated', async () => {
 			});
 
 			test('should redirect to "/"', async ({ page }) => {
-				await page.waitForURL('/');
+				await expect(page).toHaveURL('/');
 			});
 		});
 	});
 
-	test('should successfully sign out', async ({ page }) => {
-		// Verify we're authenticated
-		await expect(page.locator('#avatar-menu-button')).toBeVisible();
+	test.describe('Signing out', () => {
+		test.beforeEach(async ({ page }) => {
+			await signOut(page);
+		});
 
-		// Sign out
-		await signOut(page);
+		test('should make sign in button invisible', async ({page}) => {
+			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+		});
 
-		// Verify we're signed out
-		await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-		await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-	});
+		test('should make avatar invisible', async({page}) => {
+			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+		});
 
-	test('should clear session after sign-out', async ({ page }) => {
-		// Sign out
-		await signOut(page);
+		test('should not show user greeting on "/chat"', async ({page}) => {
+			await page.goto('/chat');
 
-		// Verify session is cleared by checking UI state
-		await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-		await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-	});
-
-	test('should not allow access to protected routes after sign-out', async ({ page }) => {
-		// Sign out
-		await signOut(page);
-
-		// Try to access chat page
-		await page.goto('/chat');
-
-		// Should show login modal or prompt
-		await page.waitForTimeout(1000);
-
-		// Should not show authenticated user greeting
-		const greeting = page.locator('text=/hello.*test-user/i');
-		await expect(greeting).not.toBeVisible();
+			// Should not show authenticated user greeting
+			const greeting = page.locator('text=/hello.*test-user/i');
+			await expect(greeting).not.toBeVisible();
+		});
 	});
 });
-await page.waitForURL('**/login');
