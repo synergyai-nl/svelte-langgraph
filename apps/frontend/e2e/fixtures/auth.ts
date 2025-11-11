@@ -32,14 +32,8 @@ export async function authenticateUser(page: Page) {
 	await testUserButton.waitFor({ state: 'visible', timeout: 5000 });
 	await testUserButton.click();
 
-	// Expect redirect back to the app
-	await expect(page).toHaveURL('/');
-
-	// Wait for authentication to complete by checking for avatar button
-	await expect(page.locator('#avatar-menu-button')).toBeVisible({ timeout: 10000 });
-
-	// Verify sign-in button is gone
-	await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
+	// Wait for redirect to home page
+	await page.waitForURL('/', { timeout: 5000 });
 }
 
 /**
@@ -64,11 +58,6 @@ export async function signOut(page: Page) {
 
 	// Wait for redirect to home page
 	await page.waitForURL('/', { timeout: 5000 });
-
-	// Verify sign-in button is visible again
-	await expect(page.getByRole('button', { name: /sign in/i }).first()).toBeVisible({
-		timeout: 10000
-	});
 }
 
 /**

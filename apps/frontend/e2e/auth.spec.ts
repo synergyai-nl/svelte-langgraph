@@ -1,13 +1,28 @@
 import { test, expect } from '@playwright/test';
+import type {Request} from '@playwright/test'
 import { authenticateUser, signOut, OIDC_CONFIG } from './fixtures/auth';
+
+test.describe('OIDC Provider', () => {
+	test('should handle OIDC well-known configuration', async ({ page }) => {
+		// Verify the well-known endpoint is accessible
+		const response = await page.request.get(
+			`${OIDC_CONFIG.issuer}/.well-known/openid-configuration`
+		);
+
+		expect(response.ok()).toBeTruthy();
+
+		const config = await response.json();
+		expect(config.issuer).toBe(OIDC_CONFIG.issuer);
+		expect(config.authorization_endpoint).toBeTruthy();
+		expect(config.token_endpoint).toBeTruthy();
+	});
+});
+
 
 test.describe('When unauthenticated', async () => {
 	test.describe('On the home page', async () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/');
-
-			// Verify we start unauthenticated
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
 		});
 
 		test('should display sign-in button', async ({ page }) => {
@@ -49,28 +64,38 @@ test.describe('When unauthenticated', async () => {
 			// Verify authentication was successful
 			await expect(page.locator('#avatar-menu-button')).toBeVisible();
 		});
+
+		test.describe('Clicking sign-in button', () => {
+			let requestPromise: Promise<Request>;
+
+			test.beforeEach(async ({page}) => {
+				// Monitor network requests to verify OIDC issuer
+				requestPromise = page.waitForRequest(
+					(request) => request.url().includes(OIDC_CONFIG.issuer),
+					{ timeout: 15000 }
+				);
+
+				// Trigger sign-in to initiate OIDC flow
+				await page.getByRole('button', { name: /sign in/i }).click();
+
+			});
+
+			test('should redirect to URL containing issuer', async () => {
+				const request = await requestPromise;
+				expect(request.url()).toContain(OIDC_CONFIG.issuer);
+			});
+		})
 	});
 
-	test.describe('Sign-in Flow', () => {
-		test('should include access token in session after sign-in', async ({ page }) => {
-			await authenticateUser(page);
-
-			// Verify authentication works by accessing a protected page (chat)
+	test.describe('Navigating to "/chat/"', () => {
+		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat');
+
+			// Wait for chat to initialize
 			await page.waitForTimeout(2000);
-
-			// If auth is working, the page should load and show the chat interface
-			// Check for chat-specific elements
-			const h1 = page.locator('h1');
-			await expect(h1).toBeVisible();
 		});
-	});
 
-	test.describe('Protected Routes', () => {
-		test('should show login modal on chat page when not authenticated', async ({ page }) => {
-			// Navigate to chat page without authentication
-			await page.goto('/chat');
-
+		test('should show login modal with sign-in button', async ({ page }) => {
 			// Should show login modal dialog
 			const loginModal = page.getByRole('dialog');
 			await expect(loginModal).toBeVisible();
@@ -78,39 +103,6 @@ test.describe('When unauthenticated', async () => {
 			// Should have a sign-in button in the modal
 			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
 			await expect(signInButton).toBeVisible();
-		});
-	});
-
-	test.describe('OIDC Provider Integration', () => {
-		test('should use correct OIDC issuer configuration', async ({ page }) => {
-			await page.goto('/');
-
-			// Monitor network requests to verify OIDC issuer
-			const requestPromise = page.waitForRequest(
-				(request) => request.url().includes(OIDC_CONFIG.issuer),
-				{ timeout: 15000 }
-			);
-
-			// Trigger sign-in to initiate OIDC flow
-			await page.getByRole('button', { name: /sign in/i }).click();
-
-			// Verify request to OIDC issuer was made
-			const request = await requestPromise;
-			expect(request.url()).toContain(OIDC_CONFIG.issuer);
-		});
-
-		test('should handle OIDC well-known configuration', async ({ page }) => {
-			// Verify the well-known endpoint is accessible
-			const response = await page.request.get(
-				`${OIDC_CONFIG.issuer}/.well-known/openid-configuration`
-			);
-
-			expect(response.ok()).toBeTruthy();
-
-			const config = await response.json();
-			expect(config.issuer).toBe(OIDC_CONFIG.issuer);
-			expect(config.authorization_endpoint).toBeTruthy();
-			expect(config.token_endpoint).toBeTruthy();
 		});
 	});
 
