@@ -1,6 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/test';
 import {
-	getGreeting,
 	authenticateUser,
 	signOut,
 	OIDC_CONFIG,
@@ -52,18 +51,17 @@ test.describe('When unauthenticated', async () => {
 			await page.goto('/chat');
 		});
 
-		test('should show login modal with sign-in button', async ({ page }) => {
-			// Should show login modal dialog
-			const loginModal = page.getByRole('dialog');
+		test('should show login modal with sign-in button', async ({ loginModal }) => {
 			await expect(loginModal).toBeVisible();
+		});
 
-			// Should have a sign-in button in the modal
+		test('should have a sign-in button in the modal', async ({loginModal}) => {
 			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
 			await expect(signInButton).toBeVisible();
 		});
 
-		test('should not show greeting', async ({page}) => {
-			await expect(getGreeting(page)).not.toBeVisible();
+		test('should not show greeting', async ({greeting}) => {
+			await expect(greeting).not.toBeVisible();
 		});
 
 		test('should have navigation and body visible', async ({ page }) => {
@@ -117,9 +115,7 @@ test.describe('When authenticated', async () => {
 			await page.goto('/chat');
 		});
 
-		test('should not show login modal', async ({ page }) => {
-			// Should not show login modal
-			const loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
+		test('should not show login modal', async ({ loginModal }) => {
 			await expect(loginModal).not.toBeVisible();
 		});
 
@@ -127,8 +123,8 @@ test.describe('When authenticated', async () => {
 			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 		});
 
-		test('should show greeting', async ({page}) => {
-			await expect(getGreeting(page)).toBeVisible();
+		test('should show greeting', async ({greeting}) => {
+			await expect(greeting).toBeVisible();
 		});
 	});
 
@@ -141,12 +137,14 @@ test.describe('When authenticated', async () => {
 			await expectUnauthenticated(page);
 		});
 
-		test('should redirect to home and show login modal on protected routes', async ({ page }) => {
-			await page.goto('/chat');
+		test.describe('On "/chat/"', () => {
+			test.beforeEach(async ({ page }) => {
+				await page.goto('/chat');
+			});
 
-			// Should show login modal
-			const loginModal = page.getByRole('dialog');
-			await expect(loginModal).toBeVisible();
+			test('should show login modal', async ({ loginModal }) => {
+				await expect(loginModal).toBeVisible();
+			});
 		});
 	});
 });

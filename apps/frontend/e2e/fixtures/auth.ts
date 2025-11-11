@@ -10,10 +10,6 @@ export const OIDC_CONFIG = {
 	username: 'test-user'
 };
 
-export function getGreeting(page: Page) {
-	return page.locator('text=/.*can I help you today?/i');
-}
-
 /**
  * Helper to complete OIDC authentication flow
  * The oidc-provider-mock automatically authenticates the test-user
