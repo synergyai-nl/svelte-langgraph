@@ -24,9 +24,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				// Navigate to chat page which makes backend requests
 				await page.goto('/chat');
 
-				// Wait for the page to initialize and make requests
-				await page.waitForTimeout(3000);
-
 				// If authentication is working, the chat page should load successfully
 				// and not show authentication errors
 				const authError = await page
@@ -58,9 +55,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 			test('should create LangGraph client with valid token', async ({ page }) => {
 				await page.goto('/chat');
 
-				// Wait for initialization
-				await page.waitForTimeout(3000);
-
 				// Check that the client was created successfully
 				// The page should not show a critical error
 				const hasCriticalError = await page
@@ -76,7 +70,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 			test('should use id_token as access token', async ({ page }) => {
 				// Verify authentication works by accessing backend-dependent page
 				await page.goto('/chat');
-				await page.waitForTimeout(2000);
 
 				// If id_token is properly used, the page should work without auth errors
 				const authError = await page
@@ -112,7 +105,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 			test('should maintain auth state after backend errors', async ({ page }) => {
 				// Try to access chat (might have backend issues)
 				await page.goto('/chat');
-				await page.waitForTimeout(2000);
 
 				// Navigate back to home
 				await page.goto('/');
@@ -137,7 +129,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 
 			// Access protected route that uses backend
 			await page.goto('/chat');
-			await page.waitForTimeout(3000);
 
 			// Verify no backend auth errors
 			const criticalError = await page
