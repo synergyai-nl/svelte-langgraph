@@ -185,28 +185,24 @@ test.describe('When authenticated', async () => {
 	});
 
 	test.describe('Navigating to "/chat/"', () => {
-		let page: Page;
-
-		test.beforeAll(async () => {
-			page = await browser.newPage();
-
+		test.beforeEach(async ({page}) => {
 			await page.goto('/chat');
 
 			// Wait for chat to initialize
 			await page.waitForTimeout(2000);
 		});
 
-		test('should not show login modal', async () => {
+		test('should not show login modal', async ({ page }) => {
 			// Should not show login modal
 			const loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
 			await expect(loginModal).not.toBeVisible();
 		});
 
-		test('should show chat interface', async () => {
+		test('should show chat interface', async ({ page }) => {
 			await expect(page.locator('h1')).toBeVisible();
 		});
 
-		test('should show the greeting heading (avoiding specific i18n text checks)', async () => {
+		test('should show the greeting heading (avoiding specific i18n text checks)', async ({ page }) => {
 			const greeting = page.locator('h1').first();
 			await expect(greeting).toBeVisible({ timeout: 15000 });
 		});
