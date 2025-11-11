@@ -56,8 +56,6 @@ export async function signOut(page: Page) {
 	const avatarButton = nav.getByRole('button', { name: 'test-user' });
 	avatarButton.click();
 
-	await page.waitForTimeout(evilWaitDuration);
-
 	const signOutButton = nav.getByRole('button', { name: /sign out/i }).last();
 	await signOutButton.click();
 
