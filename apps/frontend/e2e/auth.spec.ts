@@ -112,16 +112,14 @@ test.describe('When authenticated', async () => {
 	});
 
 	test.describe('Session', () => {
-		test('should persist across page navigation', async ({ page }) => {
-			// Navigate to different pages
-			await page.goto('/chat');
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-			await page.goto('/');
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-			await page.goto('/');
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
+		[
+			{location: '/'},
+			{location: '/chat'},
+		].forEach(({location}) => {
+			test(`should persist across navigation to ${location}`, async ({ page }) => {
+				await page.goto(location);
+				await expect(page.locator('#avatar-menu-button')).toBeVisible();
+			});
 		});
 
 		test('should persist session on page reload', async ({ page }) => {
