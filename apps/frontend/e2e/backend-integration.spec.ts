@@ -2,17 +2,11 @@ import { test, expect } from '@playwright/test';
 import { authenticateUser, expectAuthenticated, expectUnauthenticated } from './fixtures/auth';
 import {
 	makeAuthenticatedRequest,
-	verifyBackendHealth,
 	LANGGRAPH_CONFIG
 } from './fixtures/backend';
 
-test.describe('Backend Integration with OIDC Authentication', () => {
-	test.beforeEach(async ({ page }) => {
-		// Verify backend is running before each test
-		const isHealthy = await verifyBackendHealth(page);
-		expect(isHealthy).toBeTruthy();
-	});
 
+test.describe('Backend Integration with OIDC Authentication', () => {
 	test.describe('Backend Health', () => {
 		test('should verify backend is accessible', async ({ page }) => {
 			const response = await page.request.get(`${LANGGRAPH_CONFIG.apiUrl}/ok`);

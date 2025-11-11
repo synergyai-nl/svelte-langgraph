@@ -63,15 +63,3 @@ export async function makeAuthenticatedRequest(
 
 	return response;
 }
-
-/**
- * Helper to verify backend is accessible
- */
-export async function verifyBackendHealth(page: Page): Promise<boolean> {
-	try {
-		const response = await page.request.fetch(`${LANGGRAPH_CONFIG.apiUrl}/ok`);
-		return response.ok;
-	} catch {
-		return false;
-	}
-}

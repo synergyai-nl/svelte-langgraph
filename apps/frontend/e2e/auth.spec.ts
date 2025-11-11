@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import type { Request } from '@playwright/test';
 import {
 	authenticateUser,
 	signOut,
@@ -25,7 +24,7 @@ test.describe('OIDC Provider', () => {
 });
 
 test.describe('When unauthenticated', async () => {
-	test.describe('On the home page', async () => {
+	test.describe('On "/"', async () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/');
 		});
@@ -47,7 +46,7 @@ test.describe('When unauthenticated', async () => {
 		});
 	});
 
-	test.describe('Navigating to "/chat/"', () => {
+	test.describe('On "/chat/"', () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat');
 		});
