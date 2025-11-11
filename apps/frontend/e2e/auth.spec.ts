@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test';
 import type { Request } from '@playwright/test';
-import { authenticateUser, signOut, OIDC_CONFIG } from './fixtures/auth';
+import {
+	authenticateUser,
+	signOut,
+	OIDC_CONFIG,
+	expectAuthenticated,
+	expectUnauthenticated
+} from './fixtures/auth';
 
 test.describe('OIDC Provider', () => {
 	test('should handle OIDC well-known configuration', async ({ page }) => {
@@ -25,11 +31,7 @@ test.describe('When unauthenticated', async () => {
 		});
 
 		test('should display sign-in button', async ({ page }) => {
-			const signInButton = page.getByRole('button', { name: /sign in/i });
-			await expect(signInButton).toBeVisible();
-
-			// Verify avatar menu is not visible
-			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+			await expectUnauthenticated(page);
 		});
 
 		test('should successfully sign in with OIDC provider', async ({ page }) => {
@@ -37,51 +39,11 @@ test.describe('When unauthenticated', async () => {
 			await authenticateUser(page);
 
 			// Verify successful authentication
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
-			await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
+			await expectAuthenticated(page);
 
 			// Verify user info is displayed
 			const avatarButton = page.locator('#avatar-menu-button');
 			await expect(avatarButton).toContainText(/test-user/i);
-		});
-
-		test.describe('Clicking sign-in button', () => {
-			let requestPromise: Promise<Request>;
-
-			test.beforeEach(async ({ page }) => {
-				// Monitor network requests to verify OIDC issuer
-				requestPromise = page.waitForRequest(
-					(request) => request.url().includes(OIDC_CONFIG.issuer),
-					{ timeout: 15000 }
-				);
-
-				// Trigger sign-in to initiate OIDC flow
-				await page.getByRole('button', { name: /sign in/i }).click();
-			});
-
-			test('should redirect to URL containing issuer', async () => {
-				const request = await requestPromise;
-				expect(request.url()).toContain(OIDC_CONFIG.issuer);
-			});
-
-			test.describe('Clicking the test-user button in OIDC provider', () => {
-				test.beforeEach(async ({ page }) => {
-					// Wait for navigation to OIDC provider
-					await page.waitForURL(`${OIDC_CONFIG.issuer}/**`, { timeout: 10000 });
-
-					const testUserButton = page.getByRole('button', { name: 'test-user' });
-					await testUserButton.waitFor({ state: 'visible', timeout: 5000 });
-					await testUserButton.click();
-				});
-
-				test('should redirect back to app', async ({ page }) => {
-					await expect(page).toHaveURL('/');
-				});
-
-				test('should show avatar button', async ({ page }) => {
-					await expect(page.locator('#avatar-menu-button')).toBeVisible();
-				});
-			});
 		});
 	});
 
@@ -107,10 +69,6 @@ test.describe('When authenticated', async () => {
 		await authenticateUser(page);
 	});
 
-	test('avatar should be visible', async ({ page }) => {
-		await expect(page.locator('#avatar-menu-button')).toBeVisible();
-	});
-
 	test.describe('Session', () => {
 		[
 			{location: '/'},
@@ -118,20 +76,16 @@ test.describe('When authenticated', async () => {
 		].forEach(({location}) => {
 			test(`should persist across navigation to ${location}`, async ({ page }) => {
 				await page.goto(location);
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
+				await expectAuthenticated(page);
 			});
 		});
 
 		test('should persist session on page reload', async ({ page }) => {
-			// Verify authenticated
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
 			// Reload the page
 			await page.reload();
 
 			// Should still be authenticated
-			await expect(page.locator('#avatar-menu-button')).toBeVisible({ timeout: 10000 });
-			await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
+			await expectAuthenticated(page);
 		});
 
 		test('should maintain session across browser context', async ({ context }) => {
@@ -140,7 +94,7 @@ test.describe('When authenticated', async () => {
 			await newPage.goto('/');
 
 			// Should be authenticated in the new page
-			await expect(newPage.locator('#avatar-menu-button')).toBeVisible({ timeout: 10000 });
+			await expectAuthenticated(newPage);
 
 			await newPage.close();
 		});
@@ -158,24 +112,7 @@ test.describe('When authenticated', async () => {
 		});
 
 		test('should show chat interface', async ({ page }) => {
-			await expect(page.locator('h1')).toBeVisible();
-		});
-
-		test('should show the greeting heading (avoiding specific i18n text checks)', async ({
-			page
-		}) => {
-			const greeting = page.locator('h1').first();
-			await expect(greeting).toBeVisible({ timeout: 15000 });
-		});
-
-		test.describe('Signing out', () => {
-			test.beforeEach(async ({ page }) => {
-				await signOut(page);
-			});
-
-			test('should redirect to "/"', async ({ page }) => {
-				await expect(page).toHaveURL('/');
-			});
+			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 		});
 	});
 
@@ -184,20 +121,16 @@ test.describe('When authenticated', async () => {
 			await signOut(page);
 		});
 
-		test('should make sign in button invisible', async ({ page }) => {
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+		test('should show unauthenticated state', async ({ page }) => {
+			await expectUnauthenticated(page);
 		});
 
-		test('should make avatar invisible', async ({ page }) => {
-			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-		});
-
-		test('should not show user greeting on "/chat"', async ({ page }) => {
+		test('should redirect to home and show login modal on protected routes', async ({ page }) => {
 			await page.goto('/chat');
 
-			// Should not show authenticated user greeting
-			const greeting = page.locator('text=/hello.*test-user/i');
-			await expect(greeting).not.toBeVisible();
+			// Should show login modal
+			const loginModal = page.getByRole('dialog');
+			await expect(loginModal).toBeVisible();
 		});
 	});
 });

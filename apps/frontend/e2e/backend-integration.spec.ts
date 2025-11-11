@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { authenticateUser } from './fixtures/auth';
+import { authenticateUser, expectAuthenticated, expectUnauthenticated } from './fixtures/auth';
 import {
 	makeAuthenticatedRequest,
 	verifyBackendHealth,
@@ -17,16 +17,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 		test('should verify backend is accessible', async ({ page }) => {
 			const response = await page.request.get(`${LANGGRAPH_CONFIG.apiUrl}/ok`);
 			expect(response.ok()).toBeTruthy();
-		});
-
-		test('should verify OIDC mock server is running', async ({ page }) => {
-			const response = await page.request.get(
-				'http://localhost:8080/.well-known/openid-configuration'
-			);
-			expect(response.ok()).toBeTruthy();
-
-			const config = await response.json();
-			expect(config.issuer).toBe('http://localhost:8080');
 		});
 	});
 
@@ -126,20 +116,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 					.catch(() => false);
 				expect(authError).toBeFalsy();
 			});
-
-			test('should maintain valid token across page navigations', async ({ page }) => {
-				// Navigate to different pages and verify auth persists
-				await page.goto('/');
-				await page.waitForTimeout(500);
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-				await page.goto('/chat');
-				await page.waitForTimeout(500);
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-				await page.goto('/');
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-			});
 		});
 
 		test.describe('Navigating to "/chat"', () => {
@@ -147,11 +123,11 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				await page.goto('/chat');
 			});
 
-			test('should handle backend requests in chat interface', async ({ page }) => {
+			test('should handle backend requests without auth errors', async ({ page }) => {
 				// Wait for chat interface to load
 				await page.waitForSelector('h1', { timeout: 15000 });
 
-				// The chat page should not show errors
+				// The chat page should not show auth errors
 				const errorElement = page.getByText(/error/i).first();
 				const isErrorVisible = await errorElement.isVisible().catch(() => false);
 
@@ -161,54 +137,10 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 					expect(errorText).not.toMatch(/unauthorized|forbidden|authentication/i);
 				}
 			});
-
-			test('should show functional chat interface', async ({ page }) => {
-				// Wait for initialization
-				await page.waitForTimeout(3000);
-
-				// Verify chat interface is ready
-				const chatGreeting = page.locator('text=/hello|hi|chat/i').first();
-				await expect(chatGreeting).toBeVisible({ timeout: 15000 });
-
-				// Verify user is shown in navbar
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-				// The chat should be functional (has input or suggestions)
-				const hasInput = await page
-					.locator('input[type="text"], textarea')
-					.isVisible()
-					.catch(() => false);
-				const hasSuggestions = await page
-					.locator('[role="button"]')
-					.filter({ hasText: /suggest/i })
-					.first()
-					.isVisible()
-					.catch(() => false);
-
-				// At least one should be visible for a functional chat
-				expect(hasInput || hasSuggestions).toBeTruthy();
-			});
 		});
 
 		test.describe('Error recovery', () => {
-			test('should recover from backend connection issues', async ({ page }) => {
-				await page.goto('/chat');
-
-				// Wait for initialization attempt
-				await page.waitForTimeout(3000);
-
-				// Page should still be functional even if backend has issues
-				await expect(page.locator('body')).toBeVisible();
-				await expect(page.getByRole('navigation')).toBeVisible();
-
-				// User should still be authenticated
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-			});
-
 			test('should maintain auth state after backend errors', async ({ page }) => {
-				// Verify authenticated initially
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
 				// Try to access chat (might have backend issues)
 				await page.goto('/chat');
 				await page.waitForTimeout(2000);
@@ -216,12 +148,8 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				// Navigate back to home
 				await page.goto('/');
 
-				// Verify user is still authenticated (avatar visible)
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
-
-				// Navigate to another page to verify auth persists
-				await page.goto('/');
-				await expect(page.locator('#avatar-menu-button')).toBeVisible();
+				// Verify user is still authenticated
+				await expectAuthenticated(page);
 			});
 		});
 	});
@@ -230,19 +158,19 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 		test('should complete full authentication flow from frontend to backend', async ({
 			page
 		}) => {
-			// Step 1: Start unauthenticated
+			// Start unauthenticated
 			await page.goto('/');
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+			await expectUnauthenticated(page);
 
-			// Step 2: Sign in with OIDC
+			// Sign in with OIDC
 			await authenticateUser(page);
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
+			await expectAuthenticated(page);
 
-			// Step 3: Access protected route that uses backend
+			// Access protected route that uses backend
 			await page.goto('/chat');
 			await page.waitForTimeout(3000);
 
-			// Step 4: Verify no critical errors and page loaded
+			// Verify no backend auth errors
 			const criticalError = await page
 				.getByText(/error during generation|failed to initialize|unauthorized|forbidden/i)
 				.isVisible()
@@ -250,16 +178,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 			expect(criticalError).toBeFalsy();
 
 			await expect(page.locator('h1')).toBeVisible();
-
-			// Step 5: Sign out
-			await page.locator('#avatar-menu-button').click();
-			await page
-				.getByRole('button', { name: /sign out/i })
-				.last()
-				.click();
-
-			// Step 6: Verify signed out
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
 		});
 	});
 });

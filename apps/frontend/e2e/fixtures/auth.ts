@@ -72,4 +72,17 @@ export const test = base.extend<{ authenticatedPage: Page }>({
 	}
 });
 
+/**
+ * Reusable assertion helpers to reduce redundancy
+ */
+export async function expectAuthenticated(page: Page) {
+	await expect(page.locator('#avatar-menu-button')).toBeVisible();
+	await expect(page.getByRole('button', { name: /sign in/i })).not.toBeVisible();
+}
+
+export async function expectUnauthenticated(page: Page) {
+	await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+	await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+}
+
 export { expect };
