@@ -23,8 +23,8 @@ export async function authenticateUser(page: Page) {
 	await expect(signInButton).toBeVisible();
 	await signInButton.click();
 
-	// Wait for navigation to OIDC provider
-	await page.waitForURL(/localhost:8080/, { timeout: 10000 });
+	// Ensure redirect to OIDC provider
+	await expect(page).toHaveURL(url => url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`) );
 
 	// The OIDC mock provider shows an authorization page
 	// Click the test-user button which automatically authenticates and authorizes
@@ -32,8 +32,8 @@ export async function authenticateUser(page: Page) {
 	await testUserButton.waitFor({ state: 'visible', timeout: 5000 });
 	await testUserButton.click();
 
-	// Wait for redirect back to the app
-	await page.waitForURL(/localhost:5173/, { timeout: 10000 });
+	// Expect redirect back to the app
+	await expect(page).toHaveURL('/');
 
 	// Wait for authentication to complete by checking for avatar button
 	await expect(page.locator('#avatar-menu-button')).toBeVisible({ timeout: 10000 });
