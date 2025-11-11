@@ -50,7 +50,6 @@ export default defineConfig({
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
 			env: {
 				AUTH_OIDC_ISSUER: testEnv.AUTH_OIDC_ISSUER,
 				AUTH_OIDC_AUDIENCE: testEnv.AUTH_OIDC_CLIENT_ID
