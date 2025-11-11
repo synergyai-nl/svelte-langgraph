@@ -40,7 +40,6 @@ export default defineConfig({
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
-			// Kill server when playwright exits
 			ignoreHTTPSErrors: false
 		},
 		{
