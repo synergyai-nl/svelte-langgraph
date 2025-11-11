@@ -24,7 +24,9 @@ export async function authenticateUser(page: Page) {
 	await signInButton.click();
 
 	// Ensure redirect to OIDC provider
-	await expect(page).toHaveURL(url => url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`) );
+	await expect(page).toHaveURL((url) =>
+		url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`)
+	);
 
 	// The OIDC mock provider shows an authorization page
 	// Click the test-user button which automatically authenticates and authorizes

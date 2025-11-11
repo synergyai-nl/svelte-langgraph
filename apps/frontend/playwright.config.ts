@@ -13,13 +13,13 @@ const testEnv = {
 
 export default defineConfig({
 	testDir: 'e2e',
-  	// Run all tests in parallel.
-  	fullyParallel: true,
-  	forbidOnly: !!process.env.CI,
+	// Run all tests in parallel.
+	fullyParallel: true,
+	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
 	// Opt out of parallel tests on CI.
 	workers: process.env.CI ? 1 : undefined,
-  	reporter: [['html', { open: 'never' }]],
+	reporter: [['html', { open: 'never' }]],
 	use: {
 		baseURL: 'http://localhost:4173',
 		trace: 'on-first-retry'
