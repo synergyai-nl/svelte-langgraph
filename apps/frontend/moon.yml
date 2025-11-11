@@ -92,3 +92,5 @@ tasks:
     deps:
       - build
       - install-playwright
+    args:
+      - --quiet
