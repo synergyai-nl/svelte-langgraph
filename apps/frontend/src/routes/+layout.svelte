@@ -1,28 +1,28 @@
 <script lang="ts">
 	import '../app.tailwind.css';
 
-	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
+	import { SignOut } from '@auth/sveltekit/components';
 	import { onMount } from 'svelte';
 
-	import { ArrowLeftToBracketOutline, MessagesOutline } from 'flowbite-svelte-icons';
 	import {
+		Avatar,
 		Button,
+		DarkMode,
+		Dropdown,
+		DropdownDivider,
+		DropdownHeader,
 		Navbar,
 		NavBrand,
-		NavLi,
-		NavUl,
 		NavHamburger,
-		Dropdown,
-		DropdownHeader,
-		DropdownDivider,
-		Avatar,
-		DarkMode
+		NavLi,
+		NavUl
 	} from 'flowbite-svelte';
+	import { ArrowLeftToBracketOutline, MessagesOutline } from 'flowbite-svelte-icons';
 
-	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
+	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 
 	let { children } = $props();
 
@@ -108,14 +108,13 @@
 						redirect: true
 					}}
 				>
-					<button
+					<span
 						slot="submitButton"
-						type="submit"
 						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-500 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
 						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0" />
-					</button>
+					</span>
 				</SignOut>
 			</Dropdown>
 		{:else}
