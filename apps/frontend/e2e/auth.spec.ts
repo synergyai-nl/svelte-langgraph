@@ -1,11 +1,11 @@
-import { test, expect } from './fixtures/test';
 import {
 	authenticateUser,
-	signOut,
-	OIDC_CONFIG,
 	expectAuthenticated,
-	expectUnauthenticated
+	expectUnauthenticated,
+	OIDC_CONFIG,
+	signOut
 } from './fixtures/auth';
+import { expect, test } from './fixtures/test';
 
 test.describe('OIDC Provider', () => {
 	test('should handle OIDC well-known configuration', async ({ page }) => {
@@ -109,7 +109,7 @@ test.describe('When authenticated', async () => {
 
 	test.describe('On "/chat/"', () => {
 		test.beforeEach(async ({ page }) => {
-			await page.goto('/chat');
+			await page.goto('/chat/');
 		});
 
 		test('should not show login modal', async ({ loginModal }) => {
