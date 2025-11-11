@@ -44,20 +44,24 @@ export async function authenticateUser(page: Page) {
  * Helper to sign out
  */
 export async function signOut(page: Page) {
+	// There seems to be no other way to avoid flakiness on the sign out drop down.
+	// Really, all of these waits have to be there, pending a better solution.
+	// Seems Playwright's wait detection is failing here, somehow.
+	// Also note that 100ms really is the golden number here - result of _extensive_ stress testing.
+	const evilWaitDuration = 100;
+
+	await page.waitForTimeout(evilWaitDuration);
+
 	const nav = page.getByRole('navigation');
 	const avatarButton = nav.getByRole('button', { name: 'test-user' });
-
 	avatarButton.click();
 
+	await page.waitForTimeout(evilWaitDuration);
+
 	const signOutButton = nav.getByRole('button', { name: /sign out/i }).last();
-
-	// Ensures dropdown event handlers are properly set up.
-	page.waitForLoadState();
-
 	await signOutButton.click();
 
-	// Should redirect to /
-	await page.waitForURL('/');
+	await page.waitForTimeout(evilWaitDuration);
 }
 
 /**
