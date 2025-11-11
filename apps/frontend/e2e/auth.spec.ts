@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {
+	getGreeting,
 	authenticateUser,
 	signOut,
 	OIDC_CONFIG,
@@ -60,6 +61,18 @@ test.describe('When unauthenticated', async () => {
 			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
 			await expect(signInButton).toBeVisible();
 		});
+
+		test('should not show greeting', async ({page}) => {
+			await expect(getGreeting(page)).not.toBeVisible();
+		});
+
+		test('should have navigation and body visible', async ({ page }) => {
+			// The app should not crash - check that basic UI is present
+			await expect(page.locator('body')).toBeVisible();
+
+			// Navigation should still work
+			await expect(page.getByRole('navigation')).toBeVisible();
+		});
 	});
 });
 
@@ -99,7 +112,7 @@ test.describe('When authenticated', async () => {
 		});
 	});
 
-	test.describe('Navigating to "/chat/"', () => {
+	test.describe('On "/chat/"', () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat');
 		});
@@ -112,6 +125,10 @@ test.describe('When authenticated', async () => {
 
 		test('should show chat interface', async ({ page }) => {
 			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
+		});
+
+		test('should show greeting', async ({page}) => {
+			await expect(getGreeting(page)).toBeVisible();
 		});
 	});
 

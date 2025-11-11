@@ -14,31 +14,6 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 		});
 	});
 
-	test.describe('When unauthenticated', () => {
-		test.describe('Navigating to "/chat"', () => {
-			test.beforeEach(async ({ page }) => {
-				await page.goto('/chat');
-			});
-
-			test('should not show authenticated content', async ({ page }) => {
-				// Wait a bit to see if any initialization happens
-				await page.waitForTimeout(2000);
-
-				// Should not show authenticated content with user's name
-				const greeting = page.locator('text=/hello.*test-user/i');
-				await expect(greeting).not.toBeVisible();
-			});
-
-			test('should handle missing token gracefully', async ({ page }) => {
-				// The app should not crash - check that basic UI is present
-				await expect(page.locator('body')).toBeVisible();
-
-				// Navigation should still work
-				await expect(page.getByRole('navigation')).toBeVisible();
-			});
-		});
-	});
-
 	test.describe('When authenticated', () => {
 		test.beforeEach(async ({ page }) => {
 			await authenticateUser(page);
