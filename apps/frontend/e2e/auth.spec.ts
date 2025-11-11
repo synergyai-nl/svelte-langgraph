@@ -51,16 +51,16 @@ test.describe('When unauthenticated', async () => {
 			await page.goto('/chat');
 		});
 
-		test('should show login modal with sign-in button', async ({ loginModal }) => {
+		test('should show login modal', async ({ loginModal }) => {
 			await expect(loginModal).toBeVisible();
 		});
 
-		test('should have a sign-in button in the modal', async ({loginModal}) => {
+		test('should have a sign-in button in the modal', async ({ loginModal }) => {
 			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
 			await expect(signInButton).toBeVisible();
 		});
 
-		test('should not show greeting', async ({greeting}) => {
+		test('should not show greeting', async ({ greeting }) => {
 			await expect(greeting).not.toBeVisible();
 		});
 
@@ -80,10 +80,7 @@ test.describe('When authenticated', async () => {
 	});
 
 	test.describe('Session', () => {
-		[
-			{location: '/'},
-			{location: '/chat'},
-		].forEach(({location}) => {
+		[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
 			test(`should persist across navigation to ${location}`, async ({ page }) => {
 				await page.goto(location);
 				await expectAuthenticated(page);
@@ -123,8 +120,18 @@ test.describe('When authenticated', async () => {
 			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 		});
 
-		test('should show greeting', async ({greeting}) => {
+		test('should show greeting', async ({ greeting }) => {
 			await expect(greeting).toBeVisible();
+		});
+
+		test.describe('Signing out', () => {
+			test.beforeEach(async ({ page }) => {
+				await signOut(page);
+			});
+
+			test('should navigate to "/"', async ({ page }) => {
+				await expect(page).toHaveURL('/');
+			});
 		});
 	});
 
@@ -139,7 +146,7 @@ test.describe('When authenticated', async () => {
 
 		test.describe('On "/chat/"', () => {
 			test.beforeEach(async ({ page }) => {
-				await page.goto('/chat');
+				await page.goto('/chat/');
 			});
 
 			test('should show login modal', async ({ loginModal }) => {

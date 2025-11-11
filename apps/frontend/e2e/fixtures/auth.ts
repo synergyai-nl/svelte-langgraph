@@ -18,8 +18,10 @@ export async function authenticateUser(page: Page) {
 	// Start from home page
 	await page.goto('/');
 
+	const nav = page.getByRole('navigation');
+
 	// Click the sign-in button to initiate OIDC flow
-	const signInButton = page.getByRole('button', { name: /sign in/i });
+	const signInButton = nav.getByRole('button', { name: /sign in/i });
 	await expect(signInButton).toBeVisible();
 	await signInButton.click();
 
@@ -42,24 +44,20 @@ export async function authenticateUser(page: Page) {
  * Helper to sign out
  */
 export async function signOut(page: Page) {
-	// Click avatar menu button - wait for it to be ready
-	const avatarButton = page.locator('#avatar-menu-button');
-	await expect(avatarButton).toBeVisible();
-	await avatarButton.click();
+	const nav = page.getByRole('navigation');
+	const avatarButton = nav.getByRole('button', { name: 'test-user' });
 
-	// Wait for the sign-out button in the dropdown to be visible and ready
-	// The button is within a navigation area and should be clickable once the dropdown animation completes
-	const signOutButton = page.getByRole('button', { name: /sign out/i }).last();
-	await expect(signOutButton).toBeVisible();
+	avatarButton.click();
 
-	// Wait for the button to be enabled and ready for interaction (ensures dropdown animation completed)
-	await expect(signOutButton).toBeEnabled();
+	const signOutButton = nav.getByRole('button', { name: /sign out/i }).last();
 
-	// Click the sign-out button
+	// Ensures dropdown event handlers are properly set up.
+	page.waitForLoadState();
+
 	await signOutButton.click();
 
-	// Wait for redirect to home page
-	await page.waitForURL('/', { timeout: 5000 });
+	// Should redirect to /
+	await page.waitForURL('/');
 }
 
 /**

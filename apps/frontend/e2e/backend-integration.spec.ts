@@ -1,10 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { authenticateUser, expectAuthenticated, expectUnauthenticated } from './fixtures/auth';
-import {
-	makeAuthenticatedRequest,
-	LANGGRAPH_CONFIG
-} from './fixtures/backend';
-
+import { makeAuthenticatedRequest, LANGGRAPH_CONFIG } from './fixtures/backend';
 
 test.describe('Backend Integration with OIDC Authentication', () => {
 	test.describe('Backend Health', () => {
@@ -36,9 +32,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				await expect(page.locator('h1')).toBeVisible();
 			});
 
-			test('should successfully authenticate with backend using OIDC token', async ({
-				page
-			}) => {
+			test('should successfully authenticate with backend using OIDC token', async ({ page }) => {
 				// Try to make an authenticated request to the backend
 				// LangGraph exposes /info endpoint that requires authentication
 				try {
@@ -116,9 +110,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 	});
 
 	test.describe('End-to-end flows', () => {
-		test('should complete full authentication flow from frontend to backend', async ({
-			page
-		}) => {
+		test('should complete full authentication flow from frontend to backend', async ({ page }) => {
 			// Start unauthenticated
 			await page.goto('/');
 			await expectUnauthenticated(page);
