@@ -3,12 +3,12 @@ import { authenticateUser, signOut, OIDC_CONFIG } from './fixtures/auth';
 
 test.describe('When unauthenticated', async () => {
 	test.describe('On the home page', async () => {
-		test.beforeEach(async ({page}) => {
+		test.beforeEach(async ({ page }) => {
 			await page.goto('/');
 
 			// Verify we start unauthenticated
 			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-		})
+		});
 
 		test('should display sign-in button', async ({ page }) => {
 			const signInButton = page.getByRole('button', { name: /sign in/i });
@@ -185,7 +185,7 @@ test.describe('When authenticated', async () => {
 	});
 
 	test.describe('Navigating to "/chat/"', () => {
-		test.beforeEach(async ({page}) => {
+		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat');
 
 			// Wait for chat to initialize
@@ -202,55 +202,58 @@ test.describe('When authenticated', async () => {
 			await expect(page.locator('h1')).toBeVisible();
 		});
 
-		test('should show the greeting heading (avoiding specific i18n text checks)', async ({ page }) => {
+		test('should show the greeting heading (avoiding specific i18n text checks)', async ({
+			page
+		}) => {
 			const greeting = page.locator('h1').first();
 			await expect(greeting).toBeVisible({ timeout: 15000 });
 		});
+
+		test.describe('Signing out', () => {
+			test.beforeEach(async ({ page }) => {
+				await signOut(page);
+			});
+
+			test('should redirect to "/"', async ({ page }) => {
+				await page.waitForURL('/');
+			});
+		});
 	});
 
-	test.describe('Sign-out Flow', () => {
-		test('should successfully sign out', async ({ page }) => {
-			// Verify we're authenticated
-			await expect(page.locator('#avatar-menu-button')).toBeVisible();
+	test('should successfully sign out', async ({ page }) => {
+		// Verify we're authenticated
+		await expect(page.locator('#avatar-menu-button')).toBeVisible();
 
-			// Sign out
-			await signOut(page);
+		// Sign out
+		await signOut(page);
 
-			// Verify we're signed out
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-		});
+		// Verify we're signed out
+		await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+		await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+	});
 
-		test('should clear session after sign-out', async ({ page }) => {
-			// Sign out
-			await signOut(page);
+	test('should clear session after sign-out', async ({ page }) => {
+		// Sign out
+		await signOut(page);
 
-			// Verify session is cleared by checking UI state
-			await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
-			await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
-		});
+		// Verify session is cleared by checking UI state
+		await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+		await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+	});
 
-		test('should redirect to home page after sign-out', async ({ page }) => {
-			// Navigate to chat page
-			await page.goto('/chat');
+	test('should not allow access to protected routes after sign-out', async ({ page }) => {
+		// Sign out
+		await signOut(page);
 
-			// Sign out
-			await signOut(page);
-		});
+		// Try to access chat page
+		await page.goto('/chat');
 
-		test('should not allow access to protected routes after sign-out', async ({ page }) => {
-			// Sign out
-			await signOut(page);
+		// Should show login modal or prompt
+		await page.waitForTimeout(1000);
 
-			// Try to access chat page
-			await page.goto('/chat');
-
-			// Should show login modal or prompt
-			await page.waitForTimeout(1000);
-
-			// Should not show authenticated user greeting
-			const greeting = page.locator('text=/hello.*test-user/i');
-			await expect(greeting).not.toBeVisible();
-		});
+		// Should not show authenticated user greeting
+		const greeting = page.locator('text=/hello.*test-user/i');
+		await expect(greeting).not.toBeVisible();
 	});
 });
+await page.waitForURL('**/login');
