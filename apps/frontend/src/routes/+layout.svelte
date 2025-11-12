@@ -51,7 +51,7 @@
 			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 			const updateTheme = (e: MediaQueryListEvent) => {
 				isDarkMode = e.matches;
-				if (e.matches) {
+				if (isDarkMode) {
 					document.documentElement.classList.add('dark');
 				} else {
 					document.documentElement.classList.remove('dark');
