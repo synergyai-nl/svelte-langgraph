@@ -17,8 +17,7 @@ export function createScrollListener(
 		let userScrollTimeout: number | null = null;
 
 		// Detect ANY user scroll interaction (wheel, touch, keyboard)
-		const handleUserScrollIntent = (event: Event) => {
-			console.info('User scroll intent detected:', event.type);
+		const handleUserScrollIntent = () => {
 			stateUpdater.setIsUserScrolledAway(true);
 
 			// Clear any existing timeout
@@ -32,9 +31,6 @@ export function createScrollListener(
 					const atBottom = isAtBottom(scrollContainer);
 					if (atBottom) {
 						stateUpdater.setIsUserScrolledAway(false);
-						console.info('User returned to bottom, re-enabling auto-scroll');
-					} else {
-						console.info('User still scrolled away');
 					}
 					onScrollIntentDetected?.(atBottom);
 				}
@@ -52,7 +48,6 @@ export function createScrollListener(
 		scrollContainer = findScrollContainer(node);
 
 		if (scrollContainer) {
-			console.info('Attach scroll listener to container:', scrollContainer);
 			stateUpdater.setScrollContainer(scrollContainer);
 
 			// Listen to multiple scroll-related events to catch user intent early

@@ -2,11 +2,11 @@
 	import { createScrollListener } from '$lib/utils/scrollListener';
 	import { findScrollContainer, scrollToBottom } from '$lib/utils/scrollControls';
 	import type { Snippet } from 'svelte';
-	import type { Action } from 'svelte/action';
+	import type { Attachment } from 'svelte/attachments';
 	import type { BaseMessage } from '$lib/langgraph/types';
 
 	interface Props {
-		children: Snippet<[{ scrollToMe: (message?: BaseMessage | null) => Action<HTMLElement> }]>;
+		children: Snippet<[{ scrollToMe: (message?: BaseMessage | null) => Attachment }]>;
 	}
 
 	let { children }: Props = $props();
@@ -14,21 +14,16 @@
 	let isUserScrolledAway = $state(false);
 	let scrollContainerRef: HTMLElement | null = null;
 
-	const scrollListenerAction = createScrollListener(
-		{
-			setIsUserScrolledAway: (value: boolean) => {
-				isUserScrolledAway = value;
-			},
-			setScrollContainer: (container: HTMLElement | null) => {
-				scrollContainerRef = container;
-			}
+	const scrollListenerAction = createScrollListener({
+		setIsUserScrolledAway: (value: boolean) => {
+			isUserScrolledAway = value;
 		},
-		(atBottom) => {
-			console.info('Scroll intent debounce callback, atBottom:', atBottom);
+		setScrollContainer: (container: HTMLElement | null) => {
+			scrollContainerRef = container;
 		}
-	);
+	});
 
-	function scrollToMe(message: BaseMessage | null = null): Action<HTMLElement> {
+	function scrollToMe(message: BaseMessage | null = null): Attachment {
 		return (element: HTMLElement) => {
 			if (message && !message.text) return;
 
