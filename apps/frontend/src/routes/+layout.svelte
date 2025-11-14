@@ -113,7 +113,9 @@
 						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0 text-primary-500 dark:text-primary-600 pointer-events-none" />
+						<ArrowLeftToBracketOutline
+							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
+						/>
 					</div>
 				</SignOut>
 			</Dropdown>
