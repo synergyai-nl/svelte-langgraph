@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { createScrollListener } from '$lib/utils/scrollListener';
 	import { findScrollContainer, scrollToBottom } from '$lib/utils/scrollControls';
-	import type { Action, Snippet } from 'svelte';
+	import type { Snippet } from 'svelte';
+	import type { Action } from 'svelte/action';
 	import type { BaseMessage } from '$lib/langgraph/types';
 
 	interface Props {
