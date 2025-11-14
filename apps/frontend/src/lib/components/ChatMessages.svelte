@@ -66,13 +66,10 @@
 			{/if}
 		</div>
 	{/each}
+	<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}></div>
 	{#if generationError && onRetryError}
-		<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}>
-			<ChatErrorMessage error={generationError} onRetry={onRetryError} />
-		</div>
+		<ChatErrorMessage error={generationError} onRetry={onRetryError} />
 	{:else if !finalAnswerStarted}
-		<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}>
-			<ChatWaiting />
-		</div>
+		<ChatWaiting />
 	{/if}
 </div>
