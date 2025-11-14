@@ -4,7 +4,6 @@
 	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
-	import { onMount } from 'svelte';
 
 	import {
 		ArrowLeftToBracketOutline,
@@ -25,72 +24,16 @@
 		Avatar
 	} from 'flowbite-svelte';
 
+	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
+
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	let { children } = $props();
 
-	let isDarkMode = $state(false);
-
-	// Initialize theme immediately
-	onMount(() => {
-		// Check localStorage first, then fall back to system preference
-		const savedTheme = localStorage.getItem('theme');
-		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-		isDarkMode = savedTheme === 'dark' || (!savedTheme && prefersDark);
-
-		if (isDarkMode) {
-			document.documentElement.classList.add('dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-		}
-
-		// Listen for system preference changes only if no saved preference
-		if (!savedTheme) {
-			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-			const updateTheme = (e: MediaQueryListEvent) => {
-				isDarkMode = e.matches;
-				if (isDarkMode) {
-					document.documentElement.classList.add('dark');
-				} else {
-					document.documentElement.classList.remove('dark');
-				}
-			};
-
-			mediaQuery.addEventListener('change', updateTheme);
-
-			return () => {
-				mediaQuery.removeEventListener('change', updateTheme);
-			};
-		}
-	});
-
-	function toggleTheme() {
-		isDarkMode = !isDarkMode;
-		if (isDarkMode) {
-			document.documentElement.classList.add('dark');
-			localStorage.setItem('theme', 'dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-			localStorage.setItem('theme', 'light');
-		}
-	}
 </script>
 
-<svelte:head>
-	<script>
-		(function () {
-			const savedTheme = localStorage.getItem('theme');
-			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-			if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-				document.documentElement.classList.add('dark');
-			}
-		})();
-	</script>
-</svelte:head>
-
+<ModeWatcher />
 <Navbar>
 	<NavBrand href="/">
 		<MessagesOutline class="me-3 h-6 sm:h-9" />
@@ -129,10 +72,10 @@
 				<button
 					type="button"
 					class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
-					onclick={toggleTheme}
+					onclick={toggleMode}
 				>
-					<span>{isDarkMode ? m.light_mode() : m.dark_mode()}</span>
-					{#if isDarkMode}
+					<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
+					{#if mode.current === 'light'}
 						<SunSolid class="text-primary-500 h-5 w-5" />
 					{:else}
 						<MoonSolid class="text-primary-600 h-5 w-5" />
