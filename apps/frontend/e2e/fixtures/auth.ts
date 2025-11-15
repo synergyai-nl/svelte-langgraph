@@ -63,16 +63,6 @@ export async function signOut(page: Page) {
 }
 
 /**
- * Test fixture that provides an authenticated page
- */
-export const test = base.extend<{ authenticatedPage: Page }>({
-	authenticatedPage: async ({ page }, use) => {
-		await authenticateUser(page);
-		await use(page);
-	}
-});
-
-/**
  * Reusable assertion helpers to reduce redundancy
  */
 export async function expectAuthenticated(page: Page) {
