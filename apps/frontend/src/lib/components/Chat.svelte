@@ -68,7 +68,6 @@
 				messages = loadedMessages;
 				chat_started = true;
 			}
-			console.info(loadedMessages);
 		}
 	});
 
