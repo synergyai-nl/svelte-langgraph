@@ -1,23 +1,29 @@
 import { type Page, type Locator } from '@playwright/test';
+import { BasePage } from './base.page';
 
 /**
  * Chat Page Object Model
  * Encapsulates the chat page (/chat) interactions and elements
+ * Extends BasePage for common navigation/auth + adds chat layout elements
  */
-export class ChatPage {
-	readonly page: Page;
+export class ChatPage extends BasePage {
+	// Chat layout specific - login modal
 	readonly loginModal: Locator;
 	readonly loginModalSignInButton: Locator;
+
+	// Chat interface elements
 	readonly greeting: Locator;
 	readonly chatTitle: Locator;
+
+	// Error elements
 	readonly errorMessage: Locator;
 	readonly authErrorMessage: Locator;
 	readonly criticalErrorMessage: Locator;
 
 	constructor(page: Page) {
-		this.page = page;
+		super(page);
 
-		// Login modal elements
+		// Login modal elements (chat layout specific)
 		this.loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.loginModalSignInButton = this.loginModal.getByRole('button', { name: /sign in/i });
 
