@@ -1,16 +1,17 @@
 <script lang="ts">
-	import { Client } from '@langchain/langgraph-sdk';
+	import { Client, type Thread, type DefaultValues } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, UserMessage } from '$lib/langgraph/types';
+	import type { Message, UserMessage, AIMessage, ToolMessage } from '$lib/langgraph/types';
 	import { error } from '@sveltejs/kit';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
-		threadId: string;
+		thread: Thread<DefaultValues>;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;
@@ -19,7 +20,7 @@
 	let {
 		langGraphClient,
 		assistantId,
-		threadId,
+		thread,
 		suggestions = [],
 		intro = '',
 		introTitle = ''
@@ -32,6 +33,44 @@
 	let chat_started = $state(false);
 	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
+
+	// Load existing messages from thread on component initialization
+	onMount(() => {
+		if (thread?.values?.messages && thread.values.messages.length > 0) {
+			const loadedMessages = thread.values.messages
+				.map((item: Record<string, unknown>) => {
+					if (item.type === 'human') {
+						return {
+							type: 'user',
+							text: typeof item.content === 'string' ? item.content : '',
+							id: (item.id as string) || crypto.randomUUID()
+						} as UserMessage;
+					} else if (item.type === 'ai') {
+						return {
+							type: 'ai',
+							text: typeof item.content === 'string' ? item.content : '',
+							id: (item.id as string) || crypto.randomUUID()
+						} as AIMessage;
+					} else if (item.type === 'tool') {
+						return {
+							type: 'tool',
+							text: typeof item.content === 'string' ? item.content : '',
+							tool_name: (item.name as string) || '',
+							id: (item.tool_call_id as string) || (item.id as string) || crypto.randomUUID(),
+							status: (item.status as 'success' | 'error') || 'success'
+						} as ToolMessage;
+					}
+					return null;
+				})
+				.filter((msg: Message | null): msg is Message => msg !== null);
+
+			if (loadedMessages.length > 0) {
+				messages = loadedMessages;
+				chat_started = true;
+			}
+			console.info(loadedMessages)
+		}
+	});
 
 	function updateMessages(chunk: Message) {
 		console.debug('Processing chunk in inputSubmit:', chunk);
@@ -99,7 +138,7 @@
 			try {
 				for await (const chunk of streamAnswer(
 					langGraphClient,
-					threadId,
+					thread.thread_id,
 					assistantId,
 					messageText,
 					messageId

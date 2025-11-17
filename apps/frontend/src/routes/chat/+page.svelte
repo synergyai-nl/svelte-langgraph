@@ -7,7 +7,7 @@
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import { getOrCreateAssistant, createClient, getOrCreateThread } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { Client } from '@langchain/langgraph-sdk';
+	import type { Client, Thread, DefaultValues } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
 
 	let show_login_dialog = $state(false);
@@ -16,12 +16,14 @@
 	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
 	let assistantId = $state<string | null>(null);
 	let threadId = $state<string | null>(null);
+	let thread = $state<Thread<DefaultValues> | null>(null);
 	let initialization_error = $state<Error | null>(null);
 
 	async function initLangGraph(client: Client) {
 		try {
 			assistantId = await getOrCreateAssistant(client, 'chat');
-			threadId = await getOrCreateThread(client);
+			thread = await getOrCreateThread(client);
+			threadId = thread.thread_id;
 		} catch (err) {
 			if (err instanceof Error) initialization_error = err;
 			error(500, {
@@ -74,12 +76,12 @@
 
 {#if initialization_error}
 	<ChatError error={initialization_error} />
-{:else if assistantId && threadId && client}
+{:else if assistantId &&  thread && client}
 	<!-- We're all set up -->
 	<Chat
 		langGraphClient={client}
 		{assistantId}
-		{threadId}
+		{thread}
 		introTitle={greeting}
 		intro={m.chat_intro()}
 		{suggestions}
