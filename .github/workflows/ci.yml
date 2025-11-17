@@ -53,6 +53,12 @@ jobs:
           matrix: ${{ toJSON(matrix) }}
       - uses: appthrust/moon-ci-retrospect@v1
         if: success() || failure()
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: apps/frontend/playwright-report/
+          retention-days: 30
 
   build:
     name: "Docker Build"
