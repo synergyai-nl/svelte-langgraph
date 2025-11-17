@@ -4,6 +4,9 @@ language: typescript
 stack: frontend
 type: application
 
+dependsOn:
+  - backend
+
 fileGroups:
   sources:
     - 'src/**/*'
@@ -94,5 +97,3 @@ tasks:
     deps:
       - build
       - install-playwright
-    options:
-      runInCI: false
