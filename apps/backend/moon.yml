@@ -39,6 +39,6 @@ tasks:
       - build
   # Bogus task to ensure deps are installed
   setup:
-    command: "true"
+    command: noop
     options:
       internal: true
