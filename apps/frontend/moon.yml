@@ -91,6 +91,8 @@ tasks:
 
   test-e2e:
     command: playwright test
+    args:
+      - --quiet
     deps:
       - build
       - install-playwright
