@@ -76,7 +76,7 @@
 
 {#if initialization_error}
 	<ChatError error={initialization_error} />
-{:else if assistantId &&  thread && client}
+{:else if assistantId && thread && client}
 	<!-- We're all set up -->
 	<Chat
 		langGraphClient={client}
