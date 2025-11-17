@@ -27,8 +27,6 @@ tasks:
   dev:
     command: "langgraph dev --no-browser"
     preset: "watcher"
-    deps:
-      - oidc-mock
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
@@ -39,3 +37,8 @@ tasks:
     preset: "server"
     deps:
       - build
+  # Bogus task to ensure deps are installed
+  setup:
+    command: noop
+    options:
+      internal: true
