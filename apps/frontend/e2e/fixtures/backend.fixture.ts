@@ -1,5 +1,5 @@
 import { test as base } from './auth.fixture';
-import type { Page, APIResponse } from '@playwright/test';
+import type { APIResponse } from '@playwright/test';
 
 /**
  * LangGraph Backend Configuration

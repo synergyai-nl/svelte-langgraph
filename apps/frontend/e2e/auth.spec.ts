@@ -17,11 +17,7 @@ test.describe('When unauthenticated', () => {
 			await authHelpers.expectUnauthenticated();
 		});
 
-		test('should successfully sign in with OIDC provider', async ({
-			authHelpers,
-			homePage,
-			oidcPage
-		}) => {
+		test('should successfully sign in with OIDC provider', async ({ authHelpers, homePage }) => {
 			// Perform authentication
 			await authHelpers.authenticateUser();
 
@@ -67,10 +63,7 @@ test.describe('When authenticated', () => {
 
 	test.describe('Session persistence', () => {
 		[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
-			test(`should persist across navigation to ${location}`, async ({
-				page,
-				authHelpers
-			}) => {
+			test(`should persist across navigation to ${location}`, async ({ page, authHelpers }) => {
 				await page.goto(location);
 				await authHelpers.expectAuthenticated();
 			});
@@ -84,10 +77,7 @@ test.describe('When authenticated', () => {
 			await authHelpers.expectAuthenticated();
 		});
 
-		test('should maintain session across browser context', async ({
-			context,
-			authHelpers
-		}) => {
+		test('should maintain session across browser context', async ({ context }) => {
 			// Open a new page in the same context
 			const newPage = await context.newPage();
 			await newPage.goto('/');
@@ -123,10 +113,7 @@ test.describe('When authenticated', () => {
 		});
 
 		test.describe('Signing out from chat', () => {
-			test('should navigate to home after sign out', async ({
-				authHelpers,
-				page
-			}) => {
+			test('should navigate to home after sign out', async ({ authHelpers, page }) => {
 				await authHelpers.signOut();
 				await expect(page).toHaveURL('/');
 			});

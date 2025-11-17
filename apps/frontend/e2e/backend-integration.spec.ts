@@ -1,4 +1,4 @@
-import { test, expect, LANGGRAPH_CONFIG } from './fixtures';
+import { test, expect } from './fixtures';
 
 test.describe('Backend Integration with OIDC Authentication', () => {
 	test('should verify backend is accessible', async ({ backendHelpers }) => {

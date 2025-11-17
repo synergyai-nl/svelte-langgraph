@@ -1,5 +1,4 @@
 import { test as base } from './pages.fixture';
-import type { HomePage, OIDCPage } from '../pages';
 
 /**
  * OIDC Mock Configuration
@@ -58,7 +57,7 @@ export const test = base.extend<AuthFixtures>({
 	 * Authentication helper methods as a fixture
 	 * Provides reusable auth methods without auto-authentication
 	 */
-	authHelpers: async ({ homePage, oidcPage, page }, use) => {
+	authHelpers: async ({ homePage, oidcPage }, use) => {
 		const helpers: AuthHelpers = {
 			authenticateUser: async () => {
 				await homePage.goto();

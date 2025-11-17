@@ -22,6 +22,7 @@ e2e/
 ## Page Object Models (POMs)
 
 Each page has its own POM class that encapsulates:
+
 - Element locators as readonly properties
 - Action methods for user interactions
 - Helper methods for common assertions
@@ -30,20 +31,20 @@ Each page has its own POM class that encapsulates:
 
 ```typescript
 export class HomePage {
-  readonly signInButton: Locator;
+	readonly signInButton: Locator;
 
-  constructor(page: Page) {
-    this.page = page;
-    this.signInButton = page.getByRole('button', { name: /sign in/i });
-  }
+	constructor(page: Page) {
+		this.page = page;
+		this.signInButton = page.getByRole('button', { name: /sign in/i });
+	}
 
-  async goto() {
-    await this.page.goto('/');
-  }
+	async goto() {
+		await this.page.goto('/');
+	}
 
-  async clickSignIn() {
-    await this.signInButton.click();
-  }
+	async clickSignIn() {
+		await this.signInButton.click();
+	}
 }
 ```
 
@@ -69,9 +70,9 @@ Import the extended test and fixtures from the main export:
 import { test, expect } from './fixtures';
 
 test('example test', async ({ homePage, authHelpers }) => {
-  await homePage.goto();
-  await authHelpers.authenticateUser();
-  await expect(homePage.avatarMenuButton).toBeVisible();
+	await homePage.goto();
+	await authHelpers.authenticateUser();
+	await expect(homePage.avatarMenuButton).toBeVisible();
 });
 ```
 
@@ -79,8 +80,8 @@ test('example test', async ({ homePage, authHelpers }) => {
 
 ```typescript
 test('navigate to chat', async ({ chatPage }) => {
-  await chatPage.goto();
-  await expect(chatPage.chatTitle).toBeVisible();
+	await chatPage.goto();
+	await expect(chatPage.chatTitle).toBeVisible();
 });
 ```
 
@@ -88,14 +89,14 @@ test('navigate to chat', async ({ chatPage }) => {
 
 ```typescript
 test('authenticated flow', async ({ authHelpers, chatPage }) => {
-  // Manually authenticate
-  await authHelpers.authenticateUser();
+	// Manually authenticate
+	await authHelpers.authenticateUser();
 
-  // Navigate to protected page
-  await chatPage.goto();
+	// Navigate to protected page
+	await chatPage.goto();
 
-  // Verify authenticated state
-  await authHelpers.expectAuthenticated();
+	// Verify authenticated state
+	await authHelpers.expectAuthenticated();
 });
 ```
 
@@ -103,14 +104,14 @@ test('authenticated flow', async ({ authHelpers, chatPage }) => {
 
 ```typescript
 test.describe('When authenticated', () => {
-  test.beforeEach(async ({ authHelpers }) => {
-    await authHelpers.authenticateUser();
-  });
+	test.beforeEach(async ({ authHelpers }) => {
+		await authHelpers.authenticateUser();
+	});
 
-  test('access protected content', async ({ chatPage }) => {
-    await chatPage.goto();
-    await expect(chatPage.loginModal).not.toBeVisible();
-  });
+	test('access protected content', async ({ chatPage }) => {
+		await chatPage.goto();
+		await expect(chatPage.loginModal).not.toBeVisible();
+	});
 });
 ```
 

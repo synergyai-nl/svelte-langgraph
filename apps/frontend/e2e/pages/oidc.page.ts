@@ -29,8 +29,8 @@ export class OIDCPage {
 	 * Wait for redirect to OIDC provider
 	 */
 	async waitForOIDCRedirect() {
-		await expect(this.page).toHaveURL(
-			(url) => url.toString().startsWith(`${this.issuer}/oauth2/authorize`)
+		await expect(this.page).toHaveURL((url) =>
+			url.toString().startsWith(`${this.issuer}/oauth2/authorize`)
 		);
 	}
 
@@ -53,9 +53,7 @@ export class OIDCPage {
 	 * Verify OIDC well-known configuration is accessible
 	 */
 	async verifyWellKnownConfig() {
-		const response = await this.page.request.get(
-			`${this.issuer}/.well-known/openid-configuration`
-		);
+		const response = await this.page.request.get(`${this.issuer}/.well-known/openid-configuration`);
 		expect(response.ok()).toBeTruthy();
 
 		const config = await response.json();
