@@ -24,7 +24,8 @@
 	});
 
 	function scrollToMe(message: BaseMessage | null = null): Attachment {
-		return (element: HTMLElement) => {
+		return (element: Element) => {
+			if (!(element instanceof HTMLElement)) return;
 			if (message && !message.text) return;
 
 			const container = findScrollContainer(element);

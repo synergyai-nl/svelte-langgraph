@@ -40,7 +40,7 @@ export function createScrollListener(
 		const handleKeyScroll = (e: Event) => {
 			const keyEvent = e as KeyboardEvent;
 			if (isScrollKey(keyEvent.key)) {
-				handleUserScrollIntent(e);
+				handleUserScrollIntent();
 			}
 		};
 
