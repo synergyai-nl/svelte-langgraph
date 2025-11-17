@@ -5,7 +5,7 @@
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
-	import ScrollableContainer from './ScrollableContainer.svelte';
+	import { ScrollableContainer } from './ScrollableContainer';
 
 	interface Props {
 		messages: Array<Message>;

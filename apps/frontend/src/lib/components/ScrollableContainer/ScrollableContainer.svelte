@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createScrollListener } from '$lib/utils/scrollListener';
-	import { findScrollContainer, scrollToBottom } from '$lib/utils/scrollControls';
+	import { createScrollListener } from '$lib/components/ScrollableContainer/scrollListener';
+	import { findScrollContainer, scrollToBottom } from './scrollControls';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { BaseMessage } from '$lib/langgraph/types';
