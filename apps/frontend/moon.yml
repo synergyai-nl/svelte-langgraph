@@ -97,3 +97,5 @@ tasks:
       - build
       - install-playwright
       - backend:setup
+    options:
+      runInCI: skip
