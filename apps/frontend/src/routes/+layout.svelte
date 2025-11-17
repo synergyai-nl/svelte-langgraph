@@ -30,7 +30,6 @@
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	let { children } = $props();
-
 </script>
 
 <ModeWatcher />
