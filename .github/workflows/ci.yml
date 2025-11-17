@@ -14,9 +14,6 @@ jobs:
   ci-job:
     name: "CI Job"
     runs-on: "ubuntu-latest"
-    strategy:
-      matrix:
-        index: [0, 1]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -24,7 +21,7 @@ jobs:
       - uses: moonrepo/setup-toolchain@v0
         with:
           cache-base: main
-      - run: "moon ci --color --job ${{ matrix.index }} --jobTotal 2"
+      - run: "moon ci --color"
         env:
           PUBLIC_LANGGRAPH_API_URL: "http://127.0.0.1:2024"
       - uses: moonrepo/run-report-action@v1
