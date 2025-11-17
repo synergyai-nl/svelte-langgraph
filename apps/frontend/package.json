@@ -56,7 +56,8 @@
 		"vitest": "^3.0.0"
 	},
 	"dependencies": {
-		"@sentry/sveltekit": "^10.0.0"
+		"@sentry/sveltekit": "^10.0.0",
+		"mode-watcher": "^1.1.0"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [

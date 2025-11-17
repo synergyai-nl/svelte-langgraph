@@ -4,9 +4,13 @@
 	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
-	import { onMount } from 'svelte';
 
-	import { ArrowLeftToBracketOutline, MessagesOutline } from 'flowbite-svelte-icons';
+	import {
+		ArrowLeftToBracketOutline,
+		MessagesOutline,
+		MoonSolid,
+		SunSolid
+	} from 'flowbite-svelte-icons';
 	import {
 		Button,
 		Navbar,
@@ -17,43 +21,18 @@
 		Dropdown,
 		DropdownHeader,
 		DropdownDivider,
-		Avatar,
-		DarkMode
+		Avatar
 	} from 'flowbite-svelte';
+
+	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
 	let { children } = $props();
-
-	let isDarkMode = $state(true);
-
-	// Auto dark mode based on browser preference
-	onMount(() => {
-		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-		const updateTheme = (e: MediaQueryList | MediaQueryListEvent) => {
-			if (e.matches) {
-				document.documentElement.classList.add('dark');
-				isDarkMode = true;
-			} else {
-				document.documentElement.classList.remove('dark');
-				isDarkMode = false;
-			}
-		};
-
-		// Set initial theme
-		updateTheme(mediaQuery);
-
-		// Listen for changes
-		mediaQuery.addEventListener('change', updateTheme);
-
-		return () => {
-			mediaQuery.removeEventListener('change', updateTheme);
-		};
-	});
 </script>
 
+<ModeWatcher />
 <Navbar>
 	<NavBrand href="/">
 		<MessagesOutline class="me-3 h-6 sm:h-9" />
@@ -92,13 +71,14 @@
 				<button
 					type="button"
 					class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
-					onclick={() => {
-						document.documentElement.classList.toggle('dark');
-						isDarkMode = !isDarkMode;
-					}}
+					onclick={toggleMode}
 				>
-					<span>{isDarkMode ? m.light_mode() : m.dark_mode()}</span>
-					<DarkMode class="text-primary-500 dark:text-primary-600 pointer-events-none" />
+					<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
+					{#if mode.current === 'light'}
+						<SunSolid class="text-primary-500 h-5 w-5" />
+					{:else}
+						<MoonSolid class="text-primary-600 h-5 w-5" />
+					{/if}
 				</button>
 				<DropdownDivider />
 
@@ -108,14 +88,15 @@
 						redirect: true
 					}}
 				>
-					<button
+					<div
 						slot="submitButton"
-						type="submit"
-						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-500 dark:hover:bg-gray-600"
+						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0" />
-					</button>
+						<ArrowLeftToBracketOutline
+							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
+						/>
+					</div>
 				</SignOut>
 			</Dropdown>
 		{:else}
