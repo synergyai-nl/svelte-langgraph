@@ -17,8 +17,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 
 				// If authentication is working, the chat page should load successfully
 				// and not show authentication errors
-				const hasAuthError = await chatPage.hasAuthError();
-				expect(hasAuthError).toBeFalsy();
+				await expect(chatPage.authErrorMessage).not.toBeVisible();
 
 				// The page should show the main chat interface
 				await expect(chatPage.chatTitle).toBeVisible();
@@ -45,8 +44,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 
 				// Check that the client was created successfully
 				// The page should not show a critical error
-				const hasCriticalError = await chatPage.hasCriticalError();
-				expect(hasCriticalError).toBeFalsy();
+				await expect(chatPage.criticalErrorMessage).not.toBeVisible();
 			});
 		});
 
@@ -56,8 +54,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				await chatPage.goto();
 
 				// If id_token is properly used, the page should work without auth errors
-				const hasAuthError = await chatPage.hasAuthError();
-				expect(hasAuthError).toBeFalsy();
+				await expect(chatPage.authErrorMessage).not.toBeVisible();
 			});
 		});
 
@@ -71,10 +68,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 				await chatPage.waitForChatInterface();
 
 				// The chat page should not show auth errors
-				const errorText = await chatPage.getErrorText();
-				if (errorText) {
-					expect(errorText).not.toMatch(/unauthorized|forbidden|authentication/i);
-				}
+				await expect(chatPage.authErrorMessage).not.toBeVisible();
 			});
 		});
 
@@ -114,8 +108,7 @@ test.describe('Backend Integration with OIDC Authentication', () => {
 			await chatPage.goto();
 
 			// Verify no backend auth errors
-			const hasCriticalError = await chatPage.hasCriticalError();
-			expect(hasCriticalError).toBeFalsy();
+			await expect(chatPage.criticalErrorMessage).not.toBeVisible();
 
 			// Verify chat interface is visible
 			await chatPage.waitForChatInterface();

@@ -47,55 +47,9 @@ export class ChatPage extends BasePage {
 	}
 
 	/**
-	 * Check if login modal is visible
-	 */
-	async isLoginModalVisible(): Promise<boolean> {
-		return await this.loginModal.isVisible();
-	}
-
-	/**
-	 * Check if greeting is visible
-	 */
-	async isGreetingVisible(): Promise<boolean> {
-		return await this.greeting.isVisible();
-	}
-
-	/**
 	 * Wait for chat interface to load
 	 */
 	async waitForChatInterface(timeout = 15000) {
 		await this.chatTitle.waitFor({ state: 'visible', timeout });
-	}
-
-	/**
-	 * Check if authentication error is visible
-	 */
-	async hasAuthError(): Promise<boolean> {
-		return await this.authErrorMessage.isVisible().catch(() => false);
-	}
-
-	/**
-	 * Check if critical error is visible
-	 */
-	async hasCriticalError(): Promise<boolean> {
-		return await this.criticalErrorMessage.isVisible().catch(() => false);
-	}
-
-	/**
-	 * Get error text if visible
-	 */
-	async getErrorText(): Promise<string | null> {
-		const isVisible = await this.errorMessage.isVisible().catch(() => false);
-		if (isVisible) {
-			return await this.errorMessage.textContent();
-		}
-		return null;
-	}
-
-	/**
-	 * Check if the page shows the main chat interface
-	 */
-	async isChatInterfaceReady(): Promise<boolean> {
-		return await this.chatTitle.isVisible();
 	}
 }

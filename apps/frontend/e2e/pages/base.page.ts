@@ -10,7 +10,6 @@ export class BasePage {
 	readonly navigation: Locator;
 	readonly signInButton: Locator;
 	readonly avatarMenuButton: Locator;
-	readonly userMenuDropdown: Locator;
 	readonly signOutButton: Locator;
 
 	constructor(page: Page) {
@@ -21,23 +20,8 @@ export class BasePage {
 		this.signInButton = this.navigation.getByRole('button', { name: /sign in/i });
 
 		// User menu elements (base layout)
-		this.avatarMenuButton = page.locator('#avatar-menu-button');
-		this.userMenuDropdown = this.navigation.getByRole('button', { name: 'test-user' });
+		this.avatarMenuButton = this.navigation.getByRole('button', { name: /test-user/i });
 		this.signOutButton = this.navigation.getByRole('button', { name: /sign out/i }).last();
-	}
-
-	/**
-	 * Check if user is authenticated
-	 */
-	async isAuthenticated(): Promise<boolean> {
-		return await this.avatarMenuButton.isVisible();
-	}
-
-	/**
-	 * Check if user is unauthenticated
-	 */
-	async isUnauthenticated(): Promise<boolean> {
-		return await this.signInButton.isVisible();
 	}
 
 	/**
@@ -53,7 +37,7 @@ export class BasePage {
 	async openUserMenu() {
 		// Small wait to ensure stability
 		await this.page.waitForTimeout(100);
-		await this.userMenuDropdown.click();
+		await this.avatarMenuButton.click();
 	}
 
 	/**
