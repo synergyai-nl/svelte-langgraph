@@ -24,12 +24,50 @@ export default defineConfig({
 		baseURL: 'http://localhost:4173',
 		trace: 'on-first-retry'
 	},
-	projects: [
-		{
-			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] }
-		}
-	],
+	// Conditionally configure projects based on environment
+	// Local: fast single browser (Chromium)
+	// CI: comprehensive cross-browser and device testing
+	projects: process.env.CI
+		? [
+				/* Test against desktop browsers */
+				{
+					name: 'chromium',
+					use: { ...devices['Desktop Chrome'] }
+				},
+				{
+					name: 'firefox',
+					use: { ...devices['Desktop Firefox'] }
+				},
+				{
+					name: 'webkit',
+					use: { ...devices['Desktop Safari'] }
+				},
+				/* Test against mobile viewports */
+				{
+					name: 'Mobile Chrome',
+					use: { ...devices['Pixel 5'] }
+				},
+				{
+					name: 'Mobile Safari',
+					use: { ...devices['iPhone 12'] }
+				},
+				/* Test against branded browsers */
+				{
+					name: 'Google Chrome',
+					use: { ...devices['Desktop Chrome'], channel: 'chrome' }
+				},
+				{
+					name: 'Microsoft Edge',
+					use: { ...devices['Desktop Edge'], channel: 'msedge' }
+				}
+			]
+		: [
+				// Local development: fast iteration with single browser
+				{
+					name: 'chromium',
+					use: { ...devices['Desktop Chrome'] }
+				}
+			],
 	webServer: [
 		{
 			name: 'oidc',
