@@ -40,3 +40,5 @@ tasks:
   # Bogus task to ensure deps are installed
   setup:
     command: "true"
+    options:
+      internal: true
