@@ -97,3 +97,4 @@ tasks:
     deps:
       - build
       - install-playwright
+      - backend:setup
