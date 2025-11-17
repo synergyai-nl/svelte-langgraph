@@ -1,67 +1,53 @@
-import {
-	authenticateUser,
-	expectAuthenticated,
-	expectUnauthenticated,
-	OIDC_CONFIG,
-	signOut
-} from './fixtures/auth';
-import { expect, test } from './fixtures/test';
+import { test, expect, OIDC_CONFIG } from './fixtures';
 
 test.describe('OIDC Provider', () => {
-	test('should handle OIDC well-known configuration', async ({ page }) => {
-		// Verify the well-known endpoint is accessible
-		const response = await page.request.get(
-			`${OIDC_CONFIG.issuer}/.well-known/openid-configuration`
-		);
-
-		expect(response.ok()).toBeTruthy();
-
-		const config = await response.json();
+	test('should handle OIDC well-known configuration', async ({ oidcPage }) => {
+		const config = await oidcPage.verifyWellKnownConfig();
 		expect(config.issuer).toBe(OIDC_CONFIG.issuer);
-		expect(config.authorization_endpoint).toBeTruthy();
-		expect(config.token_endpoint).toBeTruthy();
 	});
 });
 
-test.describe('When unauthenticated', async () => {
-	test.describe('On "/"', async () => {
-		test.beforeEach(async ({ page }) => {
-			await page.goto('/');
+test.describe('When unauthenticated', () => {
+	test.describe('On home page', () => {
+		test.beforeEach(async ({ homePage }) => {
+			await homePage.goto();
 		});
 
-		test('should display sign-in button', async ({ page }) => {
-			await expectUnauthenticated(page);
+		test('should display sign-in button', async ({ authHelpers }) => {
+			await authHelpers.expectUnauthenticated();
 		});
 
-		test('should successfully sign in with OIDC provider', async ({ page }) => {
+		test('should successfully sign in with OIDC provider', async ({
+			authHelpers,
+			homePage,
+			oidcPage
+		}) => {
 			// Perform authentication
-			await authenticateUser(page);
+			await authHelpers.authenticateUser();
 
 			// Verify successful authentication
-			await expectAuthenticated(page);
+			await authHelpers.expectAuthenticated();
 
 			// Verify user info is displayed
-			const avatarButton = page.locator('#avatar-menu-button');
-			await expect(avatarButton).toContainText(/test-user/i);
+			await expect(homePage.avatarMenuButton).toContainText(/test-user/i);
 		});
 	});
 
-	test.describe('On "/chat/"', () => {
-		test.beforeEach(async ({ page }) => {
-			await page.goto('/chat');
+	test.describe('On chat page', () => {
+		test.beforeEach(async ({ chatPage }) => {
+			await chatPage.goto();
 		});
 
-		test('should show login modal', async ({ loginModal }) => {
-			await expect(loginModal).toBeVisible();
+		test('should show login modal', async ({ chatPage }) => {
+			await expect(chatPage.loginModal).toBeVisible();
 		});
 
-		test('should have a sign-in button in the modal', async ({ loginModal }) => {
-			const signInButton = loginModal.getByRole('button', { name: /sign in/i });
-			await expect(signInButton).toBeVisible();
+		test('should have a sign-in button in the modal', async ({ chatPage }) => {
+			await expect(chatPage.loginModalSignInButton).toBeVisible();
 		});
 
-		test('should not show greeting', async ({ greeting }) => {
-			await expect(greeting).not.toBeVisible();
+		test('should not show greeting', async ({ chatPage }) => {
+			await expect(chatPage.greeting).not.toBeVisible();
 		});
 
 		test('should have navigation and body visible', async ({ page }) => {
@@ -74,84 +60,91 @@ test.describe('When unauthenticated', async () => {
 	});
 });
 
-test.describe('When authenticated', async () => {
-	test.beforeEach(async ({ page }) => {
-		await authenticateUser(page);
+test.describe('When authenticated', () => {
+	test.beforeEach(async ({ authHelpers }) => {
+		await authHelpers.authenticateUser();
 	});
 
-	test.describe('Session', () => {
+	test.describe('Session persistence', () => {
 		[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
-			test(`should persist across navigation to ${location}`, async ({ page }) => {
+			test(`should persist across navigation to ${location}`, async ({
+				page,
+				authHelpers
+			}) => {
 				await page.goto(location);
-				await expectAuthenticated(page);
+				await authHelpers.expectAuthenticated();
 			});
 		});
 
-		test('should persist session on page reload', async ({ page }) => {
+		test('should persist session on page reload', async ({ page, authHelpers }) => {
 			// Reload the page
 			await page.reload();
 
 			// Should still be authenticated
-			await expectAuthenticated(page);
+			await authHelpers.expectAuthenticated();
 		});
 
-		test('should maintain session across browser context', async ({ context }) => {
+		test('should maintain session across browser context', async ({
+			context,
+			authHelpers
+		}) => {
 			// Open a new page in the same context
 			const newPage = await context.newPage();
 			await newPage.goto('/');
 
+			// Create a HomePage instance for the new page to check auth status
+			const { HomePage } = await import('./pages');
+			const newHomePage = new HomePage(newPage);
+
 			// Should be authenticated in the new page
-			await expectAuthenticated(newPage);
+			await expect(newHomePage.avatarMenuButton).toBeVisible();
+			await expect(newHomePage.signInButton).not.toBeVisible();
 
 			await newPage.close();
 		});
 	});
 
-	test.describe('On "/chat/"', () => {
-		test.beforeEach(async ({ page }) => {
-			await page.goto('/chat/');
+	test.describe('On chat page', () => {
+		test.beforeEach(async ({ chatPage }) => {
+			await chatPage.goto();
 		});
 
-		test('should not show login modal', async ({ loginModal }) => {
-			await expect(loginModal).not.toBeVisible();
+		test('should not show login modal', async ({ chatPage }) => {
+			await expect(chatPage.loginModal).not.toBeVisible();
 		});
 
-		test('should show chat interface', async ({ page }) => {
-			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
+		test('should show chat interface', async ({ chatPage }) => {
+			await chatPage.waitForChatInterface();
+			await expect(chatPage.chatTitle).toBeVisible();
 		});
 
-		test('should show greeting', async ({ greeting }) => {
-			await expect(greeting).toBeVisible();
+		test('should show greeting', async ({ chatPage }) => {
+			await expect(chatPage.greeting).toBeVisible();
 		});
 
-		test.describe('Signing out', () => {
-			test.beforeEach(async ({ page }) => {
-				await signOut(page);
-			});
-
-			test('should navigate to "/"', async ({ page }) => {
+		test.describe('Signing out from chat', () => {
+			test('should navigate to home after sign out', async ({
+				authHelpers,
+				page
+			}) => {
+				await authHelpers.signOut();
 				await expect(page).toHaveURL('/');
 			});
 		});
 	});
 
 	test.describe('Signing out', () => {
-		test.beforeEach(async ({ page }) => {
-			await signOut(page);
+		test.beforeEach(async ({ authHelpers }) => {
+			await authHelpers.signOut();
 		});
 
-		test('should show unauthenticated state', async ({ page }) => {
-			await expectUnauthenticated(page);
+		test('should show unauthenticated state', async ({ authHelpers }) => {
+			await authHelpers.expectUnauthenticated();
 		});
 
-		test.describe('On "/chat/"', () => {
-			test.beforeEach(async ({ page }) => {
-				await page.goto('/chat/');
-			});
-
-			test('should show login modal', async ({ loginModal }) => {
-				await expect(loginModal).toBeVisible();
-			});
+		test('should show login modal on chat page after sign out', async ({ chatPage }) => {
+			await chatPage.goto();
+			await expect(chatPage.loginModal).toBeVisible();
 		});
 	});
 });

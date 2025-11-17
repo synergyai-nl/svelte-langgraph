@@ -31,3 +31,5 @@ src/lib/paraglide
 
 # Sentry Config File
 .env.sentry-build-plugin
+e2e/.auth/
+e2e/screenshots/
