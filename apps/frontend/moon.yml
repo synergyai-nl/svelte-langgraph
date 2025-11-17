@@ -4,9 +4,6 @@ language: typescript
 stack: frontend
 type: application
 
-dependsOn:
-  - backend
-
 fileGroups:
   sources:
     - 'src/**/*'
