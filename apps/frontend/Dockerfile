@@ -14,7 +14,7 @@ ENV MOON_TOOLCHAIN_FORCE_GLOBALS=1
 # Workaround https://github.com/moonrepo/moon/issues/2111
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack install -g pnpm
+RUN corepack enable
 
 #### SKELETON STAGE
 #### Scaffolds repository skeleton structures.
