@@ -88,14 +88,15 @@
 						redirect: true
 					}}
 				>
-					<button
+					<div
 						slot="submitButton"
-						type="submit"
-						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:text-red-500 dark:hover:bg-gray-600"
+						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-						<ArrowLeftToBracketOutline class="h-5 w-5 shrink-0" />
-					</button>
+						<ArrowLeftToBracketOutline
+							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
+						/>
+					</div>
 				</SignOut>
 			</Dropdown>
 		{:else}
