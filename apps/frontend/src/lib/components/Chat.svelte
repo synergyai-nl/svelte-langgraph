@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Client, type Thread, type DefaultValues } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
+	import { convertThreadMessages } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, UserMessage, AIMessage, ToolMessage } from '$lib/langgraph/types';
+	import type { Message, UserMessage } from '$lib/langgraph/types';
 	import { error } from '@sveltejs/kit';
 	import { onMount } from 'svelte';
 
@@ -37,37 +38,13 @@
 	// Load existing messages from thread on component initialization
 	onMount(() => {
 		if (thread?.values?.messages && thread.values.messages.length > 0) {
-			const loadedMessages = thread.values.messages
-				.map((item: Record<string, unknown>) => {
-					if (item.type === 'human') {
-						return {
-							type: 'user',
-							text: typeof item.content === 'string' ? item.content : '',
-							id: (item.id as string) || crypto.randomUUID()
-						} as UserMessage;
-					} else if (item.type === 'ai') {
-						return {
-							type: 'ai',
-							text: typeof item.content === 'string' ? item.content : '',
-							id: (item.id as string) || crypto.randomUUID()
-						} as AIMessage;
-					} else if (item.type === 'tool') {
-						return {
-							type: 'tool',
-							text: typeof item.content === 'string' ? item.content : '',
-							tool_name: (item.name as string) || '',
-							id: (item.tool_call_id as string) || (item.id as string) || crypto.randomUUID(),
-							status: (item.status as 'success' | 'error') || 'success'
-						} as ToolMessage;
-					}
-					return null;
-				})
-				.filter((msg: Message | null): msg is Message => msg !== null);
+			const loadedMessages = convertThreadMessages(thread.values.messages);
 
 			if (loadedMessages.length > 0) {
 				messages = loadedMessages;
 				chat_started = true;
 			}
+			console.info('Loaded existing messages from thread:', loadedMessages);
 		}
 	});
 
@@ -160,6 +137,8 @@
 			submitInputOrRetry(true);
 		}
 	}
+
+	console.info(final_answer_started);
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
