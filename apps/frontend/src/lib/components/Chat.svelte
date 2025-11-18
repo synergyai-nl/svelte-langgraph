@@ -43,6 +43,8 @@
 			if (loadedMessages.length > 0) {
 				messages = loadedMessages;
 				chat_started = true;
+				// If we have existing messages, the final answer already started
+				final_answer_started = true;
 			}
 			console.info('Loaded existing messages from thread:', loadedMessages);
 		}
