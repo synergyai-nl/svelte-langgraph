@@ -22,7 +22,7 @@
 	<Clipboard value={message.text} embedded color="alternative" class="p-1.5!">
 		{#snippet children(success)}
 			<Tooltip isOpen={success}>{success ? m.message_copied() : m.message_copy()}</Tooltip>
-			{#if success}<CheckOutline size="xl" />{:else}<ClipboardCleanSolid size="xs" />{/if}
+			{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
 		{/snippet}
 	</Clipboard>
 
