@@ -9,6 +9,10 @@
 	import { error } from '@sveltejs/kit';
 	import { onMount } from 'svelte';
 
+	// Configuration: Keep this simple for now, will update for performance-oriented
+	// lazy loaded or context loaded messages
+	const MAX_MESSAGES_TO_LOAD = 100;
+
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
@@ -38,7 +42,9 @@
 	// Load existing messages from thread on component initialization
 	onMount(() => {
 		if (thread?.values?.messages && thread.values.messages.length > 0) {
-			const loadedMessages = convertThreadMessages(thread.values.messages);
+			// Only load the last MAX_MESSAGES_TO_LOAD messages
+			const lastMessages = thread.values.messages.slice(-MAX_MESSAGES_TO_LOAD);
+			const loadedMessages = convertThreadMessages(lastMessages);
 
 			if (loadedMessages.length > 0) {
 				messages = loadedMessages;
@@ -46,7 +52,6 @@
 				// If we have existing messages, the final answer already started
 				final_answer_started = true;
 			}
-			console.info('Loaded existing messages from thread:', loadedMessages);
 		}
 	});
 
@@ -139,8 +144,7 @@
 			submitInputOrRetry(true);
 		}
 	}
-
-	console.info(final_answer_started);
+	
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
