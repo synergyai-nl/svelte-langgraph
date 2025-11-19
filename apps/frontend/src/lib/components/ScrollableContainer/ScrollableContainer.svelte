@@ -56,6 +56,11 @@
 	}
 </script>
 
-<div class="mx-auto w-full max-w-4xl px-4 py-8" use:scrollListenerAction bind:this={containerNode} in:fade={{ duration: 400, delay: 0 }}>
+<div
+	class="mx-auto w-full max-w-4xl px-4 py-8"
+	use:scrollListenerAction
+	bind:this={containerNode}
+	in:fade={{ duration: 400, delay: 0 }}
+>
 	{@render children({ scrollToMe })}
 </div>
