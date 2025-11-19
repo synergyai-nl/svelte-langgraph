@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Client, type Thread, type DefaultValues } from '@langchain/langgraph-sdk';
+	import { Client, type Thread } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import { convertThreadMessages } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, UserMessage } from '$lib/langgraph/types';
+	import type { Message, UserMessage, ThreadValues } from '$lib/langgraph/types';
 	import { error } from '@sveltejs/kit';
 	import { onMount } from 'svelte';
 
@@ -16,7 +16,7 @@
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
-		thread: Thread<DefaultValues>;
+		thread: Thread<ThreadValues>;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;

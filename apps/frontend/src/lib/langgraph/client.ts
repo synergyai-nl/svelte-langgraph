@@ -1,5 +1,6 @@
-import { Client, type Thread, type DefaultValues } from '@langchain/langgraph-sdk';
+import { Client, type Thread } from '@langchain/langgraph-sdk';
 import { env } from '$env/dynamic/public';
+import type { ThreadValues } from './types';
 
 export function createClient(accessToken: string): Client {
 	console.assert(accessToken, 'No access token specified.');
@@ -13,7 +14,7 @@ export function createClient(accessToken: string): Client {
 	});
 }
 
-export async function getOrCreateThread(client: Client): Promise<Thread<DefaultValues>> {
+export async function getOrCreateThread(client: Client): Promise<Thread<ThreadValues>> {
 	// Search for existing thread first
 	const existingThreads = await client.threads.search({
 		status: 'idle',
@@ -25,11 +26,11 @@ export async function getOrCreateThread(client: Client): Promise<Thread<DefaultV
 	if (existingThreads.length > 0) {
 		const existingThread = existingThreads[0];
 		console.info('Using existing thread', existingThread);
-		return existingThread;
+		return existingThread as Thread<ThreadValues>;
 	} else {
 		console.info('No existing thread found, creating anew');
 		const thread = await client.threads.create();
-		return thread;
+		return thread as Thread<ThreadValues>;
 	}
 }
 
