@@ -144,7 +144,6 @@
 			submitInputOrRetry(true);
 		}
 	}
-	
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
