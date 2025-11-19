@@ -5,7 +5,6 @@
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
-	import { VirtualList } from 'flowbite-svelte';
 	import { ScrollableContainer } from './ScrollableContainer';
 
 	interface Props {
@@ -20,26 +19,21 @@
 
 <ScrollableContainer>
 	{#snippet children({ scrollToMe })}
-		<div class="h-full">
-			<VirtualList items={messages} contained minItemHeight={100} let:item>
-				<div class="mx-auto w-full max-w-4xl px-4 py-1">
-					<div {@attach scrollToMe(item)} transition:fly={{ y: 20, duration: 800 }}>
-						{#if item.type === 'tool'}
-							<ChatToolMessage message={item} />
-						{:else if item.text}
-							<ChatMessage message={item} />
-						{/if}
-					</div>
-				</div>
-			</VirtualList>
-
-			<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}>
-				{#if generationError && onRetryError}
-					<ChatErrorMessage error={generationError} onRetry={onRetryError} />
-				{:else if !finalAnswerStarted}
-					<ChatWaiting />
+		{#each messages as message (message.id)}
+			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
+				{#if message.type === 'tool'}
+					<ChatToolMessage {message} />
+				{:else if message.text}
+					<ChatMessage {message} />
 				{/if}
 			</div>
+		{/each}
+		<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}>
+			{#if generationError && onRetryError}
+				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
+			{:else if !finalAnswerStarted}
+				<ChatWaiting />
+			{/if}
 		</div>
 	{/snippet}
 </ScrollableContainer>
