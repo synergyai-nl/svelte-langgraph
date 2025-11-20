@@ -4,6 +4,7 @@
 	import { createClient, getOrCreateThread } from '$lib/langgraph/client';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
+	import ChatError from '$lib/components/ChatError.svelte';
 
 	let show_login_dialog = $state(false);
 	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
@@ -34,12 +35,7 @@
 </script>
 
 {#if redirect_error}
-	<div class="flex h-screen items-center justify-center">
-		<div class="text-center">
-			<h1 class="text-2xl font-bold text-red-600">Error</h1>
-			<p class="mt-2 text-gray-600">{redirect_error.message}</p>
-		</div>
-	</div>
+	<ChatError error={redirect_error} />
 {:else}
 	<ChatLoader />
 {/if}
