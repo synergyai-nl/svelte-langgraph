@@ -13,8 +13,8 @@
 		if (!client) return;
 
 		try {
-			const threadId = await getOrCreateThread(client);
-			await goto(`/chat/${threadId}`);
+			const thread = await getOrCreateThread(client);
+			await goto(`/chat/${thread.thread_id}`);
 		} catch (err) {
 			if (err instanceof Error) redirect_error = err;
 			console.error('Error creating or fetching thread:', err);
