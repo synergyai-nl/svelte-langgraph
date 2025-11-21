@@ -18,9 +18,9 @@ type FixedMessage = FixedAIMessage | LangGraphToolMessage;
  * Handles conversion of thread history messages (human, ai, tool types).
  *
  * @param item - Raw message object from LangGraph thread values
- * @returns Converted Message or null if unable to convert
+ * @returns Converted Message
  */
-export function convertThreadMessage(item: Record<string, unknown>): Message | null {
+export function convertThreadMessage(item: Record<string, unknown>): Message {
 	if (item.type === 'human') {
 		return {
 			type: 'user',
@@ -42,20 +42,17 @@ export function convertThreadMessage(item: Record<string, unknown>): Message | n
 			status: (item.status as 'success' | 'error') || 'success'
 		} as ToolMessage;
 	}
-	return null;
+	throw new InvalidData(`Unexpected message type: ${item.type}`, item);
 }
 
 /**
  * Converts thread history messages to our internal Message format.
- * Filters out null conversions.
  *
  * @param threadMessages - Array of raw message objects from thread.values.messages
  * @returns Array of converted Messages
  */
 export function convertThreadMessages(threadMessages: Record<string, unknown>[]): Message[] {
-	return threadMessages
-		.map((item) => convertThreadMessage(item))
-		.filter((msg): msg is Message => msg !== null);
+	return threadMessages.map((item) => convertThreadMessage(item));
 }
 
 /**
