@@ -5,7 +5,7 @@ import type {
 } from '@langchain/langgraph-sdk';
 
 import { InvalidData } from './errors';
-import type { Message } from './types';
+import type { Message, UserMessage, AIMessage, ToolMessage } from './types';
 
 interface FixedAIMessage extends Omit<LangGraphAIMessage, 'type'> {
 	type: 'AIMessageChunk';
@@ -13,6 +13,57 @@ interface FixedAIMessage extends Omit<LangGraphAIMessage, 'type'> {
 
 type FixedMessage = FixedAIMessage | LangGraphToolMessage;
 
+/**
+ * Converts a single LangGraph message to our internal Message format.
+ * Handles conversion of thread history messages (human, ai, tool types).
+ *
+ * @param item - Raw message object from LangGraph thread values
+ * @returns Converted Message
+ */
+export function convertThreadMessage(item: Record<string, unknown>): Message {
+	if (item.type === 'human') {
+		return {
+			type: 'user',
+			text: typeof item.content === 'string' ? item.content : '',
+			id: (item.id as string) || crypto.randomUUID()
+		} as UserMessage;
+	} else if (item.type === 'ai') {
+		return {
+			type: 'ai',
+			text: typeof item.content === 'string' ? item.content : '',
+			id: (item.id as string) || crypto.randomUUID()
+		} as AIMessage;
+	} else if (item.type === 'tool') {
+		return {
+			type: 'tool',
+			text: typeof item.content === 'string' ? item.content : '',
+			tool_name: (item.name as string) || '',
+			id: (item.tool_call_id as string) || (item.id as string) || crypto.randomUUID(),
+			status: (item.status as 'success' | 'error') || 'success'
+		} as ToolMessage;
+	}
+	throw new InvalidData(`Unexpected message type: ${item.type}`, item);
+}
+
+/**
+ * Converts thread history messages to our internal Message format.
+ *
+ * @param threadMessages - Array of raw message objects from thread.values.messages
+ * @returns Array of converted Messages
+ */
+export function convertThreadMessages(threadMessages: Record<string, unknown>[]): Message[] {
+	return threadMessages.map((item) => convertThreadMessage(item));
+}
+
+/**
+ * Converts a LangGraph message from the streaming response to our internal Message format.
+ * Handles streaming messages (AIMessageChunk, tool) and yields individual messages and tool calls.
+ * For AI messages, also yields any associated tool calls as separate messages.
+ *
+ * @param m - LangGraph message from streaming response
+ * @yields Message objects in our internal format
+ * @throws InvalidData if message is malformed or invalid
+ */
 export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, unknown> {
 	const fixed = m as FixedMessage;
 

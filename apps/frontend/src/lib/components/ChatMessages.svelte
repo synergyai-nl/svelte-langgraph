@@ -14,7 +14,7 @@
 		onRetryError?: () => void;
 	}
 
-	let { messages, finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
+	let { messages = [], finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
 </script>
 
 <ScrollableContainer>

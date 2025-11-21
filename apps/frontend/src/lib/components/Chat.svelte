@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { Client } from '@langchain/langgraph-sdk';
+	import { Client, type Thread } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
+	import { convertThreadMessages } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, UserMessage } from '$lib/langgraph/types';
+	import type { Message, UserMessage, ThreadValues } from '$lib/langgraph/types';
 	import { error } from '@sveltejs/kit';
+	import { onMount } from 'svelte';
+
+	// Configuration: Keep this simple for now, will update for performance-oriented
+	// lazy loaded or context loaded messages
+	const MAX_MESSAGES_TO_LOAD = 100;
 
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
-		threadId: string;
+		thread: Thread<ThreadValues>;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;
@@ -19,7 +25,7 @@
 	let {
 		langGraphClient,
 		assistantId,
-		threadId,
+		thread,
 		suggestions = [],
 		intro = '',
 		introTitle = ''
@@ -32,6 +38,22 @@
 	let chat_started = $state(false);
 	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
+
+	// Load existing messages from thread on component initialization
+	onMount(() => {
+		if (thread?.values?.messages && thread.values.messages.length > 0) {
+			// Only load the last MAX_MESSAGES_TO_LOAD messages
+			const lastMessages = thread.values.messages.slice(-MAX_MESSAGES_TO_LOAD);
+			const loadedMessages = convertThreadMessages(lastMessages);
+
+			if (loadedMessages.length > 0) {
+				messages = loadedMessages;
+				chat_started = true;
+				// If we have existing messages, the final answer already started
+				final_answer_started = true;
+			}
+		}
+	});
 
 	function updateMessages(chunk: Message) {
 		console.debug('Processing chunk in inputSubmit:', chunk);
@@ -99,7 +121,7 @@
 			try {
 				for await (const chunk of streamAnswer(
 					langGraphClient,
-					threadId,
+					thread.thread_id,
 					assistantId,
 					messageText,
 					messageId
