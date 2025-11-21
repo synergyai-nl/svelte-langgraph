@@ -23,6 +23,8 @@ export async function getOrCreateThread(client: Client): Promise<Thread<ThreadVa
 		sortOrder: 'desc'
 	});
 
+	//We will update this to make threads lazily. 
+	// In our current practice, it's not an urgent task.
 	if (existingThreads.length > 0) {
 		const existingThread = existingThreads[0];
 		console.info('Using existing thread', existingThread);
