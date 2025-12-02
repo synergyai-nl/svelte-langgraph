@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Button, Tooltip, Clipboard } from 'flowbite-svelte';
+	import { Tooltip, Clipboard } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { ArrowsRepeatOutline, CheckOutline, ClipboardCleanSolid } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -29,11 +30,11 @@
 	<Button
 		onclick={() => onRegenerate?.(message)}
 		class="p-1.5!"
-		color="alternative"
-		size="xs"
+		variant="ghost"
+		size="sm"
 		title={m.message_regenerate()}
 	>
-		<ArrowsRepeatOutline size="xs" />
+		<ArrowsRepeatOutline />
 	</Button>
 	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
 	<FeedbackButtons {message} {onFeedback} />
