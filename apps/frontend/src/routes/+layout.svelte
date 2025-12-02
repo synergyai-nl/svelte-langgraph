@@ -102,7 +102,7 @@
 		{:else}
 			<SignInButton />
 		{/if}
-		<LanguageSwitcher class="ml-3 p-2" />
+		<LanguageSwitcher class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
 
