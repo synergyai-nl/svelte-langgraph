@@ -8,6 +8,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+	--color-primary: #ef562f;
 	--color-primary-50: #fff5f2;
 	--color-primary-100: #fff1ee;
 	--color-primary-200: #ffe4de;
@@ -19,6 +20,7 @@
 	--color-primary-800: #cc4522;
 	--color-primary-900: #a5371b;
 
+	--color-secondary: #0284c7;
 	--color-secondary-50: #f0f9ff;
 	--color-secondary-100: #e0f2fe;
 	--color-secondary-200: #bae6fd;
