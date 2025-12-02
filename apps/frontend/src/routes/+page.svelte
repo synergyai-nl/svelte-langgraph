@@ -22,13 +22,13 @@
 		class="mb-8 flex flex-col space-y-4 sm:flex-row sm:justify-center sm:space-y-0 sm:space-x-4 lg:mb-16"
 	>
 		<a href="/chat">
-			<Button size="lg" variant="default" class="px-6">
+			<Button size="lg" variant="default">
 				{m.landing_cta_get_started()}
 				<ArrowRightOutline class="-mr-1 ml-2 h-5 w-5" />
 			</Button>
 		</a>
 		<a href="/">
-			<Button size="lg" variant="secondary" class="px-6">
+			<Button size="lg" variant="secondary">
 				<VideoCameraSolid class="mr-2 -ml-1 h-4 w-4" />
 				{m.landing_cta_watch_video()}
 			</Button>
