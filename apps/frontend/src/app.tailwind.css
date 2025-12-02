@@ -31,6 +31,10 @@
 	--color-secondary-700: #0369a1;
 	--color-secondary-800: #075985;
 	--color-secondary-900: #0c4a6e;
+
+	/* Semantic foreground colors for text on colored backgrounds */
+	--color-primary-foreground: #ffffff;
+	--color-secondary-foreground: #ffffff;
 }
 
 @source "../node_modules/flowbite-svelte/dist";
