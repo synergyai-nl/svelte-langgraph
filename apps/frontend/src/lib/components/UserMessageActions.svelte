@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Button, Tooltip } from 'flowbite-svelte';
+	import { Tooltip } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { PenOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -18,13 +19,12 @@
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
 	<Button
-		onclick={() => onEdit?.(message)}
-		class="p-1.5!"
-		color="alternative"
-		size="xs"
+		on:click={() => onEdit?.(message)}
+		variant="ghost"
+		size="icon-sm"
 		title={m.message_edit()}
 	>
-		<PenOutline size="xs" />
+		<PenOutline/>
 	</Button>
 	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
 </div>
