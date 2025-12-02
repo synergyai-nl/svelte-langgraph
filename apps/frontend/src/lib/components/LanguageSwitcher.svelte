@@ -17,12 +17,9 @@
 		}
 	}
 </script>
-<Button
-	class={cn('', className)}
-	variant="outline"
-	size="sm"
->
-	<GlobeOutline/>
+
+<Button class={cn('', className)} variant="outline" size="sm">
+	<GlobeOutline />
 </Button>
 <Dropdown simple>
 	{#each locales as localeCode (localeCode)}
