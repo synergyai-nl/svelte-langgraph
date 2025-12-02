@@ -24,7 +24,7 @@
 		<a href="/chat">
 			<Button size="lg" variant="default" class="px-6">
 				{m.landing_cta_get_started()}
-				<ArrowRightOutline class="ml-2 -mr-1 h-5 w-5" />
+				<ArrowRightOutline class="-mr-1 ml-2 h-5 w-5" />
 			</Button>
 		</a>
 		<a href="/">
