@@ -24,7 +24,7 @@
 		size="icon-sm"
 		title={m.message_edit()}
 	>
-		<PenOutline/>
+		<PenOutline />
 	</Button>
 	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
 </div>
