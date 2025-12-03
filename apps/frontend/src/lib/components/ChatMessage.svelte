@@ -30,7 +30,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
 		>
-			<User class="h-3 w-3 text-white dark:text-gray-900" />
+			<User class="h-4 w-4 text-white dark:text-gray-900" />
 		</div>
 		<div class="relative w-full">
 			<div
