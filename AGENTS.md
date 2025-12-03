@@ -32,3 +32,9 @@ moon run :task --affected    # Run task on changed files only
 - **Testing**: Vitest for unit tests, Playwright for E2E tests
 - **Moon features**: Use `:` prefix for all projects, `project:task` for specific projects
 - **File groups**: Sources in src/**, tests in **/*.test.ts, messages in messages/
+
+## LSP Configuration
+- **OpenCode**: Project-specific LSP config in `opencode.json`
+- **Python**: Pyright (type checking) + Ruff (linting/formatting) 
+- **Frontend**: TypeScript LSP + Svelte LSP + ESLint
+- **Config files**: JSON/YAML LSPs auto-enabled

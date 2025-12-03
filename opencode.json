@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "lsp": {
+    "ruff": {
+      "command": ["uv", "run", "--directory", "apps/backend", "ruff", "server"],
+      "extensions": [".py"]
+    }
+  }
+}

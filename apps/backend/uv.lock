@@ -26,6 +26,15 @@ wheels = [
 ]
 
 [[package]]
+name = "attrs"
+version = "25.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/5c/685e6633917e101e5dcb62b9dd76946cbb57c26e133bae9e0cd36033c0a9/attrs-25.4.0.tar.gz", hash = "sha256:16d5969b87f0859ef33a48b35d55ac1be6e42ae49d5e853b597db70c35c57e11", size = 934251, upload-time = "2025-10-06T13:54:44.725Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/2a/7cc015f5b9f5db42b7d48157e23356022889fc354a2813c15934b7cb5c0e/attrs-25.4.0-py3-none-any.whl", hash = "sha256:adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373", size = 67615, upload-time = "2025-10-06T13:54:43.17Z" },
+]
+
+[[package]]
 name = "authlib"
 version = "1.6.5"
 source = { registry = "https://pypi.org/simple" }
@@ -56,6 +65,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/35/c8/1e456a043179f2aef10bcaafea79f6d06c0ac45cc994767a54f680509f3b/blockbuster-1.5.24.tar.gz", hash = "sha256:97645775761a5d425666ec0bc99629b65c7eccdc2f770d2439850682567af4ec", size = 51245, upload-time = "2025-03-18T10:12:06.398Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/c8/57a4c80e5abec29fa9406307a5277527f21210bfc6c2c61c3d8ded36c09b/blockbuster-1.5.24-py3-none-any.whl", hash = "sha256:e703497b55bc72af09d60d1cd746c2f3ba7ce0c446fa256be6ccda5e7d403520", size = 13214, upload-time = "2025-03-18T10:12:04.802Z" },
+]
+
+[[package]]
+name = "cattrs"
+version = "25.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6e/00/2432bb2d445b39b5407f0a90e01b9a271475eea7caf913d7a86bcb956385/cattrs-25.3.0.tar.gz", hash = "sha256:1ac88d9e5eda10436c4517e390a4142d88638fe682c436c93db7ce4a277b884a", size = 509321, upload-time = "2025-10-07T12:26:08.737Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/2b/a40e1488fdfa02d3f9a653a61a5935ea08b3c2225ee818db6a76c7ba9695/cattrs-25.3.0-py3-none-any.whl", hash = "sha256:9896e84e0a5bf723bc7b4b68f4481785367ce07a8a02e7e9ee6eb2819bc306ff", size = 70738, upload-time = "2025-10-07T12:26:06.603Z" },
 ]
 
 [[package]]
@@ -623,6 +645,19 @@ wheels = [
 ]
 
 [[package]]
+name = "lsprotocol"
+version = "2025.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "cattrs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e9/26/67b84e6ec1402f0e6764ef3d2a0aaf9a79522cc1d37738f4e5bb0b21521a/lsprotocol-2025.0.0.tar.gz", hash = "sha256:e879da2b9301e82cfc3e60d805630487ac2f7ab17492f4f5ba5aaba94fe56c29", size = 74896, upload-time = "2025-06-17T21:30:18.156Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7b/f0/92f2d609d6642b5f30cb50a885d2bf1483301c69d5786286500d15651ef2/lsprotocol-2025.0.0-py3-none-any.whl", hash = "sha256:f9d78f25221f2a60eaa4a96d3b4ffae011b107537facee61d3da3313880995c7", size = 76250, upload-time = "2025-06-17T21:30:19.455Z" },
+]
+
+[[package]]
 name = "markupsafe"
 version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -883,6 +918,20 @@ wheels = [
 ]
 
 [[package]]
+name = "pygls"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "cattrs" },
+    { name = "lsprotocol" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/87/50/2bfc32f3acbc8941042919b59c9f592291127b55d7331b72e67ce7b62f08/pygls-2.0.0.tar.gz", hash = "sha256:99accd03de1ca76fe1e7e317f0968ebccf7b9955afed6e2e3e188606a20b4f07", size = 55796, upload-time = "2025-10-17T19:22:47.925Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cc/09/14feafc13bebb9c85b29b374889c1549d3700cb572f2d43a1bb940d70315/pygls-2.0.0-py3-none-any.whl", hash = "sha256:b4e54bba806f76781017ded8fd07463b98670f959042c44170cd362088b200cc", size = 69533, upload-time = "2025-10-17T19:22:46.63Z" },
+]
+
+[[package]]
 name = "pyjwt"
 version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1005,6 +1054,22 @@ wheels = [
 ]
 
 [[package]]
+name = "ruff-lsp"
+version = "0.0.62"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "lsprotocol" },
+    { name = "packaging" },
+    { name = "pygls" },
+    { name = "ruff" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/18/11/8e445dc55753efd45e09882ad0468f4a5650f33aecdbd15c7a52e8e0c3c4/ruff_lsp-0.0.62.tar.gz", hash = "sha256:6db2a39375973ecb16c64d3c8dc37e23e1e191dcb7aebcf525b1f85ebd338c0d", size = 41182, upload-time = "2025-02-10T13:18:29.386Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/5e/d3a6fdf61f6373e53bfb45d6819a72dfef741bc8a9ff31c64496688e7c39/ruff_lsp-0.0.62-py3-none-any.whl", hash = "sha256:fb6c04a0cb09bb3ae316121b084ff09497edd01df58b36fa431f14515c63029e", size = 20980, upload-time = "2025-02-10T13:18:31.034Z" },
+]
+
+[[package]]
 name = "setuptools"
 version = "80.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1077,6 +1142,7 @@ dev = [
     { name = "oidc-provider-mock" },
     { name = "pyright" },
     { name = "ruff" },
+    { name = "ruff-lsp" },
 ]
 
 [package.metadata]
@@ -1095,6 +1161,7 @@ dev = [
     { name = "oidc-provider-mock", specifier = ">=0.3.0" },
     { name = "pyright", specifier = ">=1.1.403" },
     { name = "ruff", specifier = ">=0.12.5" },
+    { name = "ruff-lsp", specifier = ">=0.0.62" },
 ]
 
 [[package]]
