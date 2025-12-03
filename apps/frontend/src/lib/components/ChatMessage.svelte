@@ -41,19 +41,26 @@
 			>
 				{#if message.type === 'ai'}
 					<Card
-						class="w-full max-w-none border border-gray-200 bg-gray-50 p-4 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800"
+						class="w-full max-w-none border border-gray-200 bg-gray-50 p-4 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800 {message.isCancelled ? 'opacity-70' : ''}"
+						title={message.isCancelled ? 'Generation interrupted' : ''}
 					>
 						<div class="prose prose-gray dark:prose-invert max-w-none leading-relaxed">
 							<Markdown md={message.text} {plugins} />
+							{#if message.isCancelled}
+								<span class="text-muted-foreground ml-1" aria-label="(incomplete)">…</span>
+							{/if}
 						</div>
 					</Card>
 					<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
 				{:else}
 					<Card
-						class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700"
+						class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700 {message.isCancelled ? 'opacity-70' : ''}"
 					>
 						<div class="prose prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
 							{message.text}
+							{#if message.isCancelled}
+								<span class="text-muted-foreground ml-1" aria-label="(incomplete)">…</span>
+							{/if}
 						</div>
 					</Card>
 					<UserMessageActions {message} {isHovered} {onEdit} />

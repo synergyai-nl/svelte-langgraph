@@ -2,6 +2,7 @@ export interface BaseMessage {
 	type: string;
 	text: string;
 	id: string;
+	isCancelled?: boolean;
 }
 
 export interface AIMessage extends BaseMessage {
