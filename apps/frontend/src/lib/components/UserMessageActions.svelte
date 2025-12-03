@@ -2,7 +2,7 @@
 	import { Button, Tooltip } from 'flowbite-svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
-    import {Pencil} from "lucide-svelte";
+	import { Pencil } from 'lucide-svelte';
 
 	interface Props {
 		message: BaseMessage;
@@ -24,7 +24,7 @@
 		size="xs"
 		title={m.message_edit()}
 	>
-        <Pencil class="h-3 w-3"/>
+		<Pencil class="h-3 w-3" />
 	</Button>
 	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
 </div>

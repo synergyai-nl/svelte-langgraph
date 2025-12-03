@@ -3,7 +3,7 @@
 
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
-    import {ThumbsDown, ThumbsUp} from "lucide-svelte";
+	import { ThumbsDown, ThumbsUp } from 'lucide-svelte';
 
 	interface Props {
 		message: BaseMessage;
@@ -28,7 +28,7 @@
 		size="xs"
 		title={m.message_feedback_good()}
 	>
-		<ThumbsUp class="w-3 h-3" />
+		<ThumbsUp class="h-3 w-3" />
 	</Button>
 	<Tooltip type="auto">Coming Soon !</Tooltip>
 	<Button
@@ -38,7 +38,7 @@
 		size="xs"
 		title={m.message_feedback_bad()}
 	>
-		<ThumbsDown class="w-3 h-3" />
+		<ThumbsDown class="h-3 w-3" />
 	</Button>
 	<Tooltip type="auto">Coming Soon !</Tooltip>
 </div>

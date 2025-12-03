@@ -2,7 +2,7 @@
 	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
 	import { Button, Dropdown, DropdownItem } from 'flowbite-svelte';
 	import { m } from '$lib/paraglide/messages.js';
-    import {Earth} from "lucide-svelte";
+	import { Earth } from 'lucide-svelte';
 
 	let { class: className = '' } = $props();
 
@@ -17,7 +17,7 @@
 </script>
 
 <Button class={className} color="light" outline={false}>
-    <Earth class="h-5 w-5"/>
+	<Earth class="h-5 w-5" />
 </Button>
 <Dropdown simple>
 	{#each locales as localeCode (localeCode)}

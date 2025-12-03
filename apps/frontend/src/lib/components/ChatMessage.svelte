@@ -5,7 +5,7 @@
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
-    import {User} from "lucide-svelte";
+	import { User } from 'lucide-svelte';
 
 	interface Props {
 		message: BaseMessage;
@@ -26,11 +26,12 @@
 		class="flex items-start gap-3 {message.type === 'user'
 			? 'max-w-[70%] flex-row-reverse'
 			: 'max-w-[80%]'}"
-	><div
-            class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
-    >
-        <User  class="text-white dark:text-gray-900 w-3 h-3" />
-    </div>
+	>
+		<div
+			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
+		>
+			<User class="h-3 w-3 text-white dark:text-gray-900" />
+		</div>
 		<div class="relative w-full">
 			<div
 				role="group"

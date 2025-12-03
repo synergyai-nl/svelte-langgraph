@@ -2,7 +2,7 @@
 	import type { ToolMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { slide } from 'svelte/transition';
-    import {ChevronRight, CircleAlert, CircleCheck, Clock, Wrench} from "lucide-svelte";
+	import { ChevronRight, CircleAlert, CircleCheck, Clock, Wrench } from 'lucide-svelte';
 
 	interface Props {
 		message: ToolMessage;
@@ -17,7 +17,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-500 dark:bg-gray-400"
 		>
-			<span><Wrench  class=" h-4 w-4 text-white dark:text-gray-900" /></span>
+			<span><Wrench class=" h-4 w-4 text-white dark:text-gray-900" /></span>
 		</div>
 		<div class="relative">
 			<button
@@ -30,11 +30,11 @@
 				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
 
 				{#if message.status === 'success'}
-					<CircleCheck   class="w-4 h-4 text-green-400 dark:text-green-400" />
+					<CircleCheck class="h-4 w-4 text-green-400 dark:text-green-400" />
 				{:else if message.status === 'error'}
-					<CircleAlert size="sm" class="text-red-400 dark:text-red-400 w-4 h-4" />
+					<CircleAlert size="sm" class="h-4 w-4 text-red-400 dark:text-red-400" />
 				{:else}
-					<Clock class="w-3 h-3text-gray-400 dark:text-gray-400" />
+					<Clock class="h-3text-gray-400 w-3 dark:text-gray-400" />
 				{/if}
 
 				<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />

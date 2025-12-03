@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Card, Button } from 'flowbite-svelte';
 	import { m } from '$lib/paraglide/messages.js';
-    import {CircleAlert, RotateCw} from "lucide-svelte";
+	import { CircleAlert, RotateCw } from 'lucide-svelte';
 
 	interface Props {
 		error: Error;
@@ -16,7 +16,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950"
 		>
-			<CircleAlert size="sm" class="text-rose-600 dark:text-rose-500 w-4 h-4" />
+			<CircleAlert size="sm" class="h-4 w-4 text-rose-600 dark:text-rose-500" />
 		</div>
 		<div class="relative w-full">
 			<Card

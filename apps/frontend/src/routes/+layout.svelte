@@ -20,7 +20,7 @@
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-    import {LogOut, MessagesSquare, Moon, Sun} from "lucide-svelte";
+	import { LogOut, MessagesSquare, Moon, Sun } from 'lucide-svelte';
 
 	type SessionUser = {
 		name?: string | null;

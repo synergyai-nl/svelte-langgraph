@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button, Spinner } from 'flowbite-svelte';
-    import {Send} from "lucide-svelte";
+	import { Send } from 'lucide-svelte';
 
 	interface Props {
 		isStreaming: boolean;
