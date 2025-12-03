@@ -32,9 +32,9 @@
 				{#if message.status === 'success'}
 					<CircleCheck class="h-4 w-4 text-green-400 dark:text-green-400" />
 				{:else if message.status === 'error'}
-					<CircleAlert  class="h-4 w-4 text-red-400 dark:text-red-400" />
+					<CircleAlert class="h-4 w-4 text-red-400 dark:text-red-400" />
 				{:else}
-					<Clock class="h-3 text-gray-400 w-3 dark:text-gray-400" />
+					<Clock class="h-3 w-3 text-gray-400 dark:text-gray-400" />
 				{/if}
 
 				<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
