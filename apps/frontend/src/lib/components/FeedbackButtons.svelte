@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { Tooltip } from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
-
 	import { ThumbsUpOutline, ThumbsDownOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 
 	interface Props {
 		message: BaseMessage;
@@ -22,6 +21,9 @@
 </script>
 
 <div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
+
+	<Tooltip>
+		<TooltipTrigger asChild let:builder>
 	<Button
 		onclick={() => handleFeedback('up')}
 		variant="ghost"
@@ -31,7 +33,11 @@
 	>
 		<ThumbsUpOutline />
 	</Button>
-	<Tooltip type="auto">Coming Soon !</Tooltip>
+		</TooltipTrigger>
+		<TooltipContent>Coming Soon !</TooltipContent>
+	</Tooltip>
+	<Tooltip>
+		<TooltipTrigger asChild let:builder>
 	<Button
 		onclick={() => handleFeedback('down')}
 		variant="ghost"
@@ -41,5 +47,7 @@
 	>
 		<ThumbsDownOutline />
 	</Button>
-	<Tooltip type="auto">Coming Soon !</Tooltip>
+		</TooltipTrigger>
+		<TooltipContent>Coming Soon !</TooltipContent>
+	</Tooltip>
 </div>
