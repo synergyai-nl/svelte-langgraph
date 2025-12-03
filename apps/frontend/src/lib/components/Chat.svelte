@@ -31,13 +31,15 @@
 		introTitle = ''
 	}: Props = $props();
 
-	let current_input = $state('');
-	let is_streaming = $state(false);
-	let final_answer_started = $state(false);
-	let messages = $state<Array<Message>>([]);
-	let chat_started = $state(false);
-	let generationError = $state<Error | null>(null);
-	let last_user_message = $state<string>('');
+let current_input = $state('');
+let is_streaming = $state(false);
+let final_answer_started = $state(false);
+let messages = $state<Array<Message>>([]);
+let chat_started = $state(false);
+let generationError = $state<Error | null>(null);
+let last_user_message = $state<string>('');
+let abortController = $state<AbortController | null>(null);
+let wasCancelled = $state(false);
 
 	// Load existing messages from thread on component initialization
 	onMount(() => {
@@ -58,6 +60,11 @@
 	function updateMessages(chunk: Message) {
 		console.debug('Processing chunk in inputSubmit:', chunk);
 
+		// Apply cancellation state if we are in cancelled mode
+		if (wasCancelled && chunk.type === 'ai') {
+			chunk.isCancelled = true;
+		}
+
 		// Look for existing message with same id
 		const messageIndex = messages.findIndex((m) => m.id === chunk.id);
 
@@ -73,6 +80,11 @@
 
 			if (existing.type == 'tool' && 'status' in chunk) {
 				existing.status = chunk.status;
+			}
+
+			// Propagate cancellation state when updating messages
+			if (chunk.isCancelled !== undefined) {
+				existing.isCancelled = chunk.isCancelled;
 			}
 		}
 
@@ -117,6 +129,8 @@
 			is_streaming = true;
 			final_answer_started = false;
 			generationError = null; // Clear previous errors
+			wasCancelled = false; // Reset cancellation state
+			abortController = new AbortController();
 
 			try {
 				for await (const chunk of streamAnswer(
@@ -124,16 +138,22 @@
 					thread.thread_id,
 					assistantId,
 					messageText,
-					messageId
+					messageId,
+					abortController.signal
 				))
 					updateMessages(chunk);
 			} catch (err) {
-				if (err instanceof Error) generationError = err;
+				if (err instanceof Error && err.name === 'AbortError') {
+					console.log('Generation cancelled by user');
+				} else if (err instanceof Error) {
+					generationError = err;
+				}
 				error(500, {
 					message: 'Error during generation'
 				});
 			} finally {
 				is_streaming = false;
+				abortController = null;
 			}
 		}
 	}
@@ -142,6 +162,13 @@
 		if (last_user_message) {
 			current_input = last_user_message;
 			submitInputOrRetry(true);
+		}
+	}
+
+	function cancelGeneration() {
+		if (abortController) {
+			abortController.abort('User cancelled generation');
+			wasCancelled = true;
 		}
 	}
 </script>
@@ -164,6 +191,7 @@
 				finalAnswerStarted={final_answer_started}
 				{generationError}
 				onRetryError={retryGeneration}
+				onCancel={cancelGeneration}
 			/>
 		{/if}
 	</div>

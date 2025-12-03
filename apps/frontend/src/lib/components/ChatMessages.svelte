@@ -12,9 +12,10 @@
 		finalAnswerStarted: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
+		onCancel?: () => void;
 	}
 
-	let { messages = [], finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
+	let { messages = [], finalAnswerStarted, generationError = null, onRetryError, onCancel }: Props = $props();
 </script>
 
 <ScrollableContainer>
@@ -32,7 +33,7 @@
 			{#if generationError && onRetryError}
 				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
 			{:else if !finalAnswerStarted}
-				<ChatWaiting />
+				<ChatWaiting onCancel={onCancel} />
 			{/if}
 		</div>
 	{/snippet}
