@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Card } from 'flowbite-svelte';
-	import { UserOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
+    import {User} from "lucide-svelte";
 
 	interface Props {
 		message: BaseMessage;
@@ -26,12 +26,11 @@
 		class="flex items-start gap-3 {message.type === 'user'
 			? 'max-w-[70%] flex-row-reverse'
 			: 'max-w-[80%]'}"
-	>
-		<div
-			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
-		>
-			<UserOutline size="sm" class="text-white dark:text-gray-900" />
-		</div>
+	><div
+            class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
+    >
+        <User  class="text-white dark:text-gray-900 w-3 h-3" />
+    </div>
 		<div class="relative w-full">
 			<div
 				role="group"

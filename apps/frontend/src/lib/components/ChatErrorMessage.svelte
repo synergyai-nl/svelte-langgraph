@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Card, Button } from 'flowbite-svelte';
-	import { ExclamationCircleOutline, RefreshOutline } from 'flowbite-svelte-icons';
 	import { m } from '$lib/paraglide/messages.js';
+    import {CircleAlert, RotateCw} from "lucide-svelte";
 
 	interface Props {
 		error: Error;
@@ -16,7 +16,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950"
 		>
-			<ExclamationCircleOutline size="sm" class="text-rose-600 dark:text-rose-500" />
+			<CircleAlert size="sm" class="text-rose-600 dark:text-rose-500 w-4 h-4" />
 		</div>
 		<div class="relative w-full">
 			<Card
@@ -28,7 +28,7 @@
 					</p>
 					<div class="flex gap-2 pt-1">
 						<Button size="sm" color="dark" outline onclick={onRetry}>
-							<RefreshOutline class="me-2 h-4 w-4" />
+							<RotateCw class="me-2 h-4 w-4" />
 							{m.chat_error_retry()}
 						</Button>
 					</div>
