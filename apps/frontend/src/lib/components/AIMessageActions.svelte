@@ -29,7 +29,8 @@
 				embedded
 				color="alternative"
 				class="p-1.5!"
-				onchange={(e) => (copyOpen = (e.target as HTMLButtonElement).getAttribute('aria-pressed') === 'true')}
+				onchange={(e) =>
+					(copyOpen = (e.target as HTMLButtonElement).getAttribute('aria-pressed') === 'true')}
 			>
 				{#snippet children(success)}
 					{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
