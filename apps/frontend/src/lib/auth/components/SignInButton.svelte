@@ -5,7 +5,7 @@
 </script>
 
 <SignIn provider="oidc">
-	<Button asChild variant="default" slot="submitButton" size="sm">
-		<span>{m.auth_sign_in()}</span>
+	<Button variant="default" slot="submitButton" size="sm">
+		{m.auth_sign_in()}
 	</Button>
 </SignIn>
