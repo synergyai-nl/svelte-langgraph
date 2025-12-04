@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { Card } from 'flowbite-svelte';
-	import { UserOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
+	import { User } from 'lucide-svelte';
 
 	interface Props {
 		message: BaseMessage;
@@ -30,7 +30,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
 		>
-			<UserOutline size="sm" class="text-white dark:text-gray-900" />
+			<User class="h-4 w-4 text-white dark:text-gray-900" />
 		</div>
 		<div class="relative w-full">
 			<div
