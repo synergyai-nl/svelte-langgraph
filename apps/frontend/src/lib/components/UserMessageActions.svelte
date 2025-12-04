@@ -18,12 +18,7 @@
 	class="absolute right-0 bottom-2 flex items-center gap-2 transition-all duration-300 ease-in-out"
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
-	<Button
-		onclick={() => onEdit?.(message)}
-		variant="ghost"
-		size="icon-sm"
-		title={m.message_edit()}
-	>
+	<Button onclick={() => onEdit?.(message)} variant="ghost" size="icon-sm" title={m.message_edit()}>
 		<PenOutline />
 	</Button>
 	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
