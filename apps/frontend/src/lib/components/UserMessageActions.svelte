@@ -19,7 +19,7 @@
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
 	<Button
-		on:click={() => onEdit?.(message)}
+		onclick={() => onEdit?.(message)}
 		variant="ghost"
 		size="icon-sm"
 		title={m.message_edit()}
