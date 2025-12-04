@@ -21,7 +21,8 @@
 >
 
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+
+		<TooltipTrigger>
 	<Button onclick={() => onEdit?.(message)} variant="ghost" size="icon-sm" title={m.message_edit()}>
 		<PenOutline />
 	</Button>

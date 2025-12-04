@@ -23,7 +23,8 @@
 <div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
 
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+
+		<TooltipTrigger>
 	<Button
 		onclick={() => handleFeedback('up')}
 		variant="ghost"
@@ -37,7 +38,8 @@
 		<TooltipContent>Coming Soon !</TooltipContent>
 	</Tooltip>
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+
+		<TooltipTrigger>
 	<Button
 		onclick={() => handleFeedback('down')}
 		variant="ghost"
