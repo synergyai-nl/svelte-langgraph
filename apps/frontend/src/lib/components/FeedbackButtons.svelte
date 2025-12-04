@@ -22,9 +22,8 @@
 
 <div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+		<TooltipTrigger>
 			<Button
-				builders={[builder]}
 				onclick={() => handleFeedback('up')}
 				class="p-1.5! {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 				color="alternative"
@@ -37,9 +36,8 @@
 		<TooltipContent>Coming Soon !</TooltipContent>
 	</Tooltip>
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+		<TooltipTrigger>
 			<Button
-				builders={[builder]}
 				onclick={() => handleFeedback('down')}
 				class="p-1.5! {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 				color="alternative"

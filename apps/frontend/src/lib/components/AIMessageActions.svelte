@@ -22,14 +22,13 @@
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
 	<Tooltip open={copyOpen}>
-		<TooltipTrigger asChild let:builder>
+		<TooltipTrigger>
 			<Clipboard
 				value={message.text}
 				embedded
 				color="alternative"
 				class="p-1.5!"
-				builders={[builder]}
-				onchange={(success) => (copyOpen = success)}
+				onchange={(e) => (copyOpen = (e.target as HTMLButtonElement).getAttribute('aria-pressed') === 'true')}
 			>
 				{#snippet children(success)}
 					{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
@@ -42,9 +41,8 @@
 	</Tooltip>
 
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+		<TooltipTrigger>
 			<Button
-				builders={[builder]}
 				onclick={() => onRegenerate?.(message)}
 				class="p-1.5!"
 				color="alternative"

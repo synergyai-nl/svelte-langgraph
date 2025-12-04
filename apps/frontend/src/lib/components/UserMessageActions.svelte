@@ -19,9 +19,8 @@
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
 	<Tooltip>
-		<TooltipTrigger asChild let:builder>
+		<TooltipTrigger>
 			<Button
-				builders={[builder]}
 				onclick={() => onEdit?.(message)}
 				class="p-1.5!"
 				color="alternative"
