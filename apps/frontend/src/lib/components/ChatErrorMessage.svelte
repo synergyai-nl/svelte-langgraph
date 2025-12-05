@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Card, Button } from 'flowbite-svelte';
+	import { Card } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { ExclamationCircleOutline, RefreshOutline } from 'flowbite-svelte-icons';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -27,8 +28,8 @@
 						{error.message}
 					</p>
 					<div class="flex gap-2 pt-1">
-						<Button size="sm" color="dark" outline onclick={onRetry}>
-							<RefreshOutline class="me-2 h-4 w-4" />
+						<Button variant="outline" size="sm" onclick={() => onRetry()}>
+							<RefreshOutline />
 							{m.chat_error_retry()}
 						</Button>
 					</div>
