@@ -19,11 +19,15 @@
 </script>
 
 <Modal title={m.login_modal_title()} size="xs" bind:open onclose={handleClose}>
-	<div class="text-center">
-		<ExclamationCircleOutline class="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-200" />
-		<h3 class="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
-			{m.login_modal_message()}
-		</h3>
-		<SignInButton />
+	<div>
+		<div class="text-center">
+			<ExclamationCircleOutline class="mx-auto mb-4 h-12 w-12 text-gray-400 dark:text-gray-200" />
+			<h3 class="mb-5 text-lg font-normal text-gray-600 dark:text-gray-400">
+				{m.login_modal_message()}
+			</h3>
+		</div>
+		<div class="flex justify-center">
+			<SignInButton />
+		</div>
 	</div>
 </Modal>

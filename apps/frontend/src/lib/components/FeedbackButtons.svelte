@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { Button, Tooltip } from 'flowbite-svelte';
+	import { Tooltip } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
+
 	import { ThumbsUpOutline, ThumbsDownOutline } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
@@ -22,22 +24,22 @@
 <div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
 	<Button
 		onclick={() => handleFeedback('up')}
-		class="p-1.5! {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		color="alternative"
-		size="xs"
+		variant="ghost"
+		size="icon-sm"
+		class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 		title={m.message_feedback_good()}
 	>
-		<ThumbsUpOutline size="xs" />
+		<ThumbsUpOutline />
 	</Button>
 	<Tooltip type="auto">Coming Soon !</Tooltip>
 	<Button
 		onclick={() => handleFeedback('down')}
-		class="p-1.5! {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		color="alternative"
-		size="xs"
+		variant="ghost"
+		size="icon-sm"
+		class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 		title={m.message_feedback_bad()}
 	>
-		<ThumbsDownOutline size="xs" />
+		<ThumbsDownOutline />
 	</Button>
 	<Tooltip type="auto">Coming Soon !</Tooltip>
 </div>
