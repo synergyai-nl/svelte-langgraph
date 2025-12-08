@@ -1,9 +1,9 @@
 <script lang="ts">
 	import '../app.tailwind.css';
-
 	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
+    import {LogOut, MessagesSquare, Moon, Sun} from 'lucide-svelte';
 	import {
 		Button,
 		Navbar,
@@ -15,37 +15,10 @@
 		DropdownHeader,
 		DropdownDivider
 	} from 'flowbite-svelte';
-	import { Avatar, AvatarImage, AvatarFallback } from '$lib/components/ui/avatar';
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
-
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-	import { LogOut, MessagesSquare, Moon, Sun } from 'lucide-svelte';
-
-	type SessionUser = {
-		name?: string | null;
-		email?: string | null;
-	};
-
-	function getInitials(name?: string | null) {
-		if (!name) return 'U';
-		const parts = name.trim().split(/\s+/).filter(Boolean);
-		if (parts.length === 0) return 'U';
-		return parts
-			.slice(0, 2)
-			.map((p) => p[0]!.toUpperCase())
-			.join('');
-	}
-
-	function getDisplayName(user?: SessionUser | null) {
-		if (user?.name && user.name.trim().length > 0) return user.name;
-		if (user?.email) {
-			const localPart = user.email.split('@')[0] ?? user.email;
-			return localPart || user.email;
-		}
-		return m.user_fallback();
-	}
-
+	import { AvatarImage, Avatar, AvatarFallback } from '$lib/components/ui/avatar';
 	let { children } = $props();
 </script>
 
@@ -57,21 +30,21 @@
 			{m.app_title()}
 		</span>
 	</NavBrand>
-
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
+			<!-- Avatar Button -->
 			<Button color="alternative" class="rounded-full p-1 pr-4" id="avatar-menu-button">
 				<Avatar class="mr-2 h-8 w-8">
 					<AvatarImage
-						src={page.data.session.user?.image ?? undefined}
-						alt={getDisplayName(page.data.session.user)}
+						src={page.data.session.user?.image ? page.data.session.user.image : undefined}
 					/>
 					<AvatarFallback>
-						{getInitials(page.data.session.user?.name ?? page.data.session.user?.email ?? null)}
+						{page.data.session.user?.name?.charAt(0).toUpperCase() ??
+							m.user_fallback().charAt(0).toUpperCase()}
 					</AvatarFallback>
 				</Avatar>
 				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
-					{getDisplayName(page.data.session.user)}
+					{page.data.session.user?.name ?? m.user_fallback()}
 				</span>
 			</Button>
 
@@ -112,7 +85,7 @@
 					>
 						<span>{m.auth_sign_out()}</span>
 						<LogOut
-							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0 rotate-180"
+							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
 						/>
 					</div>
 				</SignOut>
@@ -129,5 +102,4 @@
 		<NavLi href="/chat">{m.nav_chat()}</NavLi>
 	</NavUl>
 </Navbar>
-
 {@render children()}

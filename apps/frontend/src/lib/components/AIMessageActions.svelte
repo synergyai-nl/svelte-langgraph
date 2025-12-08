@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from 'flowbite-svelte';
-	import { ArrowsRepeatOutline, CheckOutline, ClipboardCleanSolid } from 'flowbite-svelte-icons';
+	import { RefreshCw, Check, Clipboard } from 'lucide-svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import {
@@ -39,7 +39,7 @@
 						(copyOpen = (e.target as HTMLButtonElement).getAttribute('aria-pressed') === 'true')}
 				>
 					{#snippet children(success)}
-						{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
+						{#if success}<Check class="h-3 w-3" />{:else}<Clipboard class="h-3 w-3" />{/if}
 					{/snippet}
 				</Clipboard_icon>
 			</TooltipTrigger>
@@ -57,7 +57,7 @@
 					size="xs"
 					title={m.message_regenerate()}
 				>
-					<ArrowsRepeatOutline size="xs" />
+					<RefreshCw class="h-3 w-3" />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>
