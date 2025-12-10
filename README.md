@@ -1,4 +1,5 @@
 # MEGABOGUS
+# SUBBOGUS
 # svelte-langgraph
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
