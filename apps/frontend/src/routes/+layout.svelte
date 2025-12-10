@@ -1,16 +1,9 @@
 <script lang="ts">
 	import '../app.tailwind.css';
-
 	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
-
-	import {
-		ArrowLeftToBracketOutline,
-		MessagesOutline,
-		MoonSolid,
-		SunSolid
-	} from 'flowbite-svelte-icons';
+	import { LogOut, MessagesSquare, Moon, Sun } from 'lucide-svelte';
 	import {
 		Button,
 		Navbar,
@@ -25,7 +18,6 @@
 	} from 'flowbite-svelte';
 
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
-
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
@@ -35,12 +27,11 @@
 <ModeWatcher />
 <Navbar>
 	<NavBrand href="/">
-		<MessagesOutline class="me-3 h-6 sm:h-9" />
+		<MessagesSquare class="me-3 h-6 sm:h-9" />
 		<span class="self-center text-xl font-semibold whitespace-nowrap dark:text-white">
 			{m.app_title()}
 		</span>
 	</NavBrand>
-
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
 			<!-- Avatar Button -->
@@ -75,9 +66,9 @@
 				>
 					<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
 					{#if mode.current === 'light'}
-						<SunSolid class="text-primary-500 h-5 w-5" />
+						<Sun class="text-primary-500 h-5 w-5" />
 					{:else}
-						<MoonSolid class="text-primary-600 h-5 w-5" />
+						<Moon class="text-primary-600 h-5 w-5" />
 					{/if}
 				</button>
 				<DropdownDivider />
@@ -93,7 +84,7 @@
 						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
 					>
 						<span>{m.auth_sign_out()}</span>
-						<ArrowLeftToBracketOutline
+						<LogOut
 							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
 						/>
 					</div>
@@ -111,5 +102,4 @@
 		<NavLi href="/chat">{m.nav_chat()}</NavLi>
 	</NavUl>
 </Navbar>
-
 {@render children()}
