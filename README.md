@@ -1,3 +1,4 @@
+# ALL HAIL THE GREAT BOGUS
 # svelte-langgraph
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
