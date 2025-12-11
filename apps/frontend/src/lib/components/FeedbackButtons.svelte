@@ -21,34 +21,31 @@
 </script>
 
 <div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
-
 	<Tooltip>
-
 		<TooltipTrigger>
-	<Button
-		onclick={() => handleFeedback('up')}
-		variant="ghost"
-		size="icon-sm"
-		class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		title={m.message_feedback_good()}
-	>
-		<ThumbsUpOutline />
-	</Button>
+			<Button
+				onclick={() => handleFeedback('up')}
+				variant="ghost"
+				size="icon-sm"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+				title={m.message_feedback_good()}
+			>
+				<ThumbsUpOutline />
+			</Button>
 		</TooltipTrigger>
 		<TooltipContent>Coming Soon !</TooltipContent>
 	</Tooltip>
 	<Tooltip>
-
 		<TooltipTrigger>
-	<Button
-		onclick={() => handleFeedback('down')}
-		variant="ghost"
-		size="icon-sm"
-		class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		title={m.message_feedback_bad()}
-	>
-		<ThumbsDownOutline />
-	</Button>
+			<Button
+				onclick={() => handleFeedback('down')}
+				variant="ghost"
+				size="icon-sm"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+				title={m.message_feedback_bad()}
+			>
+				<ThumbsDownOutline />
+			</Button>
 		</TooltipTrigger>
 		<TooltipContent>Coming Soon !</TooltipContent>
 	</Tooltip>
