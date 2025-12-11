@@ -15,30 +15,29 @@
 	}
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
-	let copyOpen = $state(false);
+	let copySuccess = $state(false);
 </script>
 
 <div
 	class="absolute bottom-2 left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
-	<Tooltip open={copyOpen}>
+	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>
 			<Clipboard
 				value={message.text}
+				bind:success={copySuccess}
 				embedded
 				color="alternative"
 				class="p-1.5!"
-				onchange={(e) =>
-					(copyOpen = (e.target as HTMLButtonElement).getAttribute('aria-pressed') === 'true')}
 			>
-				{#snippet children(success)}
+				{#snippet children(success: boolean)}
 					{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
 				{/snippet}
 			</Clipboard>
 		</TooltipTrigger>
 		<TooltipContent>
-			{copyOpen ? m.message_copied() : m.message_copy()}
+			{copySuccess ? m.message_copied() : m.message_copy()}
 		</TooltipContent>
 	</Tooltip>
 
