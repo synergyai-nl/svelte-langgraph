@@ -42,14 +42,14 @@
 						rows={1}
 						name="message"
 						bind:value
-						class="flex max-h-[calc(8*1.5rem+1rem)] w-full resize-none items-center overflow-y-auto border-none bg-transparent px-0 py-2 text-base leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent dark:text-white dark:placeholder-gray-400"
-						style="max-height: calc(8 * 1.5rem + 1rem); min-height: calc(2 * 1.5rem);"
+						class="flex max-h-[calc(8*1.5rem+1rem)] w-full resize-none items-center overflow-y-auto border-none bg-transparent px-0 py-2 text-base leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent dark:text-white dark:placeholder-gray-400 !min-h-[2.5rem]"
+						style="max-height: calc(8 * 1.5rem + 1rem);"
 						onkeydown={handleKeyPress}
 					></Textarea>
 				</div>
 
 				<!-- Submit button -->
-				<div class="flex shrink-0 items-end pb-2">
+				<div class="flex shrink-0 items-end pb-1">
 					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} />
 				</div>
 			</div>
