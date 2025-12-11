@@ -29,6 +29,8 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+
 	let { children } = $props();
 </script>
 
@@ -108,4 +110,6 @@
 	</NavUl>
 </Navbar>
 
-{@render children()}
+<Tooltip.Provider>
+	{@render children()}
+</Tooltip.Provider>
