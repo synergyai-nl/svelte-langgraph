@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Tooltip, Clipboard } from 'flowbite-svelte';
+	import { Clipboard } from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ArrowsRepeatOutline, CheckOutline, ClipboardCleanSolid } from 'flowbite-svelte-icons';
 	import type { BaseMessage } from '$lib/langgraph/types';
