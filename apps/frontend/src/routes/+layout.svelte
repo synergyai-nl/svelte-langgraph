@@ -5,12 +5,7 @@
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
 
-	import {
-		LogOut,
-		MessageSquare,
-		Moon,
-		Sun
-	} from '@lucide/svelte';
+	import { LogOut, MessageSquare, Moon, Sun } from '@lucide/svelte';
 	import {
 		Navbar,
 		NavBrand,
