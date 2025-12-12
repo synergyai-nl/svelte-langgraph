@@ -12,7 +12,6 @@
 		SunSolid
 	} from 'flowbite-svelte-icons';
 	import {
-		Button,
 		Navbar,
 		NavBrand,
 		NavLi,
@@ -23,11 +22,14 @@
 		DropdownDivider,
 		Avatar
 	} from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
+
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	let { children } = $props();
 </script>
@@ -44,12 +46,8 @@
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
 			<!-- Avatar Button -->
-			<Button color="alternative" class="rounded-full p-1 pr-4" id="avatar-menu-button">
-				<Avatar
-					src={page.data.session.user?.image ? page.data.session.user.image : undefined}
-					size="sm"
-					class="me-2"
-				/>
+			<Button variant="default" class="rounded-full p-1 pr-4" id="avatar-menu-button">
+				<Avatar src={page.data.session.user?.image ?? undefined} size="sm" class="mr-2" />
 
 				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
 					{page.data.session.user?.name ?? m.user_fallback()}
@@ -102,7 +100,7 @@
 		{:else}
 			<SignInButton />
 		{/if}
-		<LanguageSwitcher class="ml-3 p-2" />
+		<LanguageSwitcher class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
 
@@ -112,4 +110,6 @@
 	</NavUl>
 </Navbar>
 
-{@render children()}
+<Tooltip.Provider>
+	{@render children()}
+</Tooltip.Provider>

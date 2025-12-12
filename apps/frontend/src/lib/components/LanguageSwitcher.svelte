@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
-	import { Button, Dropdown, DropdownItem } from 'flowbite-svelte';
+	import { Dropdown, DropdownItem } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { GlobeOutline } from 'flowbite-svelte-icons';
 	import { m } from '$lib/paraglide/messages.js';
+	import { cn } from '$lib/utils.js';
 
 	let { class: className = '' } = $props();
 
@@ -16,7 +18,7 @@
 	}
 </script>
 
-<Button class={className} color="light" outline={false}>
+<Button class={cn('', className)} variant="outline" size="sm">
 	<GlobeOutline />
 </Button>
 <Dropdown simple>
