@@ -33,7 +33,7 @@
 				<ThumbsUpOutline />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>Coming Soon !</TooltipContent>
+		<TooltipContent>{m.coming_soon()}</TooltipContent>
 	</Tooltip>
 	<Tooltip>
 		<TooltipTrigger>
