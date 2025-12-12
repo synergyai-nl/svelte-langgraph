@@ -29,7 +29,7 @@
 				bind:success={copySuccess}
 				embedded
 				color="alternative"
-				class="p-1.5!"
+				class="border-0! p-1.5!"
 			>
 				{#snippet children(success: boolean)}
 					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
