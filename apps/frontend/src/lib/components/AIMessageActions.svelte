@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Clipboard } from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { ArrowsRepeatOutline, CheckOutline, ClipboardCleanSolid } from 'flowbite-svelte-icons';
+	import { RefreshCw, Check, Clipboard as ClipboardIcon } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
@@ -32,7 +32,7 @@
 				class="p-1.5!"
 			>
 				{#snippet children(success: boolean)}
-					{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
+					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
 				{/snippet}
 			</Clipboard>
 		</TooltipTrigger>
@@ -50,7 +50,7 @@
 				size="sm"
 				title={m.message_regenerate()}
 			>
-				<ArrowsRepeatOutline />
+				<RefreshCw size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
