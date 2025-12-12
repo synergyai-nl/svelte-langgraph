@@ -35,6 +35,10 @@
 	/* Semantic foreground colors for text on colored backgrounds */
 	--color-primary-foreground: #ffffff;
 	--color-secondary-foreground: #ffffff;
+
+	/* Tooltip colors */
+	--color-tooltip: #111827;
+	--color-tooltip-foreground: #ffffff;
 }
 
 @source "../node_modules/flowbite-svelte/dist";
