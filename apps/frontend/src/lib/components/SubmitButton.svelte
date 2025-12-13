@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Spinner } from 'flowbite-svelte';
-	import { Send } from '@lucide/svelte';
+	import { SendHorizontal } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -21,6 +21,6 @@
 	{#if isStreaming}
 		<Spinner />
 	{:else}
-		<Send size={16} class="translate-x-px -translate-y-px rotate-45" />
+		<SendHorizontal/>
 	{/if}
 </Button>
