@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Spinner } from 'flowbite-svelte';
-	import { PaperPlaneSolid } from 'flowbite-svelte-icons';
+	import { SendHorizontal } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -21,6 +21,6 @@
 	{#if isStreaming}
 		<Spinner />
 	{:else}
-		<PaperPlaneSolid class="h-4 w-4 translate-x-px -translate-y-px rotate-45" />
+		<SendHorizontal />
 	{/if}
 </Button>
