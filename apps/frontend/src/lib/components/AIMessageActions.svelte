@@ -27,9 +27,7 @@
 			<Clipboard
 				value={message.text}
 				bind:success={copySuccess}
-				embedded
-				color="alternative"
-				class="border-0! p-1.5!"
+				class="!border-0 !bg-transparent !p-1.5 hover:!bg-gray-100 dark:hover:!bg-gray-800 !ring-0 focus:!ring-0 active:!ring-0 !outline-none"
 			>
 				{#snippet children(success: boolean)}
 					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
