@@ -21,6 +21,6 @@
 	{#if isStreaming}
 		<Spinner />
 	{:else}
-		<SendHorizontal/>
+		<SendHorizontal />
 	{/if}
 </Button>
