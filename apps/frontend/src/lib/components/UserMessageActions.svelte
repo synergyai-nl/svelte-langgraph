@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { PenOutline } from 'flowbite-svelte-icons';
+	import { Pencil } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
@@ -26,7 +26,7 @@
 				size="icon-sm"
 				title={m.message_edit()}
 			>
-				<PenOutline />
+				<Pencil size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
