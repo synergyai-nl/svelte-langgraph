@@ -1,7 +1,7 @@
 <script>
 	import { Section, News, HeroHeader, HeroBody } from 'flowbite-svelte-blocks';
 	import { Button } from '$lib/components/ui/button';
-	import { ArrowRightOutline, VideoCameraSolid } from 'flowbite-svelte-icons';
+	import { ArrowRight, Video } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
@@ -24,12 +24,12 @@
 		<a href="/chat">
 			<Button size="lg" variant="default">
 				{m.landing_cta_get_started()}
-				<ArrowRightOutline class="-mr-1 ml-2 h-5 w-5" />
+				<ArrowRight class="-mr-1 ml-2 h-5 w-5" />
 			</Button>
 		</a>
 		<a href="/">
 			<Button size="lg" variant="secondary">
-				<VideoCameraSolid class="mr-2 -ml-1 h-4 w-4" />
+				<Video class="mr-2 -ml-1 h-4 w-4" />
 				{m.landing_cta_watch_video()}
 			</Button>
 		</a>
