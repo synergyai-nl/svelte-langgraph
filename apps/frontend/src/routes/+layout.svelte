@@ -12,7 +12,6 @@
 		SunSolid
 	} from 'flowbite-svelte-icons';
 	import {
-		Button,
 		Navbar,
 		NavBrand,
 		NavLi,
@@ -22,6 +21,7 @@
 		DropdownHeader,
 		DropdownDivider,
 	} from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
 
 	import * as Avatar from '$lib/components/ui/avatar';
 
@@ -29,6 +29,8 @@
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
+
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	let { children } = $props();
 </script>
@@ -102,7 +104,7 @@
 		{:else}
 			<SignInButton />
 		{/if}
-		<LanguageSwitcher class="ml-3 p-2" />
+		<LanguageSwitcher class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
 	<NavUl>
