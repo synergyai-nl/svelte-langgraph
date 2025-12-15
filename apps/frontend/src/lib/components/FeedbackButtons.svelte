@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { ThumbsUpOutline, ThumbsDownOutline } from 'flowbite-svelte-icons';
+	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
@@ -30,7 +30,7 @@
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 				title={m.message_feedback_good()}
 			>
-				<ThumbsUpOutline />
+				<ThumbsUp size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>{m.coming_soon()}</TooltipContent>
@@ -44,7 +44,7 @@
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
 				title={m.message_feedback_bad()}
 			>
-				<ThumbsDownOutline />
+				<ThumbsDown size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>{m.coming_soon()}</TooltipContent>
