@@ -11,5 +11,8 @@
   "license": "ISC",
   "engines": {
     "node": "~24"
+  },
+  "devDependencies": {
+    "@moonrepo/cli": "^1.41.7"
   }
 }

@@ -15,9 +15,10 @@
 		Dropdown,
 		DropdownHeader,
 		DropdownDivider,
-		Avatar
 	} from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
+
+	import * as Avatar from '$lib/components/ui/avatar';
 
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
 
@@ -37,19 +38,23 @@
 			{m.app_title()}
 		</span>
 	</NavBrand>
-
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
-			<!-- Avatar Button -->
-			<Button variant="default" class="rounded-full p-1 pr-4" id="avatar-menu-button">
-				<Avatar src={page.data.session.user?.image ?? undefined} size="sm" class="mr-2" />
+			<Button color="alternative"  class="rounded-full p-1 pr-4" id="avatar-menu-button">
+				<Avatar.Root class="h-8 w-8 mr-2">
+					<Avatar.Image 
+						src={page.data.session.user?.image ?? undefined} 
+						alt={page.data.session.user?.name ?? m.user_fallback()} 
+					/>
+					<Avatar.Fallback>
+						{page.data.session.user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) ?? '?'}
+					</Avatar.Fallback>
+				</Avatar.Root>
 
 				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
 					{page.data.session.user?.name ?? m.user_fallback()}
 				</span>
 			</Button>
-
-			<!-- Dropdown Menu -->
 			<Dropdown triggeredBy="#avatar-menu-button" placement="bottom-end" simple>
 				<DropdownHeader>
 					<span class="block text-sm font-medium text-gray-900 dark:text-white">
@@ -59,7 +64,6 @@
 						{page.data.session.user?.email ?? m.email_fallback()}
 					</span>
 				</DropdownHeader>
-
 				<DropdownDivider />
 				<button
 					type="button"
@@ -98,13 +102,9 @@
 		<LanguageSwitcher class="ml-3" />
 		<NavHamburger class="ml-3" />
 	</div>
-
 	<NavUl>
 		<NavLi href="/">{m.nav_home()}</NavLi>
 		<NavLi href="/chat">{m.nav_chat()}</NavLi>
 	</NavUl>
 </Navbar>
-
-<Tooltip.Provider>
-	{@render children()}
-</Tooltip.Provider>
+{@render children()}
