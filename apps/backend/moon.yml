@@ -41,6 +41,9 @@ tasks:
       - build
   test:
     command: "pytest"
+    args: -v
     inputs:
       - "src/**/*"
       - "tests/**/*"
+    options:
+      outputStyle: "stream"
