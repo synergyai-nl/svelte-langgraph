@@ -39,3 +39,8 @@ tasks:
     preset: "server"
     deps:
       - build
+  test:
+    command: "pytest"
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
