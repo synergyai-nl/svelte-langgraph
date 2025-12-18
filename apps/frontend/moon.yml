@@ -90,7 +90,8 @@ tasks:
       internal: true
 
   test:
-    command: vitest run
+    command: vitest
+    args: --run
     inputs:
       - '@group(sources)'
       - '@group(tests)'
