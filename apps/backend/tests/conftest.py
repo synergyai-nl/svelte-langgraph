@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures for LangGraph tests."""
 
+from collections.abc import Sequence
 from typing import Literal
 from uuid import uuid4
 
@@ -8,10 +9,13 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
+from openai.types import CompletionUsage
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_message_tool_call import (
+    ChatCompletionMessageToolCall,
+    ChatCompletionMessageToolCallUnion,
+    Function,
 )
 
 from svelte_langgraph.graph import make_graph
@@ -75,79 +79,50 @@ def deterministic_weather(monkeypatch):
     monkeypatch.setattr("svelte_langgraph.graph.get_weather", fast_get_weather)
 
 
-class Function(BaseModel):
-    name: str
-    arguments: str
-
-
-class ToolCall(BaseModel):
-    call_id: str = Field(serialization_alias="id")
-    type: str = "function"
-    function: Function
-
-    model_config = ConfigDict(serialize_by_alias=True)
-
-
-class Message(BaseModel):
-    role: str = "assistant"
-    content: str | None = None
-    tool_calls: list[ToolCall] = []
-
-
 FinishReason = Literal["stop", "tool_calls"]
 
 
-class Choice(BaseModel):
-    index: int = 0
-    message: Message
-    finish_reason: FinishReason
-
-
-class ResponseJSON(BaseModel):
-    response_id: str = Field(serialization_alias="id")
-    object_type: str = Field(serialization_alias="object")
-    created: int
-    model: str = "gpt-4o-mini"
-    choices: list[Choice]
-    usage: dict
-
-    model_config = ConfigDict(serialize_by_alias=True)
-
-
 class CompletionResponse(Response):
-    def __init__(self, status_code: int, json: ResponseJSON) -> None:
-        super().__init__(status_code, json=json.model_dump())
+    def __init__(self, status_code: int, completion: ChatCompletion) -> None:
+        super().__init__(status_code, json=completion.model_dump())
 
 
 def make_completion_response(
     message_content: str | None = None,
     finish_reason: FinishReason = "stop",
     response_id: str = "chatcmpl-test",
-    tool_calls: list[ToolCall] | None = None,
+    tool_calls: Sequence[ChatCompletionMessageToolCallUnion] | None = None,
     created: int = 1234567890,
-    usage: dict | None = None,
+    usage: CompletionUsage | None = None,
 ):
-    """Create OpenAI API response."""
-    if tool_calls is None:
-        tool_calls = []
+    """Create OpenAI API response using OpenAI SDK types."""
     if usage is None:
-        usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+        usage = CompletionUsage(
+            prompt_tokens=10, completion_tokens=20, total_tokens=30
+        )
 
-    message = Message(content=message_content, tool_calls=tool_calls)
-    choices = [Choice(message=message, finish_reason=finish_reason)]
-
-    response = CompletionResponse(
-        200,
-        json=ResponseJSON(
-            response_id=response_id,
-            object_type="chat.completion",
-            choices=choices,
-            created=created,
-            usage=usage,
-        ),
+    message = ChatCompletionMessage(
+        role="assistant",
+        content=message_content,
+        tool_calls=list(tool_calls) if tool_calls else None,
+    )
+    choice = Choice(
+        index=0,
+        message=message,
+        finish_reason=finish_reason,
+        logprobs=None,
     )
 
-    return response
+    completion = ChatCompletion(
+        id=response_id,
+        object="chat.completion",
+        created=created,
+        model="gpt-4o-mini",
+        choices=[choice],
+        usage=usage,
+    )
+
+    return CompletionResponse(200, completion=completion)
 
 
 @pytest.fixture
@@ -181,8 +156,9 @@ def openai_single_tool_call(mock_completion):
         make_completion_response(
             response_id="chatcmpl-test-1",
             tool_calls=[
-                ToolCall(
-                    call_id="call_1",
+                ChatCompletionMessageToolCall(
+                    id="call_1",
+                    type="function",
                     function=Function(
                         name="get_weather",
                         arguments='{"city": "Paris"}',
@@ -195,11 +171,11 @@ def openai_single_tool_call(mock_completion):
             response_id="chatcmpl-test-2",
             created=1234567891,
             message_content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing.",
-            usage={
-                "prompt_tokens": 15,
-                "completion_tokens": 25,
-                "total_tokens": 40,
-            },
+            usage=CompletionUsage(
+                prompt_tokens=15,
+                completion_tokens=25,
+                total_tokens=40,
+            ),
         ),
     ]
 
