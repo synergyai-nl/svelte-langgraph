@@ -20,3 +20,8 @@ export interface ToolMessage extends BaseMessage {
 }
 
 export type Message = AIMessage | UserMessage | ToolMessage;
+
+export interface ThreadValues {
+	messages?: Record<string, unknown>[];
+	[key: string]: unknown;
+}
