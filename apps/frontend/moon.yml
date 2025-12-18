@@ -89,6 +89,12 @@ tasks:
     options:
       internal: true
 
+  test:
+    command: vitest run
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
+
   test-e2e:
     command: playwright test
     deps:
