@@ -1,16 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { YieldMessages, convertThreadMessage, convertThreadMessages } from './utils';
 import { InvalidData } from './errors';
 
 describe('YieldMessages', () => {
-	beforeEach(() => {
-		vi.spyOn(console, 'warn').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
 	describe('AIMessageChunk parsing', () => {
 		it('should parse AIMessageChunk with text content', () => {
 			const message = {

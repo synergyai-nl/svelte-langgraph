@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { streamAnswer } from './streamAnswer';
 import { InvalidData, StreamError } from './errors';
 import type { Client } from '@langchain/langgraph-sdk';
@@ -8,15 +8,6 @@ import toolUseWeatherChunks from '../../../tests/fixtures/langgraph/tool-use-wea
 import multiPartChunks from '../../../tests/fixtures/langgraph/multi-part-chunks.json';
 
 describe('streamAnswer with real VCR-recorded responses', () => {
-	beforeEach(() => {
-		vi.spyOn(console, 'debug').mockImplementation(() => {});
-		vi.spyOn(console, 'warn').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
 	it('should parse simple text response from real API recording', async () => {
 		const mockClient = {
 			runs: {
@@ -254,16 +245,6 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 });
 
 describe('streamAnswer error handling', () => {
-	beforeEach(() => {
-		vi.spyOn(console, 'debug').mockImplementation(() => {});
-		vi.spyOn(console, 'warn').mockImplementation(() => {});
-		vi.spyOn(console, 'error').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
 	it('should throw InvalidData for chunks with null data', async () => {
 		const invalidChunks = [
 			{
