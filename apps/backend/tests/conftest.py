@@ -97,9 +97,7 @@ def make_completion_response(
 ):
     """Create OpenAI API response using OpenAI SDK types."""
     if usage is None:
-        usage = CompletionUsage(
-            prompt_tokens=10, completion_tokens=20, total_tokens=30
-        )
+        usage = CompletionUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
     message = ChatCompletionMessage(
         role="assistant",
