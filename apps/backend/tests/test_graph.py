@@ -94,7 +94,6 @@ async def test_single_tool_call(
     agent,
     thread_config: RunnableConfig,
     openai_single_tool_call,
-    deterministic_weather,
 ):
     """Test single tool call with user prompt, tool invocation, and AI response.
 
@@ -158,7 +157,6 @@ async def test_tool_execution_result(
     agent,
     thread_config: RunnableConfig,
     openai_single_tool_call,
-    deterministic_weather,
 ):
     """Test that the tool is actually executed and returns expected results.
 

@@ -65,18 +65,13 @@ def env_setup(monkeypatch, openai_base_url, chat_model):
         monkeypatch.setenv("CHAT_MODEL_NAME", chat_model)
 
 
-@pytest.fixture
-def deterministic_weather(monkeypatch):
-    """Patch get_weather to be fast and deterministic.
+async def get_weather(city: str) -> str:
+    """Fast, deterministic mock for get_weather.
 
-    Main's get_weather is async with random sleep, so we need to mock it
-    to make tests fast and deterministic.
+    The real get_weather has a random 1-10 second sleep, so we use this
+    mock to make tests fast and deterministic.
     """
-
-    async def fast_get_weather(city: str) -> str:
-        return f"It's always sunny in {city}!"
-
-    monkeypatch.setattr("svelte_langgraph.graph.get_weather", fast_get_weather)
+    return f"It's always sunny in {city}!"
 
 
 FinishReason = Literal["stop", "tool_calls"]
@@ -133,8 +128,12 @@ def thread_config() -> RunnableConfig:
 
 @pytest_asyncio.fixture
 async def agent(thread_config: RunnableConfig):
-    """Create a LangGraph agent for testing."""
-    return make_graph(thread_config)
+    """Create a LangGraph agent for testing.
+
+    Uses the local get_weather mock instead of the real get_weather to avoid
+    the random 1-10 second sleep in the real implementation.
+    """
+    return make_graph(thread_config, weather_tool=get_weather)
 
 
 @pytest.fixture

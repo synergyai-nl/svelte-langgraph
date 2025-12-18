@@ -1,6 +1,7 @@
 import asyncio
 import random
-from typing import Sequence
+from collections.abc import Callable, Coroutine, Sequence
+from typing import Any
 
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,6 +14,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
 
 from .models import get_chat_model
+
+WeatherToolType = Callable[[str], Coroutine[Any, Any, str]]
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -51,13 +54,18 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
     )
 
 
-def make_graph(config: RunnableConfig) -> CompiledStateGraph:
+def make_graph(
+    config: RunnableConfig,
+    weather_tool: WeatherToolType | None = None,
+) -> CompiledStateGraph:
     model = get_chat_model()
     checkpointer = get_checkpointer()
 
+    tool = weather_tool if weather_tool is not None else get_weather
+
     agent = create_react_agent(
         model=model,
-        tools=[get_weather],
+        tools=[tool],
         prompt=get_prompt,  # type: ignore reportArgumentType
         checkpointer=checkpointer,
     )
