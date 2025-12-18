@@ -39,3 +39,11 @@ tasks:
     preset: "server"
     deps:
       - build
+  test:
+    command: "pytest"
+    args: -v
+    inputs:
+      - "src/**/*"
+      - "tests/**/*"
+    options:
+      outputStyle: "stream"
