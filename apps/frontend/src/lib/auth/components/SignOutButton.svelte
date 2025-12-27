@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import type { Snippet } from 'svelte';
 
-	let { children, onclick } = $props();
+	interface Props {
+		children: Snippet;
+		onclick?: (event: MouseEvent) => void;
+	}
+
+	let { children, onclick }: Props = $props();
 
 	let formElement: HTMLFormElement;
 
@@ -18,13 +24,7 @@
 	}
 </script>
 
-<form
-	bind:this={formElement}
-	method="POST"
-	action="/signout"
-	use:enhance
-	style="display: none;"
->
+<form bind:this={formElement} method="POST" action="/signout" use:enhance style="display: none;">
 	<input type="hidden" name="redirectTo" value="/" />
 	<input type="hidden" name="redirect" value="true" />
 </form>
