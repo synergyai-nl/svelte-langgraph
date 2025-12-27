@@ -43,9 +43,9 @@
 		<TooltipTrigger>
 			<Button
 				onclick={() => onRegenerate?.(message)}
-				class="p-1.5!"
+				class="h-6 w-6"
 				variant="ghost"
-				size="sm"
+				size="icon-sm"
 				title={m.message_regenerate()}
 			>
 				<RefreshCw size={16} />
