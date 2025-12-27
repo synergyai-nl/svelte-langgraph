@@ -20,7 +20,7 @@
 	}
 </script>
 
-<div class="ml-2 flex gap-1 border-l border-border-card pl-2">
+<div class="border-border-card ml-2 flex gap-1 border-l pl-2">
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
