@@ -2,7 +2,7 @@
 	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
 	import { Dropdown, DropdownItem } from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { GlobeOutline } from 'flowbite-svelte-icons';
+	import { Globe } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
 
@@ -19,7 +19,7 @@
 </script>
 
 <Button class={cn('', className)} variant="outline" size="sm">
-	<GlobeOutline />
+	<Globe size={16} />
 </Button>
 <Dropdown simple>
 	{#each locales as localeCode (localeCode)}
