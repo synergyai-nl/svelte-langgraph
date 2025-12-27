@@ -27,7 +27,7 @@
 			<Clipboard
 				value={message.text}
 				bind:success={copySuccess}
-				class="!border-0 !bg-transparent !p-1.5 !text-foreground !shadow-none !ring-0 !outline-none hover:!bg-accent hover:!text-accent-foreground focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 dark:hover:!bg-accent/50 [&>button]:!bg-transparent [&>button]:!text-foreground [&>button]:hover:!bg-accent [&>button]:hover:!text-accent-foreground [&>button]:dark:hover:!bg-accent/50 [&>button]:!border-0 [&>button]:!shadow-none [&>button]:!ring-0"
+				class="!text-foreground hover:!bg-accent hover:!text-accent-foreground dark:hover:!bg-accent/50 [&>button]:!text-foreground [&>button]:hover:!bg-accent [&>button]:hover:!text-accent-foreground [&>button]:dark:hover:!bg-accent/50 !border-0 !bg-transparent !p-1.5 !shadow-none !ring-0 !outline-none focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 [&>button]:!border-0 [&>button]:!bg-transparent [&>button]:!shadow-none [&>button]:!ring-0"
 			>
 				{#snippet children(success: boolean)}
 					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}

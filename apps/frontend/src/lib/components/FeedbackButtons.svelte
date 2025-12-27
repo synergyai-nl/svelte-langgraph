@@ -20,14 +20,14 @@
 	}
 </script>
 
-<div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
+<div class="ml-2 flex gap-1 border-l border-border-card pl-2">
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
 				onclick={() => handleFeedback('up')}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
 				title={m.message_feedback_good()}
 			>
 				<ThumbsUp size={16} />
@@ -41,7 +41,7 @@
 				onclick={() => handleFeedback('down')}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
 				title={m.message_feedback_bad()}
 			>
 				<ThumbsDown size={16} />
