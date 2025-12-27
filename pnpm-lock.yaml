@@ -42,8 +42,8 @@ importers:
         specifier: ^0.1.9
         version: 0.1.9(@langchain/core@0.3.78(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0)))
       '@lucide/svelte':
-        specifier: ^0.554.0
-        version: 0.554.0(svelte@5.36.14)
+        specifier: ^0.544.0
+        version: 0.544.0(svelte@5.36.14)
       '@playwright/test':
         specifier: ^1.49.1
         version: 1.54.1
@@ -131,6 +131,9 @@ importers:
       tailwindcss:
         specifier: ^4.0.0
         version: 4.1.11
+      tailwindcss-animate:
+        specifier: ^1.0.7
+        version: 1.0.7(tailwindcss@4.1.11)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -610,8 +613,8 @@ packages:
   '@lix-js/server-protocol-schema@0.1.1':
     resolution: {integrity: sha512-jBeALB6prAbtr5q4vTuxnRZZv1M2rKe8iNqRQhFJ4Tv7150unEa0vKyz0hs8Gl3fUGsWaNJBh3J8++fpbrpRBQ==}
 
-  '@lucide/svelte@0.554.0':
-    resolution: {integrity: sha512-CM6wLEH8uk3WBpC42t8R0hF7SlQrsYEL6qGuXdB99xKZwKglpWmX5XgYu7FIYOCBYOyC1rm4dNhIe6uF9pOXqw==}
+  '@lucide/svelte@0.544.0':
+    resolution: {integrity: sha512-9f9O6uxng2pLB01sxNySHduJN3HTl5p0HDu4H26VR51vhZfiMzyOMe9Mhof3XAk4l813eTtl+/DYRvGyoRR+yw==}
     peerDependencies:
       svelte: ^5
 
@@ -3096,6 +3099,11 @@ packages:
       tailwind-merge:
         optional: true
 
+  tailwindcss-animate@1.0.7:
+    resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
+    peerDependencies:
+      tailwindcss: '>=3.0.0 || insiders'
+
   tailwindcss@4.1.11:
     resolution: {integrity: sha512-2E9TBm6MDD/xKYe+dvJZAmg3yxIEDNRc0jwlNyDg/4Fil2QcSLjFKGVff0lAf1jjeaArlG/M75Ey/EYr/OJtBA==}
 
@@ -3869,7 +3877,7 @@ snapshots:
 
   '@lix-js/server-protocol-schema@0.1.1': {}
 
-  '@lucide/svelte@0.554.0(svelte@5.36.14)':
+  '@lucide/svelte@0.544.0(svelte@5.36.14)':
     dependencies:
       svelte: 5.36.14
 
@@ -6579,6 +6587,10 @@ snapshots:
       tailwindcss: 4.1.11
     optionalDependencies:
       tailwind-merge: 3.3.1
+
+  tailwindcss-animate@1.0.7(tailwindcss@4.1.11):
+    dependencies:
+      tailwindcss: 4.1.11
 
   tailwindcss@4.1.11: {}
 

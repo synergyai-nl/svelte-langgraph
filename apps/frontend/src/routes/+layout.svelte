@@ -6,18 +6,9 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	import { LogOut, MessageSquare, Moon, Sun } from '@lucide/svelte';
-	import {
-		Navbar,
-		NavBrand,
-		NavLi,
-		NavUl,
-		NavHamburger,
-		Dropdown,
-		DropdownHeader,
-		DropdownDivider,
-		Avatar
-	} from 'flowbite-svelte';
+	import { Navbar, NavBrand, NavLi, NavUl, NavHamburger, Avatar } from 'flowbite-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
 
@@ -40,58 +31,61 @@
 
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
-			<!-- Avatar Button -->
-			<Button variant="default" class="rounded-full p-1 pr-4" id="avatar-menu-button">
-				<Avatar src={page.data.session.user?.image ?? undefined} size="sm" class="mr-2" />
+			<!-- Avatar Dropdown Menu -->
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
+							<Avatar src={page.data.session?.user?.image ?? undefined} size="sm" class="mr-2" />
+							<span class="hidden text-sm font-medium sm:inline">
+								{page.data.session?.user?.name ?? m.user_fallback()}
+							</span>
+						</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
 
-				<span class="hidden text-sm font-medium text-gray-800 sm:inline dark:text-white">
-					{page.data.session.user?.name ?? m.user_fallback()}
-				</span>
-			</Button>
+				<DropdownMenu.Content align="end">
+					<DropdownMenu.Label>
+						<div class="flex flex-col space-y-1">
+							<p class="text-sm leading-none font-medium">
+								{page.data.session?.user?.name ?? m.user_fallback()}
+							</p>
+							<p class="text-xs leading-none">
+								{page.data.session?.user?.email ?? m.email_fallback()}
+							</p>
+						</div>
+					</DropdownMenu.Label>
 
-			<!-- Dropdown Menu -->
-			<Dropdown triggeredBy="#avatar-menu-button" placement="bottom-end" simple>
-				<DropdownHeader>
-					<span class="block text-sm font-medium text-gray-900 dark:text-white">
-						{page.data.session.user?.name ?? m.user_fallback()}
-					</span>
-					<span class="block truncate text-sm text-gray-500 dark:text-gray-400">
-						{page.data.session.user?.email ?? m.email_fallback()}
-					</span>
-				</DropdownHeader>
+					<DropdownMenu.Separator />
 
-				<DropdownDivider />
-				<button
-					type="button"
-					class="flex w-full items-center justify-between px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-600"
-					onclick={toggleMode}
-				>
-					<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
-					{#if mode.current === 'light'}
-						<Sun class="text-primary-500 h-5 w-5" />
-					{:else}
-						<Moon class="text-primary-600 h-5 w-5" />
-					{/if}
-				</button>
-				<DropdownDivider />
+					<DropdownMenu.Item onclick={toggleMode} class="justify-between">
+						<div>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</div>
+						<div class="flex items-center">
+							{#if mode.current === 'light'}
+								<Sun />
+							{:else}
+								<Moon />
+							{/if}
+						</div>
+					</DropdownMenu.Item>
 
-				<SignOut
-					options={{
-						redirectTo: '/',
-						redirect: true
-					}}
-				>
-					<div
-						slot="submitButton"
-						class="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-600"
+					<DropdownMenu.Separator />
+
+					<SignOut
+						options={{
+							redirectTo: '/',
+							redirect: true
+						}}
 					>
-						<span>{m.auth_sign_out()}</span>
-						<LogOut
-							class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
-						/>
-					</div>
-				</SignOut>
-			</Dropdown>
+						<DropdownMenu.Item slot="submitButton" class="justify-between">
+							<div>{m.auth_sign_out()}</div>
+							<div class="flex items-center">
+								<LogOut />
+							</div>
+						</DropdownMenu.Item>
+					</SignOut>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		{:else}
 			<SignInButton />
 		{/if}
