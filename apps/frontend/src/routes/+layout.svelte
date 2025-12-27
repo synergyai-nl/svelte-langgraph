@@ -31,14 +31,15 @@
 
 	<div class="flex items-center md:order-2">
 		{#if page.data.session}
+			{@const session = page.data.session}
 			<!-- Avatar Dropdown Menu -->
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
-							<Avatar src={page.data.session.user?.image ?? undefined} size="sm" class="mr-2" />
+							<Avatar src={session.user?.image ?? undefined} size="sm" class="mr-2" />
 							<span class="hidden text-sm font-medium sm:inline">
-								{page.data.session.user?.name ?? m.user_fallback()}
+								{session.user?.name ?? m.user_fallback()}
 							</span>
 						</Button>
 					{/snippet}
@@ -48,10 +49,10 @@
 					<DropdownMenu.Label>
 						<div class="flex flex-col space-y-1">
 							<p class="text-sm leading-none font-medium">
-								{page.data.session.user?.name ?? m.user_fallback()}
+								{session.user?.name ?? m.user_fallback()}
 							</p>
 							<p class="text-xs leading-none">
-								{page.data.session.user?.email ?? m.email_fallback()}
+								{session.user?.email ?? m.email_fallback()}
 							</p>
 						</div>
 					</DropdownMenu.Label>
