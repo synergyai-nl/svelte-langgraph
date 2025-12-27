@@ -1,7 +1,6 @@
 <script lang="ts">
 	import '../app.tailwind.css';
 
-	import { SignOut } from '@auth/sveltekit/components';
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -14,6 +13,7 @@
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
+	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
@@ -71,13 +71,8 @@
 
 					<DropdownMenu.Separator />
 
-					<SignOut
-						options={{
-							redirectTo: '/',
-							redirect: true
-						}}
-					>
-						<DropdownMenu.Item slot="submitButton" class="justify-between">
+					<SignOutButton>
+						<DropdownMenu.Item class="justify-between">
 							<div>{m.auth_sign_out()}</div>
 							<div class="flex items-center">
 								<LogOut
@@ -85,7 +80,7 @@
 								/>
 							</div>
 						</DropdownMenu.Item>
-					</SignOut>
+					</SignOutButton>
 				</DropdownMenu.Content>
 			</DropdownMenu.Root>
 		{:else}
