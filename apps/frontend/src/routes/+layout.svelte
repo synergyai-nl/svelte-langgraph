@@ -36,9 +36,9 @@
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
-							<Avatar src={page.data.session?.user?.image ?? undefined} size="sm" class="mr-2" />
+							<Avatar src={page.data.session.user?.image ?? undefined} size="sm" class="mr-2" />
 							<span class="hidden text-sm font-medium sm:inline">
-								{page.data.session?.user?.name ?? m.user_fallback()}
+								{page.data.session.user?.name ?? m.user_fallback()}
 							</span>
 						</Button>
 					{/snippet}
@@ -48,10 +48,10 @@
 					<DropdownMenu.Label>
 						<div class="flex flex-col space-y-1">
 							<p class="text-sm leading-none font-medium">
-								{page.data.session?.user?.name ?? m.user_fallback()}
+								{page.data.session.user?.name ?? m.user_fallback()}
 							</p>
 							<p class="text-xs leading-none">
-								{page.data.session?.user?.email ?? m.email_fallback()}
+								{page.data.session.user?.email ?? m.email_fallback()}
 							</p>
 						</div>
 					</DropdownMenu.Label>
@@ -62,9 +62,9 @@
 						<div>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</div>
 						<div class="flex items-center">
 							{#if mode.current === 'light'}
-								<Sun />
+								<Sun class="text-primary-500 h-5 w-5" />
 							{:else}
-								<Moon />
+								<Moon class="text-primary-600 h-5 w-5" />
 							{/if}
 						</div>
 					</DropdownMenu.Item>
@@ -80,7 +80,9 @@
 						<DropdownMenu.Item slot="submitButton" class="justify-between">
 							<div>{m.auth_sign_out()}</div>
 							<div class="flex items-center">
-								<LogOut />
+								<LogOut
+									class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
+								/>
 							</div>
 						</DropdownMenu.Item>
 					</SignOut>
