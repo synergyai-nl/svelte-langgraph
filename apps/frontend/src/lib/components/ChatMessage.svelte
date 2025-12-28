@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Card } from 'flowbite-svelte';
+	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
@@ -27,35 +27,31 @@
 			? 'max-w-[70%] flex-row-reverse'
 			: 'max-w-[80%]'}"
 	>
-		<div
-			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-600 dark:bg-gray-400"
-		>
-			<User size={20} class="text-white dark:text-gray-900" />
+		<div class="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
+			<User size={20} class="text-foreground" />
 		</div>
 		<div class="relative w-full">
 			<div
 				role="group"
 				onmouseenter={() => (isHovered = true)}
 				onmouseleave={() => (isHovered = false)}
-				class="relative pb-10"
+				class="relative w-full"
 			>
 				{#if message.type === 'ai'}
-					<Card
-						class="w-full max-w-none border border-gray-200 bg-gray-50 p-4 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800"
-					>
-						<div class="prose prose-gray dark:prose-invert max-w-none leading-relaxed">
+					<Card.Root class="border-border-card bg-muted border shadow-sm">
+						<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
 							<Markdown md={message.text} {plugins} />
-						</div>
-					</Card>
+						</Card.Content>
+					</Card.Root>
 					<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
 				{:else}
-					<Card
-						class="w-full max-w-none border-0 bg-gray-800 p-4 text-sm shadow-sm dark:bg-gray-700"
-					>
-						<div class="prose prose-invert max-w-none leading-relaxed whitespace-pre-wrap">
+					<Card.Root class="bg-foreground border-0 shadow-sm">
+						<Card.Content
+							class="prose prose-invert text-background max-w-none text-sm whitespace-pre-wrap"
+						>
 							{message.text}
-						</div>
-					</Card>
+						</Card.Content>
+					</Card.Root>
 					<UserMessageActions {message} {isHovered} {onEdit} />
 				{/if}
 			</div>
