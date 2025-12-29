@@ -5,7 +5,8 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	import { LogOut, MessageSquare, Moon, Sun } from '@lucide/svelte';
-	import { Navbar, NavBrand, NavLi, NavUl, NavHamburger, Avatar } from 'flowbite-svelte';
+	import { Navbar, NavBrand, NavLi, NavUl, NavHamburger } from 'flowbite-svelte';
+	import * as Avatar from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
@@ -37,7 +38,15 @@
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
-							<Avatar src={session.user?.image ?? undefined} size="sm" class="mr-2" />
+							<Avatar.Root class="mr-2 h-8 w-8">
+								<Avatar.Image
+									src={session.user?.image ?? undefined}
+									alt={session.user?.name ?? m.user_fallback()}
+								/>
+								<Avatar.Fallback class="prose dark:prose-invert"
+									>{session.user?.name?.substring(0, 2).toUpperCase() ?? 'U'}</Avatar.Fallback
+								>
+							</Avatar.Root>
 							<span class="hidden text-sm font-medium sm:inline">
 								{session.user?.name ?? m.user_fallback()}
 							</span>
