@@ -29,6 +29,7 @@
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
 				title={m.message_feedback_good()}
+				disabled
 			>
 				<ThumbsUp size={16} />
 			</Button>
@@ -43,6 +44,7 @@
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
 				title={m.message_feedback_bad()}
+				disabled
 			>
 				<ThumbsDown size={16} />
 			</Button>
