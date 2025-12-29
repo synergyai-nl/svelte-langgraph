@@ -20,12 +20,12 @@
 	import { navigationMenuTriggerStyle } from '$lib/components/ui/navigation-menu/navigation-menu-trigger.svelte';
 
 	let { children } = $props();
-	
+
 	function getInitials(name?: string | null): string {
 		if (!name) return 'U';
 		return name
 			.split(' ')
-			.map(n => n[0])
+			.map((n) => n[0])
 			.join('')
 			.toUpperCase()
 			.slice(0, 2);
@@ -34,7 +34,7 @@
 
 <ModeWatcher />
 
-<nav class="border-b bg-background">
+<nav class="bg-background border-b">
 	<div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
 		<!-- Brand -->
 		<a href="/" class="flex items-center space-x-3">
@@ -56,7 +56,7 @@
 						{/snippet}
 					</NavigationMenu.Link>
 				</NavigationMenu.Item>
-				
+
 				<NavigationMenu.Item>
 					<NavigationMenu.Link>
 						{#snippet child()}
@@ -77,9 +77,12 @@
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger asChild>
 						{#snippet child({ props })}
-							<Button {...props} variant="ghost" class="rounded-full px-3 py-2 h-auto">
-								<Avatar class="h-8 w-8 mr-2">
-									<AvatarImage src={session.user?.image ?? undefined} alt={session.user?.name ?? 'User'} />
+							<Button {...props} variant="ghost" class="h-auto rounded-full px-3 py-2">
+								<Avatar class="mr-2 h-8 w-8">
+									<AvatarImage
+										src={session.user?.image ?? undefined}
+										alt={session.user?.name ?? 'User'}
+									/>
 									<AvatarFallback>{getInitials(session.user?.name)}</AvatarFallback>
 								</Avatar>
 								<span class="text-sm font-medium">
@@ -95,7 +98,7 @@
 								<p class="text-sm leading-none font-medium">
 									{session.user?.name ?? m.user_fallback()}
 								</p>
-								<p class="text-xs leading-none text-muted-foreground">
+								<p class="text-muted-foreground text-xs leading-none">
 									{session.user?.email ?? m.email_fallback()}
 								</p>
 							</div>
@@ -129,7 +132,7 @@
 			{:else}
 				<SignInButton />
 			{/if}
-			
+
 			<LanguageSwitcher />
 		</div>
 	</div>
