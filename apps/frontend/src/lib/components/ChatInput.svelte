@@ -31,7 +31,7 @@
 		<form
 			id="input_form"
 			onsubmit={onSubmit}
-			class="rounded-xl border border-gray-200 bg-white px-4 py-2 shadow-md dark:border-gray-700 dark:bg-gray-900 dark:shadow-gray-800/20"
+			class="border-border-input bg-card rounded-xl border px-4 py-2 shadow-md"
 		>
 			<div class="flex items-end gap-3">
 				<div class="min-w-0 flex-1">
@@ -42,8 +42,8 @@
 						rows={1}
 						name="message"
 						bind:value
-						class="flex max-h-[calc(8*1.5rem+1rem)] !min-h-[2.5rem] w-full resize-none items-center overflow-y-auto border-none bg-transparent px-0 py-2 text-base leading-6 text-gray-900 placeholder-gray-500 focus:ring-0 focus:outline-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent dark:text-white dark:placeholder-gray-400"
-						style="max-height: calc(8 * 1.5rem + 1rem);"
+						class="text-foreground placeholder-muted-foreground flex max-h-[calc(8*1.5rem+1rem)] !min-h-[2.5rem] w-full resize-none items-center overflow-y-auto border-none bg-transparent px-0 py-2 text-base leading-6 !shadow-none focus:ring-0 focus:outline-none focus-visible:border-transparent focus-visible:ring-0"
+						style="max-height: calc(8 * 1.5rem + 1rem); background-color: transparent;"
 						onkeydown={handleKeyPress}
 					></Textarea>
 				</div>
