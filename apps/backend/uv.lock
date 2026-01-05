@@ -661,7 +661,7 @@ wheels = [
 
 [[package]]
 name = "oidc-provider-mock"
-version = "0.3.0"
+version = "0.3.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
@@ -673,9 +673,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/fe/be2f2c4b3c6b3d6c6ddf1784fd1c52d817941e2f594a415e598d02fcda69/oidc_provider_mock-0.3.0.tar.gz", hash = "sha256:6506d32b887b9f99c95fa86c6ce199b7da9a88821488a839d3b0c61cd7767121", size = 135654, upload-time = "2025-10-10T14:46:48.765Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8c/05/1a598f2cb226ad2601cdc6638048badd236d824c8bbf85c6c6b4c621108f/oidc_provider_mock-0.3.3.tar.gz", hash = "sha256:fdeb505ee5523de884ecd729bf7dd6ea538a8553612b41bb12782c569893669b", size = 154832, upload-time = "2025-12-20T17:15:33.604Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/33/facc85b0874533e7b94464707dd2316586c9557b29e9842e42eaf3a6f74c/oidc_provider_mock-0.3.0-py3-none-any.whl", hash = "sha256:b4d46f37c0f16fd4bb32ddbe51d7956e00acec4c541d19564eee8d380ceea759", size = 23297, upload-time = "2025-10-10T14:46:47.341Z" },
+    { url = "https://files.pythonhosted.org/packages/34/93/44c34e2e45a03f4339327905f4141506772630d7afa485d1c74549bf3cb4/oidc_provider_mock-0.3.3-py3-none-any.whl", hash = "sha256:c3eafa8dd7e4c3d5877b60d45cfc5944965d70e155f8c8b014b54c68147ccf3c", size = 24850, upload-time = "2025-12-20T17:15:31.994Z" },
 ]
 
 [[package]]
@@ -1132,12 +1132,12 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "authlib" },
+    { name = "httpx" },
     { name = "langchain", extra = ["openai"] },
     { name = "langgraph" },
     { name = "langgraph-api" },
     { name = "langgraph-cli", extra = ["inmem"] },
     { name = "python-dotenv" },
-    { name = "requests" },
 ]
 
 [package.dev-dependencies]
@@ -1153,22 +1153,22 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "authlib", specifier = ">=1.4.0" },
+    { name = "authlib", specifier = ">=1.4.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["openai"], specifier = "==1.0.*" },
     { name = "langgraph", specifier = "==1.0.*" },
     { name = "langgraph-api", specifier = "==0.5.3" },
     { name = "langgraph-cli", extras = ["inmem"], specifier = "==0.4.*" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
-    { name = "requests", specifier = ">=2.32.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx", specifier = ">=0.28.0" },
-    { name = "oidc-provider-mock", specifier = ">=0.3.0" },
+    { name = "oidc-provider-mock", specifier = ">=0.3.2" },
     { name = "pyright", specifier = ">=1.1.403" },
-    { name = "pytest", specifier = ">=8.0.0" },
-    { name = "pytest-asyncio", specifier = ">=0.24.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest-asyncio", specifier = ">=0.25.3" },
     { name = "respx", specifier = ">=0.22.0" },
     { name = "ruff", specifier = ">=0.12.5" },
 ]
