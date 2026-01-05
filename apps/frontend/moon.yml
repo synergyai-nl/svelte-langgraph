@@ -88,6 +88,7 @@ tasks:
     command: npx playwright install chromium --with-deps
     options:
       internal: true
+    inputs:
 
   test:
     args:

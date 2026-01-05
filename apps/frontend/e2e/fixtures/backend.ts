@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test';
  * LangGraph Backend Configuration
  */
 export const LANGGRAPH_CONFIG = {
-	apiUrl: 'http://127.0.0.1:2024'
+	apiUrl: 'http://localhost:2024'
 };
 
 /**

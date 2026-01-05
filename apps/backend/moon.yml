@@ -45,7 +45,7 @@ tasks:
     preset: "server"
     local: true
   dev:
-    command: "langgraph dev --no-browser"
+    command: "langgraph dev --no-browser --host localhost"
     preset: "watcher"
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
