@@ -20,8 +20,6 @@ tasks:
     local: true
   typecheck:
     command: "pyright"
-  test:
-    command: "pytest"
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user"
     preset: "server"
