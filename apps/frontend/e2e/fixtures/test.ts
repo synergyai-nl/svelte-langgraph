@@ -1,18 +1,21 @@
-import { test as base, type Locator } from '@playwright/test';
+import { test as base } from '@playwright/test';
+import { AppPage, ChatPage, OidcPage } from '../pages';
 
 type Fixtures = {
-	greeting: Locator;
-	loginModal: Locator;
+	app: AppPage;
+	chat: ChatPage;
+	oidc: OidcPage;
 };
 
 export const test = base.extend<Fixtures>({
-	greeting: async ({ page }, use) => {
-		const greeting = page.locator('text=/.*can I help you today?/i');
-		await use(greeting);
+	app: async ({ page }, use) => {
+		await use(new AppPage(page));
 	},
-	loginModal: async ({ page }, use) => {
-		const loginModal = page.getByRole('dialog').filter({ hasText: /sign in/i });
-		await use(loginModal);
+	chat: async ({ page }, use) => {
+		await use(new ChatPage(page));
+	},
+	oidc: async ({ page }, use) => {
+		await use(new OidcPage(page));
 	}
 });
 
