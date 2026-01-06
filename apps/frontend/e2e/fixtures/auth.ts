@@ -54,11 +54,11 @@ export async function signOut(page: Page) {
 	await page.waitForTimeout(evilWaitDuration);
 
 	// Click the avatar button to open the dropdown
-	const avatarButton = page.locator('#avatar-menu-button');
+	const avatarButton = page.getByRole('button', { name: 'User' });
 	await avatarButton.click();
 
 	// Wait for dropdown to appear and click sign out
-	const signOutButton = page.getByText('Sign out');
+	const signOutButton = page.getByRole('button', { name: 'Sign out' });
 	await expect(signOutButton).toBeVisible();
 	await signOutButton.click();
 
