@@ -1,6 +1,6 @@
-import { test, expect } from '@playwright/test';
 import { authenticateUser } from './fixtures/auth';
 import { LANGGRAPH_CONFIG } from './fixtures/backend';
+import { expect, test } from './fixtures/test';
 
 // langgraph-api converts all auth errors to 403 due to a bug in its middleware.
 // See: https://github.com/langchain-ai/langgraph/issues/6552

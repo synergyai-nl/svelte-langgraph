@@ -9,7 +9,6 @@ import { expect, test } from './fixtures/test';
 
 test.describe('OIDC Provider', () => {
 	test('should handle OIDC well-known configuration', async ({ page }) => {
-		// Verify the well-known endpoint is accessible
 		const response = await page.request.get(
 			`${OIDC_CONFIG.issuer}/.well-known/openid-configuration`
 		);
@@ -23,8 +22,8 @@ test.describe('OIDC Provider', () => {
 	});
 });
 
-test.describe('When unauthenticated', async () => {
-	test.describe('On "/"', async () => {
+test.describe('When unauthenticated', () => {
+	test.describe('On "/"', () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/');
 		});
@@ -33,16 +32,10 @@ test.describe('When unauthenticated', async () => {
 			await expectUnauthenticated(page);
 		});
 
-		test('should successfully sign in with OIDC provider', async ({ page }) => {
-			// Perform authentication
+		test('should successfully sign in with OIDC provider', async ({ page, app }) => {
 			await authenticateUser(page);
-
-			// Verify successful authentication
 			await expectAuthenticated(page);
-
-			// Verify avatar button is visible (user info display depends on OIDC claims)
-			const avatarButton = page.locator('#avatar-menu-button');
-			await expect(avatarButton).toBeVisible();
+			await expect(app.userMenuButton).toBeVisible();
 		});
 	});
 
@@ -51,30 +44,25 @@ test.describe('When unauthenticated', async () => {
 			await page.goto('/chat');
 		});
 
-		test('should show login modal', async ({ loginModal }) => {
-			await expect(loginModal).toBeVisible();
+		test('should show login modal', async ({ chat }) => {
+			await expect(chat.loginModal).toBeVisible();
 		});
 
-		test('should have a sign-in button in the modal', async ({ loginModal }) => {
-			const signInButton = loginModal.getByText('Sign in', { exact: true });
-			await expect(signInButton).toBeVisible();
+		test('should have a sign-in button in the modal', async ({ chat }) => {
+			await expect(chat.modalSignInButton).toBeVisible();
 		});
 
-		test('should not show greeting', async ({ greeting }) => {
-			await expect(greeting).not.toBeVisible();
+		test('should not show greeting', async ({ chat }) => {
+			await expect(chat.textInput).not.toBeVisible();
 		});
 
-		test('should have navigation and body visible', async ({ page }) => {
-			// The app should not crash - check that basic UI is present
-			await expect(page.locator('body')).toBeVisible();
-
-			// Navigation should still work
-			await expect(page.getByRole('navigation')).toBeVisible();
+		test('should have navigation visible', async ({ app }) => {
+			await expect(app.nav).toBeVisible();
 		});
 	});
 });
 
-test.describe('When authenticated', async () => {
+test.describe('When authenticated', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
 	});
@@ -88,21 +76,14 @@ test.describe('When authenticated', async () => {
 		});
 
 		test('should persist session on page reload', async ({ page }) => {
-			// Reload the page
 			await page.reload();
-
-			// Should still be authenticated
 			await expectAuthenticated(page);
 		});
 
 		test('should maintain session across browser context', async ({ context }) => {
-			// Open a new page in the same context
 			const newPage = await context.newPage();
 			await newPage.goto('/');
-
-			// Should be authenticated in the new page
 			await expectAuthenticated(newPage);
-
 			await newPage.close();
 		});
 	});
@@ -112,16 +93,12 @@ test.describe('When authenticated', async () => {
 			await page.goto('/chat/');
 		});
 
-		test('should not show login modal', async ({ loginModal }) => {
-			await expect(loginModal).not.toBeVisible();
+		test('should not show login modal', async ({ chat }) => {
+			await expect(chat.loginModal).not.toBeVisible();
 		});
 
-		test('should show chat interface', async ({ page }) => {
-			await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
-		});
-
-		test('should show greeting', async ({ greeting }) => {
-			await expect(greeting).toBeVisible();
+		test('should have text input enabled', async ({ chat }) => {
+			await expect(chat.textInput).toBeEnabled();
 		});
 
 		test.describe('Signing out', () => {
@@ -149,30 +126,23 @@ test.describe('When authenticated', async () => {
 				await page.goto('/chat/');
 			});
 
-			test('should show login modal', async ({ loginModal }) => {
-				await expect(loginModal).toBeVisible();
+			test('should show login modal', async ({ chat }) => {
+				await expect(chat.loginModal).toBeVisible();
 			});
 		});
 	});
 });
 
 test.describe('Navigation', () => {
-	test('navbar has home and chat links', async ({ page }) => {
+	test('navbar has home and chat links', async ({ page, app }) => {
 		await page.goto('/');
-
-		const homeLink = page.getByRole('link', { name: /home/i });
-		const chatLink = page.getByRole('link', { name: /chat/i });
-
-		await expect(homeLink).toBeVisible();
-		await expect(chatLink).toBeVisible();
+		await expect(app.homeLink).toBeVisible();
+		await expect(app.chatLink).toBeVisible();
 	});
 
-	test('clicking chat link navigates to chat page', async ({ page }) => {
+	test('clicking chat link navigates to chat page', async ({ page, app }) => {
 		await page.goto('/');
-
-		const chatLink = page.getByRole('link', { name: /chat/i });
-		await chatLink.click();
-
+		await app.navigateToChat();
 		await expect(page).toHaveURL(/.*chat.*/);
 	});
 });
