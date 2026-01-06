@@ -10,6 +10,14 @@ export const OIDC_CONFIG = {
 	username: 'test-user'
 };
 
+function userMenuButton(page: Page) {
+	return page.getByRole('button', { name: 'User' });
+}
+
+function signInButton(page: Page) {
+	return page.getByRole('navigation').getByText('Sign in');
+}
+
 /**
  * Helper to complete OIDC authentication flow
  * The oidc-provider-mock automatically authenticates the test-user
@@ -18,13 +26,9 @@ export async function authenticateUser(page: Page) {
 	// Start from home page
 	await page.goto('/');
 
-	const nav = page.getByRole('navigation');
-
 	// Click the sign-in button to initiate OIDC flow
 	// Use getByText since the Button component wraps text in spans
-	const signInButton = nav.getByText('Sign in');
-	await expect(signInButton).toBeVisible();
-	await signInButton.click();
+	signInButton(page).click();
 
 	// Ensure redirect to OIDC provider
 	await expect(page).toHaveURL((url) =>
@@ -49,13 +53,13 @@ export async function signOut(page: Page) {
 	// Really, all of these waits have to be there, pending a better solution.
 	// Seems Playwright's wait detection is failing here, somehow.
 	// Also note that 100ms really is the golden number here - result of _extensive_ stress testing.
-	const evilWaitDuration = 100;
-
+	const evilWaitDuration = 200;
 	await page.waitForTimeout(evilWaitDuration);
 
 	// Click the avatar button to open the dropdown
-	const avatarButton = page.getByRole('button', { name: 'User' });
-	await avatarButton.click();
+	await userMenuButton(page).click();
+
+	await page.waitForTimeout(evilWaitDuration);
 
 	// Wait for dropdown to appear and click sign out
 	const signOutButton = page.getByRole('button', { name: 'Sign out' });
@@ -69,13 +73,13 @@ export async function signOut(page: Page) {
  * Reusable assertion helpers to reduce redundancy
  */
 export async function expectAuthenticated(page: Page) {
-	await expect(page.locator('#avatar-menu-button')).toBeVisible();
-	await expect(page.getByRole('navigation').getByText('Sign in')).not.toBeVisible();
+	await expect(userMenuButton(page)).toBeVisible();
+	await expect(signInButton(page)).not.toBeVisible();
 }
 
 export async function expectUnauthenticated(page: Page) {
-	await expect(page.getByRole('navigation').getByText('Sign in')).toBeVisible();
-	await expect(page.locator('#avatar-menu-button')).not.toBeVisible();
+	await expect(signInButton(page)).toBeVisible();
+	await expect(userMenuButton(page)).not.toBeVisible();
 }
 
 export { expect };
