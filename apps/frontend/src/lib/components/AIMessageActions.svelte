@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Button, Tooltip, Clipboard } from 'flowbite-svelte';
-	import { ArrowsRepeatOutline, CheckOutline, ClipboardCleanSolid } from 'flowbite-svelte-icons';
+	import { Clipboard } from 'flowbite-svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { RefreshCw, Check, Clipboard as ClipboardIcon } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
 
 	interface Props {
@@ -13,28 +15,46 @@
 	}
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
+	let copySuccess = $state(false);
 </script>
 
 <div
 	class="absolute bottom-2 left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
-	<Clipboard value={message.text} embedded color="alternative" class="p-1.5!">
-		{#snippet children(success)}
-			<Tooltip isOpen={success}>{success ? m.message_copied() : m.message_copy()}</Tooltip>
-			{#if success}<CheckOutline size="xs" />{:else}<ClipboardCleanSolid size="xs" />{/if}
-		{/snippet}
-	</Clipboard>
+	<Tooltip disableCloseOnTriggerClick>
+		<TooltipTrigger>
+			<Clipboard
+				value={message.text}
+				bind:success={copySuccess}
+				class="!border-0 !bg-transparent !p-1.5 !text-gray-700 !shadow-none !ring-0 !outline-none hover:!bg-gray-100 focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 dark:!text-gray-300 dark:hover:!bg-gray-800 [&>button]:!bg-transparent [&>button]:!text-gray-700 [&>button]:hover:!bg-gray-100 [&>button]:dark:!text-gray-300 [&>button]:dark:hover:!bg-gray-800"
+			>
+				{#snippet children(success: boolean)}
+					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
+				{/snippet}
+			</Clipboard>
+		</TooltipTrigger>
+		<TooltipContent>
+			{copySuccess ? m.message_copied() : m.message_copy()}
+		</TooltipContent>
+	</Tooltip>
 
-	<Button
-		onclick={() => onRegenerate?.(message)}
-		class="p-1.5!"
-		color="alternative"
-		size="xs"
-		title={m.message_regenerate()}
-	>
-		<ArrowsRepeatOutline size="xs" />
-	</Button>
-	<Tooltip type="auto">{m.coming_soon()}</Tooltip>
+	<Tooltip>
+		<TooltipTrigger>
+			<Button
+				onclick={() => onRegenerate?.(message)}
+				class="p-1.5!"
+				variant="ghost"
+				size="sm"
+				title={m.message_regenerate()}
+			>
+				<RefreshCw size={16} />
+			</Button>
+		</TooltipTrigger>
+		<TooltipContent>
+			{m.coming_soon()}
+		</TooltipContent>
+	</Tooltip>
+
 	<FeedbackButtons {message} {onFeedback} />
 </div>
