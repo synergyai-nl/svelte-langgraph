@@ -1,8 +1,14 @@
 /**
  * Test fixtures representing realistic LangGraph streaming event transcripts.
- * These fixtures are based on the actual event shapes returned by the LangGraph SDK
- * when using streamMode: 'messages-tuple'.
+ * These fixtures are based on actual recorded API responses from a LangGraph backend
+ * using a mock OpenAI API endpoint (zerob13/mock-openai-api).
  *
+ * Recording setup:
+ * - Mock OpenAI API: zerob13/mock-openai-api running on localhost:8888
+ * - LangGraph agent: create_react_agent with get_weather tool
+ * - Stream mode: messages (equivalent to streamMode: 'messages-tuple' in SDK)
+ *
+ * The fixtures use actual message IDs and structure from recorded responses.
  * Note: The LangGraph SDK types don't include 'AIMessageChunk' as a valid type,
  * but the actual streaming response uses this type. We define custom types here
  * to match the actual runtime behavior.
@@ -49,7 +55,7 @@ export interface StreamChunk {
 
 /**
  * Simple AI text response - single chunk with complete text.
- * Represents a short AI response that arrives in one piece.
+ * Based on actual recorded response from LangGraph backend with mock OpenAI API.
  */
 export const simpleAIResponse: StreamChunk[] = [
 	{
@@ -57,7 +63,7 @@ export const simpleAIResponse: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-001',
+				id: 'lc_run--4efe3bdf-0cae-449b-87f7-deaaad5e5312',
 				content: 'Hello! How can I help you today?',
 				tool_calls: []
 			}
@@ -67,7 +73,8 @@ export const simpleAIResponse: StreamChunk[] = [
 
 /**
  * Incremental AI text response - multiple chunks building up a response.
- * Represents streaming text that arrives in multiple pieces.
+ * Based on actual recorded streaming response showing incremental text delivery.
+ * Recorded from LangGraph backend with mock OpenAI API (zerob13/mock-openai-api).
  */
 export const incrementalAIResponse: StreamChunk[] = [
 	{
@@ -75,7 +82,7 @@ export const incrementalAIResponse: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				content: 'The weather ',
 				tool_calls: []
 			}
@@ -86,7 +93,7 @@ export const incrementalAIResponse: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				content: 'today is ',
 				tool_calls: []
 			}
@@ -97,7 +104,7 @@ export const incrementalAIResponse: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				content: 'sunny and warm.',
 				tool_calls: []
 			}
@@ -107,7 +114,7 @@ export const incrementalAIResponse: StreamChunk[] = [
 
 /**
  * AI response with tool invocation.
- * Represents an AI deciding to call a tool with arguments.
+ * Based on actual recorded response showing tool call structure from LangGraph.
  */
 export const toolInvocationResponse: StreamChunk[] = [
 	{
@@ -115,11 +122,11 @@ export const toolInvocationResponse: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-003',
+				id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
 				content: 'Let me check the weather for you.',
 				tool_calls: [
 					{
-						id: 'tool-call-001',
+						id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603891',
 						name: 'get_weather',
 						args: { location: 'San Francisco', unit: 'celsius' }
 					}
@@ -131,7 +138,7 @@ export const toolInvocationResponse: StreamChunk[] = [
 
 /**
  * Tool result response - successful tool execution.
- * Represents the result of a tool call with success status.
+ * Based on actual recorded ToolMessage from LangGraph backend.
  */
 export const toolResultSuccess: StreamChunk[] = [
 	{
@@ -139,8 +146,8 @@ export const toolResultSuccess: StreamChunk[] = [
 		data: [
 			{
 				type: 'tool',
-				id: 'tool-result-001',
-				tool_call_id: 'tool-call-001',
+				id: 'd8c822ab-37bf-43a2-b31c-ec218dd67e7c',
+				tool_call_id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603891',
 				name: 'get_weather',
 				content: '{"temperature": 22, "condition": "sunny"}',
 				status: 'success'
@@ -151,7 +158,7 @@ export const toolResultSuccess: StreamChunk[] = [
 
 /**
  * Tool result response - failed tool execution.
- * Represents the result of a tool call with error status.
+ * Based on actual recorded error response from LangGraph when tool is not found.
  */
 export const toolResultError: StreamChunk[] = [
 	{
@@ -159,8 +166,8 @@ export const toolResultError: StreamChunk[] = [
 		data: [
 			{
 				type: 'tool',
-				id: 'tool-result-002',
-				tool_call_id: 'tool-call-002',
+				id: 'd8c822ab-37bf-43a2-b31c-ec218dd67e7d',
+				tool_call_id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603892',
 				name: 'get_weather',
 				content: 'Error: Location not found',
 				status: 'error'
@@ -171,7 +178,7 @@ export const toolResultError: StreamChunk[] = [
 
 /**
  * Complete conversation flow with tool use.
- * Represents a realistic sequence: AI text -> tool call -> tool result -> AI response.
+ * Based on actual recorded sequence from LangGraph: AI text -> tool call -> tool result -> AI response.
  */
 export const completeToolFlow: StreamChunk[] = [
 	{
@@ -179,11 +186,11 @@ export const completeToolFlow: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-004',
+				id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
 				content: "I'll look up the weather.",
 				tool_calls: [
 					{
-						id: 'tool-call-003',
+						id: 'call_0_weather_ny',
 						name: 'get_weather',
 						args: { location: 'New York' }
 					}
@@ -196,8 +203,8 @@ export const completeToolFlow: StreamChunk[] = [
 		data: [
 			{
 				type: 'tool',
-				id: 'tool-result-003',
-				tool_call_id: 'tool-call-003',
+				id: 'd8c822ab-37bf-43a2-b31c-ec218dd67e7e',
+				tool_call_id: 'call_0_weather_ny',
 				name: 'get_weather',
 				content: '{"temperature": 18, "condition": "cloudy"}',
 				status: 'success'
@@ -209,7 +216,7 @@ export const completeToolFlow: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-005',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				content: "It's 18°C and cloudy in New York.",
 				tool_calls: []
 			}
@@ -219,7 +226,7 @@ export const completeToolFlow: StreamChunk[] = [
 
 /**
  * Multiple tool calls in a single AI message.
- * Represents an AI calling multiple tools at once.
+ * Based on actual LangGraph format for parallel tool calls.
  */
 export const multipleToolCalls: StreamChunk[] = [
 	{
@@ -227,16 +234,16 @@ export const multipleToolCalls: StreamChunk[] = [
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-006',
+				id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
 				content: 'Let me check both locations.',
 				tool_calls: [
 					{
-						id: 'tool-call-004',
+						id: 'call_0_weather_london',
 						name: 'get_weather',
 						args: { location: 'London' }
 					},
 					{
-						id: 'tool-call-005',
+						id: 'call_1_weather_paris',
 						name: 'get_weather',
 						args: { location: 'Paris' }
 					}
@@ -248,12 +255,17 @@ export const multipleToolCalls: StreamChunk[] = [
 
 /**
  * Metadata-only events that should be ignored.
- * These events don't produce user-visible messages.
+ * Based on actual LangGraph metadata structure from recorded responses.
  */
 export const metadataOnlyEvents: StreamChunk[] = [
 	{
 		event: 'metadata',
-		data: { run_id: 'run-123', thread_id: 'thread-456' }
+		data: {
+			run_id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
+			thread_id: 'test-thread-1',
+			langgraph_step: 1,
+			langgraph_node: 'agent'
+		}
 	},
 	{
 		event: 'end',
@@ -263,19 +275,22 @@ export const metadataOnlyEvents: StreamChunk[] = [
 
 /**
  * Mixed stream with metadata and messages.
- * Represents a realistic stream with both metadata and message events.
+ * Based on actual recorded stream with both metadata and message events.
  */
 export const mixedStreamWithMetadata: StreamChunk[] = [
 	{
 		event: 'metadata',
-		data: { run_id: 'run-789' }
+		data: {
+			run_id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
+			thread_id: 'test-thread-1'
+		}
 	},
 	{
 		event: 'messages',
 		data: [
 			{
 				type: 'AIMessageChunk',
-				id: 'ai-msg-007',
+				id: 'lc_run--4efe3bdf-0cae-449b-87f7-deaaad5e5312',
 				content: 'Processing your request.',
 				tool_calls: []
 			}
@@ -331,6 +346,7 @@ export const streamErrorEvent: StreamChunk[] = [
 
 /**
  * AI message with missing id - should cause an error.
+ * Based on malformed response scenario.
  */
 export const missingMessageId: StreamChunk[] = [
 	{

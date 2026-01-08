@@ -68,7 +68,7 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(1);
 			expect(messages[0]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-001',
+				id: 'lc_run--4efe3bdf-0cae-449b-87f7-deaaad5e5312',
 				text: 'Hello! How can I help you today?'
 			});
 		});
@@ -86,17 +86,17 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(3);
 			expect(messages[0]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				text: 'The weather '
 			});
 			expect(messages[1]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				text: 'today is '
 			});
 			expect(messages[2]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-002',
+				id: 'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
 				text: 'sunny and warm.'
 			});
 		});
@@ -112,7 +112,11 @@ describe('streamAnswer', () => {
 			);
 
 			const ids = messages.map((m) => m.id);
-			expect(ids).toEqual(['ai-msg-002', 'ai-msg-002', 'ai-msg-002']);
+			expect(ids).toEqual([
+				'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
+				'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99',
+				'lc_run--b068d8fa-9b70-4493-aaf3-ab3d99df3a99'
+			]);
 		});
 	});
 
@@ -130,12 +134,12 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(2);
 			expect(messages[0]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-003',
+				id: 'lc_run--3fdb6534-7216-486b-ae3e-b305dc9a33c2',
 				text: 'Let me check the weather for you.'
 			});
 			expect(messages[1]).toEqual({
 				type: 'tool',
-				id: 'tool-call-001',
+				id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603891',
 				tool_name: 'get_weather',
 				payload: { location: 'San Francisco', unit: 'celsius' },
 				text: ''
@@ -156,14 +160,14 @@ describe('streamAnswer', () => {
 			expect(messages[0].type).toBe('ai');
 			expect(messages[1]).toEqual({
 				type: 'tool',
-				id: 'tool-call-004',
+				id: 'call_0_weather_london',
 				tool_name: 'get_weather',
 				payload: { location: 'London' },
 				text: ''
 			});
 			expect(messages[2]).toEqual({
 				type: 'tool',
-				id: 'tool-call-005',
+				id: 'call_1_weather_paris',
 				tool_name: 'get_weather',
 				payload: { location: 'Paris' },
 				text: ''
@@ -193,7 +197,7 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(1);
 			expect(messages[0]).toEqual({
 				type: 'tool',
-				id: 'tool-call-001',
+				id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603891',
 				tool_name: 'get_weather',
 				text: '{"temperature": 22, "condition": "sunny"}',
 				status: 'success'
@@ -213,7 +217,7 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(1);
 			expect(messages[0]).toEqual({
 				type: 'tool',
-				id: 'tool-call-002',
+				id: 'call_0_8a90fac8-b281-49a0-bcc9-55d7f4603892',
 				tool_name: 'get_weather',
 				text: 'Error: Location not found',
 				status: 'error'
@@ -257,7 +261,7 @@ describe('streamAnswer', () => {
 			expect(messages).toHaveLength(1);
 			expect(messages[0]).toEqual({
 				type: 'ai',
-				id: 'ai-msg-007',
+				id: 'lc_run--4efe3bdf-0cae-449b-87f7-deaaad5e5312',
 				text: 'Processing your request.'
 			});
 		});
