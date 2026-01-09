@@ -321,6 +321,23 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 		// All messages should share the same ID (same message being built up)
 		const ids = [...new Set(aiMessages.map((m) => m.id))];
 		expect(ids.length).toBe(1);
+
+		// Verify ordering: concatenating text in order should produce the expected result
+		const concatenatedText = aiMessages.map((m) => m.text).join('');
+		expect(concatenatedText).toBe('2 + 2 equals 4.');
+
+		// Verify individual chunks are emitted in the expected order
+		const nonEmptyChunks = aiMessages.filter((m) => m.text !== '');
+		expect(nonEmptyChunks.map((m) => m.text)).toEqual([
+			'2',
+			' +',
+			' ',
+			'2',
+			' equals',
+			' ',
+			'4',
+			'.'
+		]);
 	});
 
 	it('verifies tool invocations contain tool_name, args/payload, and id', async () => {
@@ -391,6 +408,72 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 				expect((tool as { tool_name: string }).tool_name).toBeDefined();
 				expect(tool.id).toBeDefined();
 			});
+		}
+	});
+
+	it('preserves ordering across tool invocation, tool result, and AI response', async () => {
+		const mockClient = {
+			runs: {
+				stream: vi.fn().mockImplementation(async function* () {
+					for (const chunk of multiPartChunks) {
+						yield chunk;
+					}
+				})
+			}
+		} as unknown as Client;
+
+		const results = [];
+		for await (const chunk of streamAnswer(
+			mockClient,
+			'thread-1',
+			'assistant-1',
+			'Explain what 5+3 equals and then tell me what the weather is like in Paris',
+			'msg-1'
+		)) {
+			results.push(chunk);
+		}
+
+		// Find the tool invocation (has tool_name but no status)
+		const toolInvocationIndex = results.findIndex(
+			(r) =>
+				r.type === 'tool' &&
+				(r as { tool_name?: string }).tool_name === 'get_weather' &&
+				!('status' in r && r.status)
+		);
+
+		// Find the tool result (has status)
+		const toolResultIndex = results.findIndex(
+			(r) => r.type === 'tool' && 'status' in r && (r as { status?: string }).status === 'success'
+		);
+
+		// Tool invocation should come before tool result
+		expect(toolInvocationIndex).toBeGreaterThanOrEqual(0);
+		expect(toolResultIndex).toBeGreaterThan(toolInvocationIndex);
+
+		// Find AI messages that come after the tool result
+		const aiMessagesAfterTool = results.slice(toolResultIndex + 1).filter((r) => r.type === 'ai');
+
+		expect(aiMessagesAfterTool.length).toBeGreaterThan(0);
+
+		// The AI messages after the tool should form the expected response
+		const concatenatedText = aiMessagesAfterTool.map((m) => m.text).join('');
+		expect(concatenatedText).toBe(
+			"5 + 3 equals 8. \n\nAs for the weather in Paris, it's always sunny!"
+		);
+
+		// AI messages after tool result should have a different ID than any AI messages before
+		const aiIdsBeforeTool = results
+			.slice(0, toolResultIndex)
+			.filter((r) => r.type === 'ai')
+			.map((r) => r.id);
+		const aiIdsAfterTool = [...new Set(aiMessagesAfterTool.map((r) => r.id))];
+
+		// There should be exactly one unique AI message ID after the tool result
+		expect(aiIdsAfterTool.length).toBe(1);
+
+		// The ID should be different from any AI message IDs before the tool (if any exist)
+		if (aiIdsBeforeTool.length > 0) {
+			expect(aiIdsAfterTool[0]).not.toBe(aiIdsBeforeTool[0]);
 		}
 	});
 });
