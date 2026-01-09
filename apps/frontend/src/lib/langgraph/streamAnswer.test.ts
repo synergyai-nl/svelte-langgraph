@@ -8,6 +8,31 @@ import simpleTextChunks from '../../../tests/fixtures/langgraph/simple-text-chun
 import toolUseWeatherChunks from '../../../tests/fixtures/langgraph/tool-use-weather-chunks.json';
 import multiPartChunks from '../../../tests/fixtures/langgraph/multi-part-chunks.json';
 
+// Type definitions for fixture structure
+interface AIMessageChunk {
+	content: string;
+	type: 'AIMessageChunk';
+	id: string;
+	tool_calls?: Array<{ name: string; args: Record<string, unknown>; id: string }>;
+	[key: string]: unknown;
+}
+
+interface ToolMessage {
+	content: string;
+	type: 'tool';
+	name: string;
+	status: string;
+	tool_call_id: string;
+	id: string;
+	[key: string]: unknown;
+}
+
+interface FixtureChunk {
+	event: string;
+	data?: Array<AIMessageChunk | ToolMessage | Record<string, unknown>>;
+	[key: string]: unknown;
+}
+
 // Synthetic fixtures for error handling and edge case tests
 import {
 	emptyDataPayload,
@@ -79,14 +104,36 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
-		expect(results.length).toBeGreaterThan(0);
-		expect(results.every((r) => r.type === 'ai' || r.type === 'tool')).toBe(true);
+		// Extract expected values from fixture
+		const expectedMessageEvents = (simpleTextChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk'
+		);
+		const expectedText = expectedMessageEvents
+			.map((evt) => (evt.data![0] as AIMessageChunk).content)
+			.join('');
+		const expectedId = expectedMessageEvents.find((evt) => evt.data?.[0])?.data![0].id as string;
+
+		// Verify exact count matches fixture
+		expect(results.length).toBe(expectedMessageEvents.length);
+
+		// All results should be AI messages for this simple text fixture
+		expect(results.every((r) => r.type === 'ai')).toBe(true);
 
 		const aiMessages = results.filter((r) => r.type === 'ai');
-		const fullText = aiMessages.map((r) => r.text).join('');
-		expect(fullText.length).toBeGreaterThan(0);
+		expect(aiMessages.length).toBe(expectedMessageEvents.length);
 
-		expect(results.every((r) => r.id)).toBe(true);
+		// Verify exact text content matches fixture
+		const fullText = aiMessages.map((r) => r.text).join('');
+		expect(fullText).toBe(expectedText);
+
+		// Verify all messages have the same ID (incremental chunks of same message)
+		const uniqueIds = [...new Set(results.map((r) => r.id))];
+		expect(uniqueIds.length).toBe(1);
+		expect(uniqueIds[0]).toBe(expectedId);
 	});
 
 	it('should parse tool use from real API recording', async () => {
@@ -111,21 +158,74 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
+		// Extract expected values from fixture
+		const toolCallEvents = (toolUseWeatherChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'tool_calls' in chunk.data[0] &&
+				Array.isArray(chunk.data[0].tool_calls) &&
+				chunk.data[0].tool_calls.length > 0
+		);
+		const toolResultEvents = (toolUseWeatherChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'tool'
+		);
+		const aiResponseEvents = (toolUseWeatherChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'content' in chunk.data[0] &&
+				chunk.data[0].content &&
+				(!('tool_calls' in chunk.data[0]) ||
+					!Array.isArray(chunk.data[0].tool_calls) ||
+					chunk.data[0].tool_calls.length === 0)
+		);
+
+		const expectedToolName = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.name;
+		const expectedToolCallId = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.id;
+		const expectedToolResultContent = (toolResultEvents[0]?.data![0] as ToolMessage).content;
+		const expectedToolStatus = (toolResultEvents[0]?.data![0] as ToolMessage).status;
+		const expectedAiResponse = aiResponseEvents
+			.map((evt) => (evt.data![0] as AIMessageChunk).content)
+			.join('');
+
+		// Verify results structure
 		expect(results.length).toBeGreaterThan(0);
 
-		const hasAI = results.some((r) => r.type === 'ai');
-		const hasTools = results.some((r) => r.type === 'tool');
-
-		expect(hasAI).toBe(true);
-		expect(hasTools).toBe(true);
-
+		const aiChunks = results.filter((r) => r.type === 'ai');
 		const toolChunks = results.filter((r) => r.type === 'tool');
+
+		expect(aiChunks.length).toBeGreaterThan(0);
 		expect(toolChunks.length).toBeGreaterThan(0);
 
-		toolChunks.forEach((tool) => {
-			expect(tool.tool_name).toBeDefined();
-			expect(tool.id).toBeDefined();
-		});
+		// Verify specific tool name from fixture
+		const toolWithName = toolChunks.find((t) => t.tool_name);
+		expect(toolWithName).toBeDefined();
+		expect(toolWithName?.tool_name).toBe(expectedToolName);
+
+		// Verify tool call ID from fixture
+		const toolWithId = toolChunks.find((t) => t.id === expectedToolCallId);
+		expect(toolWithId).toBeDefined();
+		expect(toolWithId?.id).toBe(expectedToolCallId);
+
+		// Verify tool result contains expected content and status
+		const toolResult = toolChunks.find((t) => 'status' in t);
+		expect(toolResult).toBeDefined();
+		expect(toolResult?.tool_name).toBe(expectedToolName);
+		expect((toolResult as { status: string }).status).toBe(expectedToolStatus);
+		expect((toolResult as { text: string }).text).toBe(expectedToolResultContent);
+
+		// Verify AI response text matches fixture
+		const aiText = aiChunks.map((m) => m.text).join('');
+		expect(aiText).toBe(expectedAiResponse);
 	});
 
 	it('should parse multi-part response with text and tools from real API recording', async () => {
@@ -150,6 +250,42 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
+		// Extract expected values from fixture
+		const toolCallEvents = (multiPartChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'tool_calls' in chunk.data[0] &&
+				Array.isArray(chunk.data[0].tool_calls) &&
+				chunk.data[0].tool_calls.length > 0
+		);
+		const toolResultEvents = (multiPartChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'tool'
+		);
+		const aiResponseEvents = (multiPartChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'content' in chunk.data[0] &&
+				chunk.data[0].content
+		);
+
+		const expectedToolName = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.name;
+		const expectedToolStatus = (toolResultEvents[0]?.data![0] as ToolMessage).status;
+		const expectedToolResultContent = (toolResultEvents[0]?.data![0] as ToolMessage).content;
+		const expectedAiResponse = aiResponseEvents
+			.map((evt) => (evt.data![0] as AIMessageChunk).content)
+			.join('');
+
+		// Verify structure
 		expect(results.length).toBeGreaterThan(0);
 
 		const aiChunks = results.filter((r) => r.type === 'ai');
@@ -158,16 +294,32 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 		expect(aiChunks.length).toBeGreaterThan(0);
 		expect(toolChunks.length).toBeGreaterThan(0);
 
+		// Verify all chunks have required fields
 		results.forEach((chunk) => {
 			expect(chunk.type).toBeDefined();
 			expect(chunk.id).toBeDefined();
-
-			if (chunk.type === 'ai') {
-				expect(typeof chunk.text).toBe('string');
-			} else if (chunk.type === 'tool') {
-				expect(chunk.tool_name).toBeDefined();
-			}
 		});
+
+		// Verify AI messages contain string text
+		aiChunks.forEach((chunk) => {
+			expect(typeof chunk.text).toBe('string');
+		});
+
+		// Verify tool chunks have specific values from fixture
+		toolChunks.forEach((chunk) => {
+			expect(chunk.tool_name).toBeDefined();
+			expect(chunk.tool_name).toBe(expectedToolName);
+		});
+
+		// Verify tool result has expected status and content
+		const toolResult = toolChunks.find((t) => 'status' in t);
+		expect(toolResult).toBeDefined();
+		expect((toolResult as { status: string }).status).toBe(expectedToolStatus);
+		expect((toolResult as { text: string }).text).toBe(expectedToolResultContent);
+
+		// Verify full AI response matches fixture
+		const fullAiText = aiChunks.map((m) => m.text).join('');
+		expect(fullAiText).toBe(expectedAiResponse);
 	});
 
 	it('should handle metadata events in real recordings (not yield them)', async () => {
@@ -217,15 +369,29 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
-		const aiChunks = results.filter((r) => r.type === 'ai');
-		expect(aiChunks.length).toBeGreaterThan(1);
+		// Extract expected values from fixture
+		const expectedMessageEvents = (simpleTextChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk'
+		);
+		const expectedText = expectedMessageEvents
+			.map((evt) => (evt.data![0] as AIMessageChunk).content)
+			.join('');
 
+		const aiChunks = results.filter((r) => r.type === 'ai');
+		expect(aiChunks.length).toBe(expectedMessageEvents.length);
+
+		// Verify each chunk is a string
 		aiChunks.forEach((chunk) => {
 			expect(typeof chunk.text).toBe('string');
 		});
 
+		// Verify aggregated text matches fixture
 		const fullText = aiChunks.map((r) => r.text).join('');
-		expect(fullText.length).toBeGreaterThan(0);
+		expect(fullText).toBe(expectedText);
 	});
 
 	it('should handle tool_calls in message objects from real recordings', async () => {
@@ -250,14 +416,27 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
+		// Extract expected tool name from fixture
+		const toolCallEvents = (toolUseWeatherChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'tool_calls' in chunk.data[0] &&
+				Array.isArray(chunk.data[0].tool_calls) &&
+				chunk.data[0].tool_calls.length > 0
+		);
+		const expectedToolName = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.name;
+
 		const toolChunks = results.filter((r) => r.type === 'tool');
 
-		if (toolChunks.length > 0) {
-			toolChunks.forEach((tool) => {
-				expect(tool.tool_name).toBeDefined();
-				expect(typeof tool.tool_name).toBe('string');
-			});
-		}
+		expect(toolChunks.length).toBeGreaterThan(0);
+		toolChunks.forEach((tool) => {
+			expect(tool.tool_name).toBeDefined();
+			expect(typeof tool.tool_name).toBe('string');
+			expect(tool.tool_name).toBe(expectedToolName);
+		});
 	});
 
 	it('should pass correct parameters to client.runs.stream', async () => {
@@ -362,6 +541,20 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
+		// Extract expected values from fixture
+		const toolCallEvents = (toolUseWeatherChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'AIMessageChunk' &&
+				'tool_calls' in chunk.data[0] &&
+				Array.isArray(chunk.data[0].tool_calls) &&
+				chunk.data[0].tool_calls.length > 0
+		);
+		const expectedToolName = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.name;
+		const expectedToolId = (toolCallEvents[0]?.data![0] as AIMessageChunk).tool_calls?.[0]?.id;
+
 		const toolInvocations = results.filter(
 			(r) => r.type === 'tool' && (r.payload !== undefined || r.text === '')
 		);
@@ -370,6 +563,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 		toolInvocations.forEach((tool) => {
 			expect(tool.id).toBeDefined();
 			expect((tool as { tool_name: string }).tool_name).toBeDefined();
+			expect((tool as { tool_name: string }).tool_name).toBe(expectedToolName);
+			expect(tool.id).toBe(expectedToolId);
 		});
 	});
 
@@ -395,20 +590,32 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			results.push(chunk);
 		}
 
+		// Extract expected values from fixture
+		const toolResultEvents = (multiPartChunks as FixtureChunk[]).filter(
+			(chunk) =>
+				chunk.event === 'messages' &&
+				chunk.data?.[0] &&
+				'type' in chunk.data[0] &&
+				chunk.data[0].type === 'tool'
+		);
+		const expectedToolName = (toolResultEvents[0]?.data![0] as ToolMessage).name;
+		const expectedStatus = (toolResultEvents[0]?.data![0] as ToolMessage).status;
+		const expectedToolCallId = (toolResultEvents[0]?.data![0] as ToolMessage).tool_call_id;
+
 		// Look for tool results (have status field)
 		const toolResults = results.filter(
 			(r) => r.type === 'tool' && 'status' in r && r.status !== undefined
 		);
 
-		// If there are tool results, verify they have required fields
-		if (toolResults.length > 0) {
-			toolResults.forEach((tool) => {
-				expect((tool as { status: string }).status).toBeDefined();
-				expect(['success', 'error']).toContain((tool as { status: string }).status);
-				expect((tool as { tool_name: string }).tool_name).toBeDefined();
-				expect(tool.id).toBeDefined();
-			});
-		}
+		expect(toolResults.length).toBeGreaterThan(0);
+		toolResults.forEach((tool) => {
+			expect((tool as { status: string }).status).toBeDefined();
+			expect((tool as { status: string }).status).toBe(expectedStatus);
+			expect((tool as { tool_name: string }).tool_name).toBeDefined();
+			expect((tool as { tool_name: string }).tool_name).toBe(expectedToolName);
+			expect(tool.id).toBeDefined();
+			expect(tool.id).toBe(expectedToolCallId);
+		});
 	});
 
 	it('preserves ordering across tool invocation, tool result, and AI response', async () => {
