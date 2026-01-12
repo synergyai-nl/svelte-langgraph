@@ -37,7 +37,7 @@
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
-							<Avatar src={session.user?.image ?? undefined} size="sm" class="mr-0.1 h-5 w-5" />
+							<Avatar src={session.user?.image ?? undefined} size="sm" class="mr-0.1 w-5 h-5" />
 							<span class="hidden text-sm font-medium sm:inline">
 								{session.user?.name ?? m.user_fallback()}
 							</span>
