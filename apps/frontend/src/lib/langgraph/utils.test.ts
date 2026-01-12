@@ -365,7 +365,9 @@ describe('convertThreadMessage', () => {
 
 		expect(result.id).toBeDefined();
 		expect(typeof result.id).toBe('string');
-		expect(result.id.length).toBeGreaterThan(0);
+		expect(result.id).toMatch(
+			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
+		);
 	});
 
 	it('throws InvalidData for unexpected message type', () => {
@@ -406,6 +408,79 @@ describe('convertThreadMessage', () => {
 		const result = convertThreadMessage(input);
 
 		expect(result.id).toBe('tool-id');
+	});
+
+	it('handles non-string content for ai message by converting to empty string', () => {
+		const input = {
+			type: 'ai',
+			id: 'ai-002',
+			content: { nested: 'object' }
+		};
+
+		const result = convertThreadMessage(input);
+
+		expect(result.text).toBe('');
+	});
+
+	it('generates UUID for ai message when id is missing', () => {
+		const input = {
+			type: 'ai',
+			content: 'Hello there'
+		};
+
+		const result = convertThreadMessage(input);
+
+		expect(result.id).toBeDefined();
+		expect(typeof result.id).toBe('string');
+		expect(result.id).toMatch(
+			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
+		);
+	});
+
+	it('handles non-string content for tool message by converting to empty string', () => {
+		const input = {
+			type: 'tool',
+			id: 'tool-004',
+			tool_call_id: 'call-004',
+			name: 'some_tool',
+			content: { nested: 'data' },
+			status: 'success'
+		};
+
+		const result = convertThreadMessage(input);
+
+		expect(result.text).toBe('');
+	});
+
+	it('handles missing name for tool message by using empty string', () => {
+		const input = {
+			type: 'tool',
+			id: 'tool-005',
+			tool_call_id: 'call-005',
+			content: 'result',
+			status: 'success'
+		};
+
+		const result = convertThreadMessage(input);
+
+		expect((result as { tool_name: string }).tool_name).toBe('');
+	});
+
+	it('generates UUID for tool message when both tool_call_id and id are missing', () => {
+		const input = {
+			type: 'tool',
+			name: 'some_tool',
+			content: 'result',
+			status: 'success'
+		};
+
+		const result = convertThreadMessage(input);
+
+		expect(result.id).toBeDefined();
+		expect(typeof result.id).toBe('string');
+		expect(result.id).toMatch(
+			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
+		);
 	});
 });
 
