@@ -236,9 +236,31 @@ class TestToolInvocation:
         assert "messages" in result, "Result should contain messages"
         messages = result["messages"]
 
+        # Verify the AI message contains a tool call with correct function name and arguments
+        ai_messages_with_tool_calls = [
+            m for m in messages if m.type == "ai" and m.tool_calls
+        ]
+        assert len(ai_messages_with_tool_calls) >= 1, (
+            "Should have at least one AI message with tool calls"
+        )
+
+        tool_call = ai_messages_with_tool_calls[0].tool_calls[0]
+        assert tool_call["name"] == "get_weather", (
+            f"Tool call function name should be 'get_weather', got '{tool_call['name']}'"
+        )
+        assert "city" in tool_call["args"], "Tool call should have 'city' argument"
+        assert tool_call["args"]["city"] == "Paris", (
+            f"Tool call city argument should be 'Paris', got '{tool_call['args']['city']}'"
+        )
+
+        # Verify tool message exists with the tool output
         tool_messages = [m for m in messages if m.type == "tool"]
         assert len(tool_messages) >= 1, "Should have at least one tool message"
+        assert "sunny" in tool_messages[0].content.lower(), (
+            "Tool message should contain weather information"
+        )
 
+        # Verify final AI response incorporates the tool result
         ai_messages = [m for m in messages if m.type == "ai"]
         assert len(ai_messages) >= 1, "Should have at least one AI message"
         final_response = ai_messages[-1].content
