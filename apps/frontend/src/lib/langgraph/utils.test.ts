@@ -7,6 +7,20 @@ import {
 } from '../../../tests/fixtures/streaming-transcripts';
 import type { Message as LangGraphMessage } from '@langchain/langgraph-sdk';
 
+// Test helpers
+const UUID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+
+function expectValidUUID(id: string) {
+	expect(id).toBeDefined();
+	expect(typeof id).toBe('string');
+	expect(id).toMatch(UUID_REGEX);
+}
+
+function expectToThrowInvalidData(fn: () => void, errorMessage: string) {
+	expect(fn).toThrow(InvalidData);
+	expect(fn).toThrow(errorMessage);
+}
+
 describe('YieldMessages', () => {
 	describe('AIMessageChunk processing', () => {
 		it('yields AI message with text content', () => {
@@ -104,8 +118,7 @@ describe('YieldMessages', () => {
 				tool_calls: []
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('Message id not defined.');
+			expectToThrowInvalidData(() => [...YieldMessages(message)], 'Message id not defined.');
 		});
 
 		it('throws InvalidData for non-string content', () => {
@@ -116,8 +129,10 @@ describe('YieldMessages', () => {
 				tool_calls: []
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('Message content is not a string.');
+			expectToThrowInvalidData(
+				() => [...YieldMessages(message)],
+				'Message content is not a string.'
+			);
 		});
 
 		it('throws InvalidData for undefined tool_calls', () => {
@@ -127,8 +142,7 @@ describe('YieldMessages', () => {
 				content: 'Hello'
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('tool_calls cannot be undefined');
+			expectToThrowInvalidData(() => [...YieldMessages(message)], 'tool_calls cannot be undefined');
 		});
 
 		it('throws InvalidData for tool call without id', () => {
@@ -139,8 +153,7 @@ describe('YieldMessages', () => {
 				tool_calls: [{ name: 'some_tool', args: {} }]
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('No id in tool_call.');
+			expectToThrowInvalidData(() => [...YieldMessages(message)], 'No id in tool_call.');
 		});
 	});
 
@@ -199,8 +212,10 @@ describe('YieldMessages', () => {
 				status: 'success'
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('Message content is not a string.');
+			expectToThrowInvalidData(
+				() => [...YieldMessages(message)],
+				'Message content is not a string.'
+			);
 		});
 
 		it('throws InvalidData for tool message with missing name', () => {
@@ -212,8 +227,7 @@ describe('YieldMessages', () => {
 				status: 'success'
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('Tool name is not set.');
+			expectToThrowInvalidData(() => [...YieldMessages(message)], 'Tool name is not set.');
 		});
 
 		it('throws InvalidData for tool message with missing status', () => {
@@ -225,8 +239,7 @@ describe('YieldMessages', () => {
 				content: '{"data": "value"}'
 			} as unknown as LangGraphMessage;
 
-			expect(() => [...YieldMessages(message)]).toThrow(InvalidData);
-			expect(() => [...YieldMessages(message)]).toThrow('Tool status not present.');
+			expectToThrowInvalidData(() => [...YieldMessages(message)], 'Tool status not present.');
 		});
 	});
 
@@ -363,11 +376,7 @@ describe('convertThreadMessage', () => {
 
 		const result = convertThreadMessage(input);
 
-		expect(result.id).toBeDefined();
-		expect(typeof result.id).toBe('string');
-		expect(result.id).toMatch(
-			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-		);
+		expectValidUUID(result.id);
 	});
 
 	it('throws InvalidData for unexpected message type', () => {
@@ -377,8 +386,7 @@ describe('convertThreadMessage', () => {
 			content: 'You are a helpful assistant.'
 		};
 
-		expect(() => convertThreadMessage(input)).toThrow(InvalidData);
-		expect(() => convertThreadMessage(input)).toThrow('Unexpected message type: system');
+		expectToThrowInvalidData(() => convertThreadMessage(input), 'Unexpected message type: system');
 	});
 
 	it('uses tool_call_id as id for tool messages when available', () => {
@@ -430,11 +438,7 @@ describe('convertThreadMessage', () => {
 
 		const result = convertThreadMessage(input);
 
-		expect(result.id).toBeDefined();
-		expect(typeof result.id).toBe('string');
-		expect(result.id).toMatch(
-			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-		);
+		expectValidUUID(result.id);
 	});
 
 	it('handles non-string content for tool message by converting to empty string', () => {
@@ -476,11 +480,7 @@ describe('convertThreadMessage', () => {
 
 		const result = convertThreadMessage(input);
 
-		expect(result.id).toBeDefined();
-		expect(typeof result.id).toBe('string');
-		expect(result.id).toMatch(
-			/^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/
-		);
+		expectValidUUID(result.id);
 	});
 });
 
