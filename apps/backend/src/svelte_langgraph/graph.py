@@ -54,14 +54,12 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
     )
 
 
-def make_graph(
-    config: RunnableConfig,
-    weather_tool: WeatherToolType | None = None,
-) -> CompiledStateGraph:
+def make_graph(config: RunnableConfig) -> CompiledStateGraph:
     model = get_chat_model()
     checkpointer = get_checkpointer()
 
-    tool = weather_tool if weather_tool is not None else get_weather
+    # Get weather tool from config if provided, otherwise use default
+    tool = config.get("configurable", {}).get("weather_tool", get_weather)
 
     agent = create_react_agent(
         model=model,

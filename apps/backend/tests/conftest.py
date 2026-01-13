@@ -133,7 +133,8 @@ async def agent(thread_config: RunnableConfig):
     Uses the local get_weather mock instead of the real get_weather to avoid
     the random 1-10 second sleep in the real implementation.
     """
-    return make_graph(thread_config, weather_tool=get_weather)
+    thread_config["configurable"]["weather_tool"] = get_weather
+    return make_graph(thread_config)
 
 
 @pytest.fixture
