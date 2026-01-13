@@ -47,6 +47,7 @@
 				variant="ghost"
 				size="icon-sm"
 				title={m.message_regenerate()}
+				disabled
 			>
 				<RefreshCw size={16} />
 			</Button>
