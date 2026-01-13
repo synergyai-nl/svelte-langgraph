@@ -37,13 +37,13 @@
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
-						<Button {...props} variant="default" class="rounded-full p-1 pr-4">
-							<Avatar.Root class="mr-2 h-8 w-8">
+						<Button {...props} variant="default" class="rounded-full flex justify-center gap-2">
+							<Avatar.Root class="h-4 w-4">
 								<Avatar.Image
 									src={session.user?.image ?? undefined}
 									alt={session.user?.name ?? m.user_fallback()}
 								/>
-								<Avatar.Fallback class="prose dark:prose-invert"
+								<Avatar.Fallback class="prose dark:prose-invert text-[10px]"
 									>{session.user?.name?.substring(0, 2).toUpperCase() ?? 'U'}</Avatar.Fallback
 								>
 							</Avatar.Root>
