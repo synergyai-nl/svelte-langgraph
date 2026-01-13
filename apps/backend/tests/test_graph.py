@@ -154,13 +154,188 @@ class TestStateMaintenace:
         assert "messages" in result1, "First result should contain messages"
         assert "messages" in result2, "Second result should contain messages"
 
+        messages1 = result1["messages"]
         messages2 = result2["messages"]
+
+        # Verify message counts
         assert len(messages2) >= 3, "Should have at least 3 messages after two turns"
 
         user_messages = [m for m in messages2 if m.type == "human"]
         assert len(user_messages) >= 2, (
             "Should have at least 2 user messages in history"
         )
+
+        # Verify content preservation: messages from first invocation should appear in second
+        first_user_content = "Hi, my name is TestUser"
+        user_contents = [m.content for m in messages2 if m.type == "human"]
+        assert first_user_content in user_contents, (
+            f"First user message '{first_user_content}' should be preserved in conversation history"
+        )
+
+        # Verify the first AI response is preserved
+        first_ai_message = next(m for m in messages1 if m.type == "ai")
+        ai_contents = [m.content for m in messages2 if m.type == "ai"]
+        assert first_ai_message.content in ai_contents, (
+            "First AI response should be preserved in conversation history"
+        )
+
+        # Verify message ordering: first user message should come before second
+        second_user_content = "What is my name?"
+        first_user_idx = next(
+            i
+            for i, m in enumerate(messages2)
+            if m.type == "human" and m.content == first_user_content
+        )
+        second_user_idx = next(
+            i
+            for i, m in enumerate(messages2)
+            if m.type == "human" and m.content == second_user_content
+        )
+        assert first_user_idx < second_user_idx, (
+            "Messages should be in chronological order"
+        )
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("base_url", BASE_URLS)
+    @pytest.mark.parametrize("model_name", MODEL_NAMES)
+    async def test_thread_isolation(
+        self,
+        base_url: str,
+        model_name: str,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Test that different threads maintain separate conversation histories.
+
+        This test verifies that conversations in different threads are isolated
+        and don't share state or message history.
+
+        Args:
+            base_url: The OpenAI-compatible API base URL to test against.
+            model_name: The model name to use for the test.
+            monkeypatch: Pytest fixture for setting environment variables.
+        """
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("OPENAI_BASE_URL", base_url)
+        monkeypatch.setenv("CHAT_MODEL_NAME", model_name)
+
+        config_thread1: RunnableConfig = {
+            "configurable": {
+                "thread_id": "test-thread-isolation-1",
+                "user_name": "Alice",
+            }
+        }
+        config_thread2: RunnableConfig = {
+            "configurable": {"thread_id": "test-thread-isolation-2", "user_name": "Bob"}
+        }
+
+        with respx.mock:
+            respx.post(f"{base_url}/chat/completions").mock(
+                side_effect=[
+                    # Thread 1 - First message
+                    httpx.Response(
+                        200,
+                        json=create_chat_completion(
+                            content="Hello Alice! I'll remember that your favorite color is blue."
+                        ).model_dump(),
+                    ),
+                    # Thread 2 - First message
+                    httpx.Response(
+                        200,
+                        json=create_chat_completion(
+                            content="Hello Bob! I'll remember that your favorite color is red."
+                        ).model_dump(),
+                    ),
+                    # Thread 1 - Second message
+                    httpx.Response(
+                        200,
+                        json=create_chat_completion(
+                            content="Your favorite color is blue, Alice!"
+                        ).model_dump(),
+                    ),
+                    # Thread 2 - Second message
+                    httpx.Response(
+                        200,
+                        json=create_chat_completion(
+                            content="Your favorite color is red, Bob!"
+                        ).model_dump(),
+                    ),
+                ]
+            )
+
+            agent1 = make_graph(config_thread1)
+            agent2 = make_graph(config_thread2)
+
+            # First invocation in thread 1
+            await agent1.ainvoke(
+                {
+                    "messages": [
+                        {"role": "user", "content": "My favorite color is blue"}
+                    ]
+                },
+                config_thread1,
+            )
+
+            # First invocation in thread 2
+            await agent2.ainvoke(
+                {"messages": [{"role": "user", "content": "My favorite color is red"}]},
+                config_thread2,
+            )
+
+            # Second invocation in thread 1
+            result_thread1_turn2 = await agent1.ainvoke(
+                {
+                    "messages": [
+                        {"role": "user", "content": "What is my favorite color?"}
+                    ]
+                },
+                config_thread1,
+            )
+
+            # Second invocation in thread 2
+            result_thread2_turn2 = await agent2.ainvoke(
+                {
+                    "messages": [
+                        {"role": "user", "content": "What is my favorite color?"}
+                    ]
+                },
+                config_thread2,
+            )
+
+        # Verify thread 1 contains only its own messages
+        messages_t1 = result_thread1_turn2["messages"]
+        t1_contents = " ".join(m.content for m in messages_t1 if m.content)
+        assert "blue" in t1_contents.lower(), (
+            "Thread 1 should contain its own conversation about blue"
+        )
+        assert "red" not in t1_contents.lower(), (
+            "Thread 1 should not contain messages from thread 2 about red"
+        )
+
+        # Verify thread 2 contains only its own messages
+        messages_t2 = result_thread2_turn2["messages"]
+        t2_contents = " ".join(m.content for m in messages_t2 if m.content)
+        assert "red" in t2_contents.lower(), (
+            "Thread 2 should contain its own conversation about red"
+        )
+        assert "blue" not in t2_contents.lower(), (
+            "Thread 2 should not contain messages from thread 1 about blue"
+        )
+
+        # Verify thread 1 has exactly 4 messages (2 user + 2 AI)
+        t1_user_messages = [m for m in messages_t1 if m.type == "human"]
+        t1_ai_messages = [m for m in messages_t1 if m.type == "ai"]
+        assert len(t1_user_messages) == 2, (
+            "Thread 1 should have exactly 2 user messages"
+        )
+        assert len(t1_ai_messages) == 2, "Thread 1 should have exactly 2 AI messages"
+
+        # Verify thread 2 has exactly 4 messages (2 user + 2 AI)
+        t2_user_messages = [m for m in messages_t2 if m.type == "human"]
+        t2_ai_messages = [m for m in messages_t2 if m.type == "ai"]
+        assert len(t2_user_messages) == 2, (
+            "Thread 2 should have exactly 2 user messages"
+        )
+        assert len(t2_ai_messages) == 2, "Thread 2 should have exactly 2 AI messages"
 
 
 class TestToolInvocation:
