@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { Button, Tooltip } from 'flowbite-svelte';
-	import { ThumbsUpOutline, ThumbsDownOutline } from 'flowbite-svelte-icons';
+	import { Button } from '$lib/components/ui/button';
+	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 
 	interface Props {
 		message: BaseMessage;
@@ -19,25 +20,35 @@
 	}
 </script>
 
-<div class="ml-2 flex gap-1 border-l border-gray-300 pl-2 dark:border-gray-600">
-	<Button
-		onclick={() => handleFeedback('up')}
-		class="p-1.5! {feedbackGiven === 'up' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		color="alternative"
-		size="xs"
-		title={m.message_feedback_good()}
-	>
-		<ThumbsUpOutline size="xs" />
-	</Button>
-	<Tooltip type="auto">Coming Soon !</Tooltip>
-	<Button
-		onclick={() => handleFeedback('down')}
-		class="p-1.5! {feedbackGiven === 'down' ? 'bg-gray-200 dark:bg-gray-700' : ''}"
-		color="alternative"
-		size="xs"
-		title={m.message_feedback_bad()}
-	>
-		<ThumbsDownOutline size="xs" />
-	</Button>
-	<Tooltip type="auto">Coming Soon !</Tooltip>
+<div class="border-border-card ml-2 flex gap-1 border-l pl-2">
+	<Tooltip>
+		<TooltipTrigger>
+			<Button
+				onclick={() => handleFeedback('up')}
+				variant="ghost"
+				size="icon-sm"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
+				title={m.message_feedback_good()}
+				disabled
+			>
+				<ThumbsUp size={16} />
+			</Button>
+		</TooltipTrigger>
+		<TooltipContent>{m.coming_soon()}</TooltipContent>
+	</Tooltip>
+	<Tooltip>
+		<TooltipTrigger>
+			<Button
+				onclick={() => handleFeedback('down')}
+				variant="ghost"
+				size="icon-sm"
+				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
+				title={m.message_feedback_bad()}
+				disabled
+			>
+				<ThumbsDown size={16} />
+			</Button>
+		</TooltipTrigger>
+		<TooltipContent>{m.coming_soon()}</TooltipContent>
+	</Tooltip>
 </div>
