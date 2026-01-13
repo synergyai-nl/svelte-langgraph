@@ -11,7 +11,6 @@ from typing import Any, Literal
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import respx
 from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
@@ -92,19 +91,6 @@ def create_tool_call(
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set up environment variables for testing.
-
-    This fixture uses monkeypatch.setenv() to ensure tests don't depend on
-    the actual environment. It sets default values that can be overridden
-    by parametrized tests.
-    """
-    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-    monkeypatch.setenv("OPENAI_BASE_URL", OPENAI_BASE_URL)
-    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
-
-
-@pytest.fixture
 def deterministic_weather() -> Generator[AsyncMock, None, None]:
     """Mock the get_weather tool to return immediately with predictable output.
 
@@ -117,53 +103,3 @@ def deterministic_weather() -> Generator[AsyncMock, None, None]:
     ) as mock_sleep:
         mock_sleep.return_value = None
         yield mock_sleep
-
-
-@pytest.fixture
-def mock_openai_api() -> Generator[respx.MockRouter, None, None]:
-    """Mock OpenAI API responses using respx.
-
-    This fixture sets up respx to intercept HTTP requests to OpenAI-compatible
-    APIs.
-
-    The fixture expects test functions to configure the mock responses
-    using the returned router.
-    """
-    with respx.mock as router:
-        yield router
-
-
-@pytest.fixture(params=BASE_URLS)
-def base_url(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
-    """Parametrized fixture providing different OpenAI-compatible base URLs.
-
-    This fixture runs tests against multiple providers:
-    - OpenAI (https://api.openai.com/v1)
-    - OpenRouter (https://openrouter.ai/api/v1)
-    - Ollama (http://localhost:11434/v1)
-    """
-    url: str = request.param
-    monkeypatch.setenv("OPENAI_BASE_URL", url)
-    return url
-
-
-@pytest.fixture(params=MODEL_NAMES)
-def model_name(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
-    """Parametrized fixture providing different model names.
-
-    This fixture runs tests against multiple models to ensure model
-    configuration works correctly.
-    """
-    name: str = request.param
-    monkeypatch.setenv("CHAT_MODEL_NAME", name)
-    return name
-
-
-@pytest.fixture
-async def runnable_config() -> dict[str, Any]:
-    """Create a RunnableConfig for testing.
-
-    Returns a configuration dictionary with a test thread ID and user name
-    for use with the LangGraph agent.
-    """
-    return {"configurable": {"thread_id": "test-thread-1", "user_name": "TestUser"}}
