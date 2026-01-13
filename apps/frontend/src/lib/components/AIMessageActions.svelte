@@ -27,7 +27,7 @@
 			<Clipboard
 				value={message.text}
 				bind:success={copySuccess}
-				class="!border-0 !bg-transparent !p-1.5 !text-gray-700 !shadow-none !ring-0 !outline-none hover:!bg-gray-100 focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 dark:!text-gray-300 dark:hover:!bg-gray-800 [&>button]:!bg-transparent [&>button]:!text-gray-700 [&>button]:hover:!bg-gray-100 [&>button]:dark:!text-gray-300 [&>button]:dark:hover:!bg-gray-800"
+				class="!text-foreground hover:!bg-accent hover:!text-accent-foreground dark:hover:!bg-accent/50 [&>button]:!text-foreground [&>button]:hover:!bg-accent [&>button]:hover:!text-accent-foreground [&>button]:dark:hover:!bg-accent/50 !border-0 !bg-transparent !p-1.5 !shadow-none !ring-0 !outline-none focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 [&>button]:!border-0 [&>button]:!bg-transparent [&>button]:!shadow-none [&>button]:!ring-0"
 			>
 				{#snippet children(success: boolean)}
 					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
@@ -43,10 +43,11 @@
 		<TooltipTrigger>
 			<Button
 				onclick={() => onRegenerate?.(message)}
-				class="p-1.5!"
+				class="h-6 w-6"
 				variant="ghost"
-				size="sm"
+				size="icon-sm"
 				title={m.message_regenerate()}
+				disabled
 			>
 				<RefreshCw size={16} />
 			</Button>
