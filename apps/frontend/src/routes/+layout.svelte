@@ -37,7 +37,7 @@
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
-						<Button {...props} variant="default" class="rounded-full flex justify-center gap-2">
+						<Button {...props} variant="default" class="flex justify-center gap-2 rounded-full">
 							<Avatar.Root class="h-4 w-4">
 								<Avatar.Image
 									src={session.user?.image ?? undefined}
