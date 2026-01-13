@@ -91,7 +91,7 @@ def create_tool_call(
 
 
 @pytest.fixture
-def deterministic_weather()-> Generator[AsyncMock, None, None]:
+def deterministic_weather() -> Generator[AsyncMock, None, None]:
     """Mock the get_weather tool to return immediately with predictable output.
 
     The production get_weather function has a random sleep for realism.
