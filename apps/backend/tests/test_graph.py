@@ -10,6 +10,8 @@ Tests are parametrized across multiple OpenAI-compatible providers and models
 to ensure provider flexibility and model configuration works correctly.
 """
 
+import json
+
 import httpx
 import pytest
 import respx
@@ -60,11 +62,12 @@ class TestBasicConversation:
         }
 
         with respx.mock:
-            respx.post(f"{base_url}/chat/completions").mock(
+            route = respx.post(f"{base_url}/chat/completions").mock(
                 return_value=httpx.Response(
                     200,
                     json=create_chat_completion(
-                        content="Hello TestUser! I'm doing great, thank you for asking. How can I help you today?"
+                        content="Hello TestUser! I'm doing great, thank you for asking. How can I help you today?",
+                        model=model_name,
                     ).model_dump(),
                 )
             )
@@ -73,6 +76,15 @@ class TestBasicConversation:
             result = await agent.ainvoke(
                 {"messages": [{"role": "user", "content": "Hello, how are you?"}]},
                 config,
+            )
+
+            # Verify the correct provider endpoint was called
+            assert route.called, f"Expected request to {base_url}/chat/completions"
+
+            # Verify the correct model was used in the request
+            request_body = json.loads(route.calls.last.request.content)
+            assert request_body["model"] == model_name, (
+                f"Expected model '{model_name}' in request, got '{request_body['model']}'"
             )
 
         assert "messages" in result, "Result should contain messages"
@@ -122,18 +134,20 @@ class TestStateMaintenace:
         }
 
         with respx.mock:
-            respx.post(f"{base_url}/chat/completions").mock(
+            route = respx.post(f"{base_url}/chat/completions").mock(
                 side_effect=[
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Hello TestUser! Nice to meet you. My name is Assistant."
+                            content="Hello TestUser! Nice to meet you. My name is Assistant.",
+                            model=model_name,
                         ).model_dump(),
                     ),
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Your name is TestUser, as you mentioned earlier!"
+                            content="Your name is TestUser, as you mentioned earlier!",
+                            model=model_name,
                         ).model_dump(),
                     ),
                 ]
@@ -150,6 +164,18 @@ class TestStateMaintenace:
                 {"messages": [{"role": "user", "content": "What is my name?"}]},
                 config,
             )
+
+            # Verify the correct provider endpoint was called for both invocations
+            assert route.call_count == 2, (
+                f"Expected 2 requests to {base_url}/chat/completions, got {route.call_count}"
+            )
+
+            # Verify the correct model was used in both requests
+            for i, call in enumerate(route.calls):
+                request_body = json.loads(call.request.content)
+                assert request_body["model"] == model_name, (
+                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
+                )
 
         assert "messages" in result1, "First result should contain messages"
         assert "messages" in result2, "Second result should contain messages"
@@ -229,34 +255,38 @@ class TestStateMaintenace:
         }
 
         with respx.mock:
-            respx.post(f"{base_url}/chat/completions").mock(
+            route = respx.post(f"{base_url}/chat/completions").mock(
                 side_effect=[
                     # Thread 1 - First message
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Hello Alice! I'll remember that your favorite color is blue."
+                            content="Hello Alice! I'll remember that your favorite color is blue.",
+                            model=model_name,
                         ).model_dump(),
                     ),
                     # Thread 2 - First message
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Hello Bob! I'll remember that your favorite color is red."
+                            content="Hello Bob! I'll remember that your favorite color is red.",
+                            model=model_name,
                         ).model_dump(),
                     ),
                     # Thread 1 - Second message
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Your favorite color is blue, Alice!"
+                            content="Your favorite color is blue, Alice!",
+                            model=model_name,
                         ).model_dump(),
                     ),
                     # Thread 2 - Second message
                     httpx.Response(
                         200,
                         json=create_chat_completion(
-                            content="Your favorite color is red, Bob!"
+                            content="Your favorite color is red, Bob!",
+                            model=model_name,
                         ).model_dump(),
                     ),
                 ]
@@ -300,6 +330,18 @@ class TestStateMaintenace:
                 },
                 config_thread2,
             )
+
+            # Verify the correct provider endpoint was called for all invocations
+            assert route.call_count == 4, (
+                f"Expected 4 requests to {base_url}/chat/completions, got {route.call_count}"
+            )
+
+            # Verify the correct model was used in all requests
+            for i, call in enumerate(route.calls):
+                request_body = json.loads(call.request.content)
+                assert request_body["model"] == model_name, (
+                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
+                )
 
         # Verify thread 1 contains only its own messages
         messages_t1 = result_thread1_turn2["messages"]
@@ -376,7 +418,7 @@ class TestToolInvocation:
         }
 
         with respx.mock:
-            respx.post(f"{base_url}/chat/completions").mock(
+            route = respx.post(f"{base_url}/chat/completions").mock(
                 side_effect=[
                     httpx.Response(
                         200,
@@ -386,13 +428,15 @@ class TestToolInvocation:
                                 create_tool_call("get_weather", {"city": "Paris"})
                             ],
                             finish_reason="tool_calls",
+                            model=model_name,
                         ).model_dump(),
                     ),
                     httpx.Response(
                         200,
                         json=create_chat_completion(
                             content="Based on the weather information, it's always sunny in Paris! "
-                            "It looks like a great day to go outside."
+                            "It looks like a great day to go outside.",
+                            model=model_name,
                         ).model_dump(),
                     ),
                 ]
@@ -407,6 +451,18 @@ class TestToolInvocation:
                 },
                 config,
             )
+
+            # Verify the correct provider endpoint was called for both LLM invocations
+            assert route.call_count == 2, (
+                f"Expected 2 requests to {base_url}/chat/completions (tool call + response), got {route.call_count}"
+            )
+
+            # Verify the correct model was used in both requests
+            for i, call in enumerate(route.calls):
+                request_body = json.loads(call.request.content)
+                assert request_body["model"] == model_name, (
+                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
+                )
 
         assert "messages" in result, "Result should contain messages"
         messages = result["messages"]

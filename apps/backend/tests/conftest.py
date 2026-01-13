@@ -31,6 +31,7 @@ def create_chat_completion(
     content: str | None = None,
     tool_calls: list[ChatCompletionMessageFunctionToolCall] | None = None,
     finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] = "stop",
+    model: str = "gpt-4o-mini",
 ) -> ChatCompletion:
     """Create a ChatCompletion response using official OpenAI SDK types.
 
@@ -38,6 +39,7 @@ def create_chat_completion(
         content: The text content of the assistant's response.
         tool_calls: Optional list of tool calls the assistant wants to make.
         finish_reason: The reason the model stopped generating (stop, tool_calls, etc).
+        model: The model name to include in the response (should match the parametrized model).
 
     Returns:
         A ChatCompletion object matching the OpenAI API schema.
@@ -58,7 +60,7 @@ def create_chat_completion(
         id="chatcmpl-test123",
         object="chat.completion",
         created=1700000000,
-        model="gpt-4o-mini",
+        model=model,
         choices=[choice],
         usage=CompletionUsage(
             prompt_tokens=10,
