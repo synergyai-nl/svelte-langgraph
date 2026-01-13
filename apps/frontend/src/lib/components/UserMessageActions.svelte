@@ -22,9 +22,11 @@
 		<TooltipTrigger>
 			<Button
 				onclick={() => onEdit?.(message)}
+				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
 				title={m.message_edit()}
+				disabled
 			>
 				<Pencil size={16} />
 			</Button>
