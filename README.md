@@ -1,5 +1,7 @@
 # svelte-langgraph
 
+[![CI](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml)
+
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
 ## Demo
