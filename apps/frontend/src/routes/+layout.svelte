@@ -77,8 +77,8 @@
 
 					{#if page.data.session}
 						{@const session = page.data.session}
-						
-						<DropdownMenu.Item onclick={toggleMode} class="justify-between cursor-pointer">
+
+						<DropdownMenu.Item onclick={toggleMode} class="cursor-pointer justify-between">
 							<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
 							<div class="flex items-center">
 								{#if mode.current === 'light'}
@@ -96,7 +96,7 @@
 								<p class="text-sm leading-none font-medium">
 									{session.user?.name ?? m.user_fallback()}
 								</p>
-								<p class="text-xs leading-none text-muted-foreground">
+								<p class="text-muted-foreground text-xs leading-none">
 									{session.user?.email ?? m.email_fallback()}
 								</p>
 							</div>
@@ -105,7 +105,7 @@
 						<DropdownMenu.Separator />
 
 						<SignOutButton>
-							<DropdownMenu.Item class="justify-between cursor-pointer">
+							<DropdownMenu.Item class="cursor-pointer justify-between">
 								<span>{m.auth_sign_out()}</span>
 								<LogOut class="text-primary-500 dark:text-primary-600 h-4 w-4" />
 							</DropdownMenu.Item>
