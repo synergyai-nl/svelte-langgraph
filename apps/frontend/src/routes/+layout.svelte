@@ -2,6 +2,7 @@
 	import '../app.tailwind.css';
 
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 
 	import { LogOut, MessageSquare, Moon, Sun, Menu } from '@lucide/svelte';
@@ -66,19 +67,11 @@
 				</DropdownMenu.Trigger>
 
 				<DropdownMenu.Content align="end" class="w-56">
-					<DropdownMenu.Item>
-						{#snippet child({ props })}
-							<a {...props} href="/" class="cursor-pointer">
-								{m.nav_home()}
-							</a>
-						{/snippet}
+					<DropdownMenu.Item onclick={() => goto('/')} class="cursor-pointer">
+						{m.nav_home()}
 					</DropdownMenu.Item>
-					<DropdownMenu.Item>
-						{#snippet child({ props })}
-							<a {...props} href="/chat" class="cursor-pointer">
-								{m.nav_chat()}
-							</a>
-						{/snippet}
+					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
+						{m.nav_chat()}
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
