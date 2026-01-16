@@ -28,11 +28,11 @@
 		<!-- Logo -->
 		<a href="/" class="flex items-center gap-2 font-semibold">
 			<MessageSquare class="h-6 w-6" />
-			<span class="text-sm sm:text-lg font-semibold">{m.app_title()}</span>
+			<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
 		</a>
 
 		<!-- Centered Navigation Menu (Desktop only) -->
-		<div class="hidden md:flex flex-1 justify-center">
+		<div class="hidden flex-1 justify-center md:flex">
 			<NavigationMenu.Root>
 				<NavigationMenu.List>
 					<NavigationMenu.Item>
@@ -58,7 +58,7 @@
 		<!-- Mobile Menu Button -->
 		<button
 			onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-			class="md:hidden ml-auto mr-3 p-2 hover:bg-accent rounded-md transition-colors"
+			class="hover:bg-accent mr-3 ml-auto rounded-md p-2 transition-colors md:hidden"
 			aria-label="Toggle menu"
 		>
 			{#if mobileMenuOpen}
@@ -69,7 +69,7 @@
 		</button>
 
 		<!-- Right side: Avatar, Language Switcher (Desktop only) -->
-		<div class="hidden md:flex items-center gap-3 ml-auto">
+		<div class="ml-auto hidden items-center gap-3 md:flex">
 			{#if page.data.session}
 				{@const session = page.data.session}
 				<!-- Avatar Dropdown Menu -->
@@ -143,32 +143,32 @@
 <!-- Mobile Menu Overlay -->
 {#if mobileMenuOpen}
 	<div
-		class="md:hidden fixed inset-0 top-16 z-50 bg-background border-b overflow-y-auto"
+		class="bg-background fixed inset-0 top-16 z-50 overflow-y-auto border-b md:hidden"
 		onclick={() => (mobileMenuOpen = false)}
 	>
-		<nav class="flex flex-col px-4 py-4 gap-2" onclick={(e) => e.stopPropagation()}>
+		<nav class="flex flex-col gap-2 px-4 py-4" onclick={(e) => e.stopPropagation()}>
 			<!-- Navigation Links -->
 			<a
 				href="/"
 				onclick={() => (mobileMenuOpen = false)}
-				class="px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+				class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
 			>
 				{m.nav_home()}
 			</a>
 			<a
 				href="/chat"
 				onclick={() => (mobileMenuOpen = false)}
-				class="px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+				class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
 			>
 				{m.nav_chat()}
 			</a>
 
-			<div class="border-t mt-3 pt-3 flex flex-col gap-2">
+			<div class="mt-3 flex flex-col gap-2 border-t pt-3">
 				{#if page.data.session}
 					{@const session = page.data.session}
 					<button
 						onclick={toggleMode}
-						class="flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+						class="hover:bg-accent hover:text-accent-foreground flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors"
 					>
 						<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
 						<div class="flex items-center">
@@ -180,13 +180,15 @@
 						</div>
 					</button>
 
-					<div class="px-3 py-2 border-t text-xs">
+					<div class="border-t px-3 py-2 text-xs">
 						<p class="font-medium">{session.user?.name ?? m.user_fallback()}</p>
 						<p class="text-muted-foreground">{session.user?.email ?? m.email_fallback()}</p>
 					</div>
 
 					<SignOutButton>
-						<button class="flex items-center justify-between px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground rounded-md transition-colors w-full text-left">
+						<button
+							class="hover:bg-accent hover:text-accent-foreground flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors"
+						>
 							<span>{m.auth_sign_out()}</span>
 							<LogOut class="text-primary-500 dark:text-primary-600 h-5 w-5" />
 						</button>
