@@ -1,0 +1,50 @@
+import { expect, type Page } from '@playwright/test';
+import { AppPage, OidcPage, OIDC_CONFIG } from '../pages';
+
+export { OIDC_CONFIG };
+
+/**
+ * Complete OIDC authentication flow.
+ * The oidc-provider-mock automatically authenticates the test-user.
+ */
+export async function authenticateUser(page: Page) {
+	const app = new AppPage(page);
+	const oidc = new OidcPage(page);
+
+	await page.goto('/');
+	await app.signIn();
+
+	// Ensure redirect to OIDC provider
+	await expect(page).toHaveURL((url) =>
+		url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`)
+	);
+
+	await oidc.authorize();
+	await page.waitForURL('/', { timeout: 5000 });
+}
+
+/**
+ * Sign out via user menu.
+ */
+export async function signOut(page: Page) {
+	const app = new AppPage(page);
+	await app.signOut();
+}
+
+/**
+ * Assert user is authenticated.
+ */
+export async function expectAuthenticated(page: Page) {
+	const app = new AppPage(page);
+	await expect(app.userMenuButton).toBeVisible();
+	await expect(app.signInButton).not.toBeVisible();
+}
+
+/**
+ * Assert user is unauthenticated.
+ */
+export async function expectUnauthenticated(page: Page) {
+	const app = new AppPage(page);
+	await expect(app.signInButton).toBeVisible();
+	await expect(app.userMenuButton).not.toBeVisible();
+}
