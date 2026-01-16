@@ -42,8 +42,8 @@ importers:
         specifier: ^0.1.9
         version: 0.1.9(@langchain/core@0.3.78(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@2.0.1(@opentelemetry/api@1.9.0)))
       '@lucide/svelte':
-        specifier: ^0.544.0
-        version: 0.544.0(svelte@5.36.14)
+        specifier: ^0.561.0
+        version: 0.561.0(svelte@5.36.14)
       '@playwright/test':
         specifier: ^1.49.1
         version: 1.54.1
@@ -126,8 +126,8 @@ importers:
         specifier: ^3.3.1
         version: 3.3.1
       tailwind-variants:
-        specifier: ^3.1.1
-        version: 3.1.1(tailwind-merge@3.3.1)(tailwindcss@4.1.11)
+        specifier: ^3.2.2
+        version: 3.2.2(tailwind-merge@3.3.1)(tailwindcss@4.1.11)
       tailwindcss:
         specifier: ^4.0.0
         version: 4.1.11
@@ -613,8 +613,8 @@ packages:
   '@lix-js/server-protocol-schema@0.1.1':
     resolution: {integrity: sha512-jBeALB6prAbtr5q4vTuxnRZZv1M2rKe8iNqRQhFJ4Tv7150unEa0vKyz0hs8Gl3fUGsWaNJBh3J8++fpbrpRBQ==}
 
-  '@lucide/svelte@0.544.0':
-    resolution: {integrity: sha512-9f9O6uxng2pLB01sxNySHduJN3HTl5p0HDu4H26VR51vhZfiMzyOMe9Mhof3XAk4l813eTtl+/DYRvGyoRR+yw==}
+  '@lucide/svelte@0.561.0':
+    resolution: {integrity: sha512-vofKV2UFVrKE6I4ewKJ3dfCXSV6iP6nWVmiM83MLjsU91EeJcEg7LoWUABLp/aOTxj1HQNbJD1f3g3L0JQgH9A==}
     peerDependencies:
       svelte: ^5
 
@@ -3089,8 +3089,8 @@ packages:
   tailwind-merge@3.3.1:
     resolution: {integrity: sha512-gBXpgUm/3rp1lMZZrM/w7D8GKqshif0zAymAhbCyIt8KMe+0v9DQ7cdYLR4FHH/cKpdTXb+A/tKKU3eolfsI+g==}
 
-  tailwind-variants@3.1.1:
-    resolution: {integrity: sha512-ftLXe3krnqkMHsuBTEmaVUXYovXtPyTK7ckEfDRXS8PBZx0bAUas+A0jYxuKA5b8qg++wvQ3d2MQ7l/xeZxbZQ==}
+  tailwind-variants@3.2.2:
+    resolution: {integrity: sha512-Mi4kHeMTLvKlM98XPnK+7HoBPmf4gygdFmqQPaDivc3DpYS6aIY6KiG/PgThrGvii5YZJqRsPz0aPyhoFzmZgg==}
     engines: {node: '>=16.x', pnpm: '>=7.x'}
     peerDependencies:
       tailwind-merge: '>=3.0.0'
@@ -3878,7 +3878,7 @@ snapshots:
 
   '@lix-js/server-protocol-schema@0.1.1': {}
 
-  '@lucide/svelte@0.544.0(svelte@5.36.14)':
+  '@lucide/svelte@0.561.0(svelte@5.36.14)':
     dependencies:
       svelte: 5.36.14
 
@@ -5375,7 +5375,7 @@ snapshots:
       flowbite: 3.1.2(rollup@4.45.1)
       svelte: 5.36.14
       tailwind-merge: 3.3.1
-      tailwind-variants: 3.1.1(tailwind-merge@3.3.1)(tailwindcss@4.1.11)
+      tailwind-variants: 3.2.2(tailwind-merge@3.3.1)(tailwindcss@4.1.11)
       tailwindcss: 4.1.11
     transitivePeerDependencies:
       - rollup
@@ -6583,7 +6583,7 @@ snapshots:
 
   tailwind-merge@3.3.1: {}
 
-  tailwind-variants@3.1.1(tailwind-merge@3.3.1)(tailwindcss@4.1.11):
+  tailwind-variants@3.2.2(tailwind-merge@3.3.1)(tailwindcss@4.1.11):
     dependencies:
       tailwindcss: 4.1.11
     optionalDependencies:
