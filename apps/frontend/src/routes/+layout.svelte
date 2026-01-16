@@ -57,7 +57,7 @@
 		<!-- Mobile Menu Dropdown -->
 		<div class="mr-3 ml-auto md:hidden">
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger asChild>
+				<DropdownMenu.Trigger>
 					{#snippet child({ props })}
 						<Button {...props} variant="ghost" size="icon" aria-label="Toggle menu">
 							<Menu class="h-6 w-6" />
@@ -66,15 +66,19 @@
 				</DropdownMenu.Trigger>
 
 				<DropdownMenu.Content align="end" class="w-56">
-					<DropdownMenu.Item asChild>
-						<a href="/" class="cursor-pointer">
-							{m.nav_home()}
-						</a>
+					<DropdownMenu.Item>
+						{#snippet child({ props })}
+							<a {...props} href="/" class="cursor-pointer">
+								{m.nav_home()}
+							</a>
+						{/snippet}
 					</DropdownMenu.Item>
-					<DropdownMenu.Item asChild>
-						<a href="/chat" class="cursor-pointer">
-							{m.nav_chat()}
-						</a>
+					<DropdownMenu.Item>
+						{#snippet child({ props })}
+							<a {...props} href="/chat" class="cursor-pointer">
+								{m.nav_chat()}
+							</a>
+						{/snippet}
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
@@ -116,7 +120,7 @@
 						</SignOutButton>
 					{:else}
 						<div class="p-2">
-							<SignInButton class="w-full" />
+							<SignInButton />
 						</div>
 					{/if}
 
