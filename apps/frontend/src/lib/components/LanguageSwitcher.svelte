@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
-	import { Button, Dropdown, DropdownItem } from 'flowbite-svelte';
-	import { GlobeOutline } from 'flowbite-svelte-icons';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { Button } from '$lib/components/ui/button';
+	import { Globe } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { cn } from '$lib/utils.js';
 
 	let { class: className = '' } = $props();
 
@@ -16,20 +18,23 @@
 	}
 </script>
 
-<Button class={className} color="light" outline={false}>
-	<GlobeOutline />
-</Button>
-<Dropdown simple>
-	{#each locales as localeCode (localeCode)}
-		<DropdownItem onclick={() => switchLanguage(localeCode)}>
-			<span
-				class="flex w-full items-center justify-between text-sm font-medium text-gray-900 dark:text-white"
-			>
+<DropdownMenu.Root>
+	<DropdownMenu.Trigger>
+		{#snippet child({ props })}
+			<Button {...props} class={cn('', className)} variant="outline" size="sm">
+				<Globe size={16} />
+			</Button>
+		{/snippet}
+	</DropdownMenu.Trigger>
+
+	<DropdownMenu.Content align="end">
+		{#each locales as localeCode (localeCode)}
+			<DropdownMenu.Item onclick={() => switchLanguage(localeCode)}>
 				{m.local_name({}, { locale: localeCode })}
 				{#if getLocale() === localeCode}
-					<span class=" ml-2">✓</span>
+					<span class="ml-auto">✓</span>
 				{/if}
-			</span>
-		</DropdownItem>
-	{/each}
-</Dropdown>
+			</DropdownMenu.Item>
+		{/each}
+	</DropdownMenu.Content>
+</DropdownMenu.Root>
