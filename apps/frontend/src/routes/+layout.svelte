@@ -66,11 +66,15 @@
 				</DropdownMenu.Trigger>
 
 				<DropdownMenu.Content align="end" class="w-56">
-					<DropdownMenu.Item href="/" class="cursor-pointer">
-						{m.nav_home()}
+					<DropdownMenu.Item asChild>
+						<a href="/" class="cursor-pointer">
+							{m.nav_home()}
+						</a>
 					</DropdownMenu.Item>
-					<DropdownMenu.Item href="/chat" class="cursor-pointer">
-						{m.nav_chat()}
+					<DropdownMenu.Item asChild>
+						<a href="/chat" class="cursor-pointer">
+							{m.nav_chat()}
+						</a>
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
