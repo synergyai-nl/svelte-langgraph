@@ -1,9 +1,11 @@
 <script>
 	import { SignIn } from '@auth/sveltekit/components';
-	import { Button } from 'flowbite-svelte';
+	import { buttonVariants } from '$lib/components/ui/button';
 	import { m } from '$lib/paraglide/messages.js';
 </script>
 
 <SignIn provider="oidc">
-	<Button slot="submitButton" size="sm" tag="span">{m.auth_sign_in()}</Button>
+	<span slot="submitButton" class={buttonVariants({ variant: 'default', size: 'sm' })}>
+		{m.auth_sign_in()}
+	</span>
 </SignIn>
