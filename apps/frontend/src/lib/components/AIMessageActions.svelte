@@ -19,7 +19,7 @@
 </script>
 
 <div
-	class="absolute bottom-2 left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
+	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
 	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
 >
 	<Tooltip disableCloseOnTriggerClick>
