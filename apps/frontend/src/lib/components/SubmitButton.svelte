@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Spinner } from 'flowbite-svelte';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import { SendHorizontal } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 
