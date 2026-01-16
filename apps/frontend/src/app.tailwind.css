@@ -139,6 +139,11 @@
 	--radius-sm: calc(var(--radius) - 0.25rem);
 	--radius-md: calc(var(--radius) - 0.125rem);
 	--radius-lg: var(--radius);
+	--radius-card: 16px;
+	--radius-card-lg: 20px;
+	--radius-card-sm: 10px;
+	--radius-input: 9px;
+	--radius-button: 5px;
 }
 
 @source "../node_modules/flowbite-svelte/dist";
