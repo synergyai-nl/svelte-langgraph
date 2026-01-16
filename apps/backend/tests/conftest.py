@@ -127,13 +127,19 @@ def thread_config() -> RunnableConfig:
 
 
 @pytest_asyncio.fixture
-async def agent(thread_config: RunnableConfig):
+async def agent(thread_config: RunnableConfig, monkeypatch):
     """Create a LangGraph agent for testing.
 
     Uses the local get_weather mock instead of the real get_weather to avoid
     the random 1-10 second sleep in the real implementation.
     """
-    return make_graph(thread_config, weather_tool=get_weather)
+
+    # Mock the get_tools function where it's imported in graph.py
+    def mock_get_tools():
+        return [get_weather]
+
+    monkeypatch.setattr("svelte_langgraph.graph.get_tools", mock_get_tools)
+    return make_graph(thread_config)
 
 
 @pytest.fixture
