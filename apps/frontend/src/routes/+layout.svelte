@@ -4,7 +4,7 @@
 	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages.js';
 
-	import { LogOut, MessageSquare, Moon, Sun, Menu, X } from '@lucide/svelte';
+	import { LogOut, MessageSquare, Moon, Sun, Menu } from '@lucide/svelte';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -19,7 +19,6 @@
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	let { children } = $props();
-	let mobileMenuOpen = $state(false);
 </script>
 
 <ModeWatcher />
@@ -55,20 +54,78 @@
 			</NavigationMenu.Root>
 		</div>
 
-		<!-- Mobile Menu Button -->
-		<button
-			onclick={() => (mobileMenuOpen = !mobileMenuOpen)}
-			class="hover:bg-accent mr-3 ml-auto rounded-md p-2 transition-colors md:hidden"
-			aria-label="Toggle menu"
-		>
-			{#if mobileMenuOpen}
-				<X class="h-6 w-6" />
-			{:else}
-				<Menu class="h-6 w-6" />
-			{/if}
-		</button>
+		<!-- Mobile Menu Dropdown -->
+		<div class="mr-3 ml-auto md:hidden">
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger asChild>
+					{#snippet child({ props })}
+						<Button {...props} variant="ghost" size="icon" aria-label="Toggle menu">
+							<Menu class="h-6 w-6" />
+						</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
 
-		<!-- Right side: Avatar, Language Switcher (Desktop only) -->
+				<DropdownMenu.Content align="end" class="w-56">
+					<DropdownMenu.Item href="/" class="cursor-pointer">
+						{m.nav_home()}
+					</DropdownMenu.Item>
+					<DropdownMenu.Item href="/chat" class="cursor-pointer">
+						{m.nav_chat()}
+					</DropdownMenu.Item>
+
+					<DropdownMenu.Separator />
+
+					{#if page.data.session}
+						{@const session = page.data.session}
+						
+						<DropdownMenu.Item onclick={toggleMode} class="justify-between cursor-pointer">
+							<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
+							<div class="flex items-center">
+								{#if mode.current === 'light'}
+									<Sun class="text-primary-500 h-4 w-4" />
+								{:else}
+									<Moon class="text-primary-600 h-4 w-4" />
+								{/if}
+							</div>
+						</DropdownMenu.Item>
+
+						<DropdownMenu.Separator />
+
+						<DropdownMenu.Label>
+							<div class="flex flex-col space-y-1">
+								<p class="text-sm leading-none font-medium">
+									{session.user?.name ?? m.user_fallback()}
+								</p>
+								<p class="text-xs leading-none text-muted-foreground">
+									{session.user?.email ?? m.email_fallback()}
+								</p>
+							</div>
+						</DropdownMenu.Label>
+
+						<DropdownMenu.Separator />
+
+						<SignOutButton>
+							<DropdownMenu.Item class="justify-between cursor-pointer">
+								<span>{m.auth_sign_out()}</span>
+								<LogOut class="text-primary-500 dark:text-primary-600 h-4 w-4" />
+							</DropdownMenu.Item>
+						</SignOutButton>
+					{:else}
+						<div class="p-2">
+							<SignInButton class="w-full" />
+						</div>
+					{/if}
+
+					<DropdownMenu.Separator />
+
+					<div class="p-2">
+						<LanguageSwitcher class="w-full" />
+					</div>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</div>
+
+		<!-- Avatar, Language Switcher (Desktop only) -->
 		<div class="ml-auto hidden items-center gap-3 md:flex">
 			{#if page.data.session}
 				{@const session = page.data.session}
@@ -139,69 +196,6 @@
 		</div>
 	</div>
 </header>
-
-<!-- Mobile Menu Overlay -->
-{#if mobileMenuOpen}
-	<div
-		class="bg-background fixed inset-0 top-16 z-50 overflow-y-auto border-b md:hidden"
-		onclick={() => (mobileMenuOpen = false)}
-	>
-		<nav class="flex flex-col gap-2 px-4 py-4" onclick={(e) => e.stopPropagation()}>
-			<!-- Navigation Links -->
-			<a
-				href="/"
-				onclick={() => (mobileMenuOpen = false)}
-				class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
-			>
-				{m.nav_home()}
-			</a>
-			<a
-				href="/chat"
-				onclick={() => (mobileMenuOpen = false)}
-				class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
-			>
-				{m.nav_chat()}
-			</a>
-
-			<div class="mt-3 flex flex-col gap-2 border-t pt-3">
-				{#if page.data.session}
-					{@const session = page.data.session}
-					<button
-						onclick={toggleMode}
-						class="hover:bg-accent hover:text-accent-foreground flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors"
-					>
-						<span>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</span>
-						<div class="flex items-center">
-							{#if mode.current === 'light'}
-								<Sun class="text-primary-500 h-5 w-5" />
-							{:else}
-								<Moon class="text-primary-600 h-5 w-5" />
-							{/if}
-						</div>
-					</button>
-
-					<div class="border-t px-3 py-2 text-xs">
-						<p class="font-medium">{session.user?.name ?? m.user_fallback()}</p>
-						<p class="text-muted-foreground">{session.user?.email ?? m.email_fallback()}</p>
-					</div>
-
-					<SignOutButton>
-						<button
-							class="hover:bg-accent hover:text-accent-foreground flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium transition-colors"
-						>
-							<span>{m.auth_sign_out()}</span>
-							<LogOut class="text-primary-500 dark:text-primary-600 h-5 w-5" />
-						</button>
-					</SignOutButton>
-				{:else}
-					<SignInButton class="w-full" />
-				{/if}
-
-				<LanguageSwitcher class="w-full" />
-			</div>
-		</nav>
-	</div>
-{/if}
 
 <Tooltip.Provider>
 	{@render children()}
