@@ -14,6 +14,7 @@
 	import { ModeWatcher, toggleMode, mode } from 'mode-watcher';
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
+	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 
@@ -126,7 +127,7 @@
 			</DropdownMenu.Root>
 		</div>
 
-		<!-- Avatar, Language Switcher (Desktop only) -->
+		<!-- Avatar, Theme Switcher, Language Switcher (Desktop only) -->
 		<div class="ml-auto hidden items-center gap-3 md:flex">
 			{#if page.data.session}
 				{@const session = page.data.session}
@@ -165,19 +166,6 @@
 
 						<DropdownMenu.Separator />
 
-						<DropdownMenu.Item onclick={toggleMode} class="justify-between">
-							<div>{mode.current === 'light' ? m.light_mode() : m.dark_mode()}</div>
-							<div class="flex items-center">
-								{#if mode.current === 'light'}
-									<Sun class="text-primary-500 h-5 w-5" />
-								{:else}
-									<Moon class="text-primary-600 h-5 w-5" />
-								{/if}
-							</div>
-						</DropdownMenu.Item>
-
-						<DropdownMenu.Separator />
-
 						<SignOutButton>
 							<DropdownMenu.Item class="justify-between">
 								<div>{m.auth_sign_out()}</div>
@@ -193,7 +181,8 @@
 			{:else}
 				<SignInButton />
 			{/if}
-			<LanguageSwitcher class="ml-3" />
+			<ThemeSwitcher />
+			<LanguageSwitcher />
 		</div>
 	</div>
 </header>
