@@ -12,8 +12,8 @@
 
 	let { open = $bindable(), onclose }: Props = $props();
 
-	function handleOpenChange(next: boolean) {
-		if (!next) {
+	function handleOpenChange(open_state: boolean) {
+		if (!open_state) {
 			onclose?.();
 			goto('/');
 		}
