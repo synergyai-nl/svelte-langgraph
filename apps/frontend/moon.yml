@@ -90,12 +90,10 @@ tasks:
       internal: true
 
   test:
-    command: vitest
-    args: --run
-    inputs:
-      - '@group(sources)'
-      - '@group(tests)'
-
+    args:
+      - '--silent'
+      - 'passed-only'
+    
   test-e2e:
     command: playwright test
     deps:
