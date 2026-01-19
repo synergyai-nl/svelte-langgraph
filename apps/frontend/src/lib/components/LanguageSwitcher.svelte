@@ -5,6 +5,7 @@
 	import { Globe } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
 	let { class: className = '' } = $props();
 
@@ -18,23 +19,32 @@
 	}
 </script>
 
-<DropdownMenu.Root>
-	<DropdownMenu.Trigger>
-		{#snippet child({ props })}
-			<Button {...props} class={cn('', className)} variant="outline" size="sm">
-				<Globe size={16} />
-			</Button>
-		{/snippet}
-	</DropdownMenu.Trigger>
+<Tooltip.Provider>
+	<Tooltip.Root>
+		<Tooltip.Trigger>
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<Button {...props} class={cn('', className)} variant="outline" size="sm">
+							<Globe size={16} />
+						</Button>
+					{/snippet}
+				</DropdownMenu.Trigger>
 
-	<DropdownMenu.Content align="end">
-		{#each locales as localeCode (localeCode)}
-			<DropdownMenu.Item onclick={() => switchLanguage(localeCode)}>
-				{m.local_name({}, { locale: localeCode })}
-				{#if getLocale() === localeCode}
-					<span class="ml-auto">✓</span>
-				{/if}
-			</DropdownMenu.Item>
-		{/each}
-	</DropdownMenu.Content>
-</DropdownMenu.Root>
+				<DropdownMenu.Content align="end">
+					{#each locales as localeCode (localeCode)}
+						<DropdownMenu.Item onclick={() => switchLanguage(localeCode)}>
+							{m.local_name({}, { locale: localeCode })}
+							{#if getLocale() === localeCode}
+								<span class="ml-auto">✓</span>
+							{/if}
+						</DropdownMenu.Item>
+					{/each}
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
+		</Tooltip.Trigger>
+		<Tooltip.Content>
+			{m.local_name({}, { locale: getLocale() })}
+		</Tooltip.Content>
+	</Tooltip.Root>
+</Tooltip.Provider>
