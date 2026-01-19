@@ -93,7 +93,7 @@ tasks:
     args:
       - '--silent'
       - 'passed-only'
-    
+
   test-e2e:
     command: playwright test
     deps:
