@@ -16,6 +16,10 @@ export default defineConfig({
 		sentrySvelteKit()
 	],
 	test: {
+		coverage: {
+			include: ['src/**/*.{svelte,js,ts}'],
+			exclude: ['src/lib/paraglide', 'src/**/*.{spec,test}.{js,ts}']
+		},
 		projects: [
 			{
 				test: {
