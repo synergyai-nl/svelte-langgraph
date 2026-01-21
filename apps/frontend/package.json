@@ -65,6 +65,7 @@
 	},
 	"dependencies": {
 		"@sentry/sveltekit": "^10.0.0",
-		"mode-watcher": "^1.1.0"
+		"mode-watcher": "^1.1.0",
+		"tailwindcss-animate": "^1.0.7"
 	}
 }
