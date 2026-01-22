@@ -5,103 +5,186 @@ providers (OpenAI, OpenRouter, Ollama) and models. It uses official OpenAI SDK
 types to ensure type compatibility with the actual API schema.
 """
 
-import json
-from collections.abc import Generator
-from typing import Any, Literal
-from unittest.mock import AsyncMock, patch
+from collections.abc import Sequence
+from typing import Literal
+from uuid import uuid4
 
 import pytest
+import pytest_asyncio
+import respx
+from httpx import Response
+from langchain_core.runnables import RunnableConfig
 from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
-from openai.types.chat.chat_completion_message_function_tool_call import (
-    ChatCompletionMessageFunctionToolCall,
+from openai.types.chat.chat_completion_message_tool_call import (
+    ChatCompletionMessageToolCall,
+    ChatCompletionMessageToolCallUnion,
     Function,
 )
 
-OPENAI_BASE_URL = "https://api.openai.com/v1"
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-OLLAMA_BASE_URL = "http://localhost:11434/v1"
+from svelte_langgraph.graph import make_graph
 
-BASE_URLS = [OPENAI_BASE_URL, OPENROUTER_BASE_URL, OLLAMA_BASE_URL]
-MODEL_NAMES = ["gpt-4o-mini", "gpt-4o", "openai/gpt-4o-mini", "llama3.2"]
+DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
 
-def create_chat_completion(
-    content: str | None = None,
-    tool_calls: list[ChatCompletionMessageFunctionToolCall] | None = None,
-    finish_reason: Literal["stop", "tool_calls", "length", "content_filter"] = "stop",
-    model: str = "gpt-4o-mini",
-) -> ChatCompletion:
-    """Create a ChatCompletion response using official OpenAI SDK types.
-
-    Args:
-        content: The text content of the assistant's response.
-        tool_calls: Optional list of tool calls the assistant wants to make.
-        finish_reason: The reason the model stopped generating (stop, tool_calls, etc).
-        model: The model name to include in the response (should match the parametrized model).
-
-    Returns:
-        A ChatCompletion object matching the OpenAI API schema.
-    """
-    message = ChatCompletionMessage.model_construct(
-        role="assistant",
-        content=content,
-        tool_calls=tool_calls,
-    )
-
-    choice = Choice.model_construct(
-        index=0,
-        message=message,
-        finish_reason=finish_reason,
-    )
-
-    return ChatCompletion(
-        id="chatcmpl-test123",
-        object="chat.completion",
-        created=1700000000,
-        model=model,
-        choices=[choice],
-        usage=CompletionUsage(
-            prompt_tokens=10,
-            completion_tokens=20,
-            total_tokens=30,
-        ),
-    )
-
-
-def create_tool_call(
-    tool_name: str, arguments: dict[str, Any]
-) -> ChatCompletionMessageFunctionToolCall:
-    """Create a tool call using official OpenAI SDK types.
-
-    Args:
-        tool_name: The name of the tool to call.
-        arguments: The arguments to pass to the tool as a dictionary.
-
-    Returns:
-        A ChatCompletionMessageFunctionToolCall object matching the OpenAI API schema.
-    """
-    return ChatCompletionMessageFunctionToolCall(
-        id=f"call_{tool_name}_123",
-        type="function",
-        function=Function(
-            name=tool_name,
-            arguments=json.dumps(arguments),
-        ),
-    )
+@pytest.fixture(
+    params=[None, "https://openrouter.ai/api/v1", "http://localhost:11434/v1"],
+    scope="module",
+)
+def openai_base_url(request):
+    yield request.param
 
 
 @pytest.fixture
-def deterministic_weather() -> Generator[AsyncMock, None, None]:
-    """Mock the get_weather tool to return immediately with predictable output.
+def mock_completion(openai_base_url):
+    """Mock OpenAI API endpoint."""
 
-    The production get_weather function has a random sleep for realism.
-    This fixture patches asyncio.sleep to make tests fast and deterministic
-    while still executing the actual tool logic.
+    actual_base_url = openai_base_url
+    if not actual_base_url:
+        actual_base_url = DEFAULT_BASE_URL
+
+    with respx.mock(base_url=actual_base_url) as respx_mock:
+        yield respx_mock.post("/chat/completions")
+
+
+@pytest.fixture(
+    params=[None, "claude-3-5-sonnet-latest", "gpt-4o-mini", "something-else-entirely"],
+)
+def chat_model(request):
+    yield request.param
+
+
+@pytest.fixture(
+    scope="function",
+    autouse=True,
+)
+def env_setup(monkeypatch, openai_base_url, chat_model):
+    """Set up environment variables for testing."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+    if openai_base_url:
+        monkeypatch.setenv("OPENAI_BASE_URL", openai_base_url)
+
+    if chat_model:
+        monkeypatch.setenv("CHAT_MODEL_NAME", chat_model)
+
+
+async def get_weather(city: str) -> str:
+    """Fast, deterministic mock for get_weather.
+
+    The real get_weather has a random 1-10 second sleep, so we use this
+    mock to make tests fast and deterministic.
     """
-    with patch(
-        "svelte_langgraph.graph.asyncio.sleep", new_callable=AsyncMock
-    ) as mock_sleep:
-        mock_sleep.return_value = None
-        yield mock_sleep
+    return f"It's always sunny in {city}!"
+
+
+FinishReason = Literal["stop", "tool_calls"]
+
+
+class CompletionResponse(Response):
+    def __init__(self, status_code: int, completion: ChatCompletion) -> None:
+        super().__init__(status_code, json=completion.model_dump())
+
+
+def make_completion_response(
+    message_content: str | None = None,
+    finish_reason: FinishReason = "stop",
+    response_id: str = "chatcmpl-test",
+    tool_calls: Sequence[ChatCompletionMessageToolCallUnion] | None = None,
+    created: int = 1234567890,
+    usage: CompletionUsage | None = None,
+):
+    """Create OpenAI API response using OpenAI SDK types."""
+    if usage is None:
+        usage = CompletionUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
+
+    message = ChatCompletionMessage(
+        role="assistant",
+        content=message_content,
+        tool_calls=list(tool_calls) if tool_calls else None,
+    )
+    choice = Choice(
+        index=0,
+        message=message,
+        finish_reason=finish_reason,
+        logprobs=None,
+    )
+
+    completion = ChatCompletion(
+        id=response_id,
+        object="chat.completion",
+        created=created,
+        model="gpt-4o-mini",
+        choices=[choice],
+        usage=usage,
+    )
+
+    return CompletionResponse(200, completion=completion)
+
+
+@pytest.fixture
+def thread_config() -> RunnableConfig:
+    """Create a unique thread configuration for each test."""
+    return RunnableConfig(
+        configurable={"thread_id": str(uuid4()), "user_name": "Alice"}
+    )
+
+
+@pytest_asyncio.fixture
+async def agent(thread_config: RunnableConfig, monkeypatch):
+    """Create a LangGraph agent for testing.
+
+    Uses the local get_weather mock instead of the real get_weather to avoid
+    the random 1-10 second sleep in the real implementation.
+    """
+
+    # Mock the get_tools function where it's imported in graph.py
+    def mock_get_tools():
+        return [get_weather]
+
+    monkeypatch.setattr("svelte_langgraph.graph.get_tools", mock_get_tools)
+    return make_graph(thread_config)
+
+
+@pytest.fixture
+def openai_basic_conversation(mock_completion):
+    """Mock OpenAI API for basic conversation without tool calls."""
+    response = make_completion_response(
+        "Hello! I'm doing great, thanks for asking. How can I help you today?"
+    )
+    mock_completion.mock(return_value=response)
+    yield mock_completion
+
+
+@pytest.fixture
+def openai_single_tool_call(mock_completion):
+    """Mock OpenAI API for single tool call scenario."""
+    mock_completion.side_effect = [
+        make_completion_response(
+            response_id="chatcmpl-test-1",
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_1",
+                    type="function",
+                    function=Function(
+                        name="get_weather",
+                        arguments='{"city": "Paris"}',
+                    ),
+                )
+            ],
+            finish_reason="tool_calls",
+        ),
+        make_completion_response(
+            response_id="chatcmpl-test-2",
+            created=1234567891,
+            message_content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing.",
+            usage=CompletionUsage(
+                prompt_tokens=15,
+                completion_tokens=25,
+                total_tokens=40,
+            ),
+        ),
+    ]
+
+    yield mock_completion

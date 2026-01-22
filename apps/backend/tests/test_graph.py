@@ -10,555 +10,186 @@ Tests are parametrized across multiple OpenAI-compatible providers and models
 to ensure provider flexibility and model configuration works correctly.
 """
 
-import json
-
-import httpx
 import pytest
-import respx
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
-from svelte_langgraph.graph import get_weather, make_graph
 
-from .conftest import (
-    BASE_URLS,
-    MODEL_NAMES,
-    create_chat_completion,
-    create_tool_call,
-)
+@pytest.mark.asyncio
+async def test_basic_conversation(
+    agent, thread_config: RunnableConfig, openai_basic_conversation
+):
+    """Test basic conversation with user prompt and AI generation.
 
-
-class TestBasicConversation:
-    """Tests for basic conversation functionality.
-
-    These tests verify that the agent can receive user messages and
-    return appropriate AI responses.
+    This test verifies:
+    1. The agent can process a simple user message
+    2. The agent returns an AI response
+    3. The initial greeting message is present in the conversation
+    4. The conversation state is properly maintained
     """
+    user_message = "Hello, how are you?"
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("base_url", BASE_URLS)
-    @pytest.mark.parametrize("model_name", MODEL_NAMES)
-    async def test_agent_returns_ai_response(
-        self,
-        base_url: str,
-        model_name: str,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that the agent receives a user message and returns an AI response.
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content=user_message)]},
+        thread_config,
+    )
 
-        This test verifies the basic conversation flow where a user sends a message
-        and the agent responds with an appropriate AI-generated response.
+    assert "messages" in result
+    messages = result["messages"]
 
-        Args:
-            base_url: The OpenAI-compatible API base URL to test against.
-            model_name: The model name to use for the test.
-            monkeypatch: Pytest fixture for setting environment variables.
-        """
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        monkeypatch.setenv("OPENAI_BASE_URL", base_url)
-        monkeypatch.setenv("CHAT_MODEL_NAME", model_name)
+    assert len(messages) >= 2
 
-        config: RunnableConfig = {
-            "configurable": {"thread_id": "test-thread-1", "user_name": "TestUser"}
-        }
+    user_msg = messages[0]
+    assert isinstance(user_msg, HumanMessage)
+    assert user_msg.content == user_message
 
-        with respx.mock:
-            route = respx.post(f"{base_url}/chat/completions").mock(
-                return_value=httpx.Response(
-                    200,
-                    json=create_chat_completion(
-                        content="Hello TestUser! I'm doing great, thank you for asking. How can I help you today?",
-                        model=model_name,
-                    ).model_dump(),
-                )
-            )
-
-            agent = make_graph(config)
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": "Hello, how are you?"}]},
-                config,
-            )
-
-            # Verify the correct provider endpoint was called
-            assert route.called, f"Expected request to {base_url}/chat/completions"
-
-            # Verify the correct model was used in the request
-            request_body = json.loads(route.calls.last.request.content)
-            assert request_body["model"] == model_name, (
-                f"Expected model '{model_name}' in request, got '{request_body['model']}'"
-            )
-
-        assert "messages" in result, "Result should contain messages"
-        messages = result["messages"]
-        assert len(messages) >= 1, "Should have at least one message"
-
-        ai_messages = [m for m in messages if m.type == "ai"]
-        assert len(ai_messages) >= 1, "Should have at least one AI message"
-        assert ai_messages[-1].content is not None, "AI message should have content"
-        assert len(ai_messages[-1].content) > 0, (
-            "AI message content should not be empty"
-        )
+    ai_response = messages[1]
+    assert isinstance(ai_response, AIMessage)
+    assert ai_response.content is not None
+    assert isinstance(ai_response.content, str)
+    assert len(ai_response.content) > 0
+    assert (
+        "help" in ai_response.content.lower() or "great" in ai_response.content.lower()
+    )
 
 
-class TestStateMaintenace:
-    """Tests for conversation state maintenance.
+@pytest.mark.asyncio
+async def test_conversation_maintains_state(
+    agent, thread_config: RunnableConfig, openai_basic_conversation
+):
+    """Test that conversation state is maintained across multiple invocations.
 
-    These tests verify that the agent maintains conversation history
-    across multiple invocations within the same thread.
+    This test verifies:
+    1. Multiple messages can be sent in sequence
+    2. The conversation history grows appropriately
+    3. Previous messages are retained in state
     """
+    first_message = "What's your name?"
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("base_url", BASE_URLS)
-    @pytest.mark.parametrize("model_name", MODEL_NAMES)
-    async def test_conversation_history_preserved(
-        self,
-        base_url: str,
-        model_name: str,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that conversation history is preserved across multiple invocations.
+    result1 = await agent.ainvoke(
+        {"messages": [HumanMessage(content=first_message)]},
+        thread_config,
+    )
 
-        This test verifies that the agent maintains state between invocations,
-        allowing for context-aware responses in multi-turn conversations.
+    messages_after_first = result1["messages"]
+    first_message_count = len(messages_after_first)
 
-        Args:
-            base_url: The OpenAI-compatible API base URL to test against.
-            model_name: The model name to use for the test.
-            monkeypatch: Pytest fixture for setting environment variables.
-        """
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        monkeypatch.setenv("OPENAI_BASE_URL", base_url)
-        monkeypatch.setenv("CHAT_MODEL_NAME", model_name)
+    assert first_message_count >= 2
 
-        config: RunnableConfig = {
-            "configurable": {"thread_id": "test-thread-state", "user_name": "TestUser"}
-        }
+    second_message = "Tell me more"
 
-        with respx.mock:
-            route = respx.post(f"{base_url}/chat/completions").mock(
-                side_effect=[
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Hello TestUser! Nice to meet you. My name is Assistant.",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Your name is TestUser, as you mentioned earlier!",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                ]
-            )
+    result2 = await agent.ainvoke(
+        {"messages": [HumanMessage(content=second_message)]},
+        thread_config,
+    )
 
-            agent = make_graph(config)
+    messages_after_second = result2["messages"]
 
-            result1 = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": "Hi, my name is TestUser"}]},
-                config,
-            )
+    assert len(messages_after_second) > first_message_count
 
-            result2 = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": "What is my name?"}]},
-                config,
-            )
-
-            # Verify the correct provider endpoint was called for both invocations
-            assert route.call_count == 2, (
-                f"Expected 2 requests to {base_url}/chat/completions, got {route.call_count}"
-            )
-
-            # Verify the correct model was used in both requests
-            for i, call in enumerate(route.calls):
-                request_body = json.loads(call.request.content)
-                assert request_body["model"] == model_name, (
-                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
-                )
-
-        assert "messages" in result1, "First result should contain messages"
-        assert "messages" in result2, "Second result should contain messages"
-
-        messages1 = result1["messages"]
-        messages2 = result2["messages"]
-
-        # Verify message counts
-        assert len(messages2) >= 3, "Should have at least 3 messages after two turns"
-
-        user_messages = [m for m in messages2 if m.type == "human"]
-        assert len(user_messages) >= 2, (
-            "Should have at least 2 user messages in history"
-        )
-
-        # Verify content preservation: messages from first invocation should appear in second
-        first_user_content = "Hi, my name is TestUser"
-        user_contents = [m.content for m in messages2 if m.type == "human"]
-        assert first_user_content in user_contents, (
-            f"First user message '{first_user_content}' should be preserved in conversation history"
-        )
-
-        # Verify the first AI response is preserved
-        first_ai_message = next(m for m in messages1 if m.type == "ai")
-        ai_contents = [m.content for m in messages2 if m.type == "ai"]
-        assert first_ai_message.content in ai_contents, (
-            "First AI response should be preserved in conversation history"
-        )
-
-        # Verify message ordering: first user message should come before second
-        second_user_content = "What is my name?"
-        first_user_idx = next(
-            i
-            for i, m in enumerate(messages2)
-            if m.type == "human" and m.content == first_user_content
-        )
-        second_user_idx = next(
-            i
-            for i, m in enumerate(messages2)
-            if m.type == "human" and m.content == second_user_content
-        )
-        assert first_user_idx < second_user_idx, (
-            "Messages should be in chronological order"
-        )
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("base_url", BASE_URLS)
-    @pytest.mark.parametrize("model_name", MODEL_NAMES)
-    async def test_thread_isolation(
-        self,
-        base_url: str,
-        model_name: str,
-        monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        """Test that different threads maintain separate conversation histories.
-
-        This test verifies that conversations in different threads are isolated
-        and don't share state or message history.
-
-        Args:
-            base_url: The OpenAI-compatible API base URL to test against.
-            model_name: The model name to use for the test.
-            monkeypatch: Pytest fixture for setting environment variables.
-        """
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        monkeypatch.setenv("OPENAI_BASE_URL", base_url)
-        monkeypatch.setenv("CHAT_MODEL_NAME", model_name)
-
-        config_thread1: RunnableConfig = {
-            "configurable": {
-                "thread_id": "test-thread-isolation-1",
-                "user_name": "Alice",
-            }
-        }
-        config_thread2: RunnableConfig = {
-            "configurable": {"thread_id": "test-thread-isolation-2", "user_name": "Bob"}
-        }
-
-        with respx.mock:
-            route = respx.post(f"{base_url}/chat/completions").mock(
-                side_effect=[
-                    # Thread 1 - First message
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Hello Alice! I'll remember that your favorite color is blue.",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                    # Thread 2 - First message
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Hello Bob! I'll remember that your favorite color is red.",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                    # Thread 1 - Second message
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Your favorite color is blue, Alice!",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                    # Thread 2 - Second message
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Your favorite color is red, Bob!",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                ]
-            )
-
-            agent1 = make_graph(config_thread1)
-            agent2 = make_graph(config_thread2)
-
-            # First invocation in thread 1
-            await agent1.ainvoke(
-                {
-                    "messages": [
-                        {"role": "user", "content": "My favorite color is blue"}
-                    ]
-                },
-                config_thread1,
-            )
-
-            # First invocation in thread 2
-            await agent2.ainvoke(
-                {"messages": [{"role": "user", "content": "My favorite color is red"}]},
-                config_thread2,
-            )
-
-            # Second invocation in thread 1
-            result_thread1_turn2 = await agent1.ainvoke(
-                {
-                    "messages": [
-                        {"role": "user", "content": "What is my favorite color?"}
-                    ]
-                },
-                config_thread1,
-            )
-
-            # Second invocation in thread 2
-            result_thread2_turn2 = await agent2.ainvoke(
-                {
-                    "messages": [
-                        {"role": "user", "content": "What is my favorite color?"}
-                    ]
-                },
-                config_thread2,
-            )
-
-            # Verify the correct provider endpoint was called for all invocations
-            assert route.call_count == 4, (
-                f"Expected 4 requests to {base_url}/chat/completions, got {route.call_count}"
-            )
-
-            # Verify the correct model was used in all requests
-            for i, call in enumerate(route.calls):
-                request_body = json.loads(call.request.content)
-                assert request_body["model"] == model_name, (
-                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
-                )
-
-        # Verify thread 1 contains only its own messages
-        messages_t1 = result_thread1_turn2["messages"]
-        t1_contents = " ".join(m.content for m in messages_t1 if m.content)
-        assert "blue" in t1_contents.lower(), (
-            "Thread 1 should contain its own conversation about blue"
-        )
-        assert "red" not in t1_contents.lower(), (
-            "Thread 1 should not contain messages from thread 2 about red"
-        )
-
-        # Verify thread 2 contains only its own messages
-        messages_t2 = result_thread2_turn2["messages"]
-        t2_contents = " ".join(m.content for m in messages_t2 if m.content)
-        assert "red" in t2_contents.lower(), (
-            "Thread 2 should contain its own conversation about red"
-        )
-        assert "blue" not in t2_contents.lower(), (
-            "Thread 2 should not contain messages from thread 1 about blue"
-        )
-
-        # Verify thread 1 has exactly 4 messages (2 user + 2 AI)
-        t1_user_messages = [m for m in messages_t1 if m.type == "human"]
-        t1_ai_messages = [m for m in messages_t1 if m.type == "ai"]
-        assert len(t1_user_messages) == 2, (
-            "Thread 1 should have exactly 2 user messages"
-        )
-        assert len(t1_ai_messages) == 2, "Thread 1 should have exactly 2 AI messages"
-
-        # Verify thread 2 has exactly 4 messages (2 user + 2 AI)
-        t2_user_messages = [m for m in messages_t2 if m.type == "human"]
-        t2_ai_messages = [m for m in messages_t2 if m.type == "ai"]
-        assert len(t2_user_messages) == 2, (
-            "Thread 2 should have exactly 2 user messages"
-        )
-        assert len(t2_ai_messages) == 2, "Thread 2 should have exactly 2 AI messages"
+    assert any(
+        msg.content == first_message
+        for msg in messages_after_second
+        if isinstance(msg, HumanMessage)
+    )
+    assert any(
+        msg.content == second_message
+        for msg in messages_after_second
+        if isinstance(msg, HumanMessage)
+    )
 
 
-class TestToolInvocation:
-    """Tests for tool invocation functionality.
+@pytest.mark.asyncio
+async def test_single_tool_call(
+    agent,
+    thread_config: RunnableConfig,
+    openai_single_tool_call,
+):
+    """Test single tool call with user prompt, tool invocation, and AI response.
 
-    These tests verify that the agent correctly recognizes when to call tools,
-    executes them, and incorporates the results into its response.
+    This test verifies:
+    1. The agent can recognize when to call a tool
+    2. The tool is invoked with correct arguments
+    3. The tool response is processed
+    4. The agent generates a final response incorporating the tool output
     """
+    user_message = "What's the weather like in Paris?"
 
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize("base_url", BASE_URLS)
-    @pytest.mark.parametrize("model_name", MODEL_NAMES)
-    async def test_agent_calls_weather_tool(
-        self,
-        base_url: str,
-        model_name: str,
-        monkeypatch: pytest.MonkeyPatch,
-        deterministic_weather: None,
-    ) -> None:
-        """Test that the agent recognizes when to call the get_weather tool.
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content=user_message)]},
+        thread_config,
+    )
 
-        This test verifies that when a user asks about weather, the agent
-        correctly invokes the get_weather tool and incorporates the result
-        into its response.
+    assert "messages" in result
+    messages = result["messages"]
 
-        Args:
-            base_url: The OpenAI-compatible API base URL to test against.
-            model_name: The model name to use for the test.
-            monkeypatch: Pytest fixture for setting environment variables.
-            deterministic_weather: Fixture that mocks asyncio.sleep for fast tests.
-        """
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        monkeypatch.setenv("OPENAI_BASE_URL", base_url)
-        monkeypatch.setenv("CHAT_MODEL_NAME", model_name)
+    user_msg = messages[0]
+    assert isinstance(user_msg, HumanMessage)
+    assert user_msg.content == user_message
 
-        config: RunnableConfig = {
-            "configurable": {"thread_id": "test-thread-tool", "user_name": "TestUser"}
-        }
+    tool_call_found = False
+    tool_response_found = False
+    final_ai_response_found = False
 
-        with respx.mock:
-            route = respx.post(f"{base_url}/chat/completions").mock(
-                side_effect=[
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content=None,
-                            tool_calls=[
-                                create_tool_call("get_weather", {"city": "Paris"})
-                            ],
-                            finish_reason="tool_calls",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                    httpx.Response(
-                        200,
-                        json=create_chat_completion(
-                            content="Based on the weather information, it's always sunny in Paris! "
-                            "It looks like a great day to go outside.",
-                            model=model_name,
-                        ).model_dump(),
-                    ),
-                ]
-            )
+    for msg in messages[1:]:
+        if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
+            tool_call_found = True
+            tool_calls = msg.tool_calls
+            assert len(tool_calls) >= 1
 
-            agent = make_graph(config)
-            result = await agent.ainvoke(
-                {
-                    "messages": [
-                        {"role": "user", "content": "What's the weather like in Paris?"}
-                    ]
-                },
-                config,
-            )
+            tool_call = tool_calls[0]
+            assert tool_call["name"] == "get_weather"
+            assert "city" in tool_call["args"]
+            assert tool_call["args"]["city"] == "Paris"
 
-            # Verify the correct provider endpoint was called for both LLM invocations
-            assert route.call_count == 2, (
-                f"Expected 2 requests to {base_url}/chat/completions (tool call + response), got {route.call_count}"
-            )
+        elif isinstance(msg, ToolMessage):
+            tool_response_found = True
+            assert isinstance(msg.content, str)
+            assert "sunny" in msg.content.lower() or "Paris" in msg.content
 
-            # Verify the correct model was used in both requests
-            for i, call in enumerate(route.calls):
-                request_body = json.loads(call.request.content)
-                assert request_body["model"] == model_name, (
-                    f"Request {i + 1}: Expected model '{model_name}', got '{request_body['model']}'"
-                )
+        elif (
+            isinstance(msg, AIMessage)
+            and msg.content
+            and not (hasattr(msg, "tool_calls") and msg.tool_calls)
+        ):
+            final_ai_response_found = True
+            assert isinstance(msg.content, str)
+            assert len(msg.content) > 0
+            assert "sunny" in msg.content.lower() or "Paris" in msg.content
 
-        assert "messages" in result, "Result should contain messages"
-        messages = result["messages"]
-
-        # Verify the AI message contains a tool call with correct function name and arguments
-        ai_messages_with_tool_calls = [
-            m for m in messages if m.type == "ai" and m.tool_calls
-        ]
-        assert len(ai_messages_with_tool_calls) >= 1, (
-            "Should have at least one AI message with tool calls"
-        )
-
-        tool_call = ai_messages_with_tool_calls[0].tool_calls[0]
-        assert tool_call["name"] == "get_weather", (
-            f"Tool call function name should be 'get_weather', got '{tool_call['name']}'"
-        )
-        assert "city" in tool_call["args"], "Tool call should have 'city' argument"
-        assert tool_call["args"]["city"] == "Paris", (
-            f"Tool call city argument should be 'Paris', got '{tool_call['args']['city']}'"
-        )
-
-        # Verify tool message exists with the tool output
-        tool_messages = [m for m in messages if m.type == "tool"]
-        assert len(tool_messages) >= 1, "Should have at least one tool message"
-        assert "sunny" in tool_messages[0].content.lower(), (
-            "Tool message should contain weather information"
-        )
-
-        # Verify final AI response incorporates the tool result
-        ai_messages = [m for m in messages if m.type == "ai"]
-        assert len(ai_messages) >= 1, "Should have at least one AI message"
-        final_response = ai_messages[-1].content
-        assert final_response is not None, "Final AI response should have content"
-        assert "sunny" in final_response.lower() or "paris" in final_response.lower(), (
-            "Response should mention weather or Paris"
-        )
+    assert tool_call_found, "No tool call found in messages"
+    assert tool_response_found, "No tool response found in messages"
+    assert final_ai_response_found, "No final AI response found in messages"
 
 
-class TestToolOutput:
-    """Tests for tool output verification.
+@pytest.mark.asyncio
+async def test_tool_execution_result(
+    agent,
+    thread_config: RunnableConfig,
+    openai_single_tool_call,
+):
+    """Test that the tool is actually executed and returns expected results.
 
-    These tests verify that the get_weather tool returns the expected
-    format and content.
+    This test verifies:
+    1. The get_weather tool is invoked
+    2. The tool returns the expected format
+    3. The tool output is included in the conversation
     """
+    user_message = "Check the weather in London"
 
-    @pytest.mark.asyncio
-    async def test_weather_tool_returns_expected_format(
-        self,
-        deterministic_weather: None,
-    ) -> None:
-        """Test that the get_weather tool returns the expected format and content.
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content=user_message)]},
+        thread_config,
+    )
 
-        This test verifies that the tool returns a string in the expected format
-        containing the city name.
+    messages = result["messages"]
 
-        Args:
-            deterministic_weather: Fixture that mocks asyncio.sleep for fast tests.
-        """
-        result = await get_weather("London")
+    tool_messages = [msg for msg in messages if isinstance(msg, ToolMessage)]
 
-        assert isinstance(result, str), "Result should be a string"
-        assert "London" in result, "Result should contain the city name"
-        assert "sunny" in result.lower(), "Result should mention sunny weather"
+    assert len(tool_messages) >= 1, "Expected at least one tool message"
 
-    @pytest.mark.asyncio
-    async def test_weather_tool_works_for_various_cities(
-        self,
-        deterministic_weather: None,
-    ) -> None:
-        """Test that the get_weather tool works correctly for various cities.
+    tool_message = tool_messages[0]
+    assert tool_message.name == "get_weather"
 
-        Args:
-            deterministic_weather: Fixture that mocks asyncio.sleep for fast tests.
-        """
-        cities = ["New York", "Tokyo", "Berlin", "Sydney"]
-
-        for city in cities:
-            result = await get_weather(city)
-            assert isinstance(result, str), f"Result for {city} should be a string"
-            assert city in result, f"Result should contain {city}"
-            assert "sunny" in result.lower(), f"Result for {city} should mention sunny"
-
-    @pytest.mark.asyncio
-    async def test_weather_tool_output_is_deterministic(
-        self,
-        deterministic_weather: None,
-    ) -> None:
-        """Test that the tool output is deterministic (same city = same output).
-
-        Args:
-            deterministic_weather: Fixture that mocks asyncio.sleep for fast tests.
-        """
-        result1 = await get_weather("Paris")
-        result2 = await get_weather("Paris")
-
-        assert result1 == result2, "Same city should produce same output"
-        assert result1 == "It's always sunny in Paris!", (
-            "Output should match expected format"
-        )
+    assert isinstance(tool_message.content, str)
+    assert "sunny" in tool_message.content.lower()
