@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { Button, type ButtonProps } from '$lib/components/ui/button';
 	import { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
 	import { cn } from '$lib/utils.js';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -28,23 +28,23 @@
 	}
 
 	const clipboard = new UseClipboard();
+
+	const buttonProps = {
+		...rest,
+		variant,
+		size,
+		tabindex,
+		class: cn('flex items-center gap-2', className),
+		type: 'button' as const,
+		name: 'copy',
+		onclick: async () => {
+			const status = await clipboard.copy(text);
+			onCopy?.(status);
+		}
+	} satisfies Partial<ButtonProps>;
 </script>
 
-<Button
-	{...rest}
-	bind:ref
-	{variant}
-	{size}
-	{tabindex}
-	class={cn('flex items-center gap-2', className)}
-	type="button"
-	name="copy"
-	onclick={async () => {
-		const status = await clipboard.copy(text);
-
-		onCopy?.(status);
-	}}
->
+<Button {...buttonProps} bind:ref>
 	{#if clipboard.status === 'success'}
 		<div in:scale={{ duration: animationDuration, start: 0.85 }}>
 			<CheckIcon tabindex={-1} />
