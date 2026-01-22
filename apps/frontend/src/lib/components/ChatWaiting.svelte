@@ -10,8 +10,6 @@
 		>
 			<User size={20} class="text-white dark:text-gray-900" />
 		</div>
-		<div>
-			<Spinner size="xl" />
-		</div>
+		<Spinner size="xl" />
 	</div>
 </div>
