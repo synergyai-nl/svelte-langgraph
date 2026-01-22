@@ -13,7 +13,11 @@ export default defineConfig({
 			project: './project.inlang',
 			outdir: './src/lib/paraglide'
 		}),
-		sentrySvelteKit()
+		sentrySvelteKit({
+			sourceMapsUploadOptions: {
+				telemetry: !process.env.VITEST
+			}
+		})
 	],
 	test: {
 		coverage: {
