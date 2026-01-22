@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { User } from '@lucide/svelte';
-	import { Spinner } from 'flowbite-svelte';
+	import { Spinner } from '$lib/components/ui/spinner';
 </script>
 
 <div class="mb-6 flex w-full justify-start">
@@ -10,8 +10,6 @@
 		>
 			<User size={20} class="text-white dark:text-gray-900" />
 		</div>
-		<div class="relative w-full">
-			<Spinner />
-		</div>
+		<Spinner size="xl" />
 	</div>
 </div>
