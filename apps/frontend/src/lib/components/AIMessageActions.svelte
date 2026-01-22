@@ -16,6 +16,7 @@
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
 	let copySuccess = $state(false);
+	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 </script>
 
 <div
@@ -31,6 +32,13 @@
 				class="h-6 w-6"
 				onCopy={(status) => {
 					copySuccess = status === 'success';
+
+					if (status === 'success') {
+						if (copyTimeoutId) clearTimeout(copyTimeoutId);
+						copyTimeoutId = setTimeout(() => {
+							copySuccess = false;
+						}, 1500);
+					}
 				}}
 			/>
 		</TooltipTrigger>
