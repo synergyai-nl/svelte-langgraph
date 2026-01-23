@@ -1,6 +1,8 @@
 # svelte-langgraph
 
 [![CI](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml)
+[![Maintainability](https://qlty.sh/badges/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
+[![Code Coverage](https://qlty.sh/badges/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
