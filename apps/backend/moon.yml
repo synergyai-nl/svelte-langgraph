@@ -47,3 +47,7 @@ tasks:
       - "tests/**/*"
     options:
       outputStyle: "stream"
+  test-cov:
+    extends: test
+    args:
+      - --cov
