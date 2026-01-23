@@ -32,7 +32,20 @@ jobs:
       - uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
-          files: apps/backend/coverage.lcov,apps/frontend/coverage/lcov.info
+          files: apps/backend/coverage.lcov
+          tag: backend
+          incomplete: true
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: apps/frontend/coverage/lcov.info
+          tag: frontend
+          add-prefix: ../
+          incomplete: true
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          command: complete
 
   build:
     name: "Docker Build"
