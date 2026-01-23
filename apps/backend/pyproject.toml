@@ -29,7 +29,6 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-addopts = "--cov=svelte_langgraph --cov-branch --cov-report lcov --cov-report term --cov-report html"
 
 [build-system]
 requires = ["uv_build>=0.9.2,<0.10.0"]
