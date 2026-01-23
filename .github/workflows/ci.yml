@@ -33,16 +33,16 @@ jobs:
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: apps/backend/coverage.lcov
-          tag: backend
           incomplete: true
           add-prefix: apps/backend/
+          format: lcov
       - uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: apps/frontend/coverage/lcov.info
-          tag: frontend
           incomplete: true
           add-prefix: apps/frontend/
+          format: lcov
       - uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
