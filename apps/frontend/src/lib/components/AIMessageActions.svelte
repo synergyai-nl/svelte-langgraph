@@ -33,7 +33,7 @@
 				onCopy={(status) => {
 					copySuccess = status === 'success';
 
-					if (status === 'success') {
+					if (copySuccess) {
 						if (copyTimeoutId) clearTimeout(copyTimeoutId);
 						copyTimeoutId = setTimeout(() => {
 							copySuccess = false;
