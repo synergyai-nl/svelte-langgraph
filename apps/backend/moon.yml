@@ -5,21 +5,41 @@ language: python
 stack: backend
 type: application
 
+fileGroups:
+  sources:
+    - 'src/**/*'
+    # Configs
+    - '**/*.config.*'
+    # Other files
+    - '**/*.{md,mdx,yml,yaml,json}'
+  tests:
+    - 'tests/**/*'
+    - 'e2e/**/*'
+
 tasks:
   format:
     command: "ruff format"
     args: "--check"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   format-write:
     command: "ruff format"
     local: true
   lint:
     command: "ruff check"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   lint-fix:
     extends: lint
     args: "--fix"
     local: true
   typecheck:
     command: "pyright"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host 127.0.0.1 --user test-user"
     preset: "server"
@@ -44,8 +64,8 @@ tasks:
     args: 
       - "-v"
     inputs:
-      - "src/**/*"
-      - "tests/**/*"
+      - '@group(sources)'
+      - '@group(tests)'
     options:
       outputStyle: "stream"
   test-cov:
