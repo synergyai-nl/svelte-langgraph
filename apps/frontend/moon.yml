@@ -96,7 +96,7 @@ tasks:
 
   test-cov:
     args:
-      - '--coverage.reporter text --coverage.reporter html --coverage.reporter lcov'
+      - '--coverage.reporter text --coverage.reporter lcov'
       - '--coverage.include src'
       - '--coverage.exclude "**/*.(test|spec).*" --coverage.exclude src/lib/paraglide'
 
