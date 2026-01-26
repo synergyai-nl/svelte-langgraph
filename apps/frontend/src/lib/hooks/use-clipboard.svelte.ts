@@ -27,7 +27,7 @@ type Options = {
  */
 export class UseClipboard {
 	#copiedStatus = $state<'success' | 'failure'>();
-	private delay: number;
+	private readonly delay: number;
 	private timeout: ReturnType<typeof setTimeout> | undefined = undefined;
 
 	constructor({ delay = 500 }: Partial<Options> = {}) {
