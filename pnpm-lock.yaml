@@ -81,7 +81,7 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.0.10)(jiti@2.5.0)(jsdom@26.1.0)(lightningcss@1.30.1))
       bits-ui:
-        specifier: ^2.14.4
+        specifier: ^2.15.4
         version: 2.15.5(@internationalized/date@3.11.0)(@sveltejs/kit@2.49.3(@opentelemetry/api@1.9.0)(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.46.1)(vite@6.3.5(@types/node@25.0.10)(jiti@2.5.0)(lightningcss@1.30.1)))(svelte@5.46.1)(typescript@5.8.3)(vite@6.3.5(@types/node@25.0.10)(jiti@2.5.0)(lightningcss@1.30.1)))(svelte@5.46.1)
       clsx:
         specifier: ^2.1.1
@@ -129,7 +129,7 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1(svelte@5.46.1)
       tailwind-merge:
-        specifier: ^3.3.1
+        specifier: ^3.4.0
         version: 3.4.0
       tailwind-variants:
         specifier: ^3.2.2

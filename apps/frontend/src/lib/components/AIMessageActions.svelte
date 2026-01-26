@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Clipboard } from 'flowbite-svelte';
+	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
-	import { RefreshCw, Check, Clipboard as ClipboardIcon } from '@lucide/svelte';
+	import { RefreshCw } from '@lucide/svelte';
 	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
@@ -16,6 +16,7 @@
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
 	let copySuccess = $state(false);
+	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 </script>
 
 <div
@@ -24,15 +25,22 @@
 >
 	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>
-			<Clipboard
-				value={message.text}
-				bind:success={copySuccess}
-				class="!text-foreground hover:!bg-accent hover:!text-accent-foreground dark:hover:!bg-accent/50 [&>button]:!text-foreground [&>button]:hover:!bg-accent [&>button]:hover:!text-accent-foreground [&>button]:dark:hover:!bg-accent/50 !border-0 !bg-transparent !p-1.5 !shadow-none !ring-0 !outline-none focus:!bg-transparent focus:!ring-0 active:!bg-transparent active:!ring-0 [&>button]:!border-0 [&>button]:!bg-transparent [&>button]:!shadow-none [&>button]:!ring-0"
-			>
-				{#snippet children(success: boolean)}
-					{#if success}<Check size={16} />{:else}<ClipboardIcon size={16} />{/if}
-				{/snippet}
-			</Clipboard>
+			<CopyButton
+				text={message.text}
+				variant="ghost"
+				size="icon-sm"
+				class="h-6 w-6"
+				onCopy={(status) => {
+					copySuccess = status === 'success';
+
+					if (copySuccess) {
+						if (copyTimeoutId) clearTimeout(copyTimeoutId);
+						copyTimeoutId = setTimeout(() => {
+							copySuccess = false;
+						}, 1500);
+					}
+				}}
+			/>
 		</TooltipTrigger>
 		<TooltipContent>
 			{copySuccess ? m.message_copied() : m.message_copy()}
