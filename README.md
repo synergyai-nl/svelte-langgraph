@@ -1,8 +1,8 @@
 # svelte-langgraph
 
 [![CI](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml)
-[![Maintainability](https://qlty.sh/badges/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
-[![Code Coverage](https://qlty.sh/badges/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
+[![Maintainability](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
+[![Code Coverage](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
@@ -127,7 +127,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
 
 ```bash
-moon :dev
+moon :dev :oidc-mock
 ```
 
 This automatically starts:
@@ -139,11 +139,13 @@ Make sure to configure your `.env` file to point to the OIDC mock provider (see 
 
 ### Run local checks
 
-Run all checks (linting, type checking, formatting):
+Run all checks (linting, type checking, formatting, building, unit and E2E tests):
 
 ```bash
 moon check --all
 ```
+
+This currently requires Docker to be running for the LangGraph server build.
 
 ## Tooling
 

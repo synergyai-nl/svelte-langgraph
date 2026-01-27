@@ -18,8 +18,8 @@ All commands use moon for consistency and optimal caching:
 
 ### Development
 ```bash
-# Start both frontend and backend dev servers with hot reload
-moon :dev
+# Start frontend, backend, and OIDC mock provider dev servers with hot reload
+moon :dev :oidc-mock
 
 # Run development server for specific project
 moon frontend:dev
@@ -28,7 +28,8 @@ moon backend:dev
 
 ### Testing & Quality Checks
 ```bash
-# Run ALL checks (lint, typecheck, format) for entire workspace
+# Run ALL checks (lint, typecheck, format, build, unit and E2E tests) for entire workspace
+# Note: Requires Docker to be running for the LangGraph server build
 moon check --all
 
 # Run checks for specific project
