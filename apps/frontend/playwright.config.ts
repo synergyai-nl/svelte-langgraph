@@ -1,16 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Test environment configuration
-const testEnv = {
-	AUTH_TRUST_HOST: 'true',
-	AUTH_OIDC_CLIENT_ID: 'svelte-langgraph',
-	AUTH_OIDC_CLIENT_SECRET: 'secret',
-	AUTH_OIDC_ISSUER: 'http://localhost:8080',
-	AUTH_SECRET: 'test-secret-for-e2e-testing-only-not-for-production-use',
-	PUBLIC_LANGGRAPH_API_URL: 'http://localhost:2024',
-	PUBLIC_SENTRY_DSN: ''
-};
-
 export default defineConfig({
 	testDir: 'e2e',
 	// Run all tests in parallel.
@@ -44,26 +33,22 @@ export default defineConfig({
 		},
 		{
 			name: 'backend',
-			command: 'moon backend:dev',
+			command: 'moon backend:serve-e2e',
 			url: 'http://localhost:2024',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
-			stderr: 'pipe',
-			env: {
-				AUTH_OIDC_ISSUER: testEnv.AUTH_OIDC_ISSUER
-			}
+			stderr: 'pipe'
 		},
 		{
 			name: 'frontend',
-			command: 'moon frontend:preview',
+			command: 'moon frontend:serve-e2e',
 			url: 'http://localhost:4173',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
-			env: testEnv
+			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 }
 		}
 	]
 });

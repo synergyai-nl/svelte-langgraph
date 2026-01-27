@@ -86,10 +86,12 @@ moon run :build --updateCache  # Force cache update
 
 ## Environment Setup
 
-Both frontend and backend require .env files:
-1. Copy `.env.example` to `.env` in respective directories
-2. Backend: `apps/backend/.env` (authentication, API keys, tracing)
-3. Frontend: `apps/frontend/.env` (auth config, API URLs, monitoring)
+The monorepo uses a single `.env` file at the root:
+1. Copy `.env.example` to `.env` in the monorepo root
+2. The .env file contains configuration for both frontend and backend:
+   - Common: Shared authentication settings
+   - Backend: API keys, model configuration, tracing
+   - Frontend: Auth config, API URLs, monitoring
 
 ## Project Structure
 

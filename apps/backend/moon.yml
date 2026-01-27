@@ -47,6 +47,12 @@ tasks:
   dev:
     command: "langgraph dev --no-browser --host localhost"
     preset: "watcher"
+    options:
+      envFile: '/.env'
+  serve-e2e:
+    extends: dev
+    options:
+      envFile: '/.env.e2e'
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
@@ -57,6 +63,8 @@ tasks:
     preset: "server"
     deps:
       - build
+    options:
+      envFile: '/.env'
   test:
     command: "pytest"
     args: 

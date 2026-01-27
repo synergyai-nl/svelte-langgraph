@@ -21,14 +21,6 @@ fileGroups:
 tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
-  start:
-    command: node --env-file=.env build
-    deps:
-      - build
-    local: true
-    options:
-      envFile: true
-
   build:
     inputs:
       - '@group(sources)'
@@ -38,6 +30,7 @@ tasks:
       - 'src/lib/paraglide'
     options:
       retryCount: 1
+      envFile: '/.env'
 
   check:
     deps:
@@ -106,3 +99,16 @@ tasks:
     deps:
       - build
       - install-playwright
+
+  dev:
+    options:
+      envFile: '/.env'
+
+  preview:
+    options:
+      envFile: '/.env'
+
+  serve-e2e:
+    extends: preview
+    options:
+      envFile: '/.env.e2e'
