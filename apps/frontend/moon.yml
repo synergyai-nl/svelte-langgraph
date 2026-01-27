@@ -94,6 +94,12 @@ tasks:
       - '--silent'
       - 'passed-only'
 
+  test-cov:
+    args:
+      - '--coverage.reporter text --coverage.reporter lcov'
+      - '--coverage.include src'
+      - '--coverage.exclude "**/*.(test|spec).*" --coverage.exclude src/lib/paraglide'
+
   test-e2e:
     command: playwright test
     deps:
