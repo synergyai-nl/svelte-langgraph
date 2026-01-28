@@ -32,3 +32,6 @@ src/lib/paraglide
 
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Temporary cache from eslint
+.eslintcache

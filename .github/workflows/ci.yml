@@ -26,8 +26,7 @@ jobs:
         if: success() || failure()
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          matrix: ${{ toJSON(matrix) }}
-      - uses: appthrust/moon-ci-retrospect@v1
+      - uses: appthrust/moon-ci-retrospect@v2
         if: success() || failure()
       - uses: qltysh/qlty-action/coverage@v2
         with:

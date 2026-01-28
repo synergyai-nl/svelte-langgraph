@@ -29,16 +29,18 @@ export default defineConfig({
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
-			ignoreHTTPSErrors: false
+			ignoreHTTPSErrors: false,
+			wait: /Uvicorn running on http:\/\/localhost:8080/
 		},
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			url: 'http://localhost:2024',
+			url: 'http://localhost:2024/ok',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
-			stderr: 'pipe'
+			stderr: 'pipe',
+			wait: /Registering graph with id/
 		},
 		{
 			name: 'frontend',
@@ -48,7 +50,8 @@ export default defineConfig({
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 }
+			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
+			wait: /http:\/\/localhost:4173/
 		}
 	]
 });

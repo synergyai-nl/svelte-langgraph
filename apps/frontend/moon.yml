@@ -99,6 +99,8 @@ tasks:
     deps:
       - build
       - install-playwright
+    options:
+      retryCount: 1
 
   dev:
     options:

@@ -45,12 +45,17 @@ tasks:
     preset: "server"
     local: true
   dev:
-    command: "langgraph dev --no-browser --host localhost"
+    command: 'langgraph dev'
+    args:
+     - '--no-browser'
+     - '--host localhost'
     preset: "watcher"
     options:
       envFile: '/.env'
   serve-e2e:
     extends: dev
+    args:
+      - '--no-reload'
     options:
       envFile: '/.env.e2e'
   build:
