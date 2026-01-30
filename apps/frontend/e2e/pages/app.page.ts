@@ -6,6 +6,8 @@ import type { Locator, Page } from '@playwright/test';
 export class AppPage {
 	readonly page: Page;
 
+	readonly main: Locator;
+
 	// Navigation elements
 	readonly header: Locator;
 	readonly homeLink: Locator;
@@ -26,8 +28,12 @@ export class AppPage {
 		this.signInButton = this.header.getByRole('button', { name: 'Sign in' });
 
 		// User menu
-		this.userMenuButton = page.getByRole('button', { name: 'User' });
+		this.userMenuButton = this.header.getByRole('button', { name: 'User' });
+
+		// Using this.header instead of .page here gives errors.
 		this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+
+		this.main = this.page.getByRole('main');
 	}
 
 	async signIn() {
