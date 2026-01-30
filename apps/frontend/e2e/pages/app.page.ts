@@ -7,7 +7,7 @@ export class AppPage {
 	readonly page: Page;
 
 	// Navigation elements
-	readonly nav: Locator;
+	readonly header: Locator;
 	readonly homeLink: Locator;
 	readonly chatLink: Locator;
 	readonly signInButton: Locator;
@@ -19,11 +19,11 @@ export class AppPage {
 	constructor(page: Page) {
 		this.page = page;
 
-		// Navigation
-		this.nav = page.getByRole('navigation');
-		this.homeLink = page.getByRole('link', { name: /home/i });
-		this.chatLink = page.getByRole('link', { name: /chat/i });
-		this.signInButton = this.nav.getByText('Sign in');
+		// Header
+		this.header = this.page.getByRole('banner');
+		this.homeLink = this.header.getByRole('link', { name: /home/i });
+		this.chatLink = this.header.getByRole('link', { name: /chat/i });
+		this.signInButton = this.header.getByRole('button', { name: 'Sign in' });
 
 		// User menu
 		this.userMenuButton = page.getByRole('button', { name: 'User' });

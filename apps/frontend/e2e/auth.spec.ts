@@ -57,7 +57,7 @@ test.describe('When unauthenticated', () => {
 		});
 
 		test('should have navigation visible', async ({ app }) => {
-			await expect(app.nav).toBeVisible();
+			await expect(app.header).toBeVisible();
 		});
 	});
 });
