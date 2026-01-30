@@ -46,7 +46,8 @@ export default defineConfig({
 						project: './project.inlang',
 						outdir: './src/lib/paraglide'
 					}),
-					svelteTesting() // This was missing proper placement
+					// Register the @testing-library/svelte Vite plugin for the client Vitest project.
+					svelteTesting()
 				]
 			},
 			{
