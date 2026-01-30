@@ -18,8 +18,8 @@ All commands use moon for consistency and optimal caching:
 
 ### Development
 ```bash
-# Start both frontend and backend dev servers with hot reload
-moon :dev
+# Start frontend, backend, and OIDC mock provider dev servers with hot reload
+moon :dev :oidc-mock
 
 # Run development server for specific project
 moon frontend:dev
@@ -28,7 +28,8 @@ moon backend:dev
 
 ### Testing & Quality Checks
 ```bash
-# Run ALL checks (lint, typecheck, format) for entire workspace
+# Run ALL checks (lint, typecheck, format, build, unit and E2E tests) for entire workspace
+# Note: Requires Docker to be running for the LangGraph server build
 moon check --all
 
 # Run checks for specific project
@@ -86,10 +87,12 @@ moon run :build --updateCache  # Force cache update
 
 ## Environment Setup
 
-Both frontend and backend require .env files:
-1. Copy `.env.example` to `.env` in respective directories
-2. Backend: `apps/backend/.env` (authentication, API keys, tracing)
-3. Frontend: `apps/frontend/.env` (auth config, API URLs, monitoring)
+The monorepo uses a single `.env` file at the root:
+1. Copy `.env.example` to `.env` in the monorepo root
+2. The .env file contains configuration for both frontend and backend:
+   - Common: Shared authentication settings
+   - Backend: API keys, model configuration, tracing
+   - Frontend: Auth config, API URLs, monitoring
 
 ## Project Structure
 

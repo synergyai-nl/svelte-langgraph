@@ -97,7 +97,7 @@ export async function JWTCallback({ token, account }: { token: JWT; account?: Ac
 			console.info('Token expired, renewing', Date.now(), token.expires_at * 1000);
 
 			try {
-				return refreshAccessToken(token);
+				return await refreshAccessToken(token);
 			} catch (error) {
 				console.error('Error refreshing access token', error);
 				return { ...token, error: 'RefreshAccessTokenError' };
