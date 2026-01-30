@@ -1,6 +1,7 @@
 import {
 	authenticateUser,
 	expectAuthenticated,
+	expectOIDCProviderURL,
 	expectUnauthenticated,
 	OIDC_CONFIG,
 	signOut
@@ -58,6 +59,16 @@ test.describe('When unauthenticated', () => {
 
 		test('should have navigation visible', async ({ app }) => {
 			await expect(app.header).toBeVisible();
+		});
+
+		test.describe('Clicking sign-in button', () => {
+			test.beforeEach(async ({ chat }) => {
+				await chat.modalSignInButton.click();
+			});
+
+			test('should redirect to login page', async ({ page }) => {
+				await expectOIDCProviderURL(page);
+			});
 		});
 	});
 });

@@ -3,6 +3,13 @@ import { AppPage, OidcPage, OIDC_CONFIG } from '../pages';
 
 export { OIDC_CONFIG };
 
+// Ensure redirect to OIDC provider
+export async function expectOIDCProviderURL(page: Page) {
+	await expect(page).toHaveURL((url) =>
+		url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`)
+	);
+}
+
 /**
  * Complete OIDC authentication flow.
  * The oidc-provider-mock automatically authenticates the test-user.
@@ -14,10 +21,7 @@ export async function authenticateUser(page: Page) {
 	await page.goto('/');
 	await app.signIn();
 
-	// Ensure redirect to OIDC provider
-	await expect(page).toHaveURL((url) =>
-		url.toString().startsWith(`${OIDC_CONFIG.issuer}/oauth2/authorize`)
-	);
+	await expectOIDCProviderURL(page);
 
 	await oidc.authorize();
 	await page.waitForURL('/', { timeout: 5000 });
