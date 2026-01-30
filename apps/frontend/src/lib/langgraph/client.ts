@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/public';
 import type { ThreadValues } from './types';
 
 export function createClient(accessToken: string): Client {
-	console.assert(accessToken, 'No access token specified.');
+	console.assert(!!accessToken, 'No access token specified.');
 
 	return new Client({
 		defaultHeaders: {

@@ -41,14 +41,23 @@ tasks:
       - '@group(sources)'
       - '@group(tests)'
   oidc-mock:
-    command: "oidc-provider-mock --port 8080 --host 127.0.0.1 --user test-user"
+    command: "oidc-provider-mock --port 8080 --host localhost --user test-user"
     preset: "server"
     local: true
   dev:
-    command: "langgraph dev --no-browser"
+    command: 'langgraph dev'
+    args:
+     - '--no-browser'
+     - '--host localhost'
     preset: "watcher"
-    deps:
-      - oidc-mock
+    options:
+      envFile: '/.env'
+  serve-e2e:
+    extends: dev
+    args:
+      - '--no-reload'
+    options:
+      envFile: '/.env.e2e'
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
@@ -59,6 +68,8 @@ tasks:
     preset: "server"
     deps:
       - build
+    options:
+      envFile: '/.env'
   test:
     command: "pytest"
     args: 
