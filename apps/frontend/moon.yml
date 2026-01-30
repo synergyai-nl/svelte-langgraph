@@ -30,7 +30,6 @@ tasks:
       - 'src/lib/paraglide'
     options:
       retryCount: 1
-      envFile: '/.env'
 
   check:
     deps:
@@ -108,7 +107,6 @@ tasks:
 
   preview:
     options:
-      envFile: '/.env'
 
   serve-e2e:
     extends: preview
