@@ -58,6 +58,7 @@ tasks:
       - '--no-reload'
     options:
       envFile: '/.env.e2e'
+    preset: "server"
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
