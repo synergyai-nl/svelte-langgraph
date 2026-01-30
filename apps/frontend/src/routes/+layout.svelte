@@ -187,6 +187,8 @@
 	</div>
 </header>
 
+<main>
 <Tooltip.Provider>
 	{@render children()}
 </Tooltip.Provider>
+</main>
