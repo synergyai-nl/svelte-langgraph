@@ -17,6 +17,9 @@ fileGroups:
     - 'e2e/**/*'
 
 tasks:
+  setup:
+    # Used by E2E to ensure dependencies are installed before starting backend server and mocks.
+    command: noop
   format:
     command: "ruff format"
     args: "--check"
@@ -43,7 +46,6 @@ tasks:
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user"
     preset: "server"
-    local: true
   dev:
     command: 'langgraph dev'
     args:
