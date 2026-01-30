@@ -1,8 +1,8 @@
 # svelte-langgraph
 
 [![CI](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml/badge.svg)](https://github.com/synergyai-nl/svelte-langgraph/actions/workflows/ci.yml)
-[![Maintainability](https://qlty.sh/badges/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
-[![Code Coverage](https://qlty.sh/badges/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergy-ai/projects/svelte-langgraph)
+[![Maintainability](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
+[![Code Coverage](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 
 Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
 
@@ -26,25 +26,33 @@ https://svelte-langgraph-demo.synergyai.nl/
 
 ## Configuration
 
-Both the frontend and backend require environment variables to be configured. Copy the example files and update them with your values:
-
-### Backend Environment Variables
-
-Copy the example file:
+The monorepo uses a single `.env` file at the root to configure both frontend and backend. Copy the example file and update it with your values:
 
 ```bash
-cd apps/backend
 cp .env.example .env
 ```
 
-Configure the following variables in `apps/backend/.env`:
+### Environment Variables
 
+The `.env` file is organized into sections:
+
+**Common Variables:**
 - `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
+
+**Backend Variables:**
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
 - `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
-- `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (defaults to EU region)
+- `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (optional, defaults to EU region)
+
+**Frontend Variables:**
+- `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
+- `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
+- `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
+- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
+- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
+- `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
 ### AI Provider Configuration
 
@@ -95,30 +103,6 @@ OPENAI_BASE_URL=http://localhost:11434/v1
 CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 ```
 
-### Frontend Environment Variables
-
-Copy the example file:
-
-```bash
-cd apps/frontend
-cp .env.example .env
-```
-
-Configure the following variables in `apps/frontend/.env`:
-
-- `AUTH_TRUST_HOST=true` - Enable auth trust host for development
-- `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
-- `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
-- `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
-- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
-- `PUBLIC_LANGCHAIN_API_KEY` - Your LangChain API key for client-side requests
-- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
-- `PUBLIC_SENTRY_DSN` - Public DSN for your Sentry project, for error tracking and user feedback.
-- `PUBLIC_SENTRY_SEND_PII` - Optional: Enable PII (Personally Identifiable Information) capture in Sentry.
-- `SENTRY_AUTH_TOKEN` - Sentry auth token for source map uploads.
-- `SENTRY_ORG` - Sentry org for source map uploads.
-- `SENTRY_PROJECT` - Sentry project for source map uploads.
-
 ## Getting Started
 
 ### Local Development with OIDC Mock Provider
@@ -143,7 +127,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
 
 ```bash
-moon :dev
+moon :dev :oidc-mock
 ```
 
 This automatically starts:
@@ -151,15 +135,17 @@ This automatically starts:
 - **Backend** LangGraph server at `http://localhost:2024`
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
 
-Make sure to configure your `.env` files to point to the OIDC mock provider (see Configuration section above).
+Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
 
 ### Run local checks
 
-Run all checks (linting, type checking, formatting):
+Run all checks (linting, type checking, formatting, building, unit and E2E tests):
 
 ```bash
 moon check --all
 ```
+
+This currently requires Docker to be running for the LangGraph server build.
 
 ## Tooling
 

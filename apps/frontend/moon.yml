@@ -21,14 +21,6 @@ fileGroups:
 tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
-  start:
-    command: node --env-file=.env build
-    deps:
-      - build
-    local: true
-    options:
-      envFile: true
-
   build:
     inputs:
       - '@group(sources)'
@@ -88,6 +80,7 @@ tasks:
     command: npx playwright install chromium --with-deps
     options:
       internal: true
+    inputs:
 
   test:
     args:
@@ -105,3 +98,14 @@ tasks:
     deps:
       - build
       - install-playwright
+    options:
+      retryCount: 1
+
+  dev:
+    options:
+      envFile: '/.env'
+
+  serve-e2e:
+    extends: preview
+    options:
+      envFile: '/.env.e2e'
