@@ -80,6 +80,7 @@ tasks:
     command: npx playwright install chromium --with-deps
     options:
       internal: true
+      cache: true
     inputs:
 
   test:
@@ -100,6 +101,14 @@ tasks:
       - install-playwright
     options:
       retryCount: 1
+
+  test-e2e-ui:
+    extends: test-e2e
+    preset: server
+    args:
+      - '--ui'
+    options:
+      retryCount: 0
 
   dev:
     options:

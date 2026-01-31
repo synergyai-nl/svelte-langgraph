@@ -2,13 +2,7 @@
 	import type { ToolMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 
-	import {
-		ToolsOutline,
-		CheckCircleOutline,
-		ExclamationCircleOutline,
-		ClockOutline,
-		AngleRightOutline
-	} from 'flowbite-svelte-icons';
+	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
 
 	interface Props {
@@ -24,7 +18,7 @@
 		<div
 			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-500 dark:bg-gray-400"
 		>
-			<span><ToolsOutline size="sm" class="text-white dark:text-gray-900" /></span>
+			<span><Wrench size={20} class="text-white dark:text-gray-900" /></span>
 		</div>
 		<div class="relative">
 			<button
@@ -37,14 +31,14 @@
 				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
 
 				{#if message.status === 'success'}
-					<CheckCircleOutline size="sm" class="text-green-400 dark:text-green-400" />
+					<CircleCheck size={20} class="text-green-400 dark:text-green-400" />
 				{:else if message.status === 'error'}
-					<ExclamationCircleOutline size="sm" class="text-red-400 dark:text-red-400" />
+					<CircleAlert size={20} class="text-red-400 dark:text-red-400" />
 				{:else}
-					<ClockOutline size="sm" class="text-gray-400 dark:text-gray-400" />
+					<Clock size={20} class="text-gray-400 dark:text-gray-400" />
 				{/if}
 
-				<AngleRightOutline class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
+				<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
 			</button>
 
 			{#if !collapsed}

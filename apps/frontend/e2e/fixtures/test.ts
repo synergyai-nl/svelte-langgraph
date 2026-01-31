@@ -11,8 +11,8 @@ export const test = base.extend<Fixtures>({
 	app: async ({ page }, use) => {
 		await use(new AppPage(page));
 	},
-	chat: async ({ page }, use) => {
-		await use(new ChatPage(page));
+	chat: async ({ app }, use) => {
+		await use(new ChatPage(app));
 	},
 	oidc: async ({ page }, use) => {
 		await use(new OidcPage(page));

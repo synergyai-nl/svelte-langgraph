@@ -167,6 +167,14 @@ The frontend is built with modern web technologies:
 - Playwright for end-to-end testing
 - Vitest for unit testing
 
+### End to end testing
+
+End to end tests are written using Playwright with fixtures and page object models. They can be run interactively with:
+
+```
+moon :test-e2e-ui
+```
+
 ## Production
 
 To run a Docker build of the project, use Docker Compose:
