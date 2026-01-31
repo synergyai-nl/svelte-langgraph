@@ -5635,8 +5635,8 @@ snapshots:
   flowbite-svelte-icons@2.2.1(svelte@5.46.1):
     dependencies:
       clsx: 2.1.1
-      svelte: 5.46.1
-      tailwind-merge: 3.4.0
+      svelte: 5.36.14
+      tailwind-merge: 3.3.1
 
   flowbite-svelte@1.31.0(rollup@4.45.1)(svelte@5.46.1)(tailwindcss@4.1.11):
     dependencies:
@@ -6856,7 +6856,9 @@ snapshots:
 
   symbol-tree@3.2.4: {}
 
-  tabbable@6.4.0: {}
+  tabbable@6.3.0: {}
+
+  tailwind-merge@3.3.1: {}
 
   tailwind-merge@3.4.0: {}
 
