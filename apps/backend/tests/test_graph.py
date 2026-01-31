@@ -1,4 +1,14 @@
-"""Tests for the LangGraph agent graph module."""
+"""Unit tests for the LangGraph agent graph.
+
+This module contains tests for the LangGraph agent, covering:
+- Basic conversation flow
+- State maintenance across invocations
+- Tool invocation and execution
+- Tool output verification
+
+Tests are parametrized across multiple OpenAI-compatible providers and models
+to ensure provider flexibility and model configuration works correctly.
+"""
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage

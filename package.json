@@ -11,5 +11,10 @@
   "license": "ISC",
   "engines": {
     "node": "~24"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

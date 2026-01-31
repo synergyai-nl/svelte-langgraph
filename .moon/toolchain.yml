@@ -5,10 +5,11 @@ python:
   version: "3.12"
   packageManager: "uv"
   uv:
-    version: "0.7"
+    version: "^0.9"
 
 node:
   version: "24"
   packageManager: "pnpm"
   pnpm:
-    version: "9"
+    version: "^10.28"
+  dedupeOnLockfileChange: false

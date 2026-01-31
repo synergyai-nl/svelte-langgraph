@@ -1,4 +1,9 @@
-"""Pytest configuration and fixtures for LangGraph tests."""
+"""Shared test fixtures for LangGraph agent tests.
+
+This module provides fixtures for mocking OpenAI API responses across different
+providers (OpenAI, OpenRouter, Ollama) and models. It uses official OpenAI SDK
+types to ensure type compatibility with the actual API schema.
+"""
 
 from collections.abc import Sequence
 from typing import Literal

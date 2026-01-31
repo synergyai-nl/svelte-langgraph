@@ -5,30 +5,60 @@ language: python
 stack: backend
 type: application
 
+fileGroups:
+  sources:
+    - 'src/**/*'
+    # Configs
+    - '**/*.config.*'
+    # Other files
+    - '**/*.{md,mdx,yml,yaml,json}'
+  tests:
+    - 'tests/**/*'
+    - 'e2e/**/*'
+
 tasks:
   format:
     command: "ruff format"
     args: "--check"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   format-write:
     command: "ruff format"
     local: true
   lint:
     command: "ruff check"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   lint-fix:
     extends: lint
     args: "--fix"
     local: true
   typecheck:
     command: "pyright"
+    inputs:
+      - '@group(sources)'
+      - '@group(tests)'
   oidc-mock:
-    command: "oidc-provider-mock --port 8080 --host 127.0.0.1 --user test-user"
+    command: "oidc-provider-mock --port 8080 --host localhost --user test-user"
     preset: "server"
     local: true
   dev:
-    command: "langgraph dev --no-browser"
+    command: 'langgraph dev'
+    args:
+     - '--no-browser'
+     - '--host localhost'
     preset: "watcher"
-    deps:
-      - oidc-mock
+    options:
+      envFile: '/.env'
+  serve-e2e:
+    extends: dev
+    args:
+      - '--no-reload'
+    options:
+      envFile: '/.env.e2e'
+    preset: "server"
   build:
     command: "langgraph build --tag svelte-langgraph-backend --pull"
     deps:
@@ -39,11 +69,18 @@ tasks:
     preset: "server"
     deps:
       - build
+    options:
+      envFile: '/.env'
   test:
     command: "pytest"
-    args: -v
+    args: 
+      - "-v"
     inputs:
-      - "src/**/*"
-      - "tests/**/*"
+      - '@group(sources)'
+      - '@group(tests)'
     options:
       outputStyle: "stream"
+  test-cov:
+    extends: test
+    args: 
+      - "--cov=svelte_langgraph --cov-branch --cov-report lcov --cov-report term --cov-report html"

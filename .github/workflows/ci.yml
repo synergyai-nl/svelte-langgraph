@@ -26,9 +26,26 @@ jobs:
         if: success() || failure()
         with:
           access-token: ${{ secrets.GITHUB_TOKEN }}
-          matrix: ${{ toJSON(matrix) }}
-      - uses: appthrust/moon-ci-retrospect@v1
+      - uses: appthrust/moon-ci-retrospect@v2
         if: success() || failure()
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: apps/backend/coverage.lcov
+          incomplete: true
+          add-prefix: apps/backend/
+          format: lcov
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: apps/frontend/coverage/lcov.info
+          incomplete: true
+          add-prefix: apps/frontend/
+          format: lcov
+      - uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          command: complete
 
   build:
     name: "Docker Build"
