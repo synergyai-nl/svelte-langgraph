@@ -97,4 +97,23 @@
 			</div>
 		</div>
 	</section>
+
+	<section class="relative py-2 border-t">
+		<div class="mx-auto max-w-7xl px-6">
+			<div class="flex items-center justify-center gap-2">
+				<p class="text-muted-foreground text-xs tracking-wide">Powered by</p>
+				<a
+					href="https://www.synergyai.nl/"
+					target="_blank"
+					class="transition-opacity hover:opacity-80"
+				>
+					<img
+						src="https://assets.lightfunnels.com/cdn-cgi/image/width=3840,quality=60,format=auto/https://assets.lightfunnels.com/account-20917/images_library/c12b9172-6242-4fb7-aa55-cc1ceec720fa.Logo%20SynergyAI.png"
+						alt="SynergyAI"
+						class="h-6 w-auto"
+					/>
+				</a>
+			</div>
+		</div>
+	</section>
 </main>
