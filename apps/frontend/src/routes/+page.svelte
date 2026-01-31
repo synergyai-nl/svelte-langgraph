@@ -98,7 +98,7 @@
 		</div>
 	</section>
 
-	<section class="relative py-2 border-t">
+	<section class="relative border-t py-2">
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="flex items-center justify-center gap-2">
 				<p class="text-muted-foreground text-xs tracking-wide">Powered by</p>
