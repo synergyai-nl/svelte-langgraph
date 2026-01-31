@@ -21,14 +21,6 @@ fileGroups:
 tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
-  start:
-    command: node --env-file=.env build
-    deps:
-      - build
-    local: true
-    options:
-      envFile: true
-
   build:
     inputs:
       - '@group(sources)'
@@ -88,14 +80,41 @@ tasks:
     command: npx playwright install chromium --with-deps
     options:
       internal: true
+      cache: true
+    inputs:
 
   test:
     args:
       - '--silent'
       - 'passed-only'
 
+  test-cov:
+    args:
+      - '--coverage.reporter text --coverage.reporter lcov'
+      - '--coverage.include src'
+      - '--coverage.exclude "**/*.(test|spec).*" --coverage.exclude src/lib/paraglide'
+
   test-e2e:
     command: playwright test
     deps:
       - build
       - install-playwright
+    options:
+      retryCount: 1
+
+  test-e2e-ui:
+    extends: test-e2e
+    preset: server
+    args:
+      - '--ui'
+    options:
+      retryCount: 0
+
+  dev:
+    options:
+      envFile: '/.env'
+
+  serve-e2e:
+    extends: preview
+    options:
+      envFile: '/.env.e2e'

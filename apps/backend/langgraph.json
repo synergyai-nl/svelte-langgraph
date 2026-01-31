@@ -6,7 +6,6 @@
 		"chat": "svelte_langgraph.graph:make_graph"
 	},
 	"python_version": "3.12",
-	"env": ".env",
 	"auth": {
 		"path": "svelte_langgraph.auth:auth"
 	}
