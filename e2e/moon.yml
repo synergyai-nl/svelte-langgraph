@@ -57,6 +57,18 @@ tasks:
       cache: true
     inputs:
 
+  typecheck:
+    command:
+      - 'tsc'
+      # Use incremental builds with project references
+      - '--build'
+      # Always use pretty output
+      - '--pretty'
+    inputs:
+      - '@group(sources)'
+      - 'tsconfig.json'
+    outputs:
+
   test:
     command: playwright test
     deps:

@@ -30,6 +30,7 @@ export default defineConfig({
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
 			ignoreHTTPSErrors: false,
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Uvicorn running on http:\/\/localhost:8080/
 		},
 		{
@@ -40,6 +41,7 @@ export default defineConfig({
 			reuseExistingServer: !process.env.CI,
 			stdout: 'ignore',
 			stderr: 'pipe',
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Registering graph with id/
 		},
 		{
@@ -51,6 +53,7 @@ export default defineConfig({
 			stdout: 'ignore',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /http:\/\/localhost:4173/
 		}
 	]

@@ -10,3 +10,6 @@ Thumbs.db
 
 # Temporary cache from eslint
 .eslintcache
+
+# Build cache manifests
+*.tsbuildinfo
