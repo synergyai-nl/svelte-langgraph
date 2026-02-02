@@ -24,7 +24,7 @@
 		"@inlang/paraglide-js": "^2.2.0",
 		"@langchain/core": "^0.3.78",
 		"@langchain/langgraph-sdk": "^0.1.9",
-		"@playwright/test": "^1.49.1",
+		"@lucide/svelte": "^0.562.0",
 		"@sveltejs/adapter-node": "^5.2.12",
 		"@sveltejs/kit": "^2.49.3",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",

@@ -1,8 +1,8 @@
 $schema: 'https://moonrepo.dev/schemas/project.json'
 
 language: typescript
-stack: frontend
-type: application
+stack: infrastructure
+type: automation
 
 fileGroups:
   sources:
@@ -11,36 +11,12 @@ fileGroups:
     - '**/*.config.*'
     # Other files
     - '**/*.{md,mdx,yml,yaml,json}'
-  tests:
-    - 'tests/**/*'
-    - 'e2e/**/*'
-  messages:
-    - 'project.inlang'
-    - 'messages'
-
-tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
-  build:
-    inputs:
-      - '@group(sources)'
-      - '@group(messages)'
-    outputs:
-      - 'build'
-      - 'src/lib/paraglide'
-    options:
-      retryCount: 1
-
-  check:
-    deps:
-      - build
-
   lint:
     command: eslint .
     inputs:
-      - '@group(messages)'
       - '@group(sources)'
-      - '@group(tests)'
       # Root configs, any format
       # - '/eslint.config.js'
 
@@ -54,9 +30,7 @@ tasks:
   format:
     command: prettier
     inputs:
-      - '@group(messages)'
       - '@group(sources)'
-      - '@group(tests)'
       - '.prettierignore'
       - '.prettierrc'
       # Root configs, any format
@@ -76,22 +50,25 @@ tasks:
     options:
       mergeArgs: 'replace'
 
+  install-playwright:
+    command: playwright install chromium --with-deps
+    options:
+      internal: true
+      cache: true
+    inputs:
+
   test:
-    args:
-      - '--silent'
-      - 'passed-only'
-
-  test-cov:
-    args:
-      - '--coverage.reporter text --coverage.reporter lcov'
-      - '--coverage.include src'
-      - '--coverage.exclude "**/*.(test|spec).*" --coverage.exclude src/lib/paraglide'
-
-  dev:
+    command: playwright test
+    deps:
+      - frontend:build
+      - install-playwright
     options:
-      envFile: '/.env'
+      retryCount: 1
 
-  serve-e2e:
-    extends: preview
+  test-ui:
+    extends: test
+    preset: server
+    args:
+      - '--ui'
     options:
-      envFile: '/.env.e2e'
+      retryCount: 0
