@@ -4,6 +4,10 @@ language: typescript
 stack: infrastructure
 type: automation
 
+dependsOn:
+  - backend
+  - frontend
+
 fileGroups:
   sources:
     - 'src/**/*'
@@ -72,10 +76,7 @@ tasks:
   test:
     command: playwright test
     deps:
-      - frontend:build
       - install-playwright
-      # Hack to ensure backend setup is run so OIDC mock can start.
-      - backend:lint
     options:
       retryCount: 1
 
