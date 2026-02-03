@@ -4,7 +4,7 @@
 [![Maintainability](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 [![Code Coverage](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 
-Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server.
+Opinionated SvelteKit-based LLM frontend for LangGraph server.
 
 ## Demo
 https://svelte-langgraph-demo.synergyai.nl/
@@ -12,7 +12,7 @@ https://svelte-langgraph-demo.synergyai.nl/
 ## Architecture
 
 - **Backend**: Python 3.12 + LangGraph server for AI workflow management
-- **Frontend**: SvelteKit + TypeScript with Tailwind CSS and Flowbite components
+- **Frontend**: SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **Authentication**: Generic OIDC (OpenID Connect) integration
 - **Internationalization**: Paraglide-JS for multi-language support
 
@@ -163,7 +163,7 @@ The frontend is built with modern web technologies:
 
 - SvelteKit for the application framework
 - Tailwind CSS for styling
-- Flowbite for UI components
+- shadcn/bits-ui for UI components
 - Playwright for end-to-end testing
 - Vitest for unit testing
 
