@@ -1,14 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-	testDir: 'e2e',
+	testDir: 'src',
 	// Run all tests in parallel.
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
 	// Opt out of parallel tests on CI.
 	workers: process.env.CI ? 1 : undefined,
-	reporter: [['html', { open: 'never' }]],
+	reporter: [['html', { open: 'never' }], [process.env.CI ? 'github' : 'list']],
 	use: {
 		baseURL: 'http://localhost:4173',
 		trace: 'on-first-retry'
@@ -26,10 +26,11 @@ export default defineConfig({
 			url: 'http://localhost:8080/.well-known/openid-configuration',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
-			stdout: 'pipe',
+			stdout: 'ignore',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
 			ignoreHTTPSErrors: false,
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Uvicorn running on http:\/\/localhost:8080/
 		},
 		{
@@ -38,8 +39,9 @@ export default defineConfig({
 			url: 'http://localhost:2024/ok',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
-			stdout: 'pipe',
+			stdout: 'ignore',
 			stderr: 'pipe',
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Registering graph with id/
 		},
 		{
@@ -48,9 +50,10 @@ export default defineConfig({
 			url: 'http://localhost:4173',
 			timeout: 120000,
 			reuseExistingServer: !process.env.CI,
-			stdout: 'pipe',
+			stdout: 'ignore',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
+			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /http:\/\/localhost:4173/
 		}
 	]

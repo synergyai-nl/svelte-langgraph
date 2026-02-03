@@ -10,6 +10,7 @@ Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server. This is 
 
 - **Backend** (apps/backend/): Python 3.12 + LangGraph server for AI workflow management
 - **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and Flowbite components
+- **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`.
 - **Build System**: [moonrepo](https://moonrepo.dev/docs) for task orchestration and dependency management
 
 ## Essential Commands
