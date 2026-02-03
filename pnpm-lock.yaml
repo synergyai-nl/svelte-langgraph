@@ -173,7 +173,7 @@ importers:
         version: 9.31.0
       '@types/node':
         specifier: ^25.0.10
-        version: 25.0.10
+        version: 25.2.0
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.54.0
         version: 8.54.0(@typescript-eslint/parser@8.38.0(eslint@9.31.0(jiti@2.5.0))(typescript@5.8.3))(eslint@9.31.0(jiti@2.5.0))(typescript@5.8.3)
