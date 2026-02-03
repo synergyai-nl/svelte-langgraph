@@ -4,6 +4,10 @@ language: typescript
 stack: infrastructure
 type: automation
 
+dependsOn:
+  - backend
+  - frontend
+
 fileGroups:
   sources:
     - 'src/**/*'
@@ -72,7 +76,6 @@ tasks:
   test:
     command: playwright test
     deps:
-      - frontend:build
       - install-playwright
     options:
       retryCount: 1
