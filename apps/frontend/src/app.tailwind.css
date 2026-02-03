@@ -4,8 +4,6 @@
 @plugin '@tailwindcss/typography';
 @plugin 'tailwindcss-animate';
 
-@plugin 'flowbite/plugin';
-
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -145,10 +143,6 @@
 	--radius-input: 9px;
 	--radius-button: 5px;
 }
-
-@source "../node_modules/flowbite-svelte/dist";
-@source "../node_modules/flowbite-svelte-icons/dist";
-@source '../node_modules/flowbite-svelte-blocks/dist';
 
 @layer base {
 	*,
