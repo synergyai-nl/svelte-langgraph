@@ -169,10 +169,18 @@ The frontend is built with modern web technologies:
 
 ### End to end testing
 
-End to end tests are written using Playwright with fixtures and page object models. They can be run interactively with:
+End to end tests are written using Playwright with fixtures and page object models. They live in their own project in `e2e/`.
+
+They can be run with:
 
 ```
-moon :test-e2e-ui
+moon e2e:test
+```
+
+Or, interactively, with:
+
+```
+moon e2e:test-ui
 ```
 
 ## Production
