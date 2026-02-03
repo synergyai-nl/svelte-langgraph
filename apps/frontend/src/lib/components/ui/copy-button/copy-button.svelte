@@ -14,7 +14,7 @@
 		icon,
 		animationDuration = 500,
 		variant = 'ghost',
-		size = 'icon',
+		size: propsSize = 'icon',
 		onCopy,
 		class: className,
 		tabindex = -1,
@@ -22,14 +22,12 @@
 		...rest
 	}: CopyButtonProps = $props();
 
-	// this way if the user passes text then the button will be the default size
-	if (size === 'icon' && children) {
-		size = 'default';
-	}
-
 	const clipboard = new UseClipboard();
 
-	const buttonProps = {
+	// this way if the user passes text then the button will be the default size
+	const size = $derived(propsSize === 'icon' && children ? 'default' : propsSize);
+
+	const buttonProps = $derived({
 		...rest,
 		variant,
 		size,
@@ -41,7 +39,7 @@
 			const status = await clipboard.copy(text);
 			onCopy?.(status);
 		}
-	} satisfies Partial<ButtonProps>;
+	} satisfies Partial<ButtonProps>);
 </script>
 
 <Button {...buttonProps} bind:ref>
