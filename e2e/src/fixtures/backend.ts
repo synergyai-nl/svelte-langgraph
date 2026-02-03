@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, APIResponse } from '@playwright/test';
 
 /**
  * LangGraph Backend Configuration
@@ -37,7 +37,7 @@ export async function makeAuthenticatedRequest(
 	page: Page,
 	endpoint: string,
 	options: RequestInit = {}
-): Promise<Response> {
+): Promise<APIResponse> {
 	// Extract session data from the page
 	const sessionData = await page.evaluate(() => {
 		// Access the page data which should contain the session
@@ -50,12 +50,21 @@ export async function makeAuthenticatedRequest(
 		throw new Error('No access token found in session');
 	}
 
+	// Convert HeadersInit to a plain object
+	const baseHeaders: Record<string, string> = {};
+	if (options.headers) {
+		const h = new Headers(options.headers);
+		h.forEach((value, key) => {
+			baseHeaders[key] = value;
+		});
+	}
+
 	// Make the request with the Authorization header
 	const url = `${LANGGRAPH_CONFIG.apiUrl}${endpoint}`;
 	const response = await page.request.fetch(url, {
 		...options,
 		headers: {
-			...options.headers,
+			...baseHeaders,
 			Authorization: `Bearer ${sessionData.accessToken}`,
 			'Content-Type': 'application/json'
 		}

@@ -1,0 +1,68 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: typescript
+stack: infrastructure
+type: automation
+
+dependsOn:
+  - backend
+  - frontend
+
+tags: ['prettier']
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    # Configs
+    - '**/*.config.*'
+    # Other files
+    - '**/*.{md,mdx,yml,yaml,json}'
+
+tasks:
+  lint:
+    command: eslint .
+    inputs:
+      - '@group(sources)'
+      # Root configs, any format
+      # - '/eslint.config.js'
+
+  lint-fix:
+    extends: lint
+    args:
+      - '--cache'
+      - '--fix'
+    local: true
+
+  install-playwright:
+    command: playwright install chromium --with-deps
+    options:
+      internal: true
+      cache: true
+    inputs:
+
+  typecheck:
+    command:
+      - 'tsc'
+      # Use incremental builds with project references
+      - '--build'
+      # Always use pretty output
+      - '--pretty'
+    inputs:
+      - '@group(sources)'
+      - 'tsconfig.json'
+    outputs:
+
+  test:
+    command: playwright test
+    deps:
+      - install-playwright
+    options:
+      retryCount: 1
+
+  test-ui:
+    extends: test
+    preset: server
+    args:
+      - '--ui'
+    options:
+      retryCount: 0
