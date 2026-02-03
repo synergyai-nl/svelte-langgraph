@@ -8,6 +8,8 @@ dependsOn:
   - backend
   - frontend
 
+tags: ['prettier']
+
 fileGroups:
   sources:
     - 'src/**/*'
@@ -30,29 +32,6 @@ tasks:
       - '--cache'
       - '--fix'
     local: true
-
-  format:
-    command: prettier
-    inputs:
-      - '@group(sources)'
-      - '.prettierignore'
-      - '.prettierrc'
-      # Root configs, any format
-      # - '/.prettierignore'
-      # - '/.prettierrc'
-    args:
-      - '.'
-      - '--check'
-
-  format-write:
-    extends: format
-    args:
-      - '.'
-      - '--cache'
-      - '--write'
-    local: true
-    options:
-      mergeArgs: 'replace'
 
   install-playwright:
     command: playwright install chromium --with-deps

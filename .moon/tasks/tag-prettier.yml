@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://moonrepo.dev/schemas/tasks.json
+$schema: "https://moonrepo.dev/schemas/tasks.json"
+
+fileGroups:
+  sources:
+    - "src/**/*"
+  configs:
+    - ".prettierignore"
+    - ".prettierrc"
+    - ".gitignore"
+  # Root configs, any format
+  # - '/.prettierignore'
+  # - '/.prettierrc'
+  tests:
+    - "tests/**/*"
+
+tasks:
+  format:
+    command: prettier
+    inputs:
+      - "@group(sources)"
+      - "@group(configs)"
+    args:
+      - "--check"
+    options:
+      affectedFiles: true
+
+  format-write:
+    extends: format
+    args:
+      - "--cache"
+      - "--write"
+    local: true
