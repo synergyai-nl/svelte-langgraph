@@ -20,9 +20,6 @@ tasks:
   setup:
     # Used by E2E to ensure dependencies are installed before starting backend server and mocks.
     command: noop
-    options:
-      cache: false
-      runInCI: skip
   format:
     command: "ruff format"
     args: "--check"
