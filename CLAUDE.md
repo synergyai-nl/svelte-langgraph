@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Opinionated SvelteKit/Flowbite based LLM frontend for LangGraph server. This is a monorepo managed by moonrepo with pnpm workspaces.
+Opinionated SvelteKit-based LLM frontend for LangGraph server. This is a monorepo managed by moonrepo with pnpm workspaces.
 
 ## Architecture
 
 - **Backend** (apps/backend/): Python 3.12 + LangGraph server for AI workflow management
-- **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and Flowbite components
+- **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`.
 - **Build System**: [moonrepo](https://moonrepo.dev/docs) for task orchestration and dependency management
 

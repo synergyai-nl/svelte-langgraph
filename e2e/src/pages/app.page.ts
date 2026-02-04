@@ -42,15 +42,11 @@ export class AppPage {
 
 	/**
 	 * Sign out via user menu dropdown.
-	 * Note: Includes intentional waits to handle Flowbite dropdown timing.
+	 * Note: Includes intentional waits to handle dropdown timing.
 	 */
 	async signOut() {
-		const waitMs = 200;
-		await this.page.waitForTimeout(waitMs);
 		await this.userMenuButton.click();
-		await this.page.waitForTimeout(waitMs);
 		await this.signOutButton.click();
-		await this.page.waitForTimeout(waitMs);
 	}
 
 	async navigateToChat() {

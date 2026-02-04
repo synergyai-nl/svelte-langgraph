@@ -26,7 +26,7 @@ export default defineConfig({
 			command: 'moon backend:oidc-mock',
 			url: 'http://localhost:8080/.well-known/openid-configuration',
 			timeout: 120000,
-			stdout: 'ignore',
+			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			ignoreHTTPSErrors: false,
@@ -38,7 +38,7 @@ export default defineConfig({
 			command: 'moon backend:serve-e2e',
 			url: 'http://localhost:2024/ok',
 			timeout: 120000,
-			stdout: 'ignore',
+			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.

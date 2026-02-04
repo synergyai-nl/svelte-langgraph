@@ -55,7 +55,7 @@ tasks:
     options:
       internal: true
       cache: true
-    inputs:
+    inputs: []
 
   typecheck:
     command:
