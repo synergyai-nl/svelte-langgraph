@@ -27,7 +27,7 @@
 			? 'max-w-[70%] flex-row-reverse'
 			: 'max-w-[80%]'}"
 	>
-		<div class="bg-muted flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
+		<div class="bg-muted mt-4 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
 			<User size={20} class="text-foreground" />
 		</div>
 		<div class="relative w-full">
