@@ -8,7 +8,8 @@ export async function* streamAnswer(
 	threadId: string,
 	assistantId: string,
 	input: string,
-	messageId: string
+	messageId: string,
+	signal?: AbortSignal
 ): AsyncGenerator<Message, void, unknown> {
 	const input_message: HumanMessage = { type: 'human', content: input, id: messageId };
 
@@ -18,7 +19,8 @@ export async function* streamAnswer(
 		input: {
 			messages: [input_message]
 		},
-		streamMode: 'messages-tuple'
+		streamMode: 'messages-tuple',
+		signal
 	});
 
 	for await (const chunk of streamResponse) {
