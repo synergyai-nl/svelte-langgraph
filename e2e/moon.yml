@@ -77,6 +77,8 @@ tasks:
       - frontend:build
     options:
       retryCount: 1
+    inputs:
+      - '$CI'
 
   test-ui:
     extends: test
