@@ -11,7 +11,8 @@ export default defineConfig({
 	reporter: [['html', { open: 'never' }], [process.env.CI ? 'github' : 'list']],
 	use: {
 		baseURL: 'http://localhost:4173',
-		trace: 'on-first-retry'
+		trace: 'on-first-retry',
+		screenshot: process.env.CI ? 'only-on-failure' : 'off'
 	},
 	projects: [
 		{
@@ -25,10 +26,9 @@ export default defineConfig({
 			command: 'moon backend:oidc-mock',
 			url: 'http://localhost:8080/.well-known/openid-configuration',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'ignore',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
+			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			ignoreHTTPSErrors: false,
 			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Uvicorn running on http:\/\/localhost:8080/
@@ -38,9 +38,9 @@ export default defineConfig({
 			command: 'moon backend:serve-e2e',
 			url: 'http://localhost:2024/ok',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'ignore',
 			stderr: 'pipe',
+			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /Registering graph with id/
 		},
@@ -49,10 +49,9 @@ export default defineConfig({
 			command: 'moon frontend:serve-e2e',
 			url: 'http://localhost:4173',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'ignore',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGTERM', timeout: 500 },
+			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
 			wait: /http:\/\/localhost:4173/
 		}
