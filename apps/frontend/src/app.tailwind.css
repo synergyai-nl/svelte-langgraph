@@ -2,12 +2,80 @@
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+@plugin 'tailwindcss-animate';
 
-@plugin 'flowbite/plugin';
+@custom-variant dark (&:is(.dark *));
 
-@custom-variant dark (&:where(.dark, .dark *));
+:root {
+	/* shadcn/bits-ui Colors */
+	--background: 0 0% 100%;
+	--background-alt: 0 0% 100%;
+	--foreground: 0 0% 9%;
+	--foreground-alt: 0 0% 32%;
+	--muted: 240 5% 96%;
+	--muted-foreground: 0 0% 9% / 0.4;
+	--popover: 0 0% 100%;
+	--popover-foreground: 0 0% 9%;
+	--card: 0 0% 100%;
+	--card-foreground: 0 0% 9%;
+	--border: 240 6% 10%;
+	--border-input: 240 6% 10% / 0.17;
+	--border-input-hover: 240 6% 10% / 0.4;
+	--border-card: 240 6% 10% / 0.1;
+	--input: 240 6% 10% / 0.17;
+	--accent: 204 94% 94%;
+	--accent-foreground: 204 80% 16%;
+	--destructive: 347 77% 50%;
+	--destructive-foreground: 0 0% 100%;
+	--ring: 0 0% 9%;
+
+	/* Shadows */
+	--shadow-mini: 0px 1px 0px 1px rgba(0, 0, 0, 0.04);
+	--shadow-mini-inset: 0px 1px 0px 0px rgba(0, 0, 0, 0.04) inset;
+	--shadow-popover: 0px 7px 12px 3px rgba(0, 0, 0, 0.1);
+	--shadow-kbd: 0px 2px 0px 0px rgba(0, 0, 0, 0.07);
+	--shadow-btn: 0px 1px 0px 1px rgba(0, 0, 0, 0.03);
+	--shadow-card: 0px 2px 0px 1px rgba(0, 0, 0, 0.04);
+
+	/* Radius */
+	--radius: 0.5rem;
+}
+
+.dark {
+	/* shadcn/bits-ui Dark Mode Colors */
+	--background: 0 0% 5%;
+	--background-alt: 0 0% 8%;
+	--foreground: 0 0% 95%;
+	--foreground-alt: 0 0% 70%;
+	--muted: 240 4% 16%;
+	--muted-foreground: 0 0% 100% / 0.4;
+	--popover: 0 0% 5%;
+	--popover-foreground: 0 0% 95%;
+	--card: 0 0% 5%;
+	--card-foreground: 0 0% 95%;
+	--border: 0 0% 96%;
+	--border-input: 0 0% 96% / 0.17;
+	--border-input-hover: 0 0% 96% / 0.4;
+	--border-card: 0 0% 96% / 0.1;
+	--input: 0 0% 96% / 0.17;
+	--accent: 0 0% 20%;
+	--accent-foreground: 0 0% 90%;
+	--destructive: 350 89% 60%;
+	--destructive-foreground: 0 0% 100%;
+	--ring: 0 0% 95%;
+
+	/* Shadows */
+	--shadow-mini: 0px 1px 0px 1px rgba(0, 0, 0, 0.3);
+	--shadow-mini-inset: 0px 1px 0px 0px rgba(0, 0, 0, 0.5) inset;
+	--shadow-popover: 0px 7px 12px 3px rgba(0, 0, 0, 0.3);
+	--shadow-kbd: 0px 2px 0px 0px rgba(255, 255, 255, 0.07);
+	--shadow-btn: 0px 1px 0px 1px rgba(0, 0, 0, 0.2);
+	--shadow-card: 0px 2px 0px 1px rgba(0, 0, 0, 0.4);
+}
 
 @theme {
+	/* Project-specific primary colors */
+	--color-primary: #ef562f;
 	--color-primary-50: #fff5f2;
 	--color-primary-100: #fff1ee;
 	--color-primary-200: #ffe4de;
@@ -19,6 +87,7 @@
 	--color-primary-800: #cc4522;
 	--color-primary-900: #a5371b;
 
+	--color-secondary: #0284c7;
 	--color-secondary-50: #f0f9ff;
 	--color-secondary-100: #e0f2fe;
 	--color-secondary-200: #bae6fd;
@@ -29,13 +98,82 @@
 	--color-secondary-700: #0369a1;
 	--color-secondary-800: #075985;
 	--color-secondary-900: #0c4a6e;
+
+	/* Semantic foreground colors for text on colored backgrounds */
+	--color-primary-foreground: #ffffff;
+	--color-secondary-foreground: #ffffff;
+
+	/* Tooltip colors */
+	--color-tooltip: #111827;
+	--color-tooltip-foreground: #ffffff;
+
+	/* shadcn/bits-ui color mappings */
+	--color-background: hsl(var(--background));
+	--color-background-alt: hsl(var(--background-alt));
+	--color-foreground: hsl(var(--foreground));
+	--color-foreground-alt: hsl(var(--foreground-alt));
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+	--color-border: hsl(var(--border-card));
+	--color-border-input: hsl(var(--border-input));
+	--color-border-card: hsl(var(--border-card));
+	--color-input: hsl(var(--input));
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+	--color-ring: hsl(var(--ring));
+
+	/* Shadows */
+	--shadow-sm: var(--shadow-mini);
+	--shadow-md: var(--shadow-popover);
+	--shadow-lg: var(--shadow-card);
+
+	/* Border radius */
+	--radius-sm: calc(var(--radius) - 0.25rem);
+	--radius-md: calc(var(--radius) - 0.125rem);
+	--radius-lg: var(--radius);
+	--radius-card: 16px;
+	--radius-card-lg: 20px;
+	--radius-card-sm: 10px;
+	--radius-input: 9px;
+	--radius-button: 5px;
 }
 
-@source "../node_modules/flowbite-svelte/dist";
-@source "../node_modules/flowbite-svelte-icons/dist";
-@source '../node_modules/flowbite-svelte-blocks/dist';
-
 @layer base {
+	*,
+	::after,
+	::before,
+	::backdrop,
+	::file-selector-button {
+		border-color: hsl(var(--border-card));
+	}
+
+	* {
+		@apply border-border;
+	}
+
+	html {
+		-webkit-text-size-adjust: 100%;
+		font-variation-settings: normal;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+		font-feature-settings:
+			'rlig' 1,
+			'calt' 1;
+	}
+
+	button:not([disabled]),
+	[role='button']:not([disabled]) {
+		cursor: pointer;
+	}
+
 	/* disable chrome cancel button */
 	input[type='search']::-webkit-search-cancel-button {
 		display: none;

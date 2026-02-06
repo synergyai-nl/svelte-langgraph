@@ -28,24 +28,34 @@ jobs:
           access-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: appthrust/moon-ci-retrospect@v2
         if: success() || failure()
-      - uses: qltysh/qlty-action/coverage@v2
+      - name: Upload backend coverage
+        uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: apps/backend/coverage.lcov
           incomplete: true
           add-prefix: apps/backend/
           format: lcov
-      - uses: qltysh/qlty-action/coverage@v2
+      - name: Upload frontend coverage
+        uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: apps/frontend/coverage/lcov.info
           incomplete: true
           add-prefix: apps/frontend/
           format: lcov
-      - uses: qltysh/qlty-action/coverage@v2
+      - name: Mark coverage upload complete
+        uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           command: complete
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
 
   build:
     name: "Docker Build"

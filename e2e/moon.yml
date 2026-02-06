@@ -4,10 +4,6 @@ language: typescript
 stack: infrastructure
 type: automation
 
-dependsOn:
-  - backend
-  - frontend
-
 fileGroups:
   sources:
     - 'src/**/*'
@@ -59,7 +55,7 @@ tasks:
     options:
       internal: true
       cache: true
-    inputs:
+    inputs: []
 
   typecheck:
     command:
@@ -77,8 +73,12 @@ tasks:
     command: playwright test
     deps:
       - install-playwright
+      - backend:setup
+      - frontend:build
     options:
       retryCount: 1
+    inputs:
+      - '$CI'
 
   test-ui:
     extends: test

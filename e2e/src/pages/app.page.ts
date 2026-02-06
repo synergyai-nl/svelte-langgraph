@@ -6,8 +6,10 @@ import type { Locator, Page } from '@playwright/test';
 export class AppPage {
 	readonly page: Page;
 
+	readonly main: Locator;
+
 	// Navigation elements
-	readonly nav: Locator;
+	readonly header: Locator;
 	readonly homeLink: Locator;
 	readonly chatLink: Locator;
 	readonly signInButton: Locator;
@@ -19,15 +21,19 @@ export class AppPage {
 	constructor(page: Page) {
 		this.page = page;
 
-		// Navigation
-		this.nav = page.getByRole('navigation');
-		this.homeLink = page.getByRole('link', { name: /home/i });
-		this.chatLink = page.getByRole('link', { name: /chat/i });
-		this.signInButton = this.nav.getByText('Sign in');
+		// Header
+		this.header = this.page.getByRole('banner');
+		this.homeLink = this.header.getByRole('link', { name: /home/i });
+		this.chatLink = this.header.getByRole('link', { name: /chat/i });
+		this.signInButton = this.header.getByRole('button', { name: 'Sign in' });
 
 		// User menu
-		this.userMenuButton = page.getByRole('button', { name: 'User' });
+		this.userMenuButton = this.header.getByRole('button', { name: 'User' });
+
+		// Using this.header instead of .page here gives errors.
 		this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+
+		this.main = this.page.getByRole('main');
 	}
 
 	async signIn() {
@@ -36,15 +42,11 @@ export class AppPage {
 
 	/**
 	 * Sign out via user menu dropdown.
-	 * Note: Includes intentional waits to handle Flowbite dropdown timing.
+	 * Note: Includes intentional waits to handle dropdown timing.
 	 */
 	async signOut() {
-		const waitMs = 200;
-		await this.page.waitForTimeout(waitMs);
 		await this.userMenuButton.click();
-		await this.page.waitForTimeout(waitMs);
 		await this.signOutButton.click();
-		await this.page.waitForTimeout(waitMs);
 	}
 
 	async navigateToChat() {
