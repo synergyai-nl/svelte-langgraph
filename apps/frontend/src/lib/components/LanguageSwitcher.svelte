@@ -19,32 +19,30 @@
 	}
 </script>
 
-<Tooltip.Provider>
-	<Tooltip.Root>
-		<Tooltip.Trigger>
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger>
-					{#snippet child({ props })}
-						<Button {...props} class={cn('', className)} variant="outline" size="sm">
-							<Globe size={16} />
-						</Button>
-					{/snippet}
-				</DropdownMenu.Trigger>
+<Tooltip.Root>
+	<Tooltip.Trigger>
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger>
+				{#snippet child({ props })}
+					<Button {...props} class={cn('', className)} variant="outline" size="sm">
+						<Globe size={16} />
+					</Button>
+				{/snippet}
+			</DropdownMenu.Trigger>
 
-				<DropdownMenu.Content align="end">
-					{#each locales as localeCode (localeCode)}
-						<DropdownMenu.Item onclick={() => switchLanguage(localeCode)}>
-							{m.local_name({}, { locale: localeCode })}
-							{#if getLocale() === localeCode}
-								<span class="ml-auto">✓</span>
-							{/if}
-						</DropdownMenu.Item>
-					{/each}
-				</DropdownMenu.Content>
-			</DropdownMenu.Root>
-		</Tooltip.Trigger>
-		<Tooltip.Content>
-			{m.local_name({}, { locale: getLocale() })}
-		</Tooltip.Content>
-	</Tooltip.Root>
-</Tooltip.Provider>
+			<DropdownMenu.Content align="end">
+				{#each locales as localeCode (localeCode)}
+					<DropdownMenu.Item onclick={() => switchLanguage(localeCode)}>
+						{m.local_name({}, { locale: localeCode })}
+						{#if getLocale() === localeCode}
+							<span class="ml-auto">✓</span>
+						{/if}
+					</DropdownMenu.Item>
+				{/each}
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</Tooltip.Trigger>
+	<Tooltip.Content>
+		{m.local_name({}, { locale: getLocale() })}
+	</Tooltip.Content>
+</Tooltip.Root>
