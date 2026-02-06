@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import ChatWrapper from './__tests__/ChatWrapper.svelte';
+import { renderWithProviders } from './__tests__/render';
+import Chat from './Chat.svelte';
 import type { Client, Thread } from '@langchain/langgraph-sdk';
 import type { ThreadValues, Message } from '$lib/langgraph/types';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
@@ -40,16 +41,14 @@ const suggestions: ChatSuggestion[] = [
 ];
 
 function renderChat(overrides: Record<string, unknown> = {}) {
-	return render(ChatWrapper, {
-		props: {
-			langGraphClient: mockClient,
-			assistantId: 'assistant-1',
-			thread: emptyThread,
-			suggestions,
-			introTitle: 'Welcome',
-			intro: 'How can I help?',
-			...overrides
-		}
+	return renderWithProviders(Chat, {
+		langGraphClient: mockClient,
+		assistantId: 'assistant-1',
+		thread: emptyThread,
+		suggestions,
+		introTitle: 'Welcome',
+		intro: 'How can I help?',
+		...overrides
 	});
 }
 
