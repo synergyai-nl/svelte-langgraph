@@ -1,94 +1,79 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
+import { renderWithProviders } from './__tests__/render';
 import ChatInput from './ChatInput.svelte';
+
+function renderChatInput(overrides: Record<string, unknown> = {}) {
+	return renderWithProviders(ChatInput, {
+		value: '',
+		onSubmit: vi.fn(),
+		...overrides
+	});
+}
 
 describe('ChatInput', () => {
 	describe('when rendered', () => {
-		it('should display a textbox', () => {
-			render(ChatInput, {
-				props: { value: '', onSubmit: vi.fn() }
-			});
+		beforeEach(() => {
+			renderChatInput();
+		});
 
+		test('displays a textbox', () => {
 			expect(screen.getByRole('textbox')).toBeInTheDocument();
 		});
 
-		it('should display submit button', () => {
-			render(ChatInput, {
-				props: { value: '', onSubmit: vi.fn() }
-			});
-
+		test('displays submit button', () => {
 			expect(screen.getByRole('button')).toBeInTheDocument();
 		});
-
-		it('should display custom placeholder', () => {
-			render(ChatInput, {
-				props: { value: '', onSubmit: vi.fn(), placeholder: 'Type something...' }
-			});
-
-			expect(screen.getByPlaceholderText('Type something...')).toBeInTheDocument();
-		});
 	});
 
-	describe('when Enter is pressed', () => {
-		it('should call onSubmit', async () => {
-			const user = userEvent.setup();
-			const onSubmit = vi.fn();
+	test('displays custom placeholder', () => {
+		renderChatInput({ placeholder: 'Type something...' });
 
-			render(ChatInput, {
-				props: { value: 'Hello', onSubmit }
-			});
-
-			const textbox = screen.getByRole('textbox');
-			await user.click(textbox);
-			await user.keyboard('{Enter}');
-
-			expect(onSubmit).toHaveBeenCalled();
-		});
+		expect(screen.getByPlaceholderText('Type something...')).toBeInTheDocument();
 	});
 
-	describe('when Shift+Enter is pressed', () => {
-		it('should not call onSubmit', async () => {
-			const user = userEvent.setup();
-			const onSubmit = vi.fn();
+	test('calls onSubmit on Enter', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderChatInput({ value: 'Hello', onSubmit });
 
-			render(ChatInput, {
-				props: { value: 'Hello', onSubmit }
-			});
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Enter}');
 
-			const textbox = screen.getByRole('textbox');
-			await user.click(textbox);
-			await user.keyboard('{Shift>}{Enter}{/Shift}');
+		expect(onSubmit).toHaveBeenCalled();
+	});
 
-			expect(onSubmit).not.toHaveBeenCalled();
-		});
+	test('does not call onSubmit on Shift+Enter', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderChatInput({ value: 'Hello', onSubmit });
+
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Shift>}{Enter}{/Shift}');
+
+		expect(onSubmit).not.toHaveBeenCalled();
 	});
 
 	describe('when isStreaming is true', () => {
-		it('should disable the textarea', () => {
-			render(ChatInput, {
-				props: { value: 'Hello', isStreaming: true, onSubmit: vi.fn() }
-			});
+		beforeEach(() => {
+			renderChatInput({ value: 'Hello', isStreaming: true });
+		});
 
+		test('disables the textarea', () => {
 			expect(screen.getByRole('textbox')).toBeDisabled();
 		});
 
-		it('should disable the submit button', () => {
-			render(ChatInput, {
-				props: { value: 'Hello', isStreaming: true, onSubmit: vi.fn() }
-			});
-
+		test('disables the submit button', () => {
 			expect(screen.getByRole('button')).toBeDisabled();
 		});
 	});
 
-	describe('when input is empty', () => {
-		it('should disable the submit button', () => {
-			render(ChatInput, {
-				props: { value: '', onSubmit: vi.fn() }
-			});
+	test('disables submit button when input is empty', () => {
+		renderChatInput({ value: '' });
 
-			expect(screen.getByRole('button')).toBeDisabled();
-		});
+		expect(screen.getByRole('button')).toBeDisabled();
 	});
 });

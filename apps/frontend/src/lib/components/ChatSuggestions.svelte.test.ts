@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
+import { renderWithProviders } from './__tests__/render';
 import ChatSuggestions from './ChatSuggestions.svelte';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 
@@ -9,93 +10,56 @@ const suggestions: ChatSuggestion[] = [
 	{ title: 'Second Title', description: 'Second description', suggestedText: 'second suggestion' }
 ];
 
+function renderSuggestions(overrides: Record<string, unknown> = {}) {
+	return renderWithProviders(ChatSuggestions, {
+		suggestions,
+		introTitle: 'Welcome',
+		intro: 'How can I help?',
+		onSuggestionClick: vi.fn(),
+		...overrides
+	});
+}
+
 describe('ChatSuggestions', () => {
 	describe('when rendered with suggestions', () => {
-		it('should display the intro title as heading', () => {
-			render(ChatSuggestions, {
-				props: {
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick: vi.fn()
-				}
-			});
+		beforeEach(() => {
+			renderSuggestions();
+		});
 
+		test('displays the intro title as heading', () => {
 			expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
 		});
 
-		it('should display the intro text', () => {
-			render(ChatSuggestions, {
-				props: {
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick: vi.fn()
-				}
-			});
-
+		test('displays the intro text', () => {
 			expect(screen.getByText('How can I help?')).toBeInTheDocument();
 		});
 
-		it('should render a button for each suggestion', () => {
-			render(ChatSuggestions, {
-				props: {
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick: vi.fn()
-				}
-			});
-
+		test('renders a button for each suggestion', () => {
 			expect(screen.getByRole('button', { name: /First Title/i })).toBeInTheDocument();
 			expect(screen.getByRole('button', { name: /Second Title/i })).toBeInTheDocument();
 		});
 	});
 
-	describe('when a suggestion is clicked', () => {
-		it('should call onSuggestionClick with the correct suggestedText', async () => {
-			const user = userEvent.setup();
-			const onSuggestionClick = vi.fn();
+	test('calls onSuggestionClick with correct text when suggestion clicked', async () => {
+		const user = userEvent.setup();
+		const onSuggestionClick = vi.fn();
+		renderSuggestions({ onSuggestionClick });
 
-			render(ChatSuggestions, {
-				props: {
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick
-				}
-			});
-
-			await user.click(screen.getByRole('button', { name: /First Title/i }));
-			expect(onSuggestionClick).toHaveBeenCalledWith('first suggestion');
-		});
+		await user.click(screen.getByRole('button', { name: /First Title/i }));
+		expect(onSuggestionClick).toHaveBeenCalledWith('first suggestion');
 	});
 
 	describe('when rendered with empty suggestions', () => {
-		it('should still display intro title and text', () => {
-			render(ChatSuggestions, {
-				props: {
-					suggestions: [],
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick: vi.fn()
-				}
-			});
+		beforeEach(() => {
+			renderSuggestions({ suggestions: [] });
+		});
 
+		test('still displays intro title and text', () => {
 			expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
 			expect(screen.getByText('How can I help?')).toBeInTheDocument();
 		});
 
-		it('should not render any suggestion buttons', () => {
-			render(ChatSuggestions, {
-				props: {
-					suggestions: [],
-					introTitle: 'Welcome',
-					intro: 'How can I help?',
-					onSuggestionClick: vi.fn()
-				}
-			});
-
+		test('does not render any suggestion buttons', () => {
 			expect(screen.queryAllByRole('button')).toHaveLength(0);
 		});
 	});

@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
+import { anAIMessage } from './__tests__/fixtures';
 import Chat from './Chat.svelte';
 import type { Client, Thread } from '@langchain/langgraph-sdk';
 import type { ThreadValues, Message } from '$lib/langgraph/types';
@@ -63,7 +64,7 @@ function mockStreamYield(...messages: Message[]) {
 
 describe('Chat', () => {
 	describe('when rendered with empty thread', () => {
-		it('should display suggestions view', () => {
+		test('displays suggestions view', () => {
 			mockStreamYield();
 			renderChat();
 
@@ -71,7 +72,7 @@ describe('Chat', () => {
 			expect(screen.getByText('How can I help?')).toBeInTheDocument();
 		});
 
-		it('should display chat input', () => {
+		test('displays chat input', () => {
 			mockStreamYield();
 			renderChat();
 
@@ -80,9 +81,9 @@ describe('Chat', () => {
 	});
 
 	describe('when a suggestion is clicked', () => {
-		it('should switch from suggestions to messages view', async () => {
+		test('switches from suggestions to messages view', async () => {
 			const user = userEvent.setup();
-			mockStreamYield({ type: 'ai', text: 'AI response', id: 'ai-1' });
+			mockStreamYield(anAIMessage({ text: 'AI response' }));
 			renderChat();
 
 			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
@@ -92,9 +93,9 @@ describe('Chat', () => {
 			});
 		});
 
-		it('should call streamAnswer with correct args', async () => {
+		test('calls streamAnswer with correct args', async () => {
 			const user = userEvent.setup();
-			mockStreamYield({ type: 'ai', text: 'Response', id: 'ai-1' });
+			mockStreamYield(anAIMessage({ text: 'Response' }));
 			renderChat();
 
 			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
@@ -112,9 +113,9 @@ describe('Chat', () => {
 	});
 
 	describe('when a message is submitted', () => {
-		it('should switch to messages view', async () => {
+		test('switches to messages view', async () => {
 			const user = userEvent.setup();
-			mockStreamYield({ type: 'ai', text: 'Hello!', id: 'ai-1' });
+			mockStreamYield(anAIMessage({ text: 'Hello!' }));
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -126,9 +127,9 @@ describe('Chat', () => {
 			});
 		});
 
-		it('should display the user message', async () => {
+		test('displays the user message', async () => {
 			const user = userEvent.setup();
-			mockStreamYield({ type: 'ai', text: 'Hi there!', id: 'ai-1' });
+			mockStreamYield(anAIMessage({ text: 'Hi there!' }));
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -140,9 +141,9 @@ describe('Chat', () => {
 			});
 		});
 
-		it('should display the AI response after streaming', async () => {
+		test('displays the AI response after streaming', async () => {
 			const user = userEvent.setup();
-			mockStreamYield({ type: 'ai', text: 'Hi there!', id: 'ai-1' });
+			mockStreamYield(anAIMessage({ text: 'Hi there!' }));
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -156,7 +157,7 @@ describe('Chat', () => {
 	});
 
 	describe('when rendered with existing thread messages', () => {
-		it('should display messages view immediately', async () => {
+		test('displays messages view immediately', async () => {
 			const existingMessages = [
 				{ type: 'human', content: 'Previous question', id: 'msg-1' },
 				{ type: 'ai', content: 'Previous answer', id: 'msg-2' }
@@ -177,7 +178,6 @@ describe('Chat', () => {
 			renderChat({ thread: threadWithMessages });
 
 			await waitFor(() => {
-				// Should show messages view, not suggestions
 				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
 				expect(screen.getByText('Previous answer')).toBeInTheDocument();
 			});
