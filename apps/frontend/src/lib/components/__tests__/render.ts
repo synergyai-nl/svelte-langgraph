@@ -8,7 +8,8 @@ import type { Component } from 'svelte';
  */
 
 export function renderWithProviders(
-	component: Component<Record<string, unknown>>,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	component: Component<any>,
 	props: Record<string, unknown> = {}
 ) {
 	return render(TestProviders, {
