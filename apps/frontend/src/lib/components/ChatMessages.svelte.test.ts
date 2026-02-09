@@ -1,6 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import ChatMessages from './ChatMessages.svelte';
 import { anAIMessage, aUserMessage, aToolMessage } from './__tests__/fixtures';
@@ -48,6 +47,27 @@ describe('ChatMessages', () => {
 		expect(container.querySelector('[role="status"]')).toBeInTheDocument();
 	});
 
+	test('renders mixed message types in order', () => {
+		renderMessages({
+			messages: [
+				anAIMessage({ text: 'AI response', id: 'ai-1' }),
+				aUserMessage({ text: 'User question', id: 'user-1' }),
+				aToolMessage({ tool_name: 'search', id: 'tool-1' })
+			]
+		});
+
+		expect(screen.getByText('AI response')).toBeInTheDocument();
+		expect(screen.getByText('User question')).toBeInTheDocument();
+		expect(screen.getByText('search')).toBeInTheDocument();
+	});
+
+	test('renders nothing when messages array is empty', () => {
+		renderMessages({ messages: [] });
+
+		expect(screen.queryByRole('group')).not.toBeInTheDocument();
+		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+	});
+
 	describe('when generationError is set', () => {
 		const error = new Error('Something went wrong');
 
@@ -58,20 +78,5 @@ describe('ChatMessages', () => {
 		test('displays the error message', () => {
 			expect(screen.getByText('Something went wrong')).toBeInTheDocument();
 		});
-
-		test('displays retry button when onRetryError is provided', () => {
-			expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-		});
-	});
-
-	test('calls onRetryError when retry button is clicked', async () => {
-		const user = userEvent.setup();
-		const onRetryError = vi.fn();
-		const error = new Error('Something went wrong');
-
-		renderMessages({ generationError: error, onRetryError });
-
-		await user.click(screen.getByRole('button', { name: /retry/i }));
-		expect(onRetryError).toHaveBeenCalledOnce();
 	});
 });

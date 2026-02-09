@@ -21,7 +21,9 @@
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false) {
 			event.preventDefault();
-			onSubmit();
+			if (!isEmpty && !isStreaming) {
+				onSubmit();
+			}
 		}
 	}
 </script>

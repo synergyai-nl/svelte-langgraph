@@ -76,4 +76,16 @@ describe('ChatInput', () => {
 
 		expect(screen.getByRole('button')).toBeDisabled();
 	});
+
+	test('does not call onSubmit when pressing Enter with empty input', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderChatInput({ value: '', onSubmit });
+
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Enter}');
+
+		expect(onSubmit).not.toHaveBeenCalled();
+	});
 });

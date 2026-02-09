@@ -21,16 +21,12 @@ describe('ChatToolMessage', () => {
 			expect(screen.getByText('search')).toBeInTheDocument();
 		});
 
-		test('shows the wrench icon container', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+		test('shows the "using tools" label', () => {
+			expect(screen.getByText(m.tools_using())).toBeInTheDocument();
 		});
 
-		test('shows the success status icon', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
-		});
-
-		test('shows the expand/collapse button', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+		test('button is collapsed by default', () => {
+			expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false');
 		});
 	});
 
@@ -49,9 +45,8 @@ describe('ChatToolMessage', () => {
 			renderComponent();
 			const user = userEvent.setup();
 			const button = screen.getByRole('button');
-			user.click(button);
+			await user.click(button);
 
-			// Wait for expansion
 			await waitFor(() => {
 				expect(screen.getByText('Tool:')).toBeInTheDocument();
 				// Use getAllByText since 'search' appears in both button and expanded content
@@ -60,11 +55,22 @@ describe('ChatToolMessage', () => {
 			});
 		});
 
+		test('sets aria-expanded to true', async () => {
+			renderComponent();
+			const user = userEvent.setup();
+			const button = screen.getByRole('button');
+			await user.click(button);
+
+			await waitFor(() => {
+				expect(button).toHaveAttribute('aria-expanded', 'true');
+			});
+		});
+
 		test('shows the parameters section', async () => {
 			const user = userEvent.setup();
 			renderComponent({ payload: { key: 'value' } });
 			const button = screen.getByRole('button');
-			user.click(button);
+			await user.click(button);
 
 			await waitFor(() => {
 				expect(screen.getByText(m.tool_parameters())).toBeInTheDocument();
@@ -75,7 +81,7 @@ describe('ChatToolMessage', () => {
 			const user = userEvent.setup();
 			renderComponent({ text: 'Result text' });
 			const button = screen.getByRole('button');
-			user.click(button);
+			await user.click(button);
 
 			await waitFor(() => {
 				expect(screen.getByText(m.tool_result())).toBeInTheDocument();
@@ -88,7 +94,7 @@ describe('ChatToolMessage', () => {
 			const user = userEvent.setup();
 			renderComponent({ payload: {} });
 			const button = screen.getByRole('button');
-			user.click(button);
+			await user.click(button);
 
 			await waitFor(() => {
 				expect(screen.getByText(m.tool_no_parameters())).toBeInTheDocument();
@@ -101,8 +107,13 @@ describe('ChatToolMessage', () => {
 			renderComponent({ status: 'error' });
 		});
 
-		test('shows error status indicator', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+		test('shows the button with collapsed state', () => {
+			const button = screen.getByRole('button');
+			expect(button).toHaveAttribute('aria-expanded', 'false');
+		});
+
+		test('shows the tool name', () => {
+			expect(screen.getByText('search')).toBeInTheDocument();
 		});
 	});
 
@@ -111,8 +122,13 @@ describe('ChatToolMessage', () => {
 			renderComponent({ status: 'pending' });
 		});
 
-		test('shows pending status indicator', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+		test('shows the button with collapsed state', () => {
+			const button = screen.getByRole('button');
+			expect(button).toHaveAttribute('aria-expanded', 'false');
+		});
+
+		test('shows the tool name', () => {
+			expect(screen.getByText('search')).toBeInTheDocument();
 		});
 	});
 });

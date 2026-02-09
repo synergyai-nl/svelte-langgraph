@@ -20,11 +20,7 @@ describe('ChatMessage', () => {
 			renderAIComponent();
 		});
 
-		test('renders the message in a card', () => {
-			expect(screen.getByRole('group')).toBeInTheDocument();
-		});
-
-		test('shows the AI avatar', () => {
+		test('renders the message group container', () => {
 			expect(screen.getByRole('group')).toBeInTheDocument();
 		});
 
@@ -38,7 +34,7 @@ describe('ChatMessage', () => {
 			renderUserComponent();
 		});
 
-		test('shows the user avatar', () => {
+		test('renders the message group container', () => {
 			expect(screen.getByRole('group')).toBeInTheDocument();
 		});
 
