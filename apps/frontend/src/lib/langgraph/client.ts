@@ -13,7 +13,7 @@ export function createClient(accessToken: string): Client {
 			Authorization: `Bearer ${accessToken}`
 		},
 		apiUrl: langchainUrl,
-		timeoutMs: 2000
+		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
 }
 

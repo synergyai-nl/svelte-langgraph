@@ -46,7 +46,12 @@ export class AppPage {
 	 */
 	async signOut() {
 		await this.userMenuButton.click();
+		// Wait for dropdown to be in DOM and visible before clicking
+		await this.signOutButton.waitFor({ state: 'visible' });
 		await this.signOutButton.click();
+		// Wait for sign-out to complete: URL changes and sign-in button appears
+		await this.page.waitForURL('/');
+		await this.signInButton.waitFor({ state: 'visible' });
 	}
 
 	async navigateToChat() {
