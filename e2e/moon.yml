@@ -76,7 +76,7 @@ tasks:
       - backend:setup
       - frontend:build
     options:
-      retryCount: 1
+      retryCount: 2
     inputs:
       - '$CI'
 
