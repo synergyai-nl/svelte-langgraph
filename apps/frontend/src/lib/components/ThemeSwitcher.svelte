@@ -9,19 +9,17 @@
 	let { class: className = '' } = $props();
 </script>
 
-<Tooltip.Provider>
-	<Tooltip.Root>
-		<Tooltip.Trigger>
-			<Button onclick={toggleMode} class={cn('', className)} variant="outline" size="sm">
-				{#if mode.current === 'light'}
-					<Sun size={16} />
-				{:else}
-					<Moon size={16} />
-				{/if}
-			</Button>
-		</Tooltip.Trigger>
-		<Tooltip.Content>
-			{mode.current === 'light' ? m.light_mode() : m.dark_mode()}
-		</Tooltip.Content>
-	</Tooltip.Root>
-</Tooltip.Provider>
+<Tooltip.Root>
+	<Tooltip.Trigger>
+		<Button onclick={toggleMode} class={cn('', className)} variant="outline" size="sm">
+			{#if mode.current === 'light'}
+				<Sun size={16} />
+			{:else}
+				<Moon size={16} />
+			{/if}
+		</Button>
+	</Tooltip.Trigger>
+	<Tooltip.Content>
+		{mode.current === 'light' ? m.light_mode() : m.dark_mode()}
+	</Tooltip.Content>
+</Tooltip.Root>
