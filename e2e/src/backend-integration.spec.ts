@@ -77,10 +77,11 @@ test.describe('Backend Integration', () => {
 
 			// Navigate to /chat which triggers authenticated backend requests
 			await page.goto('/chat');
-			await page.waitForResponse(
+			const responsePromise = page.waitForResponse(
 				(response) =>
 					response.url().startsWith(LANGGRAPH_CONFIG.apiUrl) && response.status() === 200
 			);
+			await responsePromise;
 
 			expect(capturedToken).toBeTruthy();
 
