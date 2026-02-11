@@ -75,12 +75,13 @@ test.describe('Backend Integration', () => {
 				await route.continue();
 			});
 
-			// Navigate to /chat which triggers authenticated backend requests
-			await page.goto('/chat');
-			await page.waitForResponse(
+			// Set up response listener BEFORE navigation to avoid race condition
+			const responsePromise = page.waitForResponse(
 				(response) =>
 					response.url().startsWith(LANGGRAPH_CONFIG.apiUrl) && response.status() === 200
 			);
+			await page.goto('/chat');
+			await responsePromise;
 
 			expect(capturedToken).toBeTruthy();
 

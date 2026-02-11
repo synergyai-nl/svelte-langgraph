@@ -24,11 +24,13 @@ export async function authenticateUser(page: Page) {
 	await expectOIDCProviderURL(page);
 
 	await oidc.authorize();
-	await page.waitForURL('/', { timeout: 5000 });
+	await page.waitForURL('/');
+	await expect(app.userMenuButton).toBeVisible();
 }
 
 /**
  * Sign out via user menu.
+ * Waits for hydration first since the dropdown menu requires client-side JS.
  */
 export async function signOut(page: Page) {
 	const app = new AppPage(page);

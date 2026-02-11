@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { error } from '@sveltejs/kit';
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 	import type { Thread } from '@langchain/langgraph-sdk';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
@@ -12,7 +11,7 @@
 	import type { ThreadValues } from '$lib/langgraph/types';
 	import ChatError from '$lib/components/ChatError.svelte';
 
-	let show_login_dialog = $state(false);
+	let show_login_dialog = $state(!page.data.session);
 
 	// Updates client whenever accessToken changes
 	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
@@ -40,7 +39,7 @@
 		}
 	});
 
-	onMount(async () => {
+	$effect.pre(() => {
 		if (!page.data.session) show_login_dialog = true;
 	});
 
