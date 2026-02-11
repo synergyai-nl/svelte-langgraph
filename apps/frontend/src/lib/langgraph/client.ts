@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/public';
 import type { ThreadValues } from './types';
 
 export function createClient(accessToken: string): Client {
-	const langchainUrl = env.PUBLIC_LANGGRAPH_API_URL;
+	const langchainUrl = env['PUBLIC_LANGGRAPH_API_URL'];
 	if (!langchainUrl) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
 
 	console.assert(!!accessToken, 'No access token specified.');
