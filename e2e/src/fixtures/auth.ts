@@ -24,7 +24,9 @@ export async function authenticateUser(page: Page) {
 	await expectOIDCProviderURL(page);
 
 	await oidc.authorize();
-	await page.waitForURL('/', { timeout: 5000 });
+	await page.waitForURL('/');
+	// Wait for session to be loaded (user menu appears)
+	await expect(app.userMenuButton).toBeVisible();
 }
 
 /**

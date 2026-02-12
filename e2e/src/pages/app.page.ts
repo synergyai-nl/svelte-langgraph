@@ -46,6 +46,8 @@ export class AppPage {
 	 */
 	async signOut() {
 		await this.userMenuButton.click();
+		// Wait for dropdown to be in DOM and visible before clicking
+		await this.signOutButton.waitFor({ state: 'visible' });
 		await this.signOutButton.click();
 	}
 
