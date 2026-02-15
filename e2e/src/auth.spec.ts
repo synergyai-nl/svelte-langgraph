@@ -100,10 +100,12 @@ test.describe('When authenticated', () => {
 	});
 
 	test.describe('On "/chat/"', () => {
-		test.beforeEach(async ({ page }) => {
+		test.beforeEach(async ({ page, app }) => {
 			await page.goto('/chat/');
-			// Wait for the auto-redirect to /chat/{threadId}
+			// Wait for the server-side redirect to /chat/{threadId}
 			await page.waitForURL(/\/chat\/[\w-]+/);
+			// Wait for page to be fully hydrated
+			await app.userMenuButton.waitFor({ state: 'visible' });
 		});
 
 		test('should not show login modal', async ({ chat }) => {
