@@ -59,7 +59,7 @@ export default defineConfig({
 			command: 'moon frontend:serve-e2e',
 			url: 'http://localhost:4173',
 			timeout: 120000,
-			stdout: 'ignore',
+			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
 			wait: {
