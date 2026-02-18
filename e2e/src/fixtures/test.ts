@@ -8,6 +8,29 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
+	page: async ({ page }, use) => {
+		const originalGoto = page.goto.bind(page);
+		const originalReload = page.reload.bind(page);
+
+		const waitForHydration = () => page.waitForSelector('body.started', { timeout: 15000 });
+
+		page.goto = async (url, options) => {
+			const response = await originalGoto(url, options);
+			// Only wait for hydration on local SvelteKit pages
+			if (typeof url === 'string' && url.startsWith('/')) {
+				await waitForHydration();
+			}
+			return response;
+		};
+
+		page.reload = async (options) => {
+			const response = await originalReload(options);
+			await waitForHydration();
+			return response;
+		};
+
+		await use(page);
+	},
 	app: async ({ page }, use) => {
 		await use(new AppPage(page));
 	},

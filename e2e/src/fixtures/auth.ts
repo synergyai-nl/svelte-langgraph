@@ -25,15 +25,17 @@ export async function authenticateUser(page: Page) {
 
 	await oidc.authorize();
 	await page.waitForURL('/');
-	// Wait for session to be loaded (user menu appears)
+	await app.waitForHydration();
 	await expect(app.userMenuButton).toBeVisible();
 }
 
 /**
  * Sign out via user menu.
+ * Waits for hydration first since the dropdown menu requires client-side JS.
  */
 export async function signOut(page: Page) {
 	const app = new AppPage(page);
+	await app.waitForHydration();
 	await app.signOut();
 }
 

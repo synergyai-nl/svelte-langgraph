@@ -61,4 +61,13 @@ export class AppPage {
 	async navigateToHome() {
 		await this.homeLink.click();
 	}
+
+	/**
+	 * Wait for SvelteKit client-side hydration to complete.
+	 * The root layout adds a 'started' class to document.body via onMount,
+	 * which only fires after hydration finishes.
+	 */
+	async waitForHydration() {
+		await this.page.waitForSelector('body.started', { timeout: 15000 });
+	}
 }
