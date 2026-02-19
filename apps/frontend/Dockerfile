@@ -5,7 +5,7 @@ FROM node:24-alpine AS base
 WORKDIR /app
 
 # Install moon binary
-RUN npm install -g @moonrepo/cli
+RUN npm install -g '@moonrepo/cli@^1.41.7'
 
 # Disable toolchain and rely on system binaries
 ENV MOON_TOOLCHAIN_FORCE_GLOBALS=1
