@@ -104,6 +104,10 @@ tasks:
     options:
       envFile: '/.env'
 
+  preview:
+    options:
+      envFile: '/.env'
+
   serve-e2e:
     extends: preview
     options:
