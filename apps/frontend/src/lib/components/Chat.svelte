@@ -38,6 +38,7 @@
 	let chat_started = $state(false);
 	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
+	let manually_stopped = $state(false);
 
 	// Load existing messages from thread on component initialization
 	onMount(() => {
@@ -117,6 +118,7 @@
 			is_streaming = true;
 			final_answer_started = false;
 			generationError = null; // Clear previous errors
+			manually_stopped = false; // Reset manual stop flag
 
 			try {
 				for await (const chunk of streamAnswer(
@@ -128,10 +130,13 @@
 				))
 					updateMessages(chunk);
 			} catch (err) {
-				if (err instanceof Error) generationError = err;
-				error(500, {
-					message: 'Error during generation'
-				});
+				// Only treat as error if it wasn't manually stopped
+				if (!manually_stopped) {
+					if (err instanceof Error) generationError = err;
+					error(500, {
+						message: 'Error during generation'
+					});
+				}
 			} finally {
 				is_streaming = false;
 			}
@@ -142,6 +147,35 @@
 		if (last_user_message) {
 			current_input = last_user_message;
 			submitInputOrRetry(true);
+		}
+	}
+
+	async function stopGeneration(threadId: string, runId?: string) {
+		// Set flag to prevent error handling triggering due to manual stops
+		manually_stopped = true;
+
+		try {
+			// If we have the run ID, cancel that specific run
+			if (runId) {
+				await langGraphClient.runs.cancel(threadId, runId);
+			} else {
+				// Cancel all active runs for the thread
+				const runs = await langGraphClient.runs.list(threadId);
+				const activeRuns = runs.filter(
+					(run) => run.status === 'pending' || run.status === 'running'
+				);
+
+				for (const run of activeRuns) {
+					await langGraphClient.runs.cancel(threadId, run.run_id);
+				}
+			}
+
+			// Update UI state
+			is_streaming = false;
+		} catch (error) {
+			console.error('Error cancelling run:', error);
+			is_streaming = false;
+			throw error;
 		}
 	}
 </script>
@@ -167,5 +201,10 @@
 			/>
 		{/if}
 	</div>
-	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={submitInputOrRetry} />
+	<ChatInput
+		bind:value={current_input}
+		isStreaming={is_streaming}
+		onSubmit={submitInputOrRetry}
+		onStop={() => stopGeneration(thread.thread_id)}
+	/>
 </div>
