@@ -19,6 +19,7 @@
 	const plugins = [gfmPlugin()];
 
 	let isHovered = $state(false);
+	//TODO - Remove this
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
