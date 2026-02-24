@@ -20,7 +20,6 @@ jobs:
           fetch-depth: 0
       - uses: moonrepo/setup-toolchain@v0
         with:
-          cache : false
           cache-base: main
       - run: "moon ci --color"
       - uses: moonrepo/run-report-action@v1
