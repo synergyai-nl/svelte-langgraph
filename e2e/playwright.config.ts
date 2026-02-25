@@ -24,7 +24,6 @@ export default defineConfig({
 		{
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
-			url: 'http://localhost:8080/.well-known/openid-configuration',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
@@ -36,7 +35,6 @@ export default defineConfig({
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			url: 'http://localhost:2024/ok',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
@@ -47,7 +45,6 @@ export default defineConfig({
 		{
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
-			url: 'http://localhost:4173',
 			timeout: 120000,
 			stdout: 'ignore',
 			stderr: 'pipe',
