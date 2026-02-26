@@ -8,11 +8,19 @@ export default defineConfig({
 	retries: 0,
 	// Opt out of parallel tests on CI.
 	workers: process.env.CI ? 1 : undefined,
-	reporter: [['html', { open: 'never' }], [process.env.CI ? 'github' : 'list']],
+	expect: { timeout: 10_000 },
+	reporter: [
+		['html', { open: 'never' }],
+		[process.env.CI ? 'github' : 'list'],
+		['json', { outputFile: 'playwright-report/test-results.json' }]
+	],
 	use: {
 		baseURL: 'http://localhost:4173',
 		trace: 'on-first-retry',
-		screenshot: process.env.CI ? 'only-on-failure' : 'off'
+		screenshot: process.env.CI ? 'only-on-failure' : 'off',
+		contextOptions: {
+			reducedMotion: 'reduce'
+		}
 	},
 	projects: [
 		{
@@ -24,36 +32,36 @@ export default defineConfig({
 		{
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
-			url: 'http://localhost:8080/.well-known/openid-configuration',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
+			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
-			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
-			wait: /Uvicorn running on http:\/\/localhost:8080/
+			wait: {
+				stdout: /Uvicorn running on http:\/\/localhost:8080/
+			}
 		},
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			url: 'http://localhost:2024/ok',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
-			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
-			wait: /Registering graph with id/
+			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
+			wait: {
+				stdout: /Application started up in/
+			}
 		},
 		{
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
-			url: 'http://localhost:4173',
 			timeout: 120000,
 			stdout: 'ignore',
 			stderr: 'pipe',
-			gracefulShutdown: { signal: 'SIGINT', timeout: 0 },
-			// @ts-expect-error: wait actually runs and exists but is not properly defined on the type.
-			wait: /http:\/\/localhost:4173/
+			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
+			wait: {
+				stdout: /http:\/\/localhost:4173/
+			}
 		}
 	]
 });
