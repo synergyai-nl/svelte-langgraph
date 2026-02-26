@@ -78,6 +78,7 @@ tasks:
     options:
       retryCount: 1
     inputs:
+      - '@group(sources)'
       - '$CI'
 
   test-ui:
