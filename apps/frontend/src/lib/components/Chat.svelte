@@ -150,24 +150,19 @@
 		}
 	}
 
-	async function stopGeneration(threadId: string, runId?: string) {
+	async function stopGeneration(threadId: string) {
 		// Set flag to prevent error handling triggering due to manual stops
 		manually_stopped = true;
 
 		try {
-			// If we have the run ID, cancel that specific run
-			if (runId) {
-				await langGraphClient.runs.cancel(threadId, runId);
-			} else {
-				// Cancel all active runs for the thread
-				const runs = await langGraphClient.runs.list(threadId);
-				const activeRuns = runs.filter(
-					(run) => run.status === 'pending' || run.status === 'running'
-				);
+			// Cancel all active runs for the thread
+			const runs = await langGraphClient.runs.list(threadId);
+			const activeRuns = runs.filter(
+				(run) => run.status === 'pending' || run.status === 'running'
+			);
 
-				for (const run of activeRuns) {
-					await langGraphClient.runs.cancel(threadId, run.run_id);
-				}
+			for (const run of activeRuns) {
+				await langGraphClient.runs.cancel(threadId, run.run_id);
 			}
 
 			// Update UI state
