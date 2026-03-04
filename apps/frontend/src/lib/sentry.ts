@@ -37,7 +37,8 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 							triggerLabel: 'Feedback',
 							submitButtonLabel: 'Send Feedback',
 							formTitle: 'Send Feedback',
-							colorScheme: 'system'
+							colorScheme: 'system',
+							autoInject: false
 						}),
 						// send console.log, console.warn, and console.error calls as logs to Sentry
 						Sentry.consoleLoggingIntegration({ levels: ['log', 'warn', 'error', 'info'] })
