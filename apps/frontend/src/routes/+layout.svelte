@@ -125,8 +125,9 @@
 
 						<DropdownMenu.Separator />
 
-						<div class="p-2">
-							<LanguageSwitcher class="w-full" />
+						<div class="flex gap-2 p-2">
+							<SentryFeedbackButton class="flex-1" />
+							<LanguageSwitcher class="flex-1" />
 						</div>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
