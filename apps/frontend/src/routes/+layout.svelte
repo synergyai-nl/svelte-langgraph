@@ -15,6 +15,7 @@
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
+	import SentryFeedbackButton from '$lib/components/SentryFeedbackButton.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 
@@ -124,8 +125,9 @@
 
 						<DropdownMenu.Separator />
 
-						<div class="p-2">
-							<LanguageSwitcher class="w-full" />
+						<div class="flex gap-2 p-2">
+							<SentryFeedbackButton class="flex-1" />
+							<LanguageSwitcher class="flex-1" />
 						</div>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
@@ -185,6 +187,7 @@
 				{:else}
 					<SignInButton />
 				{/if}
+				<SentryFeedbackButton />
 				<ThemeSwitcher />
 				<LanguageSwitcher />
 			</div>
