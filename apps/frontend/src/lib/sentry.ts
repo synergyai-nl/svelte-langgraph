@@ -37,6 +37,8 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 							triggerLabel: 'Feedback',
 							submitButtonLabel: 'Send Feedback',
 							formTitle: 'Send Feedback',
+							messagePlaceholder:
+								"Share your experience - what's working great, or what could be better?",
 							colorScheme: 'system',
 							autoInject: false
 						}),
