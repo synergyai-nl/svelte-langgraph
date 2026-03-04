@@ -15,6 +15,7 @@
 
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
+	import SentryFeedbackButton from '$lib/components/SentryFeedbackButton.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 
@@ -185,6 +186,7 @@
 				{:else}
 					<SignInButton />
 				{/if}
+				<SentryFeedbackButton />
 				<ThemeSwitcher />
 				<LanguageSwitcher />
 			</div>
