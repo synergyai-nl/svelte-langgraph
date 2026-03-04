@@ -157,9 +157,7 @@
 		try {
 			// Cancel all active runs for the thread
 			const runs = await langGraphClient.runs.list(threadId);
-			const activeRuns = runs.filter(
-				(run) => run.status === 'pending' || run.status === 'running'
-			);
+			const activeRuns = runs.filter((run) => run.status === 'pending' || run.status === 'running');
 
 			for (const run of activeRuns) {
 				await langGraphClient.runs.cancel(threadId, run.run_id);
