@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Sentry from '@sentry/sveltekit';
 	import { Button } from '$lib/components/ui/button';
-	import { MessageCircle } from '@lucide/svelte';
+	import { MessageCircleHeart } from '@lucide/svelte';
 	import { cn } from '$lib/utils.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 
@@ -20,7 +20,7 @@
 <Tooltip.Root>
 	<Tooltip.Trigger>
 		<Button onclick={openFeedback} class={cn('', className)} variant="outline" size="sm">
-			<MessageCircle size={16} />
+			<MessageCircleHeart size={16} />
 		</Button>
 	</Tooltip.Trigger>
 	<Tooltip.Content>Send Feedback</Tooltip.Content>
