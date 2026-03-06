@@ -7,6 +7,7 @@
 		value: string;
 		isStreaming?: boolean;
 		onSubmit: () => void;
+		onStop?: () => void;
 		placeholder?: string;
 	}
 
@@ -14,6 +15,7 @@
 		value = $bindable(''),
 		isStreaming = false,
 		onSubmit,
+		onStop,
 		placeholder = m.chat_input_placeholder()
 	}: Props = $props();
 
@@ -52,7 +54,7 @@
 
 				<!-- Submit button -->
 				<div class="flex shrink-0 items-end pb-1">
-					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} />
+					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} {onStop} />
 				</div>
 			</div>
 		</form>
