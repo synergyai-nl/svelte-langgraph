@@ -75,15 +75,14 @@ tasks:
       - install-playwright
       - backend:setup
       - frontend:build
-    options:
-      retryCount: 1
     inputs:
+      - '@group(sources)'
       - '$CI'
+    options:
+      retryCount: 3
 
   test-ui:
     extends: test
     preset: server
     args:
       - '--ui'
-    options:
-      retryCount: 0
