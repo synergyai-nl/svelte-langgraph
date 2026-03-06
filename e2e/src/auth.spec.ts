@@ -102,6 +102,8 @@ test.describe('When authenticated', () => {
 	test.describe('On "/chat/"', () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat/');
+			// Wait for the auto-redirect to /chat/{threadId}
+			await page.waitForURL(/\/chat\/[\w-]+/);
 		});
 
 		test('should not show login modal', async ({ chat }) => {

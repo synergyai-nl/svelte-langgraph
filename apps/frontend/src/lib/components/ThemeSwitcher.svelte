@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { toggleMode, mode } from 'mode-watcher';
-	import { Button } from '$lib/components/ui/button';
+	import { buttonVariants } from '$lib/components/ui/button';
 	import { Moon, Sun } from '@lucide/svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils.js';
@@ -10,14 +10,15 @@
 </script>
 
 <Tooltip.Root>
-	<Tooltip.Trigger>
-		<Button onclick={toggleMode} class={cn('', className)} variant="outline" size="sm">
-			{#if mode.current === 'light'}
-				<Sun size={16} />
-			{:else}
-				<Moon size={16} />
-			{/if}
-		</Button>
+	<Tooltip.Trigger
+		onclick={toggleMode}
+		class={cn(buttonVariants({ variant: 'outline', size: 'sm' }), className)}
+	>
+		{#if mode.current === 'light'}
+			<Sun size={16} />
+		{:else}
+			<Moon size={16} />
+		{/if}
 	</Tooltip.Trigger>
 	<Tooltip.Content>
 		{mode.current === 'light' ? m.light_mode() : m.dark_mode()}
