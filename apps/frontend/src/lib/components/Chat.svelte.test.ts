@@ -106,7 +106,8 @@ describe('Chat', () => {
 					'test-123',
 					'assistant-1',
 					'Tell me about AI',
-					expect.any(String)
+					expect.any(String),
+					expect.any(AbortSignal)
 				);
 			});
 		});

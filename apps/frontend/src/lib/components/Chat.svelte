@@ -135,7 +135,7 @@
 					updateMessages(chunk);
 			} catch (e) {
 				// Aborted by user, ignore.
-  				if (e instanceof DOMException && e.name === 'AbortError') return;
+				if (e instanceof DOMException && e.name === 'AbortError') return;
 
 				if (e instanceof Error) generationError = e;
 				error(500, {
@@ -154,8 +154,11 @@
 		}
 	}
 
-	async function stopGeneration(threadId: string) {
-		if (!generateController) throw Error('Unable to cancel null generateController. This is a bug! Was a generation running? Was an abort controller passed?');
+	async function stopGeneration() {
+		if (!generateController)
+			throw Error(
+				'Unable to cancel null generateController. This is a bug! Was a generation running? Was an abort controller passed?'
+			);
 		generateController.abort();
 	}
 </script>
@@ -185,6 +188,6 @@
 		bind:value={current_input}
 		isStreaming={is_streaming}
 		onSubmit={submitInputOrRetry}
-		onStop={() => stopGeneration(thread.thread_id)}
+		onStop={() => stopGeneration()}
 	/>
 </div>

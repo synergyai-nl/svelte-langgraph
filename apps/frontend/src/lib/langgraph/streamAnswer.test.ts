@@ -25,7 +25,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'What is 2+2?',
-			'user-msg-1'
+			'user-msg-1',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -57,7 +58,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'What is the weather in Amsterdam?',
-			'user-msg-2'
+			'user-msg-2',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -96,7 +98,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'Explain what 5+3 equals and then tell me what the weather is like in Paris',
-			'user-msg-3'
+			'user-msg-3',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -138,7 +141,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'Test',
-			'user-msg-4'
+			'user-msg-4',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -163,7 +167,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'What is 2+2?',
-			'user-msg-5'
+			'user-msg-5',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -196,7 +201,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			'thread-123',
 			'assistant-456',
 			'Weather?',
-			'user-msg-6'
+			'user-msg-6',
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -224,13 +230,15 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			}
 		} as unknown as Client;
 
+		const signal = new AbortController().signal;
 		const results = [];
 		for await (const chunk of streamAnswer(
 			mockClient,
 			'thread-abc',
 			'assistant-xyz',
 			'Test input',
-			'msg-id-123'
+			'msg-id-123',
+			signal
 		)) {
 			results.push(chunk);
 		}
@@ -239,7 +247,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 			input: {
 				messages: [{ type: 'human', content: 'Test input', id: 'msg-id-123' }]
 			},
-			streamMode: 'messages-tuple'
+			streamMode: 'messages-tuple',
+			signal
 		});
 	});
 });
@@ -268,7 +277,8 @@ describe('streamAnswer error handling', () => {
 			'thread-123',
 			'assistant-456',
 			'Invalid test',
-			'user-msg-7'
+			'user-msg-7',
+			new AbortController().signal
 		);
 
 		await expect(async () => {
@@ -302,7 +312,8 @@ describe('streamAnswer error handling', () => {
 			'thread-123',
 			'assistant-456',
 			'Invalid test',
-			'user-msg-8'
+			'user-msg-8',
+			new AbortController().signal
 		);
 
 		await expect(async () => {
@@ -339,7 +350,8 @@ describe('streamAnswer error handling', () => {
 			'thread-123',
 			'assistant-456',
 			'Error test',
-			'user-msg-9'
+			'user-msg-9',
+			new AbortController().signal
 		);
 
 		await expect(async () => {
@@ -389,7 +401,8 @@ describe('streamAnswer error handling', () => {
 				'thread-123',
 				'assistant-456',
 				'Mixed test',
-				'user-msg-10'
+				'user-msg-10',
+				new AbortController().signal
 			)) {
 				results.push(chunk);
 			}
