@@ -38,7 +38,8 @@
 	let chat_started = $state(false);
 	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
-	let manually_stopped = $state(false);
+
+	let generateController: AbortController | null;
 
 	// Load existing messages from thread on component initialization
 	onMount(() => {
@@ -118,7 +119,9 @@
 			is_streaming = true;
 			final_answer_started = false;
 			generationError = null; // Clear previous errors
-			manually_stopped = false; // Reset manual stop flag
+
+			generateController = new AbortController();
+			const signal = generateController.signal;
 
 			try {
 				for await (const chunk of streamAnswer(
@@ -126,17 +129,18 @@
 					thread.thread_id,
 					assistantId,
 					messageText,
-					messageId
+					messageId,
+					signal
 				))
 					updateMessages(chunk);
-			} catch (err) {
-				// Only treat as error if it wasn't manually stopped
-				if (!manually_stopped) {
-					if (err instanceof Error) generationError = err;
-					error(500, {
-						message: 'Error during generation'
-					});
-				}
+			} catch (e) {
+				// Aborted by user, ignore.
+  				if (e instanceof DOMException && e.name === 'AbortError') return;
+
+				if (e instanceof Error) generationError = e;
+				error(500, {
+					message: 'Error during generation'
+				});
 			} finally {
 				is_streaming = false;
 			}
@@ -151,25 +155,8 @@
 	}
 
 	async function stopGeneration(threadId: string) {
-		// Set flag to prevent error handling triggering due to manual stops
-		manually_stopped = true;
-
-		try {
-			// Cancel all active runs for the thread
-			const runs = await langGraphClient.runs.list(threadId);
-			const activeRuns = runs.filter((run) => run.status === 'pending' || run.status === 'running');
-
-			for (const run of activeRuns) {
-				await langGraphClient.runs.cancel(threadId, run.run_id);
-			}
-
-			// Update UI state
-			is_streaming = false;
-		} catch (error) {
-			console.error('Error cancelling run:', error);
-			is_streaming = false;
-			throw error;
-		}
+		if (!generateController) throw Error('Unable to cancel null generateController. This is a bug! Was a generation running? Was an abort controller passed?');
+		generateController.abort();
 	}
 </script>
 
