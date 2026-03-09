@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Client, type Thread } from '@langchain/langgraph-sdk';
+	import { Client, type HumanMessage, type Thread } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import { convertThreadMessages } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
@@ -123,13 +123,14 @@
 			generateController = new AbortController();
 			const signal = generateController.signal;
 
+			const inputMessage: HumanMessage = { type: 'human', content: messageText, id: messageId };
+
 			try {
 				for await (const chunk of streamAnswer(
 					langGraphClient,
 					thread.thread_id,
 					assistantId,
-					messageText,
-					messageId,
+					inputMessage,
 					signal
 				))
 					updateMessages(chunk);

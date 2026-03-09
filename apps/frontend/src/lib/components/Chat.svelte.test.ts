@@ -105,8 +105,11 @@ describe('Chat', () => {
 					mockClient,
 					'test-123',
 					'assistant-1',
-					'Tell me about AI',
-					expect.any(String),
+					expect.objectContaining({
+						type: 'human',
+						content: 'Tell me about AI',
+						id: expect.any(String)
+					}),
 					expect.any(AbortSignal)
 				);
 			});
@@ -162,7 +165,7 @@ describe('Chat', () => {
 			const user = userEvent.setup();
 			let capturedSignal: AbortSignal | undefined;
 
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _i, _m, signal) {
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
 				capturedSignal = signal;
 				yield anAIMessage({ text: 'Partial...' });
 				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
@@ -200,7 +203,7 @@ describe('Chat', () => {
 		test('partial messages are preserved after stopping', async () => {
 			const user = userEvent.setup();
 
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _i, _m, signal) {
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
 				yield anAIMessage({ text: 'Partial response' });
 				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
 			});
@@ -222,7 +225,7 @@ describe('Chat', () => {
 		test('input is re-enabled after stopping', async () => {
 			const user = userEvent.setup();
 
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _i, _m, signal) {
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
 				yield anAIMessage({ text: 'Partial...' });
 				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
 			});
