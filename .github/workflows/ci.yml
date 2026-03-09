@@ -22,7 +22,11 @@ jobs:
         with:
           cache-base: main
           auto-install: true
-      - run: "moon ci --color"
+      - uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          command: "moon ci --color"
       - uses: moonrepo/run-report-action@v1
         if: success() || failure()
         with:
