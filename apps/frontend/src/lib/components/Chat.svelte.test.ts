@@ -30,6 +30,7 @@ const emptyThread: Thread<ThreadValues> = {
 	thread_id: 'test-123',
 	created_at: '2024-01-01',
 	updated_at: '2024-01-01',
+	state_updated_at: '2024-01-01',
 	metadata: {},
 	status: 'idle',
 	values: { messages: [] },

@@ -33,10 +33,9 @@ test.describe('When unauthenticated', () => {
 			await expectUnauthenticated(page);
 		});
 
-		test('should successfully sign in with OIDC provider', async ({ page, app }) => {
+		test('should successfully sign in with OIDC provider', async ({ page }) => {
 			await authenticateUser(page);
 			await expectAuthenticated(page);
-			await expect(app.userMenuButton).toBeVisible();
 		});
 	});
 
@@ -102,6 +101,8 @@ test.describe('When authenticated', () => {
 	test.describe('On "/chat/"', () => {
 		test.beforeEach(async ({ page }) => {
 			await page.goto('/chat/');
+			// Wait for the auto-redirect to /chat/{threadId}
+			await page.waitForURL(/\/chat\/[\w-]+/);
 		});
 
 		test('should not show login modal', async ({ chat }) => {

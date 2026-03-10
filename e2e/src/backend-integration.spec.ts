@@ -10,44 +10,36 @@ import { expect, test } from './fixtures/test';
 // We accept both 401 (correct) and 403 (current langgraph-api behavior) until fixed.
 const AUTH_ERROR_CODES = [401, 403];
 
+function toBase64Url(value: string): string {
+	return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
 // Helper to create forged JWT with alg:none attack
 function createForgedJWT(payload: Record<string, unknown>): string {
-	const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=+$/, '');
-	const body = btoa(
+	const header = toBase64Url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+	const body = toBase64Url(
 		JSON.stringify({
 			sub: 'attacker',
 			iss: 'http://localhost:8080',
 			exp: Math.floor(Date.now() / 1000) + 3600,
 			...payload
 		})
-	)
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=+$/, '');
+	);
 	return `${header}.${body}.`; // Empty signature
 }
 
 // Helper to create tampered JWT with fake signature
 function createTamperedJWT(payload: Record<string, unknown>): string {
-	const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=+$/, '');
-	const body = btoa(
+	const header = toBase64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+	const body = toBase64Url(
 		JSON.stringify({
 			sub: 'admin', // Privilege escalation attempt
 			iss: 'http://localhost:8080',
 			exp: Math.floor(Date.now() / 1000) + 3600,
 			...payload
 		})
-	)
-		.replace(/\+/g, '-')
-		.replace(/\//g, '_')
-		.replace(/=+$/, '');
-	const fakeSig = btoa('fake_signature').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+	);
+	const fakeSig = toBase64Url('fake_signature');
 	return `${header}.${body}.${fakeSig}`;
 }
 
@@ -75,12 +67,13 @@ test.describe('Backend Integration', () => {
 				await route.continue();
 			});
 
-			// Navigate to /chat which triggers authenticated backend requests
-			await page.goto('/chat');
-			await page.waitForResponse(
+			// Set up response listener BEFORE navigation to avoid race condition
+			const responsePromise = page.waitForResponse(
 				(response) =>
 					response.url().startsWith(LANGGRAPH_CONFIG.apiUrl) && response.status() === 200
 			);
+			await page.goto('/chat');
+			await responsePromise;
 
 			expect(capturedToken).toBeTruthy();
 

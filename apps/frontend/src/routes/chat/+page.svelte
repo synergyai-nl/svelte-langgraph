@@ -6,7 +6,7 @@
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
 
-	let show_login_dialog = $state(false);
+	let show_login_dialog = $state(!page.data.session);
 	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
 	let redirect_error = $state<Error | null>(null);
 

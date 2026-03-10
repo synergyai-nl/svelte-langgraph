@@ -113,6 +113,7 @@ The monorepo uses a single `.env` file at the root:
 - File groups in moon.yml define what files trigger rebuilds
 - Tasks can extend other tasks (see `lint-fix` extending `lint` in moon.yml)
 - Moon handles incremental builds - only rebuilds what changed
+- Chat UX features require E2E test coverage — any changes to the chat UI or message flow must include or update E2E tests in `e2e/src/`
 
 ## Notes
 
