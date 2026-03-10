@@ -14,6 +14,47 @@ interface FixedAIMessage extends Omit<LangGraphAIMessage, 'type'> {
 type FixedMessage = FixedAIMessage | LangGraphToolMessage;
 
 /**
+ * Extracts plain text from a LangGraph message content field.
+ * Handles string content (legacy) and array content blocks (thinking-capable models).
+ */
+export function extractTextFromContent(content: unknown): string {
+	if (typeof content === 'string') return content;
+	if (Array.isArray(content)) {
+		return content
+			.filter((b): b is { type: 'text'; text: string } => b?.type === 'text')
+			.map((b) => b.text)
+			.join('');
+	}
+	return '';
+}
+
+/**
+ * Extracts thinking/reasoning text from a LangGraph message.
+ * Checks additional_kwargs.reasoning_content first (OpenAI/OpenRouter/LiteLLM format),
+ * then checks content array for thinking blocks (Anthropic-native format).
+ */
+export function extractThinkingFromContent(
+	content: unknown,
+	additionalKwargs?: Record<string, unknown>
+): string | undefined {
+	// Location 2: additional_kwargs.reasoning_content (OpenAI/OpenRouter style)
+	if (typeof additionalKwargs?.reasoning_content === 'string') {
+		return additionalKwargs.reasoning_content || undefined;
+	}
+
+	// Location 1: content array with thinking blocks (Anthropic-native)
+	if (Array.isArray(content)) {
+		const thinking = content
+			.filter((b): b is { type: 'thinking'; thinking: string } => b?.type === 'thinking')
+			.map((b) => b.thinking)
+			.join('');
+		return thinking || undefined;
+	}
+
+	return undefined;
+}
+
+/**
  * Converts a single LangGraph message to our internal Message format.
  * Handles conversion of thread history messages (human, ai, tool types).
  *
@@ -28,10 +69,14 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 			id: (item.id as string) || crypto.randomUUID()
 		} as UserMessage;
 	} else if (item.type === 'ai') {
+		const additionalKwargs = item.additional_kwargs as Record<string, unknown> | undefined;
+		const text = extractTextFromContent(item.content);
+		const thinking = extractThinkingFromContent(item.content, additionalKwargs);
 		return {
 			type: 'ai',
-			text: typeof item.content === 'string' ? item.content : '',
-			id: (item.id as string) || crypto.randomUUID()
+			text,
+			id: (item.id as string) || crypto.randomUUID(),
+			...(thinking ? { thinking } : {})
 		} as AIMessage;
 	} else if (item.type === 'tool') {
 		return {
@@ -73,12 +118,18 @@ export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, un
 
 	switch (fixed.type) {
 		// In type this is 'ai' but LangGraph actually returns 'AIMessageChunk'.
-		case 'AIMessageChunk':
-			if (typeof fixed.content !== 'string') {
-				throw new InvalidData('Message content is not a string.', fixed);
-			}
+		case 'AIMessageChunk': {
+			const additionalKwargs = (fixed as unknown as Record<string, unknown>)
+				.additional_kwargs as Record<string, unknown> | undefined;
+			const text = extractTextFromContent(fixed.content);
+			const thinking = extractThinkingFromContent(fixed.content, additionalKwargs);
 
-			yield { type: 'ai', text: fixed.content, id: fixed.id };
+			yield {
+				type: 'ai',
+				text,
+				id: fixed.id,
+				...(thinking ? { thinking } : {})
+			};
 
 			if (fixed.tool_calls === undefined) {
 				throw new InvalidData('tool_calls cannot be undefined', fixed);
@@ -105,6 +156,7 @@ export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, un
 			}
 
 			break;
+		}
 		case 'tool':
 			if (typeof fixed.content !== 'string') {
 				throw new InvalidData('Message content is not a string.', fixed);
