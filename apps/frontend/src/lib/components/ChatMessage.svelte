@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { Message, BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
@@ -10,9 +10,9 @@
 
 	interface Props {
 		message: Message;
-		onEdit?: (message: Message) => void;
-		onRegenerate?: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		onEdit?: (message: BaseMessage) => void;
+		onRegenerate?: (message: BaseMessage) => void;
+		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
 	let { message, onEdit, onRegenerate, onFeedback }: Props = $props();
