@@ -29,6 +29,18 @@ describe('ChatMessage', () => {
 		});
 	});
 
+	describe('when rendering an AI message with thinking', () => {
+		test('shows the thinking block toggle button', () => {
+			renderAIComponent({ thinking: 'Let me think about this...' });
+			expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+		});
+
+		test('does not show thinking block when thinking is absent', () => {
+			renderAIComponent();
+			expect(screen.queryByRole('button', { name: /thinking/i })).not.toBeInTheDocument();
+		});
+	});
+
 	describe('when rendering a user message', () => {
 		beforeEach(() => {
 			renderUserComponent();
