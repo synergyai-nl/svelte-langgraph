@@ -73,12 +73,17 @@
 				existing.text += chunk.text;
 			}
 
+			if (existing.type === 'ai' && chunk.type === 'ai' && chunk.thinking) {
+				existing.thinking = (existing.thinking ?? '') + chunk.thinking;
+			}
+
 			if (existing.type == 'tool' && 'status' in chunk) {
 				existing.status = chunk.status;
 			}
 		}
 
-		if (!final_answer_started && chunk.type == 'ai' && chunk.text) final_answer_started = true;
+		if (!final_answer_started && chunk.type == 'ai' && (chunk.text || chunk.thinking))
+			final_answer_started = true;
 
 		// Trigger reactivity
 		messages = [...messages];

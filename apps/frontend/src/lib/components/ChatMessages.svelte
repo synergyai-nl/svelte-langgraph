@@ -23,7 +23,7 @@
 			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
-				{:else if message.text}
+				{:else if message.text || (message.type === 'ai' && message.thinking)}
 					<ChatMessage {message} />
 				{/if}
 			</div>
