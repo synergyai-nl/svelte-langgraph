@@ -17,7 +17,8 @@ export async function* streamAnswer(
 			messages: [inputMessage]
 		},
 		streamMode: 'messages-tuple',
-		signal: signal
+		signal: signal,
+		onDisconnect: 'cancel'
 	});
 
 	for await (const chunk of streamResponse) {
