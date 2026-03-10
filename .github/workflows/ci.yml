@@ -32,8 +32,9 @@ jobs:
           auto-install: true
       - uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
+          retry_on: timeout
           command: "moon ci --color"
       - uses: moonrepo/run-report-action@v1
         if: success() || failure()
