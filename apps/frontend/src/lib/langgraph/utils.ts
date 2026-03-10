@@ -119,8 +119,9 @@ export function* YieldMessages(m: LangGraphMessage): Generator<Message, void, un
 	switch (fixed.type) {
 		// In type this is 'ai' but LangGraph actually returns 'AIMessageChunk'.
 		case 'AIMessageChunk': {
-			const additionalKwargs = (fixed as unknown as Record<string, unknown>)
-				.additional_kwargs as Record<string, unknown> | undefined;
+			const additionalKwargs = (fixed as unknown as Record<string, unknown>).additional_kwargs as
+				| Record<string, unknown>
+				| undefined;
 			const text = extractTextFromContent(fixed.content);
 			const thinking = extractThinkingFromContent(fixed.content, additionalKwargs);
 

@@ -27,7 +27,7 @@
 			class="mt-2 rounded-lg border border-purple-100 bg-purple-50/50 px-3 py-2 text-xs text-purple-800 dark:border-purple-800/30 dark:bg-purple-900/10 dark:text-purple-300"
 			transition:slide
 		>
-			<pre class="whitespace-pre-wrap font-sans">{thinking}</pre>
+			<pre class="font-sans whitespace-pre-wrap">{thinking}</pre>
 		</div>
 	{/if}
 </div>

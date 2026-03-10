@@ -104,7 +104,9 @@ test.describe('Thinking block UI', () => {
 			[
 				{
 					event: 'messages',
-					data: aiChunk('', runId, { reasoning_content: 'Let me reason through this step by step.' })
+					data: aiChunk('', runId, {
+						reasoning_content: 'Let me reason through this step by step.'
+					})
 				},
 				{
 					event: 'messages',
