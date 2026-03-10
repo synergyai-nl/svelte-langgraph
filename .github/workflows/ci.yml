@@ -7,6 +7,8 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
+permissions: {}
+
 env:
   DOCKER_IMAGE_NAME: ghcr.io/synergyai-nl/svelte-langgraph-frontend
 
@@ -14,6 +16,12 @@ jobs:
   ci-job:
     name: "CI Job"
     runs-on: "ubuntu-latest"
+    permissions:
+      contents: read       # checkout
+      checks: write        # run-report-action
+      pull-requests: write # run-report-action, moon-ci-retrospect
+      statuses: write      # moon-ci-retrospect
+      actions: write       # setup-toolchain cache
     steps:
       - uses: actions/checkout@v5
         with:
@@ -65,6 +73,9 @@ jobs:
   build:
     name: "Docker Build"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # checkout
+      packages: write # push to ghcr.io
     outputs:
       image_version: ${{ steps.meta.outputs.version }}
     steps:
