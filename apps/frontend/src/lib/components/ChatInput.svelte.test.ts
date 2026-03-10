@@ -58,16 +58,25 @@ describe('ChatInput', () => {
 	});
 
 	describe('when isStreaming is true', () => {
-		beforeEach(() => {
-			renderChatInput({ value: 'Hello', isStreaming: true });
-		});
-
 		test('disables the textarea', () => {
+			renderChatInput({ value: 'Hello', isStreaming: true });
 			expect(screen.getByRole('textbox')).toBeDisabled();
 		});
 
-		test('disables the submit button', () => {
-			expect(screen.getByRole('button')).toBeDisabled();
+		test('shows enabled stop button', () => {
+			renderChatInput({ value: 'Hello', isStreaming: true });
+			expect(screen.getByRole('button')).not.toBeDisabled();
+		});
+
+		test('calls onStop when stop button is clicked', async () => {
+			const user = userEvent.setup();
+			const onStop = vi.fn();
+			renderChatInput({ value: 'Hello', isStreaming: true, onStop });
+
+			const button = screen.getByRole('button');
+			await user.click(button);
+
+			expect(onStop).toHaveBeenCalled();
 		});
 	});
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Client, type Thread } from '@langchain/langgraph-sdk';
+	import { Client, type HumanMessage, type Thread } from '@langchain/langgraph-sdk';
 	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
 	import { convertThreadMessages } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
@@ -38,6 +38,8 @@
 	let chat_started = $state(false);
 	let generationError = $state<Error | null>(null);
 	let last_user_message = $state<string>('');
+
+	let generateController: AbortController | null;
 
 	// Load existing messages from thread on component initialization
 	onMount(() => {
@@ -118,17 +120,25 @@
 			final_answer_started = false;
 			generationError = null; // Clear previous errors
 
+			generateController = new AbortController();
+			const signal = generateController.signal;
+
+			const inputMessage: HumanMessage = { type: 'human', content: messageText, id: messageId };
+
 			try {
 				for await (const chunk of streamAnswer(
 					langGraphClient,
 					thread.thread_id,
 					assistantId,
-					messageText,
-					messageId
+					inputMessage,
+					signal
 				))
 					updateMessages(chunk);
-			} catch (err) {
-				if (err instanceof Error) generationError = err;
+			} catch (e) {
+				// Aborted by user, ignore.
+				if (e instanceof DOMException && e.name === 'AbortError') return;
+
+				if (e instanceof Error) generationError = e;
 				error(500, {
 					message: 'Error during generation'
 				});
@@ -143,6 +153,14 @@
 			current_input = last_user_message;
 			submitInputOrRetry(true);
 		}
+	}
+
+	async function stopGeneration() {
+		if (!generateController)
+			throw Error(
+				'Unable to cancel null generateController. This is a bug! Was a generation running? Was an abort controller passed?'
+			);
+		generateController.abort();
 	}
 </script>
 
@@ -167,5 +185,10 @@
 			/>
 		{/if}
 	</div>
-	<ChatInput bind:value={current_input} isStreaming={is_streaming} onSubmit={submitInputOrRetry} />
+	<ChatInput
+		bind:value={current_input}
+		isStreaming={is_streaming}
+		onSubmit={submitInputOrRetry}
+		onStop={() => stopGeneration()}
+	/>
 </div>

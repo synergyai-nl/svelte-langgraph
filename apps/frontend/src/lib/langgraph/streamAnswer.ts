@@ -7,18 +7,18 @@ export async function* streamAnswer(
 	client: Client,
 	threadId: string,
 	assistantId: string,
-	input: string,
-	messageId: string
+	inputMessage: HumanMessage,
+	signal: AbortSignal
 ): AsyncGenerator<Message, void, unknown> {
-	const input_message: HumanMessage = { type: 'human', content: input, id: messageId };
-
-	console.debug('User input:', input_message);
+	console.debug('User input:', inputMessage);
 
 	const streamResponse = client.runs.stream(threadId, assistantId, {
 		input: {
-			messages: [input_message]
+			messages: [inputMessage]
 		},
-		streamMode: 'messages-tuple'
+		streamMode: 'messages-tuple',
+		signal: signal,
+		onDisconnect: 'cancel'
 	});
 
 	for await (const chunk of streamResponse) {
