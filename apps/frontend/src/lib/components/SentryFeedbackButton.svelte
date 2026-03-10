@@ -20,7 +20,13 @@
 <Tooltip.Root>
 	<Tooltip.Trigger>
 		{#snippet child({ props })}
-			<Button {...props} onclick={openFeedback} class={cn('', className)} variant="outline" size="sm">
+			<Button
+				{...props}
+				onclick={openFeedback}
+				class={cn('', className)}
+				variant="outline"
+				size="sm"
+			>
 				<MessageCircleHeart size={16} />
 			</Button>
 		{/snippet}
