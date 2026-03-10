@@ -30,6 +30,17 @@ export default defineConfig({
 	],
 	webServer: [
 		{
+			name: 'ai-mock',
+			command: 'moon backend:ai-mock',
+			timeout: 120000,
+			stdout: 'pipe',
+			stderr: 'pipe',
+			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
+			wait: {
+				stdout: /Uvicorn running on/
+			}
+		},
+		{
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			timeout: 120000,

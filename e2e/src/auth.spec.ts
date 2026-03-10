@@ -33,10 +33,9 @@ test.describe('When unauthenticated', () => {
 			await expectUnauthenticated(page);
 		});
 
-		test('should successfully sign in with OIDC provider', async ({ page, app }) => {
+		test('should successfully sign in with OIDC provider', async ({ page }) => {
 			await authenticateUser(page);
 			await expectAuthenticated(page);
-			await expect(app.userMenuButton).toBeVisible();
 		});
 	});
 

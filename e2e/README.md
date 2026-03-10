@@ -6,13 +6,13 @@ Playwright-based end-to-end tests for the SvelteKit frontend, LangGraph backend,
 
 | Command                             | Description                               |
 | ----------------------------------- | ----------------------------------------- |
-| `moon e2e:test`                     | Run all tests (auto-starts all 3 servers) |
+| `moon e2e:test`                     | Run all tests (auto-starts all 4 servers) |
 | `moon e2e:test-ui`                  | Open Playwright UI mode                   |
 | `moon e2e:test -- --debug`          | Run with step-through debugger            |
 | `moon e2e:test -- --workers=4`      | Override worker count                     |
 | `moon -u e2e:test -- --grep "auth"` | Run matching tests (skip cache)           |
 
-Moon automatically builds the frontend, sets up the backend, and starts OIDC mock, backend, and frontend servers before tests run.
+Moon automatically builds the frontend, sets up the backend, and starts ai-mock, OIDC mock, backend, and frontend servers before tests run.
 
 ## Project structure
 
@@ -28,6 +28,7 @@ src/
 │   └── oidc.page.ts     # OidcPage – mock OIDC provider interaction
 ├── auth.spec.ts
 ├── backend-integration.spec.ts
+├── chat.spec.ts
 └── demo.test.ts
 ```
 
@@ -110,6 +111,15 @@ After triggering navigation, wait for a **meaningful UI assertion** (e.g. a butt
 ### Prefer SSR-visible state
 
 UI that depends on server data (e.g. session) should be initialized from `page.data` during SSR rather than relying on client-side effects, so it's available immediately when Playwright sees the page.
+
+## Mock servers
+
+| Server    | Port | Purpose                                      | Started by               |
+| --------- | ---- | -------------------------------------------- | ------------------------ |
+| ai-mock   | 8100 | OpenAI-compatible mock (chat completions)    | `moon backend:ai-mock`   |
+| oidc-mock | 8080 | OIDC provider mock (auto-authenticates user) | `moon backend:oidc-mock` |
+
+Both are started automatically by `moon e2e:test` via the `webServer` entries in `playwright.config.ts`. The backend is configured to use the ai-mock via `OPENAI_BASE_URL=http://localhost:8100/openai` in `.env.e2e`.
 
 ## Troubleshooting
 

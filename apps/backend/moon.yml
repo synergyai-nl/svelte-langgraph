@@ -43,6 +43,11 @@ tasks:
     inputs:
       - '@group(sources)'
       - '@group(tests)'
+  ai-mock:
+    command: "ai-mock server 2>&1"
+    preset: "server"
+    env:
+      NO_COLOR: "true"
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user 2>&1"
     preset: "server"
