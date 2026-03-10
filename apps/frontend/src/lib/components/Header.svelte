@@ -175,7 +175,7 @@
 			{:else}
 				<SignInButton />
 			{/if}
-			<SentryFeedbackButton/>
+			<SentryFeedbackButton />
 			<ThemeSwitcher />
 			<LanguageSwitcher />
 		</div>
