@@ -1,31 +1,37 @@
 import { describe, it, expect, vi } from 'vitest';
 import { streamAnswer } from './streamAnswer';
 import { InvalidData, StreamError } from './errors';
-import type { Client } from '@langchain/langgraph-sdk';
+import type { Client, HumanMessage } from '@langchain/langgraph-sdk';
 
 import simpleTextChunks from '../../../tests/fixtures/langgraph/simple-text-chunks.json';
 import toolUseWeatherChunks from '../../../tests/fixtures/langgraph/tool-use-weather-chunks.json';
 import multiPartChunks from '../../../tests/fixtures/langgraph/multi-part-chunks.json';
 
+function humanMsg(content: string, id: string): HumanMessage {
+	return { type: 'human', content, id };
+}
+
+function makeClient(chunks: unknown[]): Client {
+	return {
+		runs: {
+			stream: vi.fn().mockImplementation(async function* () {
+				for (const chunk of chunks) {
+					yield chunk;
+				}
+			})
+		}
+	} as unknown as Client;
+}
+
 describe('streamAnswer with real VCR-recorded responses', () => {
 	it('should parse simple text response from real API recording', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of simpleTextChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(simpleTextChunks),
 			'thread-123',
 			'assistant-456',
-			'What is 2+2?',
-			'user-msg-1'
+			humanMsg('What is 2+2?', 'user-msg-1'),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -41,23 +47,13 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 	});
 
 	it('should parse tool use from real API recording', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of toolUseWeatherChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(toolUseWeatherChunks),
 			'thread-123',
 			'assistant-456',
-			'What is the weather in Amsterdam?',
-			'user-msg-2'
+			humanMsg('What is the weather in Amsterdam?', 'user-msg-2'),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -80,23 +76,16 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 	});
 
 	it('should parse multi-part response with text and tools from real API recording', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of multiPartChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(multiPartChunks),
 			'thread-123',
 			'assistant-456',
-			'Explain what 5+3 equals and then tell me what the weather is like in Paris',
-			'user-msg-3'
+			humanMsg(
+				'Explain what 5+3 equals and then tell me what the weather is like in Paris',
+				'user-msg-3'
+			),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -122,23 +111,13 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 	});
 
 	it('should handle metadata events in real recordings (not yield them)', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of simpleTextChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(simpleTextChunks),
 			'thread-123',
 			'assistant-456',
-			'Test',
-			'user-msg-4'
+			humanMsg('Test', 'user-msg-4'),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -147,23 +126,13 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 	});
 
 	it('should correctly aggregate streaming text chunks', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of simpleTextChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(simpleTextChunks),
 			'thread-123',
 			'assistant-456',
-			'What is 2+2?',
-			'user-msg-5'
+			humanMsg('What is 2+2?', 'user-msg-5'),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -180,23 +149,13 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 	});
 
 	it('should handle tool_calls in message objects from real recordings', async () => {
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of toolUseWeatherChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const results = [];
 		for await (const chunk of streamAnswer(
-			mockClient,
+			makeClient(toolUseWeatherChunks),
 			'thread-123',
 			'assistant-456',
-			'Weather?',
-			'user-msg-6'
+			humanMsg('Weather?', 'user-msg-6'),
+			new AbortController().signal
 		)) {
 			results.push(chunk);
 		}
@@ -217,135 +176,77 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 				yield chunk;
 			}
 		});
+		const mockClient = { runs: { stream: streamMock } } as unknown as Client;
 
-		const mockClient = {
-			runs: {
-				stream: streamMock
-			}
-		} as unknown as Client;
-
+		const signal = new AbortController().signal;
+		const inputMessage = humanMsg('Test input', 'msg-id-123');
 		const results = [];
 		for await (const chunk of streamAnswer(
 			mockClient,
 			'thread-abc',
 			'assistant-xyz',
-			'Test input',
-			'msg-id-123'
+			inputMessage,
+			signal
 		)) {
 			results.push(chunk);
 		}
 
 		expect(streamMock).toHaveBeenCalledWith('thread-abc', 'assistant-xyz', {
-			input: {
-				messages: [{ type: 'human', content: 'Test input', id: 'msg-id-123' }]
-			},
-			streamMode: 'messages-tuple'
+			input: { messages: [inputMessage] },
+			streamMode: 'messages-tuple',
+			signal,
+			onDisconnect: 'cancel'
 		});
 	});
 });
 
 describe('streamAnswer error handling', () => {
 	it('should throw InvalidData for chunks with null data', async () => {
-		const invalidChunks = [
-			{
-				event: 'messages',
-				data: null
-			}
-		];
-
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of invalidChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const generator = streamAnswer(
-			mockClient,
+			makeClient([{ event: 'messages', data: null }]),
 			'thread-123',
 			'assistant-456',
-			'Invalid test',
-			'user-msg-7'
+			humanMsg('Invalid test', 'user-msg-7'),
+			new AbortController().signal
 		);
 
 		await expect(async () => {
-			const results = [];
 			for await (const chunk of generator) {
-				results.push(chunk);
+				void chunk;
 			}
 		}).rejects.toThrow(InvalidData);
 	});
 
 	it('should throw InvalidData for chunks with empty data array', async () => {
-		const invalidChunks = [
-			{
-				event: 'messages',
-				data: []
-			}
-		];
-
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of invalidChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const generator = streamAnswer(
-			mockClient,
+			makeClient([{ event: 'messages', data: [] }]),
 			'thread-123',
 			'assistant-456',
-			'Invalid test',
-			'user-msg-8'
+			humanMsg('Invalid test', 'user-msg-8'),
+			new AbortController().signal
 		);
 
 		await expect(async () => {
-			const results = [];
 			for await (const chunk of generator) {
-				results.push(chunk);
+				void chunk;
 			}
 		}).rejects.toThrow(InvalidData);
 	});
 
 	it('should throw StreamError for error events', async () => {
-		const errorChunks = [
-			{
-				event: 'error',
-				data: {
-					message: 'API rate limit exceeded',
-					code: 'RATE_LIMIT'
-				}
-			}
-		];
-
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of errorChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
-
 		const generator = streamAnswer(
-			mockClient,
+			makeClient([
+				{ event: 'error', data: { message: 'API rate limit exceeded', code: 'RATE_LIMIT' } }
+			]),
 			'thread-123',
 			'assistant-456',
-			'Error test',
-			'user-msg-9'
+			humanMsg('Error test', 'user-msg-9'),
+			new AbortController().signal
 		);
 
 		await expect(async () => {
-			const results = [];
 			for await (const chunk of generator) {
-				results.push(chunk);
+				void chunk;
 			}
 		}).rejects.toThrow(StreamError);
 	});
@@ -354,42 +255,19 @@ describe('streamAnswer error handling', () => {
 		const mixedChunks = [
 			{
 				event: 'messages',
-				data: [
-					{
-						content: 'Starting...',
-						type: 'AIMessageChunk',
-						id: 'msg-001',
-						tool_calls: []
-					}
-				]
+				data: [{ content: 'Starting...', type: 'AIMessageChunk', id: 'msg-001', tool_calls: [] }]
 			},
-			{
-				event: 'error',
-				data: {
-					message: 'API rate limit exceeded',
-					code: 'RATE_LIMIT'
-				}
-			}
+			{ event: 'error', data: { message: 'API rate limit exceeded', code: 'RATE_LIMIT' } }
 		];
-
-		const mockClient = {
-			runs: {
-				stream: vi.fn().mockImplementation(async function* () {
-					for (const chunk of mixedChunks) {
-						yield chunk;
-					}
-				})
-			}
-		} as unknown as Client;
 
 		const results: unknown[] = [];
 		await expect(async () => {
 			for await (const chunk of streamAnswer(
-				mockClient,
+				makeClient(mixedChunks),
 				'thread-123',
 				'assistant-456',
-				'Mixed test',
-				'user-msg-10'
+				humanMsg('Mixed test', 'user-msg-10'),
+				new AbortController().signal
 			)) {
 				results.push(chunk);
 			}

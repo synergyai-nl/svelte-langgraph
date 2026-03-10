@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest';
-import { screen, waitFor } from '@testing-library/svelte';
+import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import { anAIMessage } from './__tests__/fixtures';
@@ -106,8 +106,12 @@ describe('Chat', () => {
 					mockClient,
 					'test-123',
 					'assistant-1',
-					'Tell me about AI',
-					expect.any(String)
+					expect.objectContaining({
+						type: 'human',
+						content: 'Tell me about AI',
+						id: expect.any(String)
+					}),
+					expect.any(AbortSignal)
 				);
 			});
 		});
@@ -154,6 +158,88 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(screen.getByText('Hi there!')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('when stop is clicked', () => {
+		test('stop button aborts the stream signal', async () => {
+			const user = userEvent.setup();
+			let capturedSignal: AbortSignal | undefined;
+
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
+				capturedSignal = signal;
+				yield anAIMessage({ text: 'Partial...' });
+				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
+			});
+
+			renderChat();
+			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			const form = document.getElementById('input_form')!;
+			const stopButton = await within(form).findByRole('button');
+			await user.click(stopButton);
+
+			expect(capturedSignal?.aborted).toBe(true);
+		});
+
+		test('aborting stream shows no error', async () => {
+			const user = userEvent.setup();
+			vi.mocked(streamAnswer).mockImplementation(async function* () {
+				const empty: Message[] = [];
+				yield* empty;
+				throw new DOMException('Aborted', 'AbortError');
+			});
+
+			renderChat();
+			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+				expect(screen.getByRole('textbox')).not.toBeDisabled();
+			});
+		});
+
+		test('partial messages are preserved after stopping', async () => {
+			const user = userEvent.setup();
+
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
+				yield anAIMessage({ text: 'Partial response' });
+				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
+			});
+
+			renderChat();
+			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			await screen.findByText('Partial response');
+
+			const stopButton = within(document.getElementById('input_form')!).getByRole('button');
+			await user.click(stopButton);
+
+			await waitFor(() => {
+				expect(screen.getByText('Partial response')).toBeInTheDocument();
+			});
+		});
+
+		test('input is re-enabled after stopping', async () => {
+			const user = userEvent.setup();
+
+			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
+				yield anAIMessage({ text: 'Partial...' });
+				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
+			});
+
+			renderChat();
+			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
+
+			await user.click(within(document.getElementById('input_form')!).getByRole('button'));
+
+			await waitFor(() => expect(screen.getByRole('textbox')).not.toBeDisabled());
 		});
 	});
 

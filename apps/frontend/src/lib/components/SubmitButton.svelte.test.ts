@@ -27,8 +27,10 @@ describe('SubmitButton', () => {
 			renderComponent({ isStreaming: true, disabled: false });
 		});
 
-		test('shows the spinner instead of send icon', () => {
-			expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
+		test('shows stop button instead of submit button', () => {
+			const button = screen.getByRole('button');
+			expect(button).toBeInTheDocument();
+			expect(button).toHaveAttribute('type', 'button');
 		});
 	});
 
