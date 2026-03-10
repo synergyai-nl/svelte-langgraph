@@ -194,7 +194,8 @@ describe('streamAnswer with real VCR-recorded responses', () => {
 		expect(streamMock).toHaveBeenCalledWith('thread-abc', 'assistant-xyz', {
 			input: { messages: [inputMessage] },
 			streamMode: 'messages-tuple',
-			signal
+			signal,
+			onDisconnect: 'cancel'
 		});
 	});
 });
