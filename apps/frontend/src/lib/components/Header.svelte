@@ -15,6 +15,7 @@
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
+	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
 </script>
 
 <header class="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
@@ -174,6 +175,7 @@
 			{:else}
 				<SignInButton />
 			{/if}
+			<SentryFeedbackButton />
 			<ThemeSwitcher />
 			<LanguageSwitcher />
 		</div>
