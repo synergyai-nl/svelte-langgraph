@@ -35,13 +35,15 @@
 	// useStream doesn't fetch history on mount, so we seed it with page-fetched data.
 	// After the first stream completes, mutate() is called internally to load real
 	// history for branching.
-	const { messages, isLoading, error, submit, stop, getMessagesMetadata, switchThread } = useStream({
-		client: untrack(() => langGraphClient),
-		assistantId: untrack(() => assistantId),
-		fetchStateHistory: true,
-		messagesKey: 'messages',
-		initialValues: untrack(() => (thread.values as Record<string, unknown>) ?? {})
-	});
+	const { messages, isLoading, error, submit, stop, getMessagesMetadata, switchThread } = useStream(
+		{
+			client: untrack(() => langGraphClient),
+			assistantId: untrack(() => assistantId),
+			fetchStateHistory: true,
+			messagesKey: 'messages',
+			initialValues: untrack(() => (thread.values as Record<string, unknown>) ?? {})
+		}
+	);
 
 	// useStream v0.1.3 ignores options.threadId — the internal store is always
 	// initialized as undefined. switchThread() is the only way to pre-set it so
