@@ -9,7 +9,6 @@
 
 	interface Props {
 		messages: BaseMessage[];
-		finalAnswerStarted: boolean;
 		isLoading?: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
@@ -18,7 +17,6 @@
 
 	let {
 		messages = [],
-		finalAnswerStarted,
 		isLoading = false,
 		generationError = null,
 		onRetryError,
@@ -44,7 +42,7 @@
 		<div {@attach scrollToMe()} transition:fly={{ y: 20, duration: 800 }}>
 			{#if generationError && onRetryError}
 				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
-			{:else if !finalAnswerStarted}
+			{:else if isLoading}
 				<ChatWaiting />
 			{/if}
 		</div>

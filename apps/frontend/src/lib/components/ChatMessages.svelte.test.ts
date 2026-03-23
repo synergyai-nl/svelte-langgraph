@@ -7,7 +7,6 @@ import { anAIMessage, aUserMessage, aToolMessage } from './__tests__/fixtures';
 function renderMessages(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(ChatMessages, {
 		messages: [],
-		finalAnswerStarted: true,
 		...overrides
 	});
 }

@@ -52,9 +52,6 @@
 
 	let chat_started = $derived($messages.length > 0 || $isLoading);
 
-	// Show the waiting indicator when loading but no AI message has arrived yet
-	let final_answer_started = $derived(!$isLoading || $messages.some((m) => m.getType() === 'ai'));
-
 	async function submitInput() {
 		if (!current_input.trim()) return;
 		const text = current_input;
@@ -97,7 +94,6 @@
 		{:else}
 			<ChatMessages
 				messages={$messages}
-				finalAnswerStarted={final_answer_started}
 				generationError={$error instanceof Error ? $error : null}
 				onRetryError={retryGeneration}
 				onEditSave={handleEditMessage}
