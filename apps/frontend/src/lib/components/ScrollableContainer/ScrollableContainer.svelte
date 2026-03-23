@@ -3,7 +3,7 @@
 	import { findScrollContainer, scrollToBottom } from './scrollControls';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { BaseMessage } from '@langchain/core/messages';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 
@@ -40,7 +40,7 @@
 	function scrollToMe(message: BaseMessage | null = null): Attachment {
 		return (element: Element) => {
 			if (!(element instanceof HTMLElement)) return;
-			if (message && !message.text) return;
+			if (message && !message.content) return;
 
 			const container = findScrollContainer(element);
 			if (!container) return;

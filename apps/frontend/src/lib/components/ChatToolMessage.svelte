@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ToolMessage } from '$lib/langgraph/types';
+	import type { ToolMessage } from '@langchain/core/messages';
 	import * as m from '$lib/paraglide/messages.js';
 
 	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
@@ -11,6 +11,10 @@
 
 	let { message }: Props = $props();
 	let collapsed = $state(true);
+
+	function getContent(msg: ToolMessage): string {
+		return typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+	}
 </script>
 
 <div class="mb-2 flex justify-start">
@@ -28,7 +32,7 @@
 				onclick={() => (collapsed = !collapsed)}
 			>
 				<span class="text-gray-600 dark:text-gray-400">{m.tools_using()}</span>
-				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
+				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.name ?? ''}</span>
 
 				{#if message.status === 'success'}
 					<CircleCheck size={20} class="text-green-400 dark:text-green-400" />
@@ -48,28 +52,16 @@
 				>
 					<div class="mb-1 text-gray-600 dark:text-gray-400">
 						<span class="font-medium">{m.tool_label()}</span>
-						{message.tool_name}
+						{message.name ?? ''}
 					</div>
 
-					{#if message.payload && Object.keys(message.payload).length > 0}
-						<div class="mt-1 text-gray-700 dark:text-gray-300">
-							<span class="font-medium">{m.tool_parameters()}</span>
-							<pre
-								class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">{JSON.stringify(
-									message.payload,
-									null,
-									2
-								)}</pre>
-						</div>
-					{:else}
-						<div class="mt-1 text-gray-500 italic dark:text-gray-400">{m.tool_no_parameters()}</div>
-					{/if}
+					<div class="mt-1 text-gray-500 italic dark:text-gray-400">{m.tool_no_parameters()}</div>
 
-					{#if message.text}
+					{#if getContent(message)}
 						<div class="mt-1 text-gray-700 dark:text-gray-300">
 							<span class="font-medium">{m.tool_result()}</span>
 							<p class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">
-								{message.text}
+								{getContent(message)}
 							</p>
 						</div>
 					{/if}

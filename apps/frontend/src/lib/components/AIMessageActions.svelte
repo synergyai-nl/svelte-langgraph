@@ -2,7 +2,7 @@
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
 	import { RefreshCw } from '@lucide/svelte';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { BaseMessage } from '@langchain/core/messages';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
@@ -17,6 +17,10 @@
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	function getContent(msg: BaseMessage): string {
+		return typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+	}
 </script>
 
 <div
@@ -26,7 +30,7 @@
 	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>
 			<CopyButton
-				text={message.text}
+				text={getContent(message)}
 				variant="ghost"
 				size="icon-sm"
 				class="h-6 w-6"

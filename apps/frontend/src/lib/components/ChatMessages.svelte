@@ -1,30 +1,43 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { BaseMessage, ToolMessage } from '@langchain/core/messages';
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
 	import { ScrollableContainer } from './ScrollableContainer';
 
 	interface Props {
-		messages: Array<Message>;
+		messages: BaseMessage[];
 		finalAnswerStarted: boolean;
+		isLoading?: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
+		onEditSave?: (messageId: string, newText: string) => void;
 	}
 
-	let { messages = [], finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
+	let {
+		messages = [],
+		finalAnswerStarted,
+		isLoading = false,
+		generationError = null,
+		onRetryError,
+		onEditSave
+	}: Props = $props();
+
+	function getContent(message: BaseMessage): string {
+		return typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+	}
 </script>
 
 <ScrollableContainer>
 	{#snippet children({ scrollToMe })}
-		{#each messages as message (message.id)}
+		{#each messages as message (message.id ?? message.content)}
 			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
-				{#if message.type === 'tool'}
-					<ChatToolMessage {message} />
-				{:else if message.text}
-					<ChatMessage {message} />
+				{#if message.getType() === 'tool'}
+					<ChatToolMessage message={message as ToolMessage} />
+				{:else if getContent(message)}
+					<ChatMessage {message} {onEditSave} {isLoading} />
 				{/if}
 			</div>
 		{/each}

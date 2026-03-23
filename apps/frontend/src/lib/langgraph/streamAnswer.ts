@@ -8,7 +8,8 @@ export async function* streamAnswer(
 	threadId: string,
 	assistantId: string,
 	inputMessage: HumanMessage,
-	signal: AbortSignal
+	signal: AbortSignal,
+	checkpointId?: string
 ): AsyncGenerator<Message, void, unknown> {
 	console.debug('User input:', inputMessage);
 
@@ -18,7 +19,8 @@ export async function* streamAnswer(
 		},
 		streamMode: 'messages-tuple',
 		signal: signal,
-		onDisconnect: 'cancel'
+		onDisconnect: 'cancel',
+		...(checkpointId && { checkpointId })
 	});
 
 	for await (const chunk of streamResponse) {

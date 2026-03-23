@@ -19,9 +19,20 @@ describe('UserMessageActions', () => {
 			expect(screen.getByTitle(/edit/i)).toBeInTheDocument();
 		});
 
-		test('edit button is disabled (coming soon)', () => {
+		test('edit button is enabled', () => {
 			const button = screen.getByTitle(/edit/i) as HTMLButtonElement;
-			expect(button).toBeDisabled();
+			expect(button).not.toBeDisabled();
+		});
+
+		test('calls onEdit when button is clicked', async () => {
+			const message = aUserMessage();
+			const onEdit = vi.fn();
+			renderComponent({ isHovered: true, message, onEdit });
+
+			const button = screen.getByTitle(/edit/i);
+			await button.click();
+
+			expect(onEdit).toHaveBeenCalledWith(message);
 		});
 	});
 

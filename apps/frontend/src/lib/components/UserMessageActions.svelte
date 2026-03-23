@@ -1,17 +1,16 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Pencil } from '@lucide/svelte';
-	import type { BaseMessage } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 
 	interface Props {
-		message: BaseMessage;
 		isHovered: boolean;
-		onEdit?: (message: BaseMessage) => void;
+		isLoading?: boolean;
+		onEdit?: () => void;
 	}
 
-	let { message, isHovered, onEdit }: Props = $props();
+	let { isHovered, isLoading = false, onEdit }: Props = $props();
 </script>
 
 <div
@@ -21,18 +20,18 @@
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => onEdit?.(message)}
+				onclick={() => onEdit?.()}
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
 				title={m.message_edit()}
-				disabled
+				disabled={isLoading}
 			>
 				<Pencil size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.coming_soon()}
+			{m.message_edit()}
 		</TooltipContent>
 	</Tooltip>
 </div>
