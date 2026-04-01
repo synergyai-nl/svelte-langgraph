@@ -1,14 +1,12 @@
 <script lang="ts">
 	import { error } from '@sveltejs/kit';
 	import { page } from '$app/state';
-	import type { Thread } from '@langchain/langgraph-sdk';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import { getOrCreateAssistant, createClient } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { Client } from '@langchain/langgraph-sdk';
-	import type { ThreadValues } from '$lib/langgraph/types';
 	import ChatError from '$lib/components/ChatError.svelte';
 
 	let show_login_dialog = $state(!page.data.session);
@@ -16,26 +14,21 @@
 	// Updates client whenever accessToken changes
 	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
 	let assistantId = $state<string | null>(null);
-	let thread = $state<Thread<ThreadValues> | null>(null);
-	let threadId = $derived(page.params.threadID);
+	let threadId = $derived(page.params.threadID!);
 	let initialization_error = $state<Error | null>(null);
 
-	async function initAssistantAndThread(client: Client, threadId: string) {
+	async function initAssistant(client: Client) {
 		try {
 			assistantId = await getOrCreateAssistant(client, 'chat');
-			const fetchedThread = await client.threads.get(threadId);
-			thread = fetchedThread as Thread<ThreadValues>;
 		} catch (err) {
 			if (err instanceof Error) initialization_error = err;
-			error(500, {
-				message: 'Error during generation'
-			});
+			error(500, { message: 'Error during initialization' });
 		}
 	}
 
 	$effect(() => {
-		if ((assistantId === null || thread === null) && client && threadId) {
-			initAssistantAndThread(client, threadId);
+		if (assistantId === null && client && threadId) {
+			initAssistant(client);
 		}
 	});
 
@@ -79,12 +72,12 @@
 
 {#if initialization_error}
 	<ChatError error={initialization_error} />
-{:else if assistantId && thread && client}
+{:else if assistantId && client}
 	<!-- We're all set up -->
 	<Chat
-		langGraphClient={client}
-		{assistantId}
-		{thread}
+		langGraphClient={client!}
+		assistantId={assistantId!}
+		{threadId}
 		introTitle={greeting}
 		intro={m.chat_intro()}
 		{suggestions}

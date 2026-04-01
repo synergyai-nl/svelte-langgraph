@@ -1,22 +1,17 @@
 <script lang="ts">
-	import { Client, type HumanMessage, type Thread } from '@langchain/langgraph-sdk';
-	import { streamAnswer } from '$lib/langgraph/streamAnswer.js';
-	import { convertThreadMessages } from '$lib/langgraph/utils.js';
+	import { useStream } from '@langchain/svelte';
+	import { SvelteMap } from 'svelte/reactivity';
+	import { convertThreadMessage } from '$lib/langgraph/utils.js';
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, UserMessage, ThreadValues } from '$lib/langgraph/types';
-	import { error } from '@sveltejs/kit';
-	import { onMount } from 'svelte';
-
-	// Configuration: Keep this simple for now, will update for performance-oriented
-	// lazy loaded or context loaded messages
-	const MAX_MESSAGES_TO_LOAD = 100;
+	import type { Message, ToolMessage } from '$lib/langgraph/types';
+	import type { Client } from '@langchain/langgraph-sdk';
 
 	interface Props {
 		langGraphClient: Client;
 		assistantId: string;
-		thread: Thread<ThreadValues>;
+		threadId: string;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;
@@ -25,142 +20,89 @@
 	let {
 		langGraphClient,
 		assistantId,
-		thread,
+		threadId,
 		suggestions = [],
 		intro = '',
 		introTitle = ''
 	}: Props = $props();
 
-	let current_input = $state('');
-	let is_streaming = $state(false);
-	let final_answer_started = $state(false);
-	let messages = $state<Array<Message>>([]);
-	let chat_started = $state(false);
-	let generationError = $state<Error | null>(null);
-	let last_user_message = $state<string>('');
-
-	let generateController: AbortController | null;
-
-	// Load existing messages from thread on component initialization
-	onMount(() => {
-		if (thread?.values?.messages && thread.values.messages.length > 0) {
-			// Only load the last MAX_MESSAGES_TO_LOAD messages
-			const lastMessages = thread.values.messages.slice(-MAX_MESSAGES_TO_LOAD);
-			const loadedMessages = convertThreadMessages(lastMessages);
-
-			if (loadedMessages.length > 0) {
-				messages = loadedMessages;
-				chat_started = true;
-				// If we have existing messages, the final answer already started
-				final_answer_started = true;
-			}
-		}
+	const stream = useStream({
+		// Cast needed: project uses langgraph-sdk@1.6.5, @langchain/svelte bundles 1.8.3 — same runtime, different type declarations
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		client: langGraphClient as any,
+		assistantId,
+		threadId,
+		fetchStateHistory: true
 	});
 
-	function updateMessages(chunk: Message) {
-		console.debug('Processing chunk in inputSubmit:', chunk);
+	let current_input = $state('');
+	let last_user_message = $state('');
+	let aiMessageCountAtSubmit = $state(0);
 
-		// Look for existing message with same id
-		const messageIndex = messages.findIndex((m) => m.id === chunk.id);
+	function mapMessages(msgs: typeof stream.messages): Message[] {
+		const toolCallArgs = new SvelteMap<string, Record<string, unknown>>();
+		const result: Message[] = [];
 
-		if (messageIndex == -1) {
-			// New message
-			messages.push(chunk);
-		} else {
-			// Update existing message
-			const existing = messages[messageIndex];
-			if (chunk.text) {
-				existing.text += chunk.text;
-			}
+		for (const msg of msgs) {
+			const m = msg as unknown as Record<string, unknown>;
 
-			if (existing.type == 'tool' && 'status' in chunk) {
-				existing.status = chunk.status;
-			}
-		}
-
-		if (!final_answer_started && chunk.type == 'ai' && chunk.text) final_answer_started = true;
-
-		// Trigger reactivity
-		messages = [...messages];
-	}
-
-	async function submitInputOrRetry(isRetry = false) {
-		if (current_input) {
-			chat_started = true;
-
-			let messageText: string;
-			let messageId: string;
-
-			if (!isRetry) {
-				// New message: create and push to messages array
-				const userMessage: UserMessage = {
-					type: 'user',
-					text: current_input,
-					id: crypto.randomUUID()
-				};
-				messages.push(userMessage);
-				last_user_message = current_input; // Store for retry
-				messageText = userMessage.text;
-				messageId = userMessage.id;
-			} else {
-				// Retry: reuse existing message
-				const lastUserMsg = messages.findLast((m) => m.type === 'user');
-				if (!lastUserMsg || !lastUserMsg.text || !lastUserMsg.id) {
-					error(500, {
-						message: 'Retry attempted but no or invalid user message found'
-					});
+			if ((m.type === 'ai' || m.type === 'AIMessageChunk') && Array.isArray(m.tool_calls)) {
+				for (const tc of m.tool_calls as Array<{ id?: string; args?: Record<string, unknown> }>) {
+					if (tc.id) toolCallArgs.set(tc.id, tc.args ?? {});
 				}
-				messageText = lastUserMsg.text;
-				messageId = lastUserMsg.id;
 			}
-
-			current_input = '';
-
-			is_streaming = true;
-			final_answer_started = false;
-			generationError = null; // Clear previous errors
-
-			generateController = new AbortController();
-			const signal = generateController.signal;
-
-			const inputMessage: HumanMessage = { type: 'human', content: messageText, id: messageId };
 
 			try {
-				for await (const chunk of streamAnswer(
-					langGraphClient,
-					thread.thread_id,
-					assistantId,
-					inputMessage,
-					signal
-				))
-					updateMessages(chunk);
-			} catch (e) {
-				// Aborted by user, ignore.
-				if (e instanceof DOMException && e.name === 'AbortError') return;
-
-				if (e instanceof Error) generationError = e;
-				error(500, {
-					message: 'Error during generation'
-				});
-			} finally {
-				is_streaming = false;
+				const normalized = m.type === 'AIMessageChunk' ? { ...m, type: 'ai' } : m;
+				const converted = convertThreadMessage(normalized);
+				if (converted.type === 'tool') {
+					(converted as ToolMessage).payload = toolCallArgs.get(converted.id);
+				}
+				result.push(converted);
+			} catch {
+				// Skip unconvertible messages (e.g. unexpected types during streaming)
 			}
 		}
+
+		return result;
+	}
+
+	let messages = $derived(mapMessages(stream.messages));
+	let chat_started = $derived(messages.length > 0 || stream.isLoading);
+	let final_answer_started = $derived(
+		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
+	);
+	function isCancellationError(err: unknown): boolean {
+		if (err instanceof Error) {
+			return err.name === 'CancelledError' || err.name === 'AbortError';
+		}
+		return false;
+	}
+
+	let generationError = $derived(
+		!isCancellationError(stream.error) && stream.error != null
+			? stream.error instanceof Error
+				? stream.error
+				: new Error(String(stream.error))
+			: null
+	);
+
+	function submitInput(text: string) {
+		if (!text.trim() || stream.isLoading) return;
+		last_user_message = text;
+		current_input = '';
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		stream.submit({ messages: [{ type: 'human', content: text }] });
 	}
 
 	function retryGeneration() {
-		if (last_user_message) {
-			current_input = last_user_message;
-			submitInputOrRetry(true);
-		}
+		if (!last_user_message) return;
+		aiMessageCountAtSubmit = Math.max(0, messages.filter((m) => m.type === 'ai').length - 1);
+		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
 	}
 
-	async function stopGeneration() {
-		if (!generateController)
-			throw Error(
-				'Unable to cancel null generateController. This is a bug! Was a generation running? Was an abort controller passed?'
-			);
-		generateController.abort();
+	function stopGeneration() {
+		stream.stop();
 	}
 </script>
 
@@ -171,10 +113,7 @@
 				{suggestions}
 				{introTitle}
 				{intro}
-				onSuggestionClick={(suggestedText) => {
-					current_input = suggestedText;
-					submitInputOrRetry();
-				}}
+				onSuggestionClick={(suggestedText) => submitInput(suggestedText)}
 			/>
 		{:else}
 			<ChatMessages
@@ -187,8 +126,8 @@
 	</div>
 	<ChatInput
 		bind:value={current_input}
-		isStreaming={is_streaming}
-		onSubmit={submitInputOrRetry}
+		isStreaming={stream.isLoading}
+		onSubmit={() => submitInput(current_input)}
 		onStop={() => stopGeneration()}
 	/>
 </div>

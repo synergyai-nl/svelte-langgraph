@@ -1,41 +1,19 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
-import { anAIMessage } from './__tests__/fixtures';
 import Chat from './Chat.svelte';
-import type { Client, Thread } from '@langchain/langgraph-sdk';
-import type { ThreadValues, Message } from '$lib/langgraph/types';
+import type { Client } from '@langchain/langgraph-sdk';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
+import * as mockModule from './__tests__/mockUseStream.svelte.ts';
 
-// Mock streamAnswer — this is the key dependency
-vi.mock('$lib/langgraph/streamAnswer.js', () => ({
-	streamAnswer: vi.fn()
-}));
-
-vi.mock('$lib/langgraph/utils.js', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('$lib/langgraph/utils.js')>();
-	return {
-		...actual,
-		convertThreadMessages: vi.fn().mockReturnValue([])
-	};
+// Mock useStream — this is the key dependency
+vi.mock('@langchain/svelte', async () => {
+	const mod = await import('./__tests__/mockUseStream.svelte.ts');
+	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Import after mocking
-const { streamAnswer } = await import('$lib/langgraph/streamAnswer.js');
-const { convertThreadMessages } = await import('$lib/langgraph/utils.js');
-
 const mockClient = {} as Client;
-const emptyThread: Thread<ThreadValues> = {
-	thread_id: 'test-123',
-	created_at: '2024-01-01',
-	updated_at: '2024-01-01',
-	state_updated_at: '2024-01-01',
-	metadata: {},
-	status: 'idle',
-	values: { messages: [] },
-	interrupts: {}
-};
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
@@ -46,7 +24,7 @@ function renderChat(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(Chat, {
 		langGraphClient: mockClient,
 		assistantId: 'assistant-1',
-		thread: emptyThread,
+		threadId: 'test-123',
 		suggestions,
 		introTitle: 'Welcome',
 		intro: 'How can I help?',
@@ -54,29 +32,20 @@ function renderChat(overrides: Record<string, unknown> = {}) {
 	});
 }
 
-/** Helper to create a streamAnswer mock that yields messages */
-function mockStreamYield(...messages: Message[]) {
-	vi.mocked(streamAnswer).mockImplementation(async function* () {
-		for (const msg of messages) {
-			yield msg;
-		}
-	});
-}
+beforeEach(() => {
+	mockModule.resetMock();
+});
 
 describe('Chat', () => {
 	describe('when rendered with empty thread', () => {
 		test('displays suggestions view', () => {
-			mockStreamYield();
 			renderChat();
-
 			expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
 			expect(screen.getByText('How can I help?')).toBeInTheDocument();
 		});
 
 		test('displays chat input', () => {
-			mockStreamYield();
 			renderChat();
-
 			expect(screen.getByPlaceholderText('Message...')).toBeInTheDocument();
 		});
 	});
@@ -84,7 +53,9 @@ describe('Chat', () => {
 	describe('when a suggestion is clicked', () => {
 		test('switches from suggestions to messages view', async () => {
 			const user = userEvent.setup();
-			mockStreamYield(anAIMessage({ text: 'AI response' }));
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+			});
 			renderChat();
 
 			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
@@ -94,24 +65,24 @@ describe('Chat', () => {
 			});
 		});
 
-		test('calls streamAnswer with correct args', async () => {
+		test('calls stream.submit with correct args', async () => {
 			const user = userEvent.setup();
-			mockStreamYield(anAIMessage({ text: 'Response' }));
+			const mockSubmit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = mockSubmit;
 			renderChat();
 
 			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
 
 			await waitFor(() => {
-				expect(streamAnswer).toHaveBeenCalledWith(
-					mockClient,
-					'test-123',
-					'assistant-1',
+				expect(mockSubmit).toHaveBeenCalledWith(
 					expect.objectContaining({
-						type: 'human',
-						content: 'Tell me about AI',
-						id: expect.any(String)
-					}),
-					expect.any(AbortSignal)
+						messages: [
+							expect.objectContaining({
+								type: 'human',
+								content: 'Tell me about AI'
+							})
+						]
+					})
 				);
 			});
 		});
@@ -120,7 +91,9 @@ describe('Chat', () => {
 	describe('when a message is submitted', () => {
 		test('switches to messages view', async () => {
 			const user = userEvent.setup();
-			mockStreamYield(anAIMessage({ text: 'Hello!' }));
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([{ type: 'ai', content: 'Hello!', id: 'ai-1' }]);
+			});
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -134,7 +107,12 @@ describe('Chat', () => {
 
 		test('displays the user message', async () => {
 			const user = userEvent.setup();
-			mockStreamYield(anAIMessage({ text: 'Hi there!' }));
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([
+					{ type: 'human', content: 'Hello', id: 'user-1' },
+					{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
+				]);
+			});
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -148,7 +126,12 @@ describe('Chat', () => {
 
 		test('displays the AI response after streaming', async () => {
 			const user = userEvent.setup();
-			mockStreamYield(anAIMessage({ text: 'Hi there!' }));
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([
+					{ type: 'human', content: 'Hello', id: 'user-1' },
+					{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
+				]);
+			});
 			renderChat();
 
 			const textbox = screen.getByPlaceholderText('Message...');
@@ -162,15 +145,11 @@ describe('Chat', () => {
 	});
 
 	describe('when stop is clicked', () => {
-		test('stop button aborts the stream signal', async () => {
+		test('stop button calls stream.stop', async () => {
 			const user = userEvent.setup();
-			let capturedSignal: AbortSignal | undefined;
-
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
-				capturedSignal = signal;
-				yield anAIMessage({ text: 'Partial...' });
-				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
-			});
+			const mockStop = vi.fn(() => mockModule.setIsLoading(false));
+			mockModule.mockStreamCallbacks.stop = mockStop;
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 
 			renderChat();
 			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
@@ -180,20 +159,21 @@ describe('Chat', () => {
 			const stopButton = await within(form).findByRole('button');
 			await user.click(stopButton);
 
-			expect(capturedSignal?.aborted).toBe(true);
+			expect(mockStop).toHaveBeenCalled();
 		});
 
-		test('aborting stream shows no error', async () => {
+		test('stopping stream shows no error', async () => {
 			const user = userEvent.setup();
-			vi.mocked(streamAnswer).mockImplementation(async function* () {
-				const empty: Message[] = [];
-				yield* empty;
-				throw new DOMException('Aborted', 'AbortError');
-			});
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
+			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
 			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
 			await user.keyboard('{Enter}');
+
+			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
+
+			await user.click(within(document.getElementById('input_form')!).getByRole('button'));
 
 			await waitFor(() => {
 				expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -203,11 +183,11 @@ describe('Chat', () => {
 
 		test('partial messages are preserved after stopping', async () => {
 			const user = userEvent.setup();
-
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
-				yield anAIMessage({ text: 'Partial response' });
-				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([{ type: 'ai', content: 'Partial response', id: 'ai-1' }]);
+				mockModule.setIsLoading(true);
 			});
+			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
 			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
@@ -215,8 +195,7 @@ describe('Chat', () => {
 
 			await screen.findByText('Partial response');
 
-			const stopButton = within(document.getElementById('input_form')!).getByRole('button');
-			await user.click(stopButton);
+			await user.click(within(document.getElementById('input_form')!).getByRole('button'));
 
 			await waitFor(() => {
 				expect(screen.getByText('Partial response')).toBeInTheDocument();
@@ -225,11 +204,8 @@ describe('Chat', () => {
 
 		test('input is re-enabled after stopping', async () => {
 			const user = userEvent.setup();
-
-			vi.mocked(streamAnswer).mockImplementation(async function* (_c, _t, _a, _im, signal) {
-				yield anAIMessage({ text: 'Partial...' });
-				await new Promise<void>((r) => signal.addEventListener('abort', () => r()));
-			});
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
+			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
 			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
@@ -245,24 +221,12 @@ describe('Chat', () => {
 
 	describe('when rendered with existing thread messages', () => {
 		test('displays messages view immediately', async () => {
-			const existingMessages = [
+			mockModule.setMessages([
 				{ type: 'human', content: 'Previous question', id: 'msg-1' },
 				{ type: 'ai', content: 'Previous answer', id: 'msg-2' }
-			];
-
-			vi.mocked(convertThreadMessages).mockReturnValue([
-				{ type: 'user', text: 'Previous question', id: 'msg-1' },
-				{ type: 'ai', text: 'Previous answer', id: 'msg-2' }
 			]);
 
-			mockStreamYield();
-
-			const threadWithMessages: Thread<ThreadValues> = {
-				...emptyThread,
-				values: { messages: existingMessages }
-			};
-
-			renderChat({ thread: threadWithMessages });
+			renderChat();
 
 			await waitFor(() => {
 				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
