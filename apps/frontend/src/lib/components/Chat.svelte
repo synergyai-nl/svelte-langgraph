@@ -27,9 +27,7 @@
 	}: Props = $props();
 
 	const stream = useStream({
-		// Cast needed: project uses langgraph-sdk@1.6.5, @langchain/svelte bundles 1.8.3 — same runtime, different type declarations
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		client: langGraphClient as any,
+		client: langGraphClient,
 		assistantId,
 		threadId,
 		fetchStateHistory: true
@@ -76,7 +74,9 @@
 		if (err instanceof Error) {
 			return err.name === 'CancelledError' || err.name === 'AbortError';
 		}
-		return false;
+		// Python server stores cancellation as a raw string in thread task history
+		const str = String(err);
+		return str.includes('CancelledError') || str.includes('AbortError');
 	}
 
 	let generationError = $derived(
