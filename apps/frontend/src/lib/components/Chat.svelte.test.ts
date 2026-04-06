@@ -5,11 +5,11 @@ import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
 import type { Client } from '@langchain/langgraph-sdk';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
-import * as mockModule from './__tests__/mockUseStream.svelte.ts';
+import * as mockModule from './__tests__/mockUseStream.svelte';
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
-	const mod = await import('./__tests__/mockUseStream.svelte.ts');
+	const mod = await import('./__tests__/mockUseStream.svelte');
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
