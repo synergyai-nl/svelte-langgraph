@@ -36,12 +36,16 @@ test.describe('Cancellation', () => {
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 
-		// Wait until at least the first 20 echoed characters appear in the AI message.
-		// At this point ~236 chars remain to stream — plenty of window to stop.
+		// Wait for the stop button to appear — confirms streaming is active.
+		// The stop button (type="button") only renders when isStreaming=true;
+		// the submit button (type="submit") renders otherwise.
+		const stopButton = page.locator('#input_form button[type="button"]');
+		await expect(stopButton).toBeVisible();
+
+		// Also confirm partial content has started arriving
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 
 		// Click stop — calls stream.stop() → CancelledError silently suppressed
-		const stopButton = page.locator('#input_form').getByRole('button');
 		await stopButton.click();
 
 		// Partial content is preserved after stopping
@@ -68,11 +72,14 @@ test.describe('Cancellation', () => {
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 
-		// Wait for partial content to confirm streaming has started
+		// Wait for the stop button — confirms streaming is active
+		const stopButton = page.locator('#input_form button[type="button"]');
+		await expect(stopButton).toBeVisible();
+
+		// Confirm partial content has started arriving
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 
 		// Click stop — calls stream.stop() which cancels the run server-side
-		const stopButton = page.locator('#input_form').getByRole('button');
 		await stopButton.click();
 
 		// Confirm client-side streaming has stopped
