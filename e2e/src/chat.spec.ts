@@ -45,8 +45,11 @@ test.describe('Cancellation', () => {
 		// Also confirm partial content has started arriving
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 
-		// Click stop — calls stream.stop() → CancelledError silently suppressed
-		await stopButton.click();
+		// Use dispatchEvent instead of click() — the SubmitButton has transition-all
+		// CSS which makes Playwright's stability check wait for the animation to
+		// settle. With useStream the streaming window can be narrow, so the button
+		// may detach before the stability check completes.
+		await stopButton.dispatchEvent('click');
 
 		// Partial content is preserved after stopping
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
@@ -81,7 +84,11 @@ test.describe('Cancellation', () => {
 			expect(stopButton).toBeVisible(),
 			expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible()
 		]);
-		await stopButton.click();
+
+		// Use dispatchEvent to bypass Playwright's CSS stability check — the Button
+		// component has transition-all which delays click() while the stop button
+		// can be detached if streaming finishes during the transition.
+		await stopButton.dispatchEvent('click');
 
 		// Confirm client-side streaming has stopped
 		await expect(chat.textInput).toBeEnabled();
