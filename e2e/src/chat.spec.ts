@@ -61,8 +61,9 @@ test.describe('Cancellation', () => {
 		chat
 	}) => {
 		// Long unique input — ai-mock echoes it back character-by-character.
-		// ~256 hex chars means ~236 chars remain after we stop at 20 chars.
-		const testInput = randomUUID().replace(/-/g, '').repeat(8);
+		// useStream batches updates, so we need a much longer input to ensure the
+		// streaming window is wide enough to reliably click stop mid-flight.
+		const testInput = randomUUID().replace(/-/g, '').repeat(32); // ~1024 hex chars
 		const partialEcho = testInput.slice(0, 20); // Wait for these before stopping
 		// The tail will only appear if the LangGraph run completed server-side.
 		// Aborting the stream should also cancel the run; if it doesn't (the bug),
@@ -72,14 +73,14 @@ test.describe('Cancellation', () => {
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 
-		// Wait for the stop button — confirms streaming is active
+		// Wait for BOTH the stop button AND partial echo simultaneously to minimize
+		// the gap between confirmation and click — useStream batches updates so the
+		// streaming window can be narrow.
 		const stopButton = page.locator('#input_form button[type="button"]');
-		await expect(stopButton).toBeVisible();
-
-		// Confirm partial content has started arriving
-		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
-
-		// Click stop — calls stream.stop() which cancels the run server-side
+		await Promise.all([
+			expect(stopButton).toBeVisible(),
+			expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible()
+		]);
 		await stopButton.click();
 
 		// Confirm client-side streaming has stopped
