@@ -30,7 +30,8 @@
 		client: langGraphClient,
 		assistantId,
 		threadId,
-		fetchStateHistory: true
+		fetchStateHistory: true,
+		reconnectOnMount: true
 	});
 
 	let current_input = $state('');

@@ -89,7 +89,7 @@ test.describe('Cancellation', () => {
 		// Allow time for the server-side run to complete if it wasn't cancelled.
 		// This must happen BEFORE reload: the frontend fetches thread state once on
 		// navigation, so we need the run to finish writing to the thread first.
-		await page.waitForTimeout(2000);
+		await page.waitForTimeout(4000);
 
 		// Reload the page — fetches fresh thread state from the LangGraph server.
 		// If the run was NOT cancelled server-side, the backend will have finished
