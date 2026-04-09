@@ -31,7 +31,7 @@ export default defineConfig({
 	webServer: [
 		{
 			name: 'ai-mock',
-			command: 'moon backend:ai-mock',
+			command: 'moon backend:ai-mock-e2e',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',

@@ -48,6 +48,11 @@ tasks:
     preset: "server"
     env:
       NO_COLOR: "true"
+  ai-mock-e2e:
+    command: "uvicorn slow_mock:app --host 127.0.0.1 --port 8100 2>&1"
+    preset: "server"
+    env:
+      NO_COLOR: "true"
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user 2>&1"
     preset: "server"
