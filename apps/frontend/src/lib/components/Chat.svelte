@@ -67,10 +67,7 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
-	let chat_started = $derived(messages.length > 0 || stream.isLoading);
-	let final_answer_started = $derived(
-		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
-	);
+
 	function isCancellationError(err: unknown): boolean {
 		if (err instanceof Error) {
 			return err.name === 'CancelledError' || err.name === 'AbortError';
@@ -88,6 +85,11 @@
 			: null
 	);
 
+	let chat_started = $derived(messages.length > 0 || stream.isLoading || generationError != null);
+	let final_answer_started = $derived(
+		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
+	);
+
 	function submitInput(text: string) {
 		if (!text.trim() || stream.isLoading) return;
 		last_user_message = text;
@@ -98,7 +100,7 @@
 
 	function retryGeneration() {
 		if (!last_user_message) return;
-		aiMessageCountAtSubmit = Math.max(0, messages.filter((m) => m.type === 'ai').length - 1);
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
 	}
 

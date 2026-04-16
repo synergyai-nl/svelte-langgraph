@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { error } from '@sveltejs/kit';
 	import { page } from '$app/state';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
@@ -21,8 +20,7 @@
 		try {
 			assistantId = await getOrCreateAssistant(client, 'chat');
 		} catch (err) {
-			if (err instanceof Error) initialization_error = err;
-			error(500, { message: 'Error during initialization' });
+			initialization_error = err instanceof Error ? err : new Error(String(err));
 		}
 	}
 
@@ -73,15 +71,16 @@
 {#if initialization_error}
 	<ChatError error={initialization_error} />
 {:else if assistantId && client}
-	<!-- We're all set up -->
-	<Chat
-		langGraphClient={client!}
-		assistantId={assistantId!}
-		{threadId}
-		introTitle={greeting}
-		intro={m.chat_intro()}
-		{suggestions}
-	/>
+	{#key threadId}
+		<Chat
+			langGraphClient={client}
+			{assistantId}
+			{threadId}
+			introTitle={greeting}
+			intro={m.chat_intro()}
+			{suggestions}
+		/>
+	{/key}
 {:else}
 	<ChatLoader />
 {/if}

@@ -29,8 +29,8 @@ test.describe('Cancellation', () => {
 
 	test('user can cancel a running generation', async ({ page, chat }) => {
 		// Long unique input — ai-mock echoes it back character-by-character with a
-		// 10ms delay per chunk, giving a ~2.5s streaming window to click stop.
-		const testInput = randomUUID().replace(/-/g, '').repeat(8); // ~256 hex chars
+		// 10ms delay per chunk, giving a ~5s streaming window to click stop.
+		const testInput = randomUUID().replace(/-/g, '').repeat(16); // ~512 hex chars
 		const partialEcho = testInput.slice(0, 20); // First 20 chars to wait for
 
 		await chat.textInput.fill(testInput);
@@ -45,10 +45,7 @@ test.describe('Cancellation', () => {
 		// Also confirm partial content has started arriving
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 
-		// Use dispatchEvent to bypass Playwright's CSS stability check — the Button
-		// component has transition-all which delays click() while the stop button
-		// may detach before the stability check completes.
-		await stopButton.dispatchEvent('click');
+		await stopButton.click();
 
 		// Partial content is preserved after stopping
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
@@ -63,8 +60,8 @@ test.describe('Cancellation', () => {
 		chat
 	}) => {
 		// Long unique input — ai-mock echoes it back character-by-character with a
-		// 10ms delay per chunk, giving a ~2.5s streaming window to click stop.
-		const testInput = randomUUID().replace(/-/g, '').repeat(8); // ~256 hex chars
+		// 10ms delay per chunk, giving a ~5s streaming window to click stop.
+		const testInput = randomUUID().replace(/-/g, '').repeat(16); // ~512 hex chars
 		const partialEcho = testInput.slice(0, 20); // Wait for these before stopping
 		// The tail will only appear if the LangGraph run completed server-side.
 		// Aborting the stream should also cancel the run; if it doesn't (the bug),
@@ -78,10 +75,7 @@ test.describe('Cancellation', () => {
 		await expect(stopButton).toBeVisible();
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 
-		// Use dispatchEvent to bypass Playwright's CSS stability check — the Button
-		// component has transition-all which delays click() while the stop button
-		// may detach before the stability check completes.
-		await stopButton.dispatchEvent('click');
+		await stopButton.click();
 
 		// Confirm client-side streaming has stopped
 		await expect(chat.textInput).toBeEnabled();

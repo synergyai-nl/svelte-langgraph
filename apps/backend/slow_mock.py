@@ -17,7 +17,10 @@ import time
 
 import mockai.openai.services as _services
 
-_DELAY = float(os.environ.get("MOCK_STREAM_DELAY", "0.01"))
+try:
+    _DELAY = float(os.environ.get("MOCK_STREAM_DELAY", "0.01"))
+except (ValueError, TypeError):
+    _DELAY = 0.01
 _original_streaming_response = _services.streaming_response
 
 

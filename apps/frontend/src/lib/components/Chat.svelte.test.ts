@@ -6,6 +6,7 @@ import Chat from './Chat.svelte';
 import type { Client } from '@langchain/langgraph-sdk';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
+import * as m from '$lib/paraglide/messages.js';
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
@@ -231,6 +232,53 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
 				expect(screen.getByText('Previous answer')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('when stream errors before any messages arrive', () => {
+		test('shows the error instead of the suggestions screen', async () => {
+			mockModule.setError(new Error('Connection failed'));
+
+			renderChat();
+
+			await waitFor(() => {
+				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
+				expect(screen.getByText('Connection failed')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('when retry is triggered after a generation error', () => {
+		test('shows the waiting indicator while the new response loads', async () => {
+			const user = userEvent.setup();
+			let submitCount = 0;
+
+			// First submit ends with an error; retry starts a new loading sequence.
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				submitCount++;
+				if (submitCount === 1) {
+					mockModule.setError(new Error('Generation failed'));
+				} else {
+					mockModule.setError(null);
+					mockModule.setIsLoading(true);
+				}
+			});
+
+			renderChat();
+
+			// Submit a message — this sets last_user_message, which retryGeneration() requires.
+			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			// Wait for the retry button to appear
+			const retryButton = await screen.findByRole('button', { name: m.chat_error_retry() });
+
+			// Click retry — should transition to loading/waiting state
+			await user.click(retryButton);
+
+			await waitFor(() => {
+				expect(screen.getByRole('status')).toBeInTheDocument();
 			});
 		});
 	});
