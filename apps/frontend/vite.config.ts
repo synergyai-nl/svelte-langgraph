@@ -11,7 +11,9 @@ export default defineConfig({
 		sveltekit(),
 		paraglideVitePlugin({
 			project: './project.inlang',
-			outdir: './src/lib/paraglide'
+			outdir: './src/lib/paraglide',
+			cleanOutdir: false,
+			outputStructure: 'message-modules'
 		}),
 		sentrySvelteKit({
 			sourceMapsUploadOptions: {
@@ -40,7 +42,9 @@ export default defineConfig({
 					sveltekit(),
 					paraglideVitePlugin({
 						project: './project.inlang',
-						outdir: './src/lib/paraglide'
+						outdir: './src/lib/paraglide',
+						cleanOutdir: false,
+						outputStructure: 'message-modules'
 					}),
 					svelteTesting() // This was missing proper placement
 				]
@@ -58,7 +62,9 @@ export default defineConfig({
 					sveltekit(),
 					paraglideVitePlugin({
 						project: './project.inlang',
-						outdir: './src/lib/paraglide'
+						outdir: './src/lib/paraglide',
+						cleanOutdir: false,
+						outputStructure: 'message-modules'
 					})
 				]
 			}
