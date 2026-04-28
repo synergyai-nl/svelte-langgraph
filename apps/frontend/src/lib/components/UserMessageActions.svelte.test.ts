@@ -1,12 +1,11 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import UserMessageActions from './UserMessageActions.svelte';
-import { aUserMessage } from './__tests__/fixtures';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
-	const message = aUserMessage();
-	return renderWithProviders(UserMessageActions, { message, ...overrides });
+	return renderWithProviders(UserMessageActions, { ...overrides });
 }
 
 describe('UserMessageActions', () => {
@@ -19,9 +18,9 @@ describe('UserMessageActions', () => {
 			expect(screen.getByTitle(/edit/i)).toBeInTheDocument();
 		});
 
-		test('edit button is disabled (coming soon)', () => {
+		test('edit button is enabled', () => {
 			const button = screen.getByTitle(/edit/i) as HTMLButtonElement;
-			expect(button).toBeDisabled();
+			expect(button).not.toBeDisabled();
 		});
 	});
 
@@ -32,6 +31,18 @@ describe('UserMessageActions', () => {
 
 		test('hides the edit button when not hovered', () => {
 			expect(screen.getByTitle(/edit/i)).not.toBeVisible();
+		});
+	});
+
+	describe('when edit button is clicked', () => {
+		test('calls onEdit callback', async () => {
+			const user = userEvent.setup();
+			const onEdit = vi.fn();
+			renderComponent({ isHovered: true, onEdit });
+
+			await user.click(screen.getByTitle(/edit/i));
+
+			expect(onEdit).toHaveBeenCalledOnce();
 		});
 	});
 });

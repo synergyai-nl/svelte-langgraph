@@ -4,8 +4,11 @@
  */
 
 export const mockStreamCallbacks = {
-	submit: () => {},
-	stop: () => {}
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	submit: (...args: unknown[]) => {},
+	stop: () => {},
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	getMessagesMetadata: (...args: unknown[]) => undefined as unknown
 };
 
 let _messages = $state<Record<string, unknown>[]>([]);
@@ -27,6 +30,9 @@ export const mockStream = {
 	},
 	get stop() {
 		return mockStreamCallbacks.stop;
+	},
+	get getMessagesMetadata() {
+		return mockStreamCallbacks.getMessagesMetadata;
 	}
 };
 
@@ -48,4 +54,5 @@ export function resetMock() {
 	_error = null;
 	mockStreamCallbacks.submit = () => {};
 	mockStreamCallbacks.stop = () => {};
+	mockStreamCallbacks.getMessagesMetadata = () => undefined;
 }

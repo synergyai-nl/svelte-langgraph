@@ -236,6 +236,67 @@ describe('Chat', () => {
 		});
 	});
 
+	describe('when a user message is edited', () => {
+		test('shows a textarea when the edit button is hovered and clicked', async () => {
+			const user = userEvent.setup();
+			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
+
+			renderChat();
+
+			const messageCard = await screen.findByText('Original message');
+			await user.hover(messageCard);
+
+			const editButton = await screen.findByTitle(/edit/i);
+			await user.click(editButton);
+
+			const textarea = screen.getByDisplayValue('Original message');
+			expect(textarea).toBeInTheDocument();
+		});
+
+		test('pressing Escape cancels editing and restores the message', async () => {
+			const user = userEvent.setup();
+			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
+
+			renderChat();
+
+			const messageCard = await screen.findByText('Original message');
+			await user.hover(messageCard);
+			await user.click(await screen.findByTitle(/edit/i));
+
+			await user.keyboard('{Escape}');
+
+			expect(screen.queryByDisplayValue('Original message')).not.toBeInTheDocument();
+			expect(screen.getByText('Original message')).toBeInTheDocument();
+		});
+
+		test('submits edited message with parent checkpoint on Enter', async () => {
+			const user = userEvent.setup();
+			const mockSubmit = vi.fn();
+			const mockGetMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { parent_checkpoint: { id: 'checkpoint-1' } }
+			});
+			mockModule.mockStreamCallbacks.submit = mockSubmit;
+			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
+			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
+
+			renderChat();
+
+			const messageCard = await screen.findByText('Original message');
+			await user.hover(messageCard);
+			await user.click(await screen.findByTitle(/edit/i));
+
+			const textarea = screen.getByDisplayValue('Original message');
+			await user.clear(textarea);
+			await user.type(textarea, 'Edited message');
+			await user.keyboard('{Enter}');
+
+			expect(mockSubmit).toHaveBeenCalledWith(
+				{ messages: [{ type: 'human', content: 'Edited message' }] },
+				{ checkpoint: { id: 'checkpoint-1' } }
+			);
+		});
+	});
+
 	describe('when stream errors before any messages arrive', () => {
 		test('shows the error instead of the suggestions screen', async () => {
 			mockModule.setError(new Error('Connection failed'));

@@ -20,6 +20,74 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await expect(aiMessage).not.toBeEmpty();
 });
 
+test.describe('Edit message', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await page.goto('/chat/');
+		await page.waitForURL(/\/chat\/[\w-]+/);
+	});
+
+	test('edit button opens a textarea with original message text', async ({ page, chat }) => {
+		await chat.textInput.fill('Hello');
+		await chat.textInput.press('Enter');
+
+		// Wait for the user message to appear
+		const userMessage = page.getByText('Hello').first();
+		await expect(userMessage).toBeVisible();
+
+		// Hover to reveal the edit button
+		await userMessage.hover();
+		const editButton = page.getByTitle(/edit/i);
+		await expect(editButton).toBeVisible();
+		await editButton.click();
+
+		const textarea = page.getByRole('textbox').nth(1);
+		await expect(textarea).toBeVisible();
+		await expect(textarea).toHaveValue('Hello');
+	});
+
+	test('pressing Escape cancels editing', async ({ page, chat }) => {
+		await chat.textInput.fill('Hello');
+		await chat.textInput.press('Enter');
+
+		const userMessage = page.getByText('Hello').first();
+		await expect(userMessage).toBeVisible();
+
+		await userMessage.hover();
+		await page.getByTitle(/edit/i).click();
+
+		await page.keyboard.press('Escape');
+
+		await expect(page.getByText('Hello').first()).toBeVisible();
+		await expect(page.getByRole('textbox').nth(1)).not.toBeVisible();
+	});
+
+	test('editing and submitting branches the conversation', async ({ page, chat }) => {
+		await chat.textInput.fill('First question');
+		await chat.textInput.press('Enter');
+
+		// Wait for AI response
+		const aiMessage = page
+			.getByRole('group')
+			.filter({ has: page.locator('.prose') })
+			.first();
+		await expect(aiMessage).toBeVisible();
+		await expect(aiMessage).not.toBeEmpty();
+
+		// Edit the user message
+		const userMessage = page.getByText('First question').first();
+		await userMessage.hover();
+		await page.getByTitle(/edit/i).click();
+
+		const textarea = page.getByRole('textbox').nth(1);
+		await textarea.fill('Edited question');
+		await textarea.press('Enter');
+
+		// A new AI response should appear
+		await expect(page.getByText('Edited question')).toBeVisible();
+	});
+});
+
 test.describe('Cancellation', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
