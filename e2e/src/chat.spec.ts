@@ -32,7 +32,10 @@ test.describe('Edit message', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for the user message to appear
-		const userMessageGroup = page.getByRole('group').filter({ has: page.getByText('Hello') }).first();
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText('Hello') })
+			.first();
 		await expect(userMessageGroup).toBeVisible();
 
 		// Hover to reveal the edit button and click it
@@ -49,7 +52,10 @@ test.describe('Edit message', () => {
 		await chat.textInput.fill('Hello');
 		await chat.textInput.press('Enter');
 
-		const userMessageGroup = page.getByRole('group').filter({ has: page.getByText('Hello') }).first();
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText('Hello') })
+			.first();
 		await expect(userMessageGroup).toBeVisible();
 
 		await userMessageGroup.hover();
@@ -67,7 +73,10 @@ test.describe('Edit message', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for AI response
-		const aiMessage = page.getByRole('group').filter({ has: page.locator('.prose') }).first();
+		const aiMessage = page
+			.getByRole('group')
+			.filter({ has: page.locator('.prose') })
+			.first();
 		await expect(aiMessage).toBeVisible();
 		await expect(aiMessage).not.toBeEmpty();
 
