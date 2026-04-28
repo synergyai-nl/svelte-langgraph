@@ -107,6 +107,20 @@
 	function stopGeneration() {
 		stream.stop();
 	}
+
+	function handleEdit(message: Message, newText: string) {
+		if (stream.isLoading) return;
+		const rawMsg = stream.messages.find((m) => (m as unknown as { id?: string }).id === message.id);
+		if (!rawMsg) return;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const meta = (stream as any).getMessagesMetadata?.(rawMsg);
+		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		stream.submit(
+			{ messages: [{ type: 'human', content: newText }] },
+			{ checkpoint: parentCheckpoint }
+		);
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
@@ -124,6 +138,7 @@
 				finalAnswerStarted={final_answer_started}
 				{generationError}
 				onRetryError={retryGeneration}
+				onEdit={handleEdit}
 			/>
 		{/if}
 	</div>

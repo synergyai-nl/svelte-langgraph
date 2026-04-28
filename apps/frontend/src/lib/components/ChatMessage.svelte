@@ -6,10 +6,11 @@
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
+	import UserMessageEdit from './UserMessageEdit.svelte';
 
 	interface Props {
 		message: BaseMessage;
-		onEdit?: (message: BaseMessage) => void;
+		onEdit?: (message: BaseMessage, newText: string) => void;
 		onRegenerate?: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
@@ -19,6 +20,35 @@
 	const plugins = [gfmPlugin()];
 
 	let isHovered = $state(false);
+	let isEditing = $state(false);
+	let editText = $state('');
+	let textareaEl: HTMLTextAreaElement | undefined = $state();
+
+	$effect(() => {
+		if (isEditing && textareaEl) {
+			textareaEl.focus();
+			textareaEl.select();
+		}
+	});
+
+	function startEditing() {
+		editText = message.text;
+		isEditing = true;
+	}
+
+	function cancelEditing() {
+		isEditing = false;
+	}
+
+	function confirmEdit() {
+		const trimmed = editText.trim();
+		isEditing = false;
+		if (trimmed && trimmed !== message.text) {
+			onEdit?.(message, trimmed);
+		}
+	}
+
+	let rows = $derived(Math.max(2, editText.split('\n').length));
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
@@ -31,30 +61,40 @@
 			<User size={20} class="text-foreground" />
 		</div>
 		<div class="relative w-full">
-			<div
-				role="group"
-				onmouseenter={() => (isHovered = true)}
-				onmouseleave={() => (isHovered = false)}
-				class="relative w-full"
-			>
-				{#if message.type === 'ai'}
-					<Card.Root class="border-border-card bg-muted border shadow-sm">
-						<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
-							<Markdown md={message.text} {plugins} />
-						</Card.Content>
-					</Card.Root>
-					<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
-				{:else}
-					<Card.Root class="bg-foreground border-0 shadow-sm">
-						<Card.Content
-							class="prose prose-invert text-background max-w-none text-sm whitespace-pre-wrap"
-						>
-							{message.text}
-						</Card.Content>
-					</Card.Root>
-					<UserMessageActions {message} {isHovered} {onEdit} />
-				{/if}
-			</div>
+			{#if message.type === 'user' && isEditing}
+				<UserMessageEdit
+					bind:value={editText}
+					bind:textareaRef={textareaEl}
+					{rows}
+					onConfirm={confirmEdit}
+					onCancel={cancelEditing}
+				/>
+			{:else}
+				<div
+					role="group"
+					onmouseenter={() => (isHovered = true)}
+					onmouseleave={() => (isHovered = false)}
+					class="relative w-full"
+				>
+					{#if message.type === 'ai'}
+						<Card.Root class="border-border-card bg-muted border shadow-sm">
+							<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
+								<Markdown md={message.text} {plugins} />
+							</Card.Content>
+						</Card.Root>
+						<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+					{:else}
+						<Card.Root class="bg-foreground border-0 shadow-sm">
+							<Card.Content
+								class="prose prose-invert text-background max-w-none text-sm whitespace-pre-wrap"
+							>
+								{message.text}
+							</Card.Content>
+						</Card.Root>
+						<UserMessageActions {isHovered} onEdit={startEditing} />
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

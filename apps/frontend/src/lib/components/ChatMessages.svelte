@@ -12,9 +12,16 @@
 		finalAnswerStarted: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
+		onEdit?: (message: Message, newText: string) => void;
 	}
 
-	let { messages = [], finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
+	let {
+		messages = [],
+		finalAnswerStarted,
+		generationError = null,
+		onRetryError,
+		onEdit
+	}: Props = $props();
 </script>
 
 <ScrollableContainer>
@@ -24,7 +31,7 @@
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
 				{:else if message.text}
-					<ChatMessage {message} />
+					<ChatMessage {message} onEdit={(msg, newText) => onEdit?.(msg as Message, newText)} />
 				{/if}
 			</div>
 		{/each}

@@ -50,5 +50,7 @@
 	"tool_result": "परिणाम:",
 	"message_copied": "प्रतिलिपि हो गई",
 	"chat_error_retry": "पुनः प्रयास करें",
-	"coming_soon": "जल्द आ रहा है!"
+	"coming_soon": "जल्द आ रहा है!",
+	"cancel": "रद्द करें",
+	"save_and_send": "सहेजें और भेजें"
 }
