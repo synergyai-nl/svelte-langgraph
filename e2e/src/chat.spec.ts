@@ -32,34 +32,34 @@ test.describe('Edit message', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for the user message to appear
-		const userMessage = page.getByText('Hello').first();
-		await expect(userMessage).toBeVisible();
+		const userMessageGroup = page.getByRole('group').filter({ has: page.getByText('Hello') }).first();
+		await expect(userMessageGroup).toBeVisible();
 
-		// Hover to reveal the edit button
-		await userMessage.hover();
-		const editButton = page.getByTitle(/edit/i);
-		await expect(editButton).toBeVisible();
-		await editButton.click();
+		// Hover to reveal the edit button and click it
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
 
-		const textarea = page.getByRole('textbox').nth(1);
-		await expect(textarea).toBeVisible();
-		await expect(textarea).toHaveValue('Hello');
+		// The edit textarea appears above the chat input, so it is nth(0)
+		const editTextarea = page.getByRole('textbox').nth(0);
+		await expect(editTextarea).toBeVisible();
+		await expect(editTextarea).toHaveValue('Hello');
 	});
 
 	test('pressing Escape cancels editing', async ({ page, chat }) => {
 		await chat.textInput.fill('Hello');
 		await chat.textInput.press('Enter');
 
-		const userMessage = page.getByText('Hello').first();
-		await expect(userMessage).toBeVisible();
+		const userMessageGroup = page.getByRole('group').filter({ has: page.getByText('Hello') }).first();
+		await expect(userMessageGroup).toBeVisible();
 
-		await userMessage.hover();
-		await page.getByTitle(/edit/i).click();
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
 
 		await page.keyboard.press('Escape');
 
+		// Edit textarea is removed; only the chat input textbox remains
 		await expect(page.getByText('Hello').first()).toBeVisible();
-		await expect(page.getByRole('textbox').nth(1)).not.toBeVisible();
+		await expect(page.getByRole('textbox')).toHaveCount(1);
 	});
 
 	test('editing and submitting branches the conversation', async ({ page, chat }) => {
@@ -67,21 +67,21 @@ test.describe('Edit message', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for AI response
-		const aiMessage = page
-			.getByRole('group')
-			.filter({ has: page.locator('.prose') })
-			.first();
+		const aiMessage = page.getByRole('group').filter({ has: page.locator('.prose') }).first();
 		await expect(aiMessage).toBeVisible();
 		await expect(aiMessage).not.toBeEmpty();
 
 		// Edit the user message
-		const userMessage = page.getByText('First question').first();
-		await userMessage.hover();
-		await page.getByTitle(/edit/i).click();
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText('First question') })
+			.first();
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
 
-		const textarea = page.getByRole('textbox').nth(1);
-		await textarea.fill('Edited question');
-		await textarea.press('Enter');
+		const editTextarea = page.getByRole('textbox').nth(0);
+		await editTextarea.fill('Edited question');
+		await editTextarea.press('Enter');
 
 		// A new AI response should appear
 		await expect(page.getByText('Edited question')).toBeVisible();
