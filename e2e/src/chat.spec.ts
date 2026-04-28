@@ -93,7 +93,7 @@ test.describe('Edit message', () => {
 		await editTextarea.press('Enter');
 
 		// A new AI response should appear
-		await expect(page.getByText('Edited question')).toBeVisible();
+		await expect(page.getByText('Edited question').first()).toBeVisible();
 	});
 });
 
