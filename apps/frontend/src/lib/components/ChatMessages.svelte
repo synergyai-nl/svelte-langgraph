@@ -12,7 +12,7 @@
 		finalAnswerStarted: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
-		onEdit?: (message: Message, newText: string) => void;
+		onEdit: (message: Message, newText: string) => void;
 	}
 
 	let {
@@ -31,7 +31,7 @@
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
 				{:else if message.text}
-					<ChatMessage {message} onEdit={(msg, newText) => onEdit?.(msg as Message, newText)} />
+					<ChatMessage {message} onEdit={(msg, newText) => onEdit(msg as Message, newText)} />
 				{/if}
 			</div>
 		{/each}

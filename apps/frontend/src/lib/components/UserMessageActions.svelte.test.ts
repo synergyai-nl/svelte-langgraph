@@ -5,7 +5,7 @@ import { renderWithProviders } from './__tests__/render';
 import UserMessageActions from './UserMessageActions.svelte';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(UserMessageActions, { ...overrides });
+	return renderWithProviders(UserMessageActions, { onEdit: vi.fn(), ...overrides });
 }
 
 describe('UserMessageActions', () => {

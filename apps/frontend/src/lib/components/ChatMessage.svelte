@@ -10,7 +10,7 @@
 
 	interface Props {
 		message: BaseMessage;
-		onEdit?: (message: BaseMessage, newText: string) => void;
+		onEdit: (message: BaseMessage, newText: string) => void;
 		onRegenerate?: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
@@ -44,7 +44,7 @@
 		const trimmed = editText.trim();
 		isEditing = false;
 		if (trimmed && trimmed !== message.text) {
-			onEdit?.(message, trimmed);
+			onEdit(message, trimmed);
 		}
 	}
 

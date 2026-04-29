@@ -6,7 +6,7 @@
 
 	interface Props {
 		isHovered: boolean;
-		onEdit?: () => void;
+		onEdit: () => void;
 	}
 
 	let { isHovered, onEdit }: Props = $props();
@@ -19,7 +19,7 @@
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => onEdit?.()}
+				onclick={onEdit}
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
