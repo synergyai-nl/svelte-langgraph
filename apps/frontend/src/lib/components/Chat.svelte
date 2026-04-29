@@ -110,10 +110,9 @@
 
 	function handleEdit(message: Message, newText: string) {
 		if (stream.isLoading) return;
-		const rawMsg = stream.messages.find((m) => (m as unknown as { id?: string }).id === message.id);
+		const rawMsg = stream.messages.find((m) => m.id === message.id);
 		if (!rawMsg) return;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const meta = (stream as any).getMessagesMetadata?.(rawMsg);
+		const meta = stream.getMessagesMetadata(rawMsg);
 		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(

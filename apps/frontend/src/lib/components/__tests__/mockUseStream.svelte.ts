@@ -3,12 +3,16 @@
  * components re-render when helpers mutate it in tests.
  */
 
-export const mockStreamCallbacks = {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	submit: (...args: unknown[]) => {},
+type AnyFn = (...args: unknown[]) => unknown;
+
+export const mockStreamCallbacks: {
+	submit: AnyFn;
+	stop: () => void;
+	getMessagesMetadata: AnyFn;
+} = {
+	submit: () => {},
 	stop: () => {},
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	getMessagesMetadata: (...args: unknown[]) => undefined as unknown
+	getMessagesMetadata: () => undefined
 };
 
 let _messages = $state<Record<string, unknown>[]>([]);
