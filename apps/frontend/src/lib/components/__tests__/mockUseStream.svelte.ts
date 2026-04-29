@@ -3,6 +3,7 @@
  * components re-render when helpers mutate it in tests.
  */
 
+// Loose function type for mock callbacks that don't care about their arguments
 type AnyFn = (...args: unknown[]) => unknown;
 
 export const mockStreamCallbacks: {
