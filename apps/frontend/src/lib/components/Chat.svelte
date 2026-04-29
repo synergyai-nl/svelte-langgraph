@@ -110,10 +110,16 @@
 
 	function handleEdit(message: Message, newText: string) {
 		if (stream.isLoading) return;
+
+		// Match converted message back to the raw BaseMessage instance for metadata lookup
 		const rawMsg = stream.messages.find((m) => m.id === message.id);
 		if (!rawMsg) return;
+
+		// Submit against the parent checkpoint to branch from before this message
 		const meta = stream.getMessagesMetadata(rawMsg);
 		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+
+		// Snapshot AI count so final_answer_started tracks the new response correctly
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(
 			{ messages: [{ type: 'human', content: newText }] },
