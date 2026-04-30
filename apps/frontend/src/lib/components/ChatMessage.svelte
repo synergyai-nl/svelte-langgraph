@@ -39,7 +39,6 @@
 			onEdit(message, trimmed);
 		}
 	}
-
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
@@ -53,11 +52,7 @@
 		</div>
 		<div class="relative w-full">
 			{#if message.type === 'user' && isEditing}
-				<UserMessageEdit
-					bind:value={editText}
-					onConfirm={confirmEdit}
-					onCancel={cancelEditing}
-				/>
+				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
 			{:else}
 				<div
 					role="group"
