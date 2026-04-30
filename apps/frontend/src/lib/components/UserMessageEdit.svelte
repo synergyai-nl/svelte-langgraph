@@ -1,21 +1,14 @@
 <script lang="ts">
 	import * as m from '$lib/paraglide/messages.js';
+	import { Textarea } from '$lib/components/ui/textarea';
 
 	interface Props {
 		value: string;
-		rows: number;
-		textareaRef?: HTMLTextAreaElement;
 		onConfirm: () => void;
 		onCancel: () => void;
 	}
 
-	let {
-		value = $bindable(),
-		rows,
-		textareaRef = $bindable(),
-		onConfirm,
-		onCancel
-	}: Props = $props();
+	let { value = $bindable(), onConfirm, onCancel }: Props = $props();
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
@@ -29,13 +22,12 @@
 </script>
 
 <div class="flex w-full flex-col gap-1.5">
-	<textarea
-		bind:this={textareaRef}
+	<Textarea
 		bind:value
 		onkeydown={handleKeydown}
-		{rows}
-		class="bg-foreground text-background focus:ring-ring w-full resize-none rounded-xl px-6 py-6 text-sm shadow-sm focus:ring-2 focus:outline-none"
-	></textarea>
+		autofocus
+		class="bg-foreground dark:bg-foreground text-background ring-2 ring-blue-500 focus-visible:ring-blue-500 min-h-0 resize-none rounded-xl border-0 px-6 py-6 text-sm shadow-sm"
+	/>
 	<div class="flex justify-end gap-1.5">
 		<button
 			type="button"

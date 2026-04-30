@@ -22,14 +22,6 @@
 	let isHovered = $state(false);
 	let isEditing = $state(false);
 	let editText = $state('');
-	let textareaEl: HTMLTextAreaElement | undefined = $state();
-
-	$effect(() => {
-		if (isEditing && textareaEl) {
-			textareaEl.focus();
-			textareaEl.select();
-		}
-	});
 
 	function startEditing() {
 		editText = message.text;
@@ -48,7 +40,6 @@
 		}
 	}
 
-	let rows = $derived(Math.max(2, editText.split('\n').length));
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
@@ -64,8 +55,6 @@
 			{#if message.type === 'user' && isEditing}
 				<UserMessageEdit
 					bind:value={editText}
-					bind:textareaRef={textareaEl}
-					{rows}
 					onConfirm={confirmEdit}
 					onCancel={cancelEditing}
 				/>
