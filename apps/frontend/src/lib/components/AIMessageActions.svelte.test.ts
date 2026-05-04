@@ -28,9 +28,9 @@ describe('AIMessageActions', () => {
 			expect(screen.getByTitle(/good response/i)).toBeInTheDocument();
 		});
 
-		test('regenerate button is disabled (coming soon)', () => {
+		test('regenerate button is enabled', () => {
 			const button = screen.getByTitle(/re-try/i) as HTMLButtonElement;
-			expect(button).toBeDisabled();
+			expect(button).not.toBeDisabled();
 		});
 	});
 

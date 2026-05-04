@@ -297,6 +297,30 @@ describe('Chat', () => {
 		});
 	});
 
+	describe('when an AI message is regenerated', () => {
+		test('submits with undefined input and the parent checkpoint', async () => {
+			const user = userEvent.setup();
+			const mockSubmit = vi.fn();
+			const mockGetMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { parent_checkpoint: { id: 'checkpoint-ai-1' } }
+			});
+			mockModule.mockStreamCallbacks.submit = mockSubmit;
+			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			await user.hover(aiMessage);
+
+			await user.click(await screen.findByTitle(/re-try/i));
+
+			expect(mockSubmit).toHaveBeenCalledWith(undefined, {
+				checkpoint: { id: 'checkpoint-ai-1' }
+			});
+		});
+	});
+
 	describe('when stream errors before any messages arrive', () => {
 		test('shows the error instead of the suggestions screen', async () => {
 			mockModule.setError(new Error('Connection failed'));
