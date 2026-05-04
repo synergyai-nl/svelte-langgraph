@@ -98,7 +98,7 @@
 		stream.submit({ messages: [{ type: 'human', content: text }] });
 	}
 
-	function retryGeneration() {
+	function retryGenerationAfterError() {
 		if (!last_user_message) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
@@ -152,7 +152,7 @@
 				{messages}
 				finalAnswerStarted={final_answer_started}
 				{generationError}
-				onRetryError={retryGeneration}
+				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
 			/>

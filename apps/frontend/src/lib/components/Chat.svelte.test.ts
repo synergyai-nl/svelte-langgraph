@@ -352,7 +352,7 @@ describe('Chat', () => {
 
 			renderChat();
 
-			// Submit a message — this sets last_user_message, which retryGeneration() requires.
+			// Submit a message — this sets last_user_message, which retryGenerationAfterError() requires.
 			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
 			await user.keyboard('{Enter}');
 
