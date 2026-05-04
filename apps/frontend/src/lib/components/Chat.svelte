@@ -108,37 +108,28 @@
 		stream.stop();
 	}
 
-	function handleEdit(message: Message, newText: string): boolean {
-		if (stream.isLoading) return false;
-
-		// Match converted message back to the raw BaseMessage instance for metadata lookup
+	function getParentCheckpoint(message: Message) {
+		// Converted messages lose their BaseMessage identity, so match back by id to get the raw instance
 		const rawMsg = stream.messages.find((m) => m.id === message.id);
-		if (!rawMsg) return false;
+		if (!rawMsg) return undefined;
+		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
+		return stream.getMessagesMetadata(rawMsg)?.firstSeenState?.parent_checkpoint;
+	}
 
-		// Submit against the parent checkpoint to branch from before this message
-		const meta = stream.getMessagesMetadata(rawMsg);
-		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
-
+	function handleEdit(message: Message, newText: string) {
+		if (stream.isLoading) return;
+		const parentCheckpoint = getParentCheckpoint(message);
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(
-			{ messages: [{ type: 'human', content: newText }] },
-			{ checkpoint: parentCheckpoint }
-		);
-		return true;
+		stream.submit({ messages: [{ type: 'human', content: newText }] }, { checkpoint: parentCheckpoint });
 	}
 
 	function handleRegenerate(message: Message) {
 		if (stream.isLoading) return;
-
-		const rawMsg = stream.messages.find((m) => m.id === message.id);
-		if (!rawMsg) return;
-
-		const meta = stream.getMessagesMetadata(rawMsg);
-		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+		const parentCheckpoint = getParentCheckpoint(message);
 		if (!parentCheckpoint) return;
-
+		// Submit undefined input so the agent re-runs from that checkpoint without adding a new user message
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
