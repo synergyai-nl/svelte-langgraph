@@ -128,6 +128,20 @@
 		);
 		return true;
 	}
+
+	function handleRegenerate(message: Message) {
+		if (stream.isLoading) return;
+
+		const rawMsg = stream.messages.find((m) => m.id === message.id);
+		if (!rawMsg) return;
+
+		const meta = stream.getMessagesMetadata(rawMsg);
+		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+		if (!parentCheckpoint) return;
+
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		stream.submit(undefined, { checkpoint: parentCheckpoint });
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
@@ -146,6 +160,7 @@
 				{generationError}
 				onRetryError={retryGeneration}
 				onEdit={handleEdit}
+				onRegenerate={handleRegenerate}
 			/>
 		{/if}
 	</div>
