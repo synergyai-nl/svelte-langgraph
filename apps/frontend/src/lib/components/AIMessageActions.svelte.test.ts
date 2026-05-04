@@ -6,7 +6,7 @@ import { anAIMessage } from './__tests__/fixtures';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const message = anAIMessage();
-	return renderWithProviders(AIMessageActions, { message, ...overrides });
+	return renderWithProviders(AIMessageActions, { message, onRegenerate: () => {}, ...overrides });
 }
 
 describe('AIMessageActions', () => {
