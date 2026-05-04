@@ -122,7 +122,10 @@
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit({ messages: [{ type: 'human', content: newText }] }, { checkpoint: parentCheckpoint });
+		stream.submit(
+			{ messages: [{ type: 'human', content: newText }] },
+			{ checkpoint: parentCheckpoint }
+		);
 	}
 
 	function handleRegenerate(message: Message) {
