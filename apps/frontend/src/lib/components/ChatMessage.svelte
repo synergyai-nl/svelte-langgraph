@@ -33,10 +33,9 @@
 	}
 
 	function confirmEdit() {
-		const trimmed = editText.trim();
 		isEditing = false;
-		if (trimmed && trimmed !== message.text) {
-			onEdit(message, trimmed);
+		if (editText.trim() && editText !== message.text) {
+			onEdit(message, editText);
 		}
 	}
 </script>
