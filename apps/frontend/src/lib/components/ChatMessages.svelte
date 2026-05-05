@@ -12,7 +12,7 @@
 		finalAnswerStarted: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
-		onEdit: (message: Message, newText: string) => void;
+		onEdit: (message: Message, newText: string) => boolean;
 	}
 
 	let {
