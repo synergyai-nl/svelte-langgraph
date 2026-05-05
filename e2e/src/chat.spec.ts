@@ -69,10 +69,13 @@ test.describe('Edit message', () => {
 	});
 
 	test('editing and submitting branches the conversation', async ({ page, chat }) => {
-		await chat.textInput.fill('First question');
+		const messageId = randomUUID();
+		const originalQuestion = `First question ${messageId}`;
+		const editedQuestion = `Edited question ${messageId}`;
+
+		await chat.textInput.fill(originalQuestion);
 		await chat.textInput.press('Enter');
 
-		// Wait for AI response
 		const aiMessage = page
 			.getByRole('group')
 			.filter({ has: page.locator('.prose') })
@@ -83,17 +86,21 @@ test.describe('Edit message', () => {
 		// Edit the user message
 		const userMessageGroup = page
 			.getByRole('group')
-			.filter({ has: page.getByText('First question') })
+			.filter({ has: page.getByText(originalQuestion) })
 			.first();
 		await userMessageGroup.hover();
 		await userMessageGroup.getByTitle(/edit/i).click();
 
 		const editTextarea = page.getByRole('textbox').nth(0);
-		await editTextarea.fill('Edited question');
+		await editTextarea.fill(editedQuestion);
 		await editTextarea.press('Enter');
 
-		// A new AI response should appear
-		await expect(page.getByText('Edited question').first()).toBeVisible();
+		// Verify the edited prompt is shown and a response was regenerated.
+		// We don't assert the response text changed — the LLM may produce the
+		// same output at low temperature — we only assert it completed.
+		await expect(page.getByText(editedQuestion).first()).toBeVisible();
+		await expect(aiMessage).toBeVisible();
+		await expect(aiMessage).not.toBeEmpty();
 	});
 });
 
