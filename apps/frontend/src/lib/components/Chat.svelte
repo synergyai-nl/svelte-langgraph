@@ -108,12 +108,12 @@
 		stream.stop();
 	}
 
-	function handleEdit(message: Message, newText: string) {
-		if (stream.isLoading) return;
+	function handleEdit(message: Message, newText: string): boolean {
+		if (stream.isLoading) return false;
 
 		// Match converted message back to the raw BaseMessage instance for metadata lookup
 		const rawMsg = stream.messages.find((m) => m.id === message.id);
-		if (!rawMsg) return;
+		if (!rawMsg) return false;
 
 		// Submit against the parent checkpoint to branch from before this message
 		const meta = stream.getMessagesMetadata(rawMsg);
@@ -126,6 +126,7 @@
 			{ messages: [{ type: 'human', content: newText }] },
 			{ checkpoint: parentCheckpoint }
 		);
+		return true;
 	}
 </script>
 

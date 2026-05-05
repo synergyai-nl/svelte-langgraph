@@ -10,7 +10,7 @@
 
 	interface Props {
 		message: BaseMessage;
-		onEdit: (message: BaseMessage, newText: string) => void;
+		onEdit: (message: BaseMessage, newText: string) => boolean;
 		onRegenerate?: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
@@ -33,9 +33,13 @@
 	}
 
 	function confirmEdit() {
-		isEditing = false;
 		if (editText.trim() && editText !== message.text) {
-			onEdit(message, editText);
+			// Only close the editor if the edit was accepted (rejected when a run is streaming)
+			if (onEdit(message, editText)) {
+				isEditing = false;
+			}
+		} else {
+			isEditing = false;
 		}
 	}
 </script>
