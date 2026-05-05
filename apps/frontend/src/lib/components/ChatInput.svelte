@@ -21,7 +21,7 @@
 
 	let isEmpty = $derived(!(value ?? '').trim());
 	function handleKeyPress(event: KeyboardEvent) {
-		if (event.key === 'Enter' && event.shiftKey === false) {
+		if (event.key === 'Enter' && event.shiftKey === false && !event.isComposing) {
 			event.preventDefault();
 			if (!isEmpty && !isStreaming) {
 				onSubmit();
