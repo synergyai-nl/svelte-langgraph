@@ -10,7 +10,7 @@
 
 	interface Props {
 		message: BaseMessage;
-		onEdit: (message: BaseMessage, newText: string) => void;
+		onEdit: (message: BaseMessage, newText: string) => boolean;
 		onRegenerate: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
