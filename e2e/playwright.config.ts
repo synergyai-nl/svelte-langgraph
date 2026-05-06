@@ -70,9 +70,8 @@ export default defineConfig({
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
-			wait: {
-				stdout: /http:\/\/localhost:4173/
-			}
+			url: 'http://localhost:4173',
+			reuseExistingServer: !process.env.CI
 		}
 	]
 });
