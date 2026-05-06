@@ -20,6 +20,90 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await expect(aiMessage).not.toBeEmpty();
 });
 
+test.describe('Edit message', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await page.goto('/chat/');
+		await page.waitForURL(/\/chat\/[\w-]+/);
+	});
+
+	test('edit button opens a textarea with original message text', async ({ page, chat }) => {
+		await chat.textInput.fill('Hello');
+		await chat.textInput.press('Enter');
+
+		// Wait for the user message to appear
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText('Hello') })
+			.first();
+		await expect(userMessageGroup).toBeVisible();
+
+		// Hover to reveal the edit button and click it
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
+
+		// The edit textarea appears above the chat input, so it is nth(0)
+		const editTextarea = page.getByRole('textbox').nth(0);
+		await expect(editTextarea).toBeVisible();
+		await expect(editTextarea).toHaveValue('Hello');
+	});
+
+	test('pressing Escape cancels editing', async ({ page, chat }) => {
+		await chat.textInput.fill('Hello');
+		await chat.textInput.press('Enter');
+
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText('Hello') })
+			.first();
+		await expect(userMessageGroup).toBeVisible();
+
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
+
+		await page.keyboard.press('Escape');
+
+		// Edit textarea is removed; only the chat input textbox remains
+		await expect(page.getByText('Hello').first()).toBeVisible();
+		await expect(page.getByRole('textbox')).toHaveCount(1);
+	});
+
+	test('editing and submitting branches the conversation', async ({ page, chat }) => {
+		const messageId = randomUUID();
+		const originalQuestion = `First question ${messageId}`;
+		const editedQuestion = `Edited question ${messageId}`;
+
+		await chat.textInput.fill(originalQuestion);
+		await chat.textInput.press('Enter');
+
+		const aiMessage = page
+			.getByRole('group')
+			.filter({ has: page.locator('.prose') })
+			.first();
+		await expect(aiMessage).toBeVisible();
+		await expect(aiMessage).not.toBeEmpty();
+
+		// Edit the user message
+		const userMessageGroup = page
+			.getByRole('group')
+			.filter({ has: page.getByText(originalQuestion) })
+			.first();
+		await userMessageGroup.hover();
+		await userMessageGroup.getByTitle(/edit/i).click();
+
+		const editTextarea = page.getByRole('textbox').nth(0);
+		await editTextarea.fill(editedQuestion);
+		await editTextarea.press('Enter');
+
+		// Verify the edited prompt is shown and a response was regenerated.
+		// We don't assert the response text changed — the LLM may produce the
+		// same output at low temperature — we only assert it completed.
+		await expect(page.getByText(editedQuestion).first()).toBeVisible();
+		await expect(aiMessage).toBeVisible();
+		await expect(aiMessage).not.toBeEmpty();
+	});
+});
+
 test.describe('Cancellation', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

@@ -3,9 +3,17 @@
  * components re-render when helpers mutate it in tests.
  */
 
-export const mockStreamCallbacks = {
+// Loose function type for mock callbacks that don't care about their arguments
+type AnyFn = (...args: unknown[]) => unknown;
+
+export const mockStreamCallbacks: {
+	submit: AnyFn;
+	stop: () => void;
+	getMessagesMetadata: AnyFn;
+} = {
 	submit: () => {},
-	stop: () => {}
+	stop: () => {},
+	getMessagesMetadata: () => undefined
 };
 
 let _messages = $state<Record<string, unknown>[]>([]);
@@ -27,6 +35,9 @@ export const mockStream = {
 	},
 	get stop() {
 		return mockStreamCallbacks.stop;
+	},
+	get getMessagesMetadata() {
+		return mockStreamCallbacks.getMessagesMetadata;
 	}
 };
 
@@ -48,4 +59,5 @@ export function resetMock() {
 	_error = null;
 	mockStreamCallbacks.submit = () => {};
 	mockStreamCallbacks.stop = () => {};
+	mockStreamCallbacks.getMessagesMetadata = () => undefined;
 }

@@ -107,6 +107,27 @@
 	function stopGeneration() {
 		stream.stop();
 	}
+
+	function handleEdit(message: Message, newText: string): boolean {
+		if (stream.isLoading) return false;
+
+		// Match converted message back to the raw BaseMessage instance for metadata lookup
+		const rawMsg = stream.messages.find((m) => m.id === message.id);
+		if (!rawMsg) return false;
+
+		// Submit against the parent checkpoint to branch from before this message
+		const meta = stream.getMessagesMetadata(rawMsg);
+		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
+
+		// Snapshot AI count so final_answer_started tracks the new response correctly
+		last_user_message = newText; // keep retry in sync with the edited prompt
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		stream.submit(
+			{ messages: [{ type: 'human', content: newText }] },
+			{ checkpoint: parentCheckpoint }
+		);
+		return true;
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
@@ -124,6 +145,7 @@
 				finalAnswerStarted={final_answer_started}
 				{generationError}
 				onRetryError={retryGeneration}
+				onEdit={handleEdit}
 			/>
 		{/if}
 	</div>

@@ -67,7 +67,7 @@ export default defineConfig({
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
 			timeout: 120000,
-			stdout: 'ignore',
+			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
