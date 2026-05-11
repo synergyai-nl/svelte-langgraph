@@ -6,7 +6,7 @@
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
-	import type { Client } from '@langchain/langgraph-sdk';
+	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 
 	interface Props {
 		langGraphClient: Client;
@@ -67,7 +67,9 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
-	let rawMessageById = $derived(new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : []))));
+	let rawMessageById = $derived(
+		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
+	);
 
 	function isCancellationError(err: unknown): boolean {
 		if (err instanceof Error) {
@@ -109,14 +111,19 @@
 		stream.stop();
 	}
 
-	function getParentCheckpoint(message: Message) {
+	function getParentCheckpoint(message: Message): Checkpoint | null | undefined {
 		const rawMsg = rawMessageById.get(message.id);
 		if (!rawMsg) {
 			console.error('Raw message not found for id:', message.id);
 			return undefined;
 		}
+		const metadata = stream.getMessagesMetadata(rawMsg);
+		if (!metadata) {
+			console.error('No metadata found for message id:', message.id);
+			return undefined;
+		}
 		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
-		return stream.getMessagesMetadata(rawMsg)?.firstSeenState?.parent_checkpoint;
+		return metadata.firstSeenState?.parent_checkpoint;
 	}
 
 	function handleEdit(message: Message, newText: string) {
