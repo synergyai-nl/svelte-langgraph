@@ -67,6 +67,7 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
+	let rawMessageById = $derived(new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : []))));
 
 	function isCancellationError(err: unknown): boolean {
 		if (err instanceof Error) {
@@ -109,9 +110,11 @@
 	}
 
 	function getParentCheckpoint(message: Message) {
-		// Converted messages lose their BaseMessage identity, so match back by id to get the raw instance
-		const rawMsg = stream.messages.find((m) => m.id === message.id);
-		if (!rawMsg) return undefined;
+		const rawMsg = rawMessageById.get(message.id);
+		if (!rawMsg) {
+			console.error('Raw message not found for id:', message.id);
+			return undefined;
+		}
 		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
 		return stream.getMessagesMetadata(rawMsg)?.firstSeenState?.parent_checkpoint;
 	}
