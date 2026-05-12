@@ -127,8 +127,8 @@
 		return metadata.firstSeenState?.parent_checkpoint;
 	}
 
-	function handleEdit(message: Message, newText: string) {
-		if (stream.isLoading) return;
+	function handleEdit(message: Message, newText: string): boolean {
+		if (stream.isLoading) return false;
 		const parentCheckpoint = getParentCheckpoint(message);
 		if (!parentCheckpoint) throw new InvalidData('no parent checkpoint found', message);
 		// Snapshot AI count so final_answer_started tracks the new response correctly
@@ -138,6 +138,7 @@
 			{ messages: [{ type: 'human', content: newText }] },
 			{ checkpoint: parentCheckpoint }
 		);
+		return true;
 	}
 
 	function handleRegenerate(message: Message) {
