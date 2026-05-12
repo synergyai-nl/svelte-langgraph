@@ -7,6 +7,7 @@
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
+	import { InvalidData } from '$lib/langgraph/errors';
 
 	interface Props {
 		langGraphClient: Client;
@@ -129,6 +130,7 @@
 	function handleEdit(message: Message, newText: string) {
 		if (stream.isLoading) return;
 		const parentCheckpoint = getParentCheckpoint(message);
+		if (!parentCheckpoint) throw new InvalidData('no parent checkpoint found', message);
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
@@ -141,7 +143,7 @@
 	function handleRegenerate(message: Message) {
 		if (stream.isLoading) return;
 		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) return;
+		if (!parentCheckpoint) throw new InvalidData('no parent checkpoint found', message);
 		// Submit undefined input so the agent re-runs from that checkpoint without adding a new user message
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
