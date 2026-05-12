@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { renderWithProviders } from './__tests__/render';
 import ChatMessage from './ChatMessage.svelte';
@@ -6,12 +6,12 @@ import { anAIMessage, aUserMessage } from './__tests__/fixtures';
 
 function renderAIComponent(overrides: Record<string, unknown> = {}) {
 	const message = anAIMessage(overrides as Parameters<typeof anAIMessage>[0]);
-	return renderWithProviders(ChatMessage, { message });
+	return renderWithProviders(ChatMessage, { message, onEdit: vi.fn(), onRegenerate: vi.fn() });
 }
 
 function renderUserComponent(overrides: Record<string, unknown> = {}) {
 	const message = aUserMessage(overrides as Parameters<typeof aUserMessage>[0]);
-	return renderWithProviders(ChatMessage, { message });
+	return renderWithProviders(ChatMessage, { message, onEdit: vi.fn(), onRegenerate: vi.fn() });
 }
 
 describe('ChatMessage', () => {

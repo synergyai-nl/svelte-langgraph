@@ -9,6 +9,7 @@ function renderMessages(overrides: Record<string, unknown> = {}) {
 		messages: [],
 		finalAnswerStarted: true,
 		onEdit: vi.fn(),
+		onRegenerate: vi.fn(),
 		...overrides
 	});
 }
