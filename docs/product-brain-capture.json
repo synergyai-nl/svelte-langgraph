@@ -1,0 +1,69 @@
+{
+  "instructions": "When Product Brain MCP is connected: call start, then for each entry below call capture with the given title and body (and collection if your capture tool supports it). After review, commit-entry for each draft.",
+  "entries": [
+    {
+      "title": "Product purpose — What we do",
+      "body": "Build a generic front end for LangGraph based on Svelte in which everything is fully customizable. A toolkit to build agent front ends that works with generic OAuth. Initially as a full app; later also as an app that runs within an app (component within any Svelte or non-Svelte app, or as a web component, including authentication). Support the use case: \"I just want an agent with tools\" — any situation where you have an agent with tools and you want to chat with the agent."
+    },
+    {
+      "title": "Product purpose — What we really do",
+      "body": "Solve the problem that developers face: getting a stable, secure front end that connects with a Pythonic environment. Current options are limited to TypeScript/React (non-Python) or Chainlit; fixed applications don't support complex agent infrastructure. Make it 10x cheaper to maintain AI agentic applications over long time periods. Reduce total cost of ownership for building long-term viable agentic AI solutions. Fill a gap in the Svelte ecosystem — Svelte is gaining traction but lacks strong options in the agentic AI space."
+    },
+    {
+      "title": "Product purpose — Why we do it (team)",
+      "body": "Mathijs: AI/gen AI landscape maturing with stable patterns (MCP, tools, standardization); solutions lasting ~5 years; reaction to Chainlit breaking customizations and no security commitment; want apps that survive 5 years; enjoyment of crafting a quality product. Dhruv: Contributing to open source and Svelte community; struggle finding a customizable OSS front end with Python comfort; code quality and security for enterprise compliance. Randy: Make agentic AI accessible to everyone; open source so anyone can get started; simplicity — one-click install, easy-to-add library."
+    },
+    {
+      "title": "Product vision — Open source differentiation",
+      "body": "Chainlit positions as tools for ambitious, reliable AI but doesn't live up to it. We differentiate with: focus on code quality and minimalism; security focus; small feature set done well (vs Chainlit's many features); only LangGraph, only Svelte, only OpenAI API, only OpenID Connect to keep codebase small and supported; commitment to long-term security support (e.g. 2 years vs Chainlit's \"2 weeks\")."
+    },
+    {
+      "title": "Product vision — MVP requirements",
+      "body": "Define minimum requirements from conversation; simple website with no factually untrue claims; launch website early for SEO; mention \"combining Chainlit with Svelte,\" link to GitHub; include comparison between Chainlit and us."
+    },
+    {
+      "title": "Product vision — Current state",
+      "body": "Already achieved: support generic OIDC login (OpenID Connect authentication); support any OpenAI-compatible provider or endpoint."
+    },
+    {
+      "title": "Product strategy — Target users",
+      "body": "Developers and product people choosing OSS; boutique agencies building AI apps; SaaS platform dev teams using Chainlit; custom LLM application builders; customer service bot builders (CX in high demand); small dev agencies without budget for custom front end."
+    },
+    {
+      "title": "Product strategy — Competitive position",
+      "body": "Not replacing all of Chainlit. Compete on some features with focus on: quality over quantity; security and stability; long-term maintainability."
+    },
+    {
+      "title": "Product strategy — Business model",
+      "body": "Customers (paying) vs users (OSS adopters) are different; OSS users may include competitors; market is large and mostly unsaturated. Potential path: people try to build with the front end, struggle, ask for help → consulting business."
+    },
+    {
+      "title": "Product strategy — Technical constraints",
+      "body": "Being married to LangGraph is a constraint; other frameworks (e.g. Google ADK) gaining traction. Chose LangGraph: well-defined protocol, not tied to one LLM provider, OSS LangGraph server exists. Future: supporting different backend protocols (challenging but not impossible)."
+    },
+    {
+      "title": "Product roadmap — Immediate",
+      "body": "Complete migration from Flow to Shadcn CDN; navigation bar (mobile view); 2–3 tickets remaining, expected done by end of January including reviews."
+    },
+    {
+      "title": "Product roadmap — Near-term",
+      "body": "Randy to create scoping ticket for UI/UX prototype; define use cases (specific user scenarios) before building abstractions; website launch."
+    },
+    {
+      "title": "Product roadmap — Longer-term",
+      "body": "Release schedule; policy on security support commitment; app-within-app deployment (web components); potentially different backend protocols."
+    },
+    {
+      "title": "Product roadmap — Use case approach",
+      "body": "Start with specific use cases, then find patterns. Imagine agentic use cases (e.g. what you do in Claude with MCPs). Different user profiles have different needs (engineer vs tourist). End users for UI/UX; developer experience (DX) is separate."
+    },
+    {
+      "title": "Goals 2026 — Outcomes",
+      "body": "Dhruv: Invest more time. Mathijs: Grand success = enough money to hire Randy, Dhruv, Mathijs off current appointments to focus full-time. Randy: Launch OSS with actual users; people contributing; inbound requests."
+    },
+    {
+      "title": "Goals 2026 — Metrics",
+      "body": "Success signals: something live; people actually using it; people contributing (e.g. \"this is cool\", \"can you build this?\"); inbound requests. Ultimate metric: team can live full-time off this work (Dhruv first, Mathijs second, Randy third for stability)."
+    }
+  ]
+}
