@@ -112,25 +112,19 @@
 		stream.stop();
 	}
 
-	function getParentCheckpoint(message: Message): Checkpoint | null | undefined {
+	function getParentCheckpoint(message: Message): Checkpoint | null {
 		const rawMsg = rawMessageById.get(message.id);
-		if (!rawMsg) {
-			console.error('Raw message not found for id:', message.id);
-			return undefined;
-		}
+		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
 		const metadata = stream.getMessagesMetadata(rawMsg);
-		if (!metadata) {
-			console.error('No metadata found for message id:', message.id);
-			return undefined;
-		}
+		if (!metadata) throw new InvalidData('No metadata found for message id: ' + message.id, message);
 		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
-		return metadata.firstSeenState?.parent_checkpoint;
+		return metadata.firstSeenState?.parent_checkpoint ?? null;
 	}
 
 	function handleEdit(message: Message, newText: string): boolean {
 		if (stream.isLoading) return false;
 		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) throw new InvalidData('no parent checkpoint found', message);
+		if (!parentCheckpoint) return false;
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
@@ -144,8 +138,9 @@
 	function handleRegenerate(message: Message) {
 		if (stream.isLoading) return;
 		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) throw new InvalidData('no parent checkpoint found', message);
-		// Submit undefined input so the agent re-runs from that checkpoint without adding a new user message
+		if (!parentCheckpoint) return;
+		// last_user_message is intentionally not updated here — retryGenerationAfterError only
+		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
