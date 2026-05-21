@@ -8,7 +8,7 @@
 		Zap,
 		Blocks,
 		Key,
-		Clock,
+		Package,
 		Code2,
 		Github,
 		ArrowRight,
@@ -19,7 +19,6 @@
 		GitFork,
 		Cpu,
 		Layers,
-		Rocket,
 		CircleDot,
 		Circle,
 		ExternalLink
@@ -41,6 +40,7 @@
 	interface ComparisonRow {
 		label: string;
 		svelteLanggraph: 'yes' | 'no' | 'partial';
+		langflow: 'yes' | 'no' | 'partial';
 		chainlit: 'yes' | 'no' | 'partial';
 		openWebui: 'yes' | 'no' | 'partial';
 		customReact: 'yes' | 'no' | 'partial';
@@ -55,9 +55,9 @@
 	const features: Feature[] = [
 		{
 			icon: Shield,
-			title: 'Security-First',
+			title: 'Production-Ready & Maintainable',
 			description:
-				'OIDC authentication built in. Every line is intentionally reviewable — no black-box codebases that pass audits on vibes alone.'
+				'OIDC / OpenID Connect auth built in. Industry-level maintenance, intentional dependencies, timely security patches, and auditable code you can hand to security teams.'
 		},
 		{
 			icon: Zap,
@@ -73,15 +73,15 @@
 		},
 		{
 			icon: Key,
-			title: 'OpenAI Compatible',
+			title: 'Provider Agnostic',
 			description:
-				"Works with any model LangChain's ChatModel supports. Anthropic, OpenAI, local models, Azure — if it speaks the protocol, it works."
+				'All LLM providers via the OpenAI-compatible protocol — Anthropic, OpenAI, local models, Azure, and more. Swap models without rewriting your frontend.'
 		},
 		{
-			icon: Clock,
-			title: 'Built for Longevity',
+			icon: Package,
+			title: 'Proto + Moon Toolchain',
 			description:
-				'We maintain what we ship. Intentional dependency management and security patches so what you build today still runs tomorrow.'
+				'One-command deps across Node and Python. Pinned versions via .prototools — no version hell. Run moon at the repo root; avoid raw pnpm installs there.'
 		},
 		{
 			icon: Code2,
@@ -95,6 +95,7 @@
 		{
 			label: 'LangGraph / Python native',
 			svelteLanggraph: 'yes',
+			langflow: 'yes',
 			chainlit: 'yes',
 			openWebui: 'partial',
 			customReact: 'partial'
@@ -102,6 +103,7 @@
 		{
 			label: 'Code quality & auditability',
 			svelteLanggraph: 'yes',
+			langflow: 'partial',
 			chainlit: 'partial',
 			openWebui: 'partial',
 			customReact: 'yes'
@@ -109,6 +111,7 @@
 		{
 			label: 'Security-first (OIDC built in)',
 			svelteLanggraph: 'yes',
+			langflow: 'partial',
 			chainlit: 'no',
 			openWebui: 'partial',
 			customReact: 'no'
@@ -116,6 +119,7 @@
 		{
 			label: 'Full streaming (tools + sub-agents)',
 			svelteLanggraph: 'yes',
+			langflow: 'partial',
 			chainlit: 'yes',
 			openWebui: 'partial',
 			customReact: 'partial'
@@ -123,6 +127,7 @@
 		{
 			label: 'Per-component customization',
 			svelteLanggraph: 'yes',
+			langflow: 'partial',
 			chainlit: 'no',
 			openWebui: 'partial',
 			customReact: 'yes'
@@ -130,6 +135,7 @@
 		{
 			label: 'No JS backend required',
 			svelteLanggraph: 'yes',
+			langflow: 'yes',
 			chainlit: 'yes',
 			openWebui: 'no',
 			customReact: 'no'
@@ -137,6 +143,7 @@
 		{
 			label: 'Active large community',
 			svelteLanggraph: 'no',
+			langflow: 'yes',
 			chainlit: 'yes',
 			openWebui: 'yes',
 			customReact: 'yes'
@@ -144,6 +151,7 @@
 		{
 			label: 'Broad feature surface',
 			svelteLanggraph: 'no',
+			langflow: 'yes',
 			chainlit: 'yes',
 			openWebui: 'yes',
 			customReact: 'partial'
@@ -167,22 +175,22 @@
 			icon: Layers,
 			title: 'SaaS platform teams',
 			description:
-				"You're embedding agent chat into an existing product. You need an auditable, secure component you can trust for the long haul."
+				"You're embedding agent chat into an existing product. You need an auditable, OIDC-ready secure component you can trust for the long haul."
 		}
 	];
 
 	const steps: Step[] = [
 		{
 			step: '01',
-			title: 'Fork & configure',
+			title: 'Install toolchain',
 			description:
-				'Fork the repo. Copy .env.example. Point it at your LangGraph endpoint and OIDC provider. Done in under 5 minutes.'
+				'Install Proto in the repo root (`proto install`). Pins Moon, pnpm, Node, and Python per .prototools — one toolchain for the whole monorepo.'
 		},
 		{
 			step: '02',
-			title: 'Run dev',
+			title: 'Configure & run',
 			description:
-				'moon :dev starts frontend, backend, and OIDC mock together — everything hot-reloads. No tab juggling.'
+				'`cp .env.example .env`, then `moon :dev :oidc-mock` — frontend, backend, and OIDC mock with hot reload. Always include :oidc-mock for local auth.'
 		},
 		{
 			step: '03',
@@ -245,8 +253,15 @@
 	type CellStatus = 'yes' | 'no' | 'partial';
 
 	function getRowCells(row: ComparisonRow): CellStatus[] {
-		return [row.svelteLanggraph, row.chainlit, row.openWebui, row.customReact];
+		return [row.svelteLanggraph, row.langflow, row.chainlit, row.openWebui, row.customReact];
 	}
+
+	const ecosystemLinks = [
+		{ name: 'Chainlit', href: 'https://chainlit.io' },
+		{ name: 'Langflow', href: 'https://www.langflow.org' },
+		{ name: 'Streamlit', href: 'https://streamlit.io' },
+		{ name: 'Open WebUI', href: 'https://openwebui.com' }
+	] as const;
 
 	function statusIcon(status: CellStatus) {
 		if (status === 'yes') return Check;
@@ -284,12 +299,11 @@
 				</svg>
 				<span class="text-3xl font-extralight text-muted-foreground/40">+</span>
 				<!-- langgraph logo -->
-				<svg class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-					<rect width="64" height="64" rx="14" fill="#1C3C3C"/>
-					<path d="M20 44V20h6v18h12v6H20z" fill="#36BFBF"/>
-					<path d="M42 20h6v24h-6zM42 20h-8v6h8z" fill="#EF4444"/>
-					<circle cx="45" cy="44" r="4" fill="#36BFBF"/>
-				</svg>
+				<img
+					src="/logos/langgraph.svg"
+					alt="LangGraph"
+					class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100"
+				/>
 			</div>
 
 			<div
@@ -311,9 +325,9 @@
 			<p
 				class="animate-fade-in-up-delay-2 mx-auto mb-10 max-w-2xl text-balance text-xl leading-relaxed text-muted-foreground"
 			>
-				A production-ready, security-first SvelteKit UI that connects directly to your LangGraph
-				server. Built for developers who need a frontend they can audit, customize, and maintain
-				for years — not weeks.
+				A production-ready SvelteKit UI that connects directly to your LangGraph server — provider-agnostic
+				LLMs via the OpenAI-compatible protocol and OIDC / OpenID Connect auth built in. Built for
+				developers who need a frontend they can audit, customize, and maintain for years — not weeks.
 			</p>
 
 			<div class="animate-fade-in-up-delay-3 mb-16 flex flex-col justify-center gap-4 sm:flex-row">
@@ -347,19 +361,18 @@
 				<div class="space-y-2 p-5 text-left font-mono text-sm leading-relaxed">
 					<div>
 						<span class="select-none text-muted-foreground">$ </span>
-						<span class="text-primary-600">git</span>
-						<span class="text-foreground/80"> clone https://github.com/synergyai-nl/svelte-langgraph</span>
+						<span class="text-primary-600">proto</span>
+						<span class="text-foreground/80"> install</span>
 					</div>
 					<div>
 						<span class="select-none text-muted-foreground">$ </span>
 						<span class="text-primary-600">cp</span>
 						<span class="text-foreground/80"> .env.example .env</span>
-						<span class="text-muted-foreground/60"> &nbsp;# add your config</span>
 					</div>
 					<div>
 						<span class="select-none text-muted-foreground">$ </span>
 						<span class="text-primary-600">moon</span>
-						<span class="text-foreground/80"> :dev</span>
+						<span class="text-foreground/80"> :dev :oidc-mock</span>
 					</div>
 					<div class="flex items-center gap-2 pt-1 text-green-500/80">
 						<span>&#10003; Ready on http://localhost:5173</span>
@@ -395,7 +408,7 @@
 						'TypeScript backends you didn\'t ask for sitting between you and your Python agent',
 						'Forked repos that drift from upstream and lose security coverage',
 						'Integrations that work in the demo but crumble months into production'
-					] as pain}
+					] as pain (pain)}
 						<div
 							class="flex items-start gap-3 rounded-lg border border-destructive/15 bg-destructive/5 px-4 py-3 transition-colors hover:border-destructive/25"
 						>
@@ -425,7 +438,7 @@
 			</div>
 
 			<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-				{#each features as feature, i}
+				{#each features as feature (feature.title)}
 					{@const Icon = feature.icon}
 					<Card.Root
 						class="group relative border bg-card/50 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-600/5"
@@ -461,7 +474,7 @@
 			</div>
 
 			<div class="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
-				{#each steps as step}
+				{#each steps as step (step.step)}
 					<div class="group text-center">
 						<div
 							class="mb-4 font-mono text-6xl font-bold text-primary-600/15 transition-colors group-hover:text-primary-600/30"
@@ -490,7 +503,7 @@
 			</div>
 
 			<div class="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
-				{#each personas as persona}
+				{#each personas as persona (persona.title)}
 					{@const Icon = persona.icon}
 					<div
 						class="group rounded-xl border bg-card/50 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-600/5"
@@ -525,30 +538,57 @@
 			</div>
 
 			<div class="overflow-x-auto">
-				<div class="min-w-[640px] overflow-hidden rounded-xl border">
+				<div class="min-w-[800px] overflow-hidden rounded-xl border">
 					<!-- Header -->
-					<div class="grid grid-cols-5 border-b bg-muted/30">
+					<div class="grid grid-cols-6 border-b bg-muted/30">
 						<div class="p-4 text-sm font-medium text-muted-foreground"></div>
 						<div class="border-l p-4 text-center">
 							<span class="font-semibold text-primary-600">svelte-langgraph</span>
 						</div>
 						<div class="border-l p-4 text-center">
-							<span class="font-semibold text-muted-foreground">Chainlit</span>
+							<a
+								href="https://www.langflow.org"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+							>
+								Langflow
+								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
+							</a>
 						</div>
 						<div class="border-l p-4 text-center">
-							<span class="font-semibold text-muted-foreground">Open WebUI</span>
+							<a
+								href="https://chainlit.io"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+							>
+								Chainlit
+								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
+							</a>
+						</div>
+						<div class="border-l p-4 text-center">
+							<a
+								href="https://openwebui.com"
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+							>
+								Open WebUI
+								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
+							</a>
 						</div>
 						<div class="border-l p-4 text-center">
 							<span class="font-semibold text-muted-foreground">Custom React</span>
 						</div>
 					</div>
 					<!-- Rows -->
-					{#each comparison as row, i}
+					{#each comparison as row, i (row.label)}
 						<div
-							class="grid grid-cols-5 border-b last:border-b-0 {i % 2 === 1 ? 'bg-muted/10' : ''}"
+							class="grid grid-cols-6 border-b last:border-b-0 {i % 2 === 1 ? 'bg-muted/10' : ''}"
 						>
 							<div class="p-4 text-sm">{row.label}</div>
-							{#each getRowCells(row) as status}
+							{#each getRowCells(row) as status, colIndex (`${row.label}-${colIndex}`)}
 								{@const Icon = statusIcon(status)}
 								<div class="flex items-center justify-center border-l p-4">
 									<Icon class="size-5 {statusColor(status)}" />
@@ -563,6 +603,23 @@
 				Every project here represents real effort from people who care about the ecosystem. We
 				built svelte-langgraph for teams that prioritize long-term stability, code auditability,
 				and security.
+			</p>
+
+			<div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
+				{#each ecosystemLinks as link (link.name)}
+					<a
+						href={link.href}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+					>
+						{link.name}
+						<ExternalLink class="size-3.5 shrink-0 opacity-60" />
+					</a>
+				{/each}
+			</div>
+			<p class="mt-4 text-center text-xs text-muted-foreground/80">
+				Streamlit excels at data apps and demos — a different category than production agent chat UIs.
 			</p>
 		</div>
 	</section>
@@ -589,7 +646,7 @@
 					class="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-green-500/40 via-primary-500/40 to-muted-foreground/20"
 				></div>
 
-				{#each roadmap as item}
+				{#each roadmap as item (item.title)}
 					{@const isDone = item.status === 'done'}
 					{@const isActive = item.status === 'in-progress'}
 					<div class="relative flex gap-4 py-3">

@@ -1,5 +1,8 @@
 .DS_Store
 
+# local scratch / meeting notes (not committed)
+temp/
+
 .env
 .venv
 __pycache__/

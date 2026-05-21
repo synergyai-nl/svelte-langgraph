@@ -4,17 +4,34 @@ This project is now set up and ready for development.
 
 ## Prerequisites Installed
 
-- **moon** (v1.41.7) – monorepo orchestration
-- **uv** – Python package manager
+- **Proto** – installs pinned tools from `.prototools`
+- **moon** (^1.41.8) – monorepo orchestration
 - **pnpm** – Node.js package manager
+- **uv** – Python package manager
 - **Python 3.12** – via uv
 - **Node.js 24** – via proto (moon setup)
 
 ## Quick Start
 
-### 1. Add your OpenAI API key (required for chat)
+### 1. Install Proto and pinned tools
 
-Edit `.env` and set:
+If you have not already, install [Proto](https://moonrepo.dev/docs/proto/install) and run from the repo root:
+
+```bash
+proto install
+export PATH="$HOME/.proto/bin:$HOME/.local/bin:$PATH"
+moon setup   # first time only, if needed
+```
+
+Add the `export PATH=...` line to your `~/.zshrc` for persistence.
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set your OpenAI API key (required for chat):
 
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
@@ -22,23 +39,15 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 For local models (Ollama) or OpenRouter, see the main [README.md](./README.md#ai-provider-configuration).
 
-### 2. Start development servers
-
-Ensure proto and uv are in your PATH, then:
+### 3. Start development servers
 
 ```bash
-export PATH="$HOME/.proto/bin:$HOME/.local/bin:$PATH"
-pnpm dev
+moon :dev :oidc-mock
 ```
 
-Or add to your `~/.zshrc` for persistence:
+This starts the frontend, LangGraph backend, and OIDC mock provider with hot reload.
 
-```bash
-# svelte-langgraph
-export PATH="$HOME/.proto/bin:$HOME/.local/bin:$PATH"
-```
-
-### 3. Access the app
+### 4. Access the app
 
 | Service        | URL                          |
 |----------------|------------------------------|
@@ -52,13 +61,13 @@ export PATH="$HOME/.proto/bin:$HOME/.local/bin:$PATH"
 
 ```bash
 # Run all checks (lint, format, build, test)
-pnpm exec moon check --all
+moon check --all
 
 # Run E2E tests
-pnpm exec moon run e2e:test
+moon e2e:test
 
 # Run E2E tests with UI
-pnpm exec moon run e2e:test-ui
+moon e2e:test-ui
 ```
 
 ## Troubleshooting
@@ -68,5 +77,5 @@ pnpm exec moon run e2e:test-ui
 - Or run `uv python install 3.12` once
 
 **"vite: No such file or directory"**
-- Run `pnpm install` from the project root
+- Run `moon setup` from the project root (do not use `pnpm install` at the repo root)
 - Ensure `$HOME/.proto/bin` is in your PATH (moon uses proto's Node.js)

@@ -88,6 +88,8 @@ moon run :build --updateCache  # Force cache update
 
 ## Environment Setup
 
+Tooling is pinned via Proto (`.prototools`) and Moon. From the repo root: `proto install`, then `cp .env.example .env`. Do not use `pnpm install` or `pnpm dev` at the repo root.
+
 The monorepo uses a single `.env` file at the root:
 1. Copy `.env.example` to `.env` in the monorepo root
 2. The .env file contains configuration for both frontend and backend:

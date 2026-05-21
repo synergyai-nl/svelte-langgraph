@@ -18,11 +18,37 @@ https://svelte-langgraph-demo.synergyai.nl/
 
 ## Prerequisites
 
-- [Install moonrepo](https://moonrepo.dev/docs/install), which installs all other dependencies:
-  - Python 3.12
-  - Node.js 24 LTS
-  - [uv](https://docs.astral.sh/uv/) (Python package manager)
-  - pnpm (Node.js package manager)
+This repo uses [Proto](https://moonrepo.dev/docs/proto/install) with `.prototools` to pin **moon** (^1.41.8) and **pnpm**. Moon installs and manages the rest of the toolchain (Python 3.12, Node.js, [uv](https://docs.astral.sh/uv/)).
+
+1. **Install Proto** — see the [Proto installation guide](https://moonrepo.dev/docs/proto/install), or:
+
+   ```bash
+   bash <(curl -fsSL https://moonrepo.dev/install/proto.sh)
+   ```
+
+2. **Clone the repo and install pinned tools**:
+
+   ```bash
+   git clone https://github.com/synergyai-nl/svelte-langgraph.git
+   cd svelte-langgraph
+   proto install
+   ```
+
+3. **Ensure PATH** includes Proto and uv:
+
+   ```bash
+   export PATH="$HOME/.proto/bin:$HOME/.local/bin:$PATH"
+   ```
+
+   Add that line to your shell profile (e.g. `~/.zshrc`) for persistence.
+
+4. **First-time setup** (if needed):
+
+   ```bash
+   moon setup
+   ```
+
+Do not run `pnpm install` or `pnpm dev` at the repo root — use `moon` tasks instead (see Getting Started).
 
 ## Configuration
 
@@ -105,16 +131,42 @@ CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 
 ## Getting Started
 
+1. **Install pinned tools** (from the repo root):
+
+   ```bash
+   proto install
+   ```
+
+2. **Configure environment**:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` with your API keys and auth settings (see Configuration above).
+
+3. **Start the full local stack**:
+
+   ```bash
+   moon :dev :oidc-mock
+   ```
+
+   This starts the frontend, LangGraph backend, and OIDC mock provider with hot reload:
+   - **Frontend** at `http://localhost:5173`
+   - **Backend** LangGraph server at `http://localhost:2024`
+   - **OIDC mock provider** at `http://localhost:8080`
+
 ### Local Development with OIDC Mock Provider
 
 For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
+
+The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (as above) or run `moon backend:oidc-mock` in a separate terminal alongside `moon :dev`.
 
 **What it does:**
 - Provides a complete OIDC discovery endpoint (`.well-known/openid-configuration`)
 - Issues JWT tokens with configurable user claims
 - Supports the authorization code flow with PKCE
 - No client registration required - accepts any client ID/secret
-- Automatically started with `moon :dev` for seamless development
 
 **Configuration:**
 - **Issuer**: `http://localhost:8080`
@@ -122,20 +174,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 - **Client Secret**: Any value (e.g., `secret`)
 - **Test User**: `test-user` (subject claim in JWT)
 
-### Start dev servers
-
-The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
-
-```bash
-moon :dev :oidc-mock
-```
-
-This automatically starts:
-- **Frontend** dev server at `http://localhost:5173`
-- **Backend** LangGraph server at `http://localhost:2024`
-- **OIDC mock provider** at `http://localhost:8080` (for local authentication)
-
-Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
+Make sure your `.env` file points to the OIDC mock provider (see Configuration section above).
 
 ### Run local checks
 
