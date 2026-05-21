@@ -116,7 +116,8 @@
 		const rawMsg = rawMessageById.get(message.id);
 		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
 		const metadata = stream.getMessagesMetadata(rawMsg);
-		if (!metadata) throw new InvalidData('No metadata found for message id: ' + message.id, message);
+		if (!metadata)
+			throw new InvalidData('No metadata found for message id: ' + message.id, message);
 		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
 		return metadata.firstSeenState?.parent_checkpoint ?? null;
 	}
