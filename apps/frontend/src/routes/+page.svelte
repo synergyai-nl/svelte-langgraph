@@ -620,8 +620,9 @@
 
 			<p class="text-muted-foreground mt-6 text-center text-sm">
 				Every project here represents real effort from people who care about the ecosystem. Choose
-				svelte-langgraph when long-term ownership, auditability, and OIDC matter more than
-				out-of-the-box breadth.
+				svelte-langgraph for quality, security, and long-term maintainability — when a
+				production-grade UI you can audit and support for years matters more than the broadest
+				feature set out of the box.
 			</p>
 
 			<div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
