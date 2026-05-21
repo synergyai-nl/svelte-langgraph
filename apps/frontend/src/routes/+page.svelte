@@ -17,6 +17,7 @@
 		GitFork,
 		Cpu,
 		Layers,
+		Headphones,
 		CircleDot,
 		Circle,
 		ExternalLink
@@ -55,13 +56,13 @@
 			icon: Zap,
 			title: 'Connect Python agents directly',
 			description:
-				'Connects directly to your LangGraph server. No TypeScript backend required. Full streaming for tools, sub-agents, and complex agentic workflows.'
+				'Connects directly to your LangGraph server. No TypeScript backend required. Full streaming for tool calls and complex agentic workflows.'
 		},
 		{
 			icon: Shield,
 			title: 'Pass security review. Stay maintainable.',
 			description:
-				'OIDC auth built in. Intentional dependencies, timely security patches, and auditable code you can hand to security teams.'
+				'OIDC built in. Auditable code for security teams — with long-term security support as a design goal, not a patch-and-pray cadence.'
 		},
 		{
 			icon: Blocks,
@@ -111,7 +112,7 @@
 			customReact: 'no'
 		},
 		{
-			label: 'Full streaming (tools + sub-agents)',
+			label: 'Full streaming (tools + workflows)',
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'yes',
@@ -170,6 +171,12 @@
 			title: 'SaaS platform teams',
 			description:
 				'Embed OIDC-ready agent chat your security team can audit — built for the long haul inside your existing product.'
+		},
+		{
+			icon: Headphones,
+			title: 'CX & support teams',
+			description:
+				'Deploy LangGraph-powered chatbots without a custom frontend team — fork, brand, and ship support agents on a budget.'
 		}
 	];
 
@@ -197,7 +204,7 @@
 	const roadmap: RoadmapItem[] = [
 		{
 			title: 'Core chat UI with streaming',
-			description: 'Full message streaming, tool calls, and sub-agent visualization',
+			description: 'Full message streaming and tool-call visibility in the chat UI',
 			status: 'done'
 		},
 		{
@@ -233,6 +240,12 @@
 		{
 			title: 'Installable package (no fork required)',
 			description: 'Use svelte-langgraph as a dependency — npm install and go',
+			status: 'planned'
+		},
+		{
+			title: 'Embeddable web component',
+			description:
+				'Drop the chat UI into any app — Svelte or not — as an in-app component or web component with auth',
 			status: 'planned'
 		},
 		{
@@ -288,27 +301,16 @@
 
 		<div class="relative mx-auto max-w-7xl px-6 py-24 text-center">
 			<div class="animate-fade-in-up mb-10 flex items-center justify-center gap-6">
-				<!-- svelte logo -->
-				<svg
+				<img
+					src="/logos/svelte.svg"
+					alt="Svelte"
 					class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100"
-					viewBox="0 0 98.1 118"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<path
-						d="M91.8 15.6C80.9-.1 59.2-4.7 43.6 5.2L16.1 22.8C8.6 27.5 3.4 35.2 1.9 43.9c-1.3 7.3-.2 14.8 3.3 21.3-2.4 3.6-4 7.6-4.7 11.8-1.6 8.9.5 18.1 5.7 25.4 11 15.7 32.6 20.3 48.2 10.4l27.5-17.6c7.5-4.7 12.7-12.4 14.2-21.1 1.3-7.3.2-14.8-3.3-21.3 2.4-3.6 4-7.6 4.7-11.8 1.7-9-.4-18.2-5.7-25.4"
-						fill="#ff3e00"
-					/>
-					<path
-						d="M40.9 103.9a28 28 0 0 1-16-5.7l.5-.3 18.7-10.8c.9-.6 1.5-1.5 1.5-2.6V52.8l7.9 4.6v34c0 7.3-5.9 13.1-12.6 12.5M18 84.7a24 24 0 0 1-3.6-18.2l.5.3 18.7 10.8c.9.5 2.1.5 3 0l22.8-13.2V73l-19 11a13.2 13.2 0 0 1-17.6-4l-4.9 4.7M11.4 38.8a24 24 0 0 1 12.5-10.5v22.3c0 1 .6 2 1.5 2.5l22.8 13.2-7.9 4.5L21.7 60A13.2 13.2 0 0 1 11.4 38.8M78.4 55l-22.8 13.2 7.9 4.5 18.6-10.7c4.8-2.8 7.7-7.8 8-13.2a24 24 0 0 1-3.6 18.1l-.5-.3L67.3 56c-.9-.5-2.1-.5-3 0L41.5 69.2v-8.6l19-11c7-4 16-1.6 20 5.4l-2 0M80.2 79.7a24 24 0 0 1-12.5 10.5V67.9c0-1-.6-2-1.5-2.5L43.4 52.2l7.9-4.5L69.9 58c7 4.1 9.4 13 5.4 20l4.9 1.6"
-						fill="#fff"
-					/>
-				</svg>
+				/>
 				<span class="text-muted-foreground/40 text-3xl font-extralight">+</span>
-				<!-- langgraph logo -->
 				<img
 					src="/logos/langgraph.svg"
 					alt="LangGraph"
-					class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100"
+					class="h-10 w-10 opacity-80 transition-opacity hover:opacity-100"
 				/>
 			</div>
 
@@ -340,8 +342,8 @@
 				class="animate-fade-in-up-delay-2 text-muted-foreground mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-balance"
 			>
 				Ship a secure, customizable agent UI without maintaining a separate TypeScript backend.
-				Connects directly to LangGraph. OIDC-ready. Built to pass security review and survive
-				upstream changes.
+				Connects directly to LangGraph. OIDC-ready. Built to pass security review and stay
+				maintainable for years.
 			</p>
 
 			<div class="animate-fade-in-up-delay-3 mb-4 flex flex-col justify-center gap-4 sm:flex-row">
@@ -453,6 +455,10 @@
 					Built for the long haul.<br />
 					<span class="text-muted-foreground/60">Not the demo.</span>
 				</h2>
+				<p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
+					React has plenty of agent UIs. Svelte deserves a first-class LangGraph frontend — fast,
+					joyful to customize, and built for production ownership.
+				</p>
 			</div>
 
 			<div class="grid gap-6 sm:grid-cols-2">
@@ -523,7 +529,7 @@
 				<h2 class="text-4xl font-bold tracking-tight">Built for builders.</h2>
 			</div>
 
-			<div class="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
+			<div class="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
 				{#each personas as persona (persona.title)}
 					{@const Icon = persona.icon}
 					<div
@@ -714,6 +720,34 @@
 						</div>
 					</div>
 				{/each}
+			</div>
+		</div>
+	</section>
+
+	<!-- ── Built in the open ─────────────────────────────────────────────────── -->
+	<section class="border-t py-24">
+		<div class="mx-auto max-w-4xl px-6 text-center">
+			<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
+				Built in the open
+			</p>
+			<h2 class="mb-4 text-4xl font-bold tracking-tight">Help shape what ships next.</h2>
+			<p class="text-muted-foreground mx-auto mb-8 max-w-2xl text-lg leading-relaxed">
+				MIT licensed on GitHub. Try the live demo, open an issue, send a PR, or tell us what you
+				built — contributors steer the roadmap as much as the maintainers.
+			</p>
+			<div class="flex flex-col justify-center gap-4 sm:flex-row">
+				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
+						<Github class="size-5" />
+						Star on GitHub
+					</Button>
+				</a>
+				<a href={`${GITHUB_URL}/issues`} target="_blank" rel="noopener noreferrer">
+					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
+						Open an issue
+						<ExternalLink class="size-4" />
+					</Button>
+				</a>
 			</div>
 		</div>
 	</section>

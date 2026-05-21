@@ -1,7 +1,15 @@
-<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-	<!-- Official LangGraph mark (Simple Icons / langchain-ai) -->
+<svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LangGraph">
+	<rect width="40" height="40" rx="8" fill="#161F34" />
 	<path
-		fill="currentColor"
-		d="M5 19H10A5 5 0 115 14ZM19 14A5 5 0 1114 19H19ZM10 5A5 5 0 105 10V5ZM19 5V10A5 5 0 1014 5Z"
+		d="M21.7047 21.7032L25.2779 18.13C27.1594 16.2485 27.1594 13.1979 25.2779 11.3164C23.3964 9.43493 20.3458 9.43493 18.4643 11.3164L14.8911 14.8896"
+		stroke="#7FC8FF"
+		stroke-width="4.81555"
+		stroke-linecap="round"
+	/>
+	<path
+		d="M18.2973 18.2964L14.7241 21.8696C12.8426 23.7511 12.8426 26.8016 14.7241 28.6831C16.6056 30.5646 19.6561 30.5646 21.5376 28.6831L25.1108 25.1099"
+		stroke="#7FC8FF"
+		stroke-width="4.81555"
+		stroke-linecap="round"
 	/>
 </svg>
