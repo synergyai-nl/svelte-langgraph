@@ -8,8 +8,6 @@
 		Zap,
 		Blocks,
 		Key,
-		Package,
-		Code2,
 		Github,
 		ArrowRight,
 		Check,
@@ -54,44 +52,40 @@
 
 	const features: Feature[] = [
 		{
-			icon: Shield,
-			title: 'Production-Ready & Maintainable',
-			description:
-				'OIDC / OpenID Connect auth built in. Industry-level maintenance, intentional dependencies, timely security patches, and auditable code you can hand to security teams.'
-		},
-		{
 			icon: Zap,
-			title: 'LangGraph Native',
+			title: 'Connect Python agents directly',
 			description:
 				'Connects directly to your LangGraph server. No TypeScript backend required. Full streaming for tools, sub-agents, and complex agentic workflows.'
 		},
 		{
+			icon: Shield,
+			title: 'Pass security review. Stay maintainable.',
+			description:
+				'OIDC auth built in. Intentional dependencies, timely security patches, and auditable code you can hand to security teams.'
+		},
+		{
 			icon: Blocks,
-			title: 'Fully Customizable',
+			title: 'Customize every layer — no lock-in',
 			description:
 				'Every component layer is independently configurable. Built on bits-ui and shadcn-svelte — override anything, extend everything.'
 		},
 		{
 			icon: Key,
-			title: 'Provider Agnostic',
+			title: 'Swap models without rewriting',
 			description:
-				'All LLM providers via the OpenAI-compatible protocol — Anthropic, OpenAI, local models, Azure, and more. Swap models without rewriting your frontend.'
-		},
-		{
-			icon: Package,
-			title: 'Proto + Moon Toolchain',
-			description:
-				'One-command deps across Node and Python. Pinned versions via .prototools — no version hell. Run moon at the repo root; avoid raw pnpm installs there.'
-		},
-		{
-			icon: Code2,
-			title: 'Svelte-Powered',
-			description:
-				"Svelte's component model gives you per-layer control without React overhead. Smaller bundles. Faster renders. Easier customization."
+				'All LLM providers via the OpenAI-compatible protocol — Anthropic, OpenAI, local models, Azure, and more.'
 		}
 	] as const;
 
 	const comparison: ComparisonRow[] = [
+		{
+			label: 'Security review friendly',
+			svelteLanggraph: 'yes',
+			langflow: 'partial',
+			chainlit: 'partial',
+			openWebui: 'partial',
+			customReact: 'yes'
+		},
 		{
 			label: 'LangGraph / Python native',
 			svelteLanggraph: 'yes',
@@ -163,19 +157,19 @@
 			icon: Cpu,
 			title: 'Python AI developers',
 			description:
-				"You've built a solid LangGraph agent. You need a frontend that connects cleanly without forcing you into a TypeScript-heavy stack."
+				'Stop spending sprints on React glue. Focus on the agent — connect a frontend that speaks LangGraph natively without a TypeScript-heavy stack.'
 		},
 		{
 			icon: GitFork,
 			title: 'Boutique AI agencies',
 			description:
-				"You're building custom AI apps for clients. You need something you can customize, maintain, and hand over with confidence."
+				'Ship branded agent UIs you can customize, maintain, and hand over to clients with confidence.'
 		},
 		{
 			icon: Layers,
 			title: 'SaaS platform teams',
 			description:
-				"You're embedding agent chat into an existing product. You need an auditable, OIDC-ready secure component you can trust for the long haul."
+				'Embed OIDC-ready agent chat your security team can audit — built for the long haul inside your existing product.'
 		}
 	];
 
@@ -194,9 +188,9 @@
 		},
 		{
 			step: '03',
-			title: 'Ship it',
+			title: 'Deploy to your stack',
 			description:
-				'Deploy with the included config. Pull upstream security patches. Stay current without the rewrite treadmill.'
+				'Deploy with the included config — Docker, your OIDC provider, your LangGraph server. Pull upstream security patches without the rewrite treadmill.'
 		}
 	];
 
@@ -249,6 +243,8 @@
 	];
 
 	const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
+	const DEMO_URL = 'https://svelte-langgraph-demo.synergyai.nl/';
+	const DOCS_URL = `${GITHUB_URL}#readme`;
 
 	type CellStatus = 'yes' | 'no' | 'partial';
 
@@ -280,24 +276,34 @@
 	<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
 	<section class="relative flex min-h-[calc(100vh-4rem)] flex-col justify-center overflow-hidden">
 		<div
-			class="absolute inset-0 opacity-[0.15] [background-image:linear-gradient(hsl(var(--border-card))_1px,transparent_1px),linear-gradient(to_right,hsl(var(--border-card))_1px,transparent_1px)] [background-size:4rem_4rem]"
+			class="absolute inset-0 [background-image:linear-gradient(hsl(var(--border-card))_1px,transparent_1px),linear-gradient(to_right,hsl(var(--border-card))_1px,transparent_1px)] [background-size:4rem_4rem] opacity-[0.15]"
 		></div>
 
 		<div
-			class="animate-glow-pulse absolute -top-[40%] left-1/2 h-[80%] w-[140%] -translate-x-1/2 rounded-full bg-gradient-to-b from-primary-600/15 via-primary-400/5 to-transparent blur-3xl"
+			class="animate-glow-pulse from-primary-600/15 via-primary-400/5 absolute -top-[40%] left-1/2 h-[80%] w-[140%] -translate-x-1/2 rounded-full bg-gradient-to-b to-transparent blur-3xl"
 		></div>
 		<div
-			class="animate-glow-pulse absolute -right-[10%] bottom-0 h-[50%] w-[50%] rounded-full bg-gradient-to-tl from-secondary-600/10 to-transparent blur-3xl [animation-delay:2s]"
+			class="animate-glow-pulse from-secondary-600/10 absolute -right-[10%] bottom-0 h-[50%] w-[50%] rounded-full bg-gradient-to-tl to-transparent blur-3xl [animation-delay:2s]"
 		></div>
 
 		<div class="relative mx-auto max-w-7xl px-6 py-24 text-center">
 			<div class="animate-fade-in-up mb-10 flex items-center justify-center gap-6">
 				<!-- svelte logo -->
-				<svg class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100" viewBox="0 0 98.1 118" xmlns="http://www.w3.org/2000/svg">
-					<path d="M91.8 15.6C80.9-.1 59.2-4.7 43.6 5.2L16.1 22.8C8.6 27.5 3.4 35.2 1.9 43.9c-1.3 7.3-.2 14.8 3.3 21.3-2.4 3.6-4 7.6-4.7 11.8-1.6 8.9.5 18.1 5.7 25.4 11 15.7 32.6 20.3 48.2 10.4l27.5-17.6c7.5-4.7 12.7-12.4 14.2-21.1 1.3-7.3.2-14.8-3.3-21.3 2.4-3.6 4-7.6 4.7-11.8 1.7-9-.4-18.2-5.7-25.4" fill="#ff3e00"/>
-					<path d="M40.9 103.9a28 28 0 0 1-16-5.7l.5-.3 18.7-10.8c.9-.6 1.5-1.5 1.5-2.6V52.8l7.9 4.6v34c0 7.3-5.9 13.1-12.6 12.5M18 84.7a24 24 0 0 1-3.6-18.2l.5.3 18.7 10.8c.9.5 2.1.5 3 0l22.8-13.2V73l-19 11a13.2 13.2 0 0 1-17.6-4l-4.9 4.7M11.4 38.8a24 24 0 0 1 12.5-10.5v22.3c0 1 .6 2 1.5 2.5l22.8 13.2-7.9 4.5L21.7 60A13.2 13.2 0 0 1 11.4 38.8M78.4 55l-22.8 13.2 7.9 4.5 18.6-10.7c4.8-2.8 7.7-7.8 8-13.2a24 24 0 0 1-3.6 18.1l-.5-.3L67.3 56c-.9-.5-2.1-.5-3 0L41.5 69.2v-8.6l19-11c7-4 16-1.6 20 5.4l-2 0M80.2 79.7a24 24 0 0 1-12.5 10.5V67.9c0-1-.6-2-1.5-2.5L43.4 52.2l7.9-4.5L69.9 58c7 4.1 9.4 13 5.4 20l4.9 1.6" fill="#fff"/>
+				<svg
+					class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100"
+					viewBox="0 0 98.1 118"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path
+						d="M91.8 15.6C80.9-.1 59.2-4.7 43.6 5.2L16.1 22.8C8.6 27.5 3.4 35.2 1.9 43.9c-1.3 7.3-.2 14.8 3.3 21.3-2.4 3.6-4 7.6-4.7 11.8-1.6 8.9.5 18.1 5.7 25.4 11 15.7 32.6 20.3 48.2 10.4l27.5-17.6c7.5-4.7 12.7-12.4 14.2-21.1 1.3-7.3.2-14.8-3.3-21.3 2.4-3.6 4-7.6 4.7-11.8 1.7-9-.4-18.2-5.7-25.4"
+						fill="#ff3e00"
+					/>
+					<path
+						d="M40.9 103.9a28 28 0 0 1-16-5.7l.5-.3 18.7-10.8c.9-.6 1.5-1.5 1.5-2.6V52.8l7.9 4.6v34c0 7.3-5.9 13.1-12.6 12.5M18 84.7a24 24 0 0 1-3.6-18.2l.5.3 18.7 10.8c.9.5 2.1.5 3 0l22.8-13.2V73l-19 11a13.2 13.2 0 0 1-17.6-4l-4.9 4.7M11.4 38.8a24 24 0 0 1 12.5-10.5v22.3c0 1 .6 2 1.5 2.5l22.8 13.2-7.9 4.5L21.7 60A13.2 13.2 0 0 1 11.4 38.8M78.4 55l-22.8 13.2 7.9 4.5 18.6-10.7c4.8-2.8 7.7-7.8 8-13.2a24 24 0 0 1-3.6 18.1l-.5-.3L67.3 56c-.9-.5-2.1-.5-3 0L41.5 69.2v-8.6l19-11c7-4 16-1.6 20 5.4l-2 0M80.2 79.7a24 24 0 0 1-12.5 10.5V67.9c0-1-.6-2-1.5-2.5L43.4 52.2l7.9-4.5L69.9 58c7 4.1 9.4 13 5.4 20l4.9 1.6"
+						fill="#fff"
+					/>
 				</svg>
-				<span class="text-3xl font-extralight text-muted-foreground/40">+</span>
+				<span class="text-muted-foreground/40 text-3xl font-extralight">+</span>
 				<!-- langgraph logo -->
 				<img
 					src="/logos/langgraph.svg"
@@ -307,75 +313,95 @@
 			</div>
 
 			<div
-				class="animate-fade-in-up-delay-1 mx-auto mb-8 inline-flex items-center gap-2 rounded-full border border-primary-600/20 bg-primary-600/5 px-4 py-1.5 text-sm backdrop-blur-sm"
+				class="animate-fade-in-up-delay-1 border-primary-600/20 bg-primary-600/5 mx-auto mb-8 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm backdrop-blur-sm"
 			>
-				<span class="size-2 animate-pulse rounded-full bg-primary-500"></span>
-				<span class="text-muted-foreground">Open Source · MIT License · LangGraph Native</span>
+				<span class="bg-primary-500 size-2 animate-pulse rounded-full"></span>
+				<span class="text-muted-foreground"
+					>Production-ready · LangGraph native · OIDC built-in · MIT</span
+				>
 			</div>
 
+			<p
+				class="animate-fade-in-up-delay-1 text-foreground/90 mx-auto mb-4 max-w-2xl text-lg font-medium text-balance"
+			>
+				The production SvelteKit frontend for LangGraph agents
+			</p>
+
 			<h1
-				class="animate-fade-in-up-delay-1 mb-6 text-balance text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl xl:text-7xl"
+				class="animate-fade-in-up-delay-1 mb-6 text-5xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl xl:text-7xl"
 			>
 				Your agent works.<br />
-				<span class="bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent"
+				<span class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
 					>Your frontend should too.</span
 				>
 			</h1>
 
 			<p
-				class="animate-fade-in-up-delay-2 mx-auto mb-10 max-w-2xl text-balance text-xl leading-relaxed text-muted-foreground"
+				class="animate-fade-in-up-delay-2 text-muted-foreground mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-balance"
 			>
-				A production-ready SvelteKit UI that connects directly to your LangGraph server — provider-agnostic
-				LLMs via the OpenAI-compatible protocol and OIDC / OpenID Connect auth built in. Built for
-				developers who need a frontend they can audit, customize, and maintain for years — not weeks.
+				Ship a secure, customizable agent UI without maintaining a separate TypeScript backend.
+				Connects directly to LangGraph. OIDC-ready. Built to pass security review and survive
+				upstream changes.
 			</p>
 
-			<div class="animate-fade-in-up-delay-3 mb-16 flex flex-col justify-center gap-4 sm:flex-row">
+			<div class="animate-fade-in-up-delay-3 mb-4 flex flex-col justify-center gap-4 sm:flex-row">
+				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+					<Button
+						size="lg"
+						class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
+					>
+						Try live demo
+						<ArrowRight class="size-4" />
+					</Button>
+				</a>
 				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" class="cursor-pointer gap-2 px-8 text-base shadow-lg shadow-primary-600/20">
+					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
 						<Github class="size-5" />
 						View on GitHub
 					</Button>
 				</a>
-				<a href="/chat">
-					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
-						Try the demo
-						<ArrowRight class="size-4" />
+				<a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
+						Read the docs
+						<ExternalLink class="size-4" />
 					</Button>
 				</a>
 			</div>
+			<p class="animate-fade-in-up-delay-3 text-muted-foreground mb-16 text-sm">
+				Explore streaming, tool calls, and auth — no local setup required.
+			</p>
 
 			<!-- Terminal -->
 			<div
-				class="animate-fade-in-up-delay-4 mx-auto max-w-2xl overflow-hidden rounded-xl border bg-card/80 shadow-2xl shadow-black/10 ring-1 ring-white/5 backdrop-blur-md dark:shadow-black/30"
+				class="animate-fade-in-up-delay-4 bg-card/80 mx-auto max-w-2xl overflow-hidden rounded-xl border shadow-2xl ring-1 shadow-black/10 ring-white/5 backdrop-blur-md dark:shadow-black/30"
 			>
 				<div class="flex items-center gap-2 border-b px-4 py-3">
 					<div class="size-3 rounded-full bg-red-500/70"></div>
 					<div class="size-3 rounded-full bg-yellow-500/70"></div>
 					<div class="size-3 rounded-full bg-green-500/70"></div>
-					<span class="ml-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+					<span class="text-muted-foreground ml-3 flex items-center gap-1.5 text-xs">
 						<Terminal class="size-3" />
 						terminal
 					</span>
 				</div>
 				<div class="space-y-2 p-5 text-left font-mono text-sm leading-relaxed">
 					<div>
-						<span class="select-none text-muted-foreground">$ </span>
+						<span class="text-muted-foreground select-none">$ </span>
 						<span class="text-primary-600">proto</span>
 						<span class="text-foreground/80"> install</span>
 					</div>
 					<div>
-						<span class="select-none text-muted-foreground">$ </span>
+						<span class="text-muted-foreground select-none">$ </span>
 						<span class="text-primary-600">cp</span>
 						<span class="text-foreground/80"> .env.example .env</span>
 					</div>
 					<div>
-						<span class="select-none text-muted-foreground">$ </span>
+						<span class="text-muted-foreground select-none">$ </span>
 						<span class="text-primary-600">moon</span>
 						<span class="text-foreground/80"> :dev :oidc-mock</span>
 					</div>
 					<div class="flex items-center gap-2 pt-1 text-green-500/80">
-						<span>&#10003; Ready on http://localhost:5173</span>
+						<span>&#10003; Ready — frontend, backend, and OIDC mock running</span>
 						<span class="animate-typing-cursor inline-block h-4 w-0.5 bg-green-500/60"></span>
 					</div>
 				</div>
@@ -388,32 +414,26 @@
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="grid items-center gap-16 md:grid-cols-2">
 				<div>
-					<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
+					<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 						The gap
 					</p>
-					<h2 class="mb-6 text-balance text-4xl font-bold tracking-tight">
+					<h2 class="mb-6 text-4xl font-bold tracking-tight text-balance">
 						Building the agent is the easy part.<br />
 						<span class="text-muted-foreground/70">The frontend shouldn't be hard.</span>
 					</h2>
-					<p class="text-lg leading-relaxed text-muted-foreground">
+					<p class="text-muted-foreground text-lg leading-relaxed">
 						Python and LangGraph make agentic AI tractable. But the frontend landscape leaves you
 						choosing between tools that break under maintenance pressure, lock you into opinionated
 						stacks, or demand a separate TypeScript backend just to render a chat window.
 					</p>
 				</div>
 				<div class="space-y-4">
-					{#each [
-						'Upstream UI changes break your customizations without warning',
-						'Codebases too complex or generated to meaningfully audit',
-						'TypeScript backends you didn\'t ask for sitting between you and your Python agent',
-						'Forked repos that drift from upstream and lose security coverage',
-						'Integrations that work in the demo but crumble months into production'
-					] as pain (pain)}
+					{#each ['Upstream UI changes break your customizations without warning', 'Codebases too complex or generated to meaningfully audit', "TypeScript backends you didn't ask for sitting between you and your Python agent", 'Forked repos that drift from upstream and lose security coverage', 'Integrations that work in the demo but crumble months into production'] as pain (pain)}
 						<div
-							class="flex items-start gap-3 rounded-lg border border-destructive/15 bg-destructive/5 px-4 py-3 transition-colors hover:border-destructive/25"
+							class="border-destructive/15 bg-destructive/5 hover:border-destructive/25 flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors"
 						>
-							<X class="mt-0.5 size-4 shrink-0 text-destructive/70" />
-							<span class="text-sm text-muted-foreground">{pain}</span>
+							<X class="text-destructive/70 mt-0.5 size-4 shrink-0" />
+							<span class="text-muted-foreground text-sm">{pain}</span>
 						</div>
 					{/each}
 				</div>
@@ -423,12 +443,10 @@
 
 	<!-- ── Features ──────────────────────────────────────────────────────────── -->
 	<section class="relative border-t py-24">
-		<div
-			class="absolute inset-0 bg-gradient-to-b from-muted/30 via-muted/10 to-transparent"
-		></div>
+		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
-				<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 					Why svelte-langgraph
 				</p>
 				<h2 class="text-4xl font-bold tracking-tight">
@@ -437,27 +455,31 @@
 				</h2>
 			</div>
 
-			<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="grid gap-6 sm:grid-cols-2">
 				{#each features as feature (feature.title)}
 					{@const Icon = feature.icon}
 					<Card.Root
-						class="group relative border bg-card/50 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-600/5"
+						class="group bg-card/50 hover:shadow-primary-600/5 relative border p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<div
-							class="absolute inset-0 rounded-[inherit] bg-gradient-to-br from-primary-600/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+							class="from-primary-600/5 absolute inset-0 rounded-[inherit] bg-gradient-to-br to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
 						></div>
 						<div class="relative">
 							<div
-								class="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary-600/10 transition-colors group-hover:bg-primary-600/15"
+								class="bg-primary-600/10 group-hover:bg-primary-600/15 mb-4 flex size-12 items-center justify-center rounded-xl transition-colors"
 							>
-								<Icon class="size-6 text-primary-600" />
+								<Icon class="text-primary-600 size-6" />
 							</div>
 							<h3 class="mb-2 text-lg font-semibold">{feature.title}</h3>
-							<p class="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
+							<p class="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
 						</div>
 					</Card.Root>
 				{/each}
 			</div>
+			<p class="text-muted-foreground mt-10 text-center text-sm">
+				Built with Svelte, bits-ui, shadcn-svelte, Proto, and Moon — pinned toolchains across Node
+				and Python.
+			</p>
 		</div>
 	</section>
 
@@ -465,19 +487,20 @@
 	<section class="border-t py-24">
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
-				<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 					Getting started
 				</p>
-				<h2 class="text-4xl font-bold tracking-tight">
-					Fork it. Run it. Ship it.
-				</h2>
+				<h2 class="text-4xl font-bold tracking-tight">Clone it. Run it. Ship it.</h2>
+				<p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
+					Today: clone or fork the repo. Soon: install as a package — no fork required.
+				</p>
 			</div>
 
 			<div class="mx-auto grid max-w-5xl gap-8 md:grid-cols-3">
 				{#each steps as step (step.step)}
 					<div class="group text-center">
 						<div
-							class="mb-4 font-mono text-6xl font-bold text-primary-600/15 transition-colors group-hover:text-primary-600/30"
+							class="text-primary-600/15 group-hover:text-primary-600/30 mb-4 font-mono text-6xl font-bold transition-colors"
 						>
 							{step.step}
 						</div>
@@ -491,12 +514,10 @@
 
 	<!-- ── Who it's for ──────────────────────────────────────────────────────── -->
 	<section class="relative border-t py-24">
-		<div
-			class="absolute inset-0 bg-gradient-to-b from-muted/30 via-muted/10 to-transparent"
-		></div>
+		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
-				<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 					Who it's for
 				</p>
 				<h2 class="text-4xl font-bold tracking-tight">Built for builders.</h2>
@@ -506,15 +527,15 @@
 				{#each personas as persona (persona.title)}
 					{@const Icon = persona.icon}
 					<div
-						class="group rounded-xl border bg-card/50 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-primary-600/5"
+						class="group bg-card/50 hover:shadow-primary-600/5 rounded-xl border p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
 					>
 						<div
-							class="mb-4 flex size-10 items-center justify-center rounded-lg bg-primary-600/10 transition-colors group-hover:bg-primary-600/15"
+							class="bg-primary-600/10 group-hover:bg-primary-600/15 mb-4 flex size-10 items-center justify-center rounded-lg transition-colors"
 						>
-							<Icon class="size-5 text-primary-600" />
+							<Icon class="text-primary-600 size-5" />
 						</div>
 						<h3 class="mb-3 text-lg font-semibold">{persona.title}</h3>
-						<p class="text-sm leading-relaxed text-muted-foreground">{persona.description}</p>
+						<p class="text-muted-foreground text-sm leading-relaxed">{persona.description}</p>
 					</div>
 				{/each}
 			</div>
@@ -525,13 +546,11 @@
 	<section class="border-t py-24">
 		<div class="mx-auto max-w-5xl px-6">
 			<div class="mb-16 text-center">
-				<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 					The landscape
 				</p>
-				<h2 class="mb-4 text-4xl font-bold tracking-tight">
-					Know what you're choosing.
-				</h2>
-				<p class="mx-auto max-w-2xl text-lg text-muted-foreground">
+				<h2 class="mb-4 text-4xl font-bold tracking-tight">Know what you're choosing.</h2>
+				<p class="text-muted-foreground mx-auto max-w-2xl text-lg">
 					Every tool in this space makes different trade-offs. Here's an honest look at where
 					svelte-langgraph fits alongside other solid options.
 				</p>
@@ -540,17 +559,17 @@
 			<div class="overflow-x-auto">
 				<div class="min-w-[800px] overflow-hidden rounded-xl border">
 					<!-- Header -->
-					<div class="grid grid-cols-6 border-b bg-muted/30">
-						<div class="p-4 text-sm font-medium text-muted-foreground"></div>
+					<div class="bg-muted/30 grid grid-cols-6 border-b">
+						<div class="text-muted-foreground p-4 text-sm font-medium"></div>
 						<div class="border-l p-4 text-center">
-							<span class="font-semibold text-primary-600">svelte-langgraph</span>
+							<span class="text-primary-600 font-semibold">svelte-langgraph</span>
 						</div>
 						<div class="border-l p-4 text-center">
 							<a
 								href="https://www.langflow.org"
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
 							>
 								Langflow
 								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
@@ -561,7 +580,7 @@
 								href="https://chainlit.io"
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
 							>
 								Chainlit
 								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
@@ -572,14 +591,14 @@
 								href="https://openwebui.com"
 								target="_blank"
 								rel="noopener noreferrer"
-								class="inline-flex items-center justify-center gap-1 font-semibold text-muted-foreground transition-colors hover:text-foreground"
+								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
 							>
 								Open WebUI
 								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
 							</a>
 						</div>
 						<div class="border-l p-4 text-center">
-							<span class="font-semibold text-muted-foreground">Custom React</span>
+							<span class="text-muted-foreground font-semibold">Custom React</span>
 						</div>
 					</div>
 					<!-- Rows -->
@@ -599,10 +618,10 @@
 				</div>
 			</div>
 
-			<p class="mt-6 text-center text-sm text-muted-foreground">
-				Every project here represents real effort from people who care about the ecosystem. We
-				built svelte-langgraph for teams that prioritize long-term stability, code auditability,
-				and security.
+			<p class="text-muted-foreground mt-6 text-center text-sm">
+				Every project here represents real effort from people who care about the ecosystem. Choose
+				svelte-langgraph when long-term ownership, auditability, and OIDC matter more than
+				out-of-the-box breadth.
 			</p>
 
 			<div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
@@ -611,31 +630,28 @@
 						href={link.href}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+						class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
 					>
 						{link.name}
 						<ExternalLink class="size-3.5 shrink-0 opacity-60" />
 					</a>
 				{/each}
 			</div>
-			<p class="mt-4 text-center text-xs text-muted-foreground/80">
-				Streamlit excels at data apps and demos — a different category than production agent chat UIs.
+			<p class="text-muted-foreground/80 mt-4 text-center text-xs">
+				Streamlit excels at data apps and demos — a different category than production agent chat
+				UIs.
 			</p>
 		</div>
 	</section>
 
 	<!-- ── Roadmap ───────────────────────────────────────────────────────────── -->
 	<section class="relative border-t py-24">
-		<div
-			class="absolute inset-0 bg-gradient-to-b from-muted/30 via-muted/10 to-transparent"
-		></div>
+		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-3xl px-6">
 			<div class="mb-16 text-center">
-				<p class="mb-4 text-sm font-semibold uppercase tracking-widest text-primary-600">
-					Roadmap
-				</p>
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">Roadmap</p>
 				<h2 class="mb-4 text-4xl font-bold tracking-tight">Where we are. Where we're going.</h2>
-				<p class="mx-auto max-w-xl text-lg text-muted-foreground">
+				<p class="text-muted-foreground mx-auto max-w-xl text-lg">
 					We're building in the open. Here's what's shipped, what's in progress, and what's next.
 				</p>
 			</div>
@@ -643,7 +659,7 @@
 			<div class="relative space-y-0">
 				<!-- Timeline line -->
 				<div
-					class="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-green-500/40 via-primary-500/40 to-muted-foreground/20"
+					class="via-primary-500/40 to-muted-foreground/20 absolute top-2 bottom-2 left-[19px] w-px bg-gradient-to-b from-green-500/40"
 				></div>
 
 				{#each roadmap as item (item.title)}
@@ -657,12 +673,12 @@
 									<Check class="size-4 text-green-500" />
 								</div>
 							{:else if isActive}
-								<div class="flex size-7 items-center justify-center rounded-full bg-primary-600/15">
-									<CircleDot class="size-4 animate-pulse text-primary-600" />
+								<div class="bg-primary-600/15 flex size-7 items-center justify-center rounded-full">
+									<CircleDot class="text-primary-600 size-4 animate-pulse" />
 								</div>
 							{:else}
-								<div class="flex size-7 items-center justify-center rounded-full bg-muted">
-									<Circle class="size-4 text-muted-foreground/40" />
+								<div class="bg-muted flex size-7 items-center justify-center rounded-full">
+									<Circle class="text-muted-foreground/40 size-4" />
 								</div>
 							{/if}
 						</div>
@@ -679,14 +695,21 @@
 									{item.title}
 								</h3>
 								{#if isDone}
-									<Badge variant="outline" class="text-xs text-green-600 border-green-600/30 bg-green-500/5">Shipped</Badge>
+									<Badge
+										variant="outline"
+										class="border-green-600/30 bg-green-500/5 text-xs text-green-600">Shipped</Badge
+									>
 								{:else if isActive}
-									<Badge variant="outline" class="text-xs text-primary-600 border-primary-600/30 bg-primary-600/5">In progress</Badge>
+									<Badge
+										variant="outline"
+										class="text-primary-600 border-primary-600/30 bg-primary-600/5 text-xs"
+										>In progress</Badge
+									>
 								{:else}
-									<Badge variant="outline" class="text-xs text-muted-foreground/60">Planned</Badge>
+									<Badge variant="outline" class="text-muted-foreground/60 text-xs">Planned</Badge>
 								{/if}
 							</div>
-							<p class="mt-1 text-sm text-muted-foreground">{item.description}</p>
+							<p class="text-muted-foreground mt-1 text-sm">{item.description}</p>
 						</div>
 					</div>
 				{/each}
@@ -700,29 +723,36 @@
 			class="animate-glow-pulse absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,hsl(var(--accent)/0.15),transparent)]"
 		></div>
 		<div class="relative mx-auto max-w-4xl px-6 text-center">
-			<h2
-				class="mb-6 text-balance text-5xl font-bold leading-tight tracking-tight sm:text-6xl"
-			>
-				Your agent deserves a frontend<br />
-				<span class="bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent"
-					>built to last.</span
+			<h2 class="mb-6 text-5xl leading-tight font-bold tracking-tight text-balance sm:text-6xl">
+				Your agent is the product.<br />
+				<span class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
+					>The frontend is how users trust it.</span
 				>
 			</h2>
-			<p class="mx-auto mb-10 max-w-2xl text-xl text-muted-foreground">
-				Open source. MIT licensed. Security-first. Fork it, configure it, and ship something
-				you'll still be proud of next year.
+			<p class="text-muted-foreground mx-auto mb-10 max-w-2xl text-xl">
+				Open source. MIT licensed. Security-first. Fork it, configure it, and ship something you'll
+				still be proud of next year.
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
-				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" class="cursor-pointer gap-2 px-8 text-base shadow-lg shadow-primary-600/20">
-						<Github class="size-5" />
-						Star on GitHub
+				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+					<Button
+						size="lg"
+						class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
+					>
+						Try live demo
+						<ArrowRight class="size-4" />
 					</Button>
 				</a>
-				<a href="/chat">
+				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
 					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
-						Try the demo
-						<ArrowRight class="size-4" />
+						<Github class="size-5" />
+						View on GitHub
+					</Button>
+				</a>
+				<a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
+						Read the docs
+						<ExternalLink class="size-4" />
 					</Button>
 				</a>
 			</div>
@@ -736,16 +766,21 @@
 				<div class="flex items-center gap-3">
 					<!-- svelte mini logo -->
 					<svg class="h-4 w-4 opacity-40" viewBox="0 0 98.1 118" xmlns="http://www.w3.org/2000/svg">
-						<path d="M91.8 15.6C80.9-.1 59.2-4.7 43.6 5.2L16.1 22.8C8.6 27.5 3.4 35.2 1.9 43.9c-1.3 7.3-.2 14.8 3.3 21.3-2.4 3.6-4 7.6-4.7 11.8-1.6 8.9.5 18.1 5.7 25.4 11 15.7 32.6 20.3 48.2 10.4l27.5-17.6c7.5-4.7 12.7-12.4 14.2-21.1 1.3-7.3.2-14.8-3.3-21.3 2.4-3.6 4-7.6 4.7-11.8 1.7-9-.4-18.2-5.7-25.4" fill="currentColor"/>
+						<path
+							d="M91.8 15.6C80.9-.1 59.2-4.7 43.6 5.2L16.1 22.8C8.6 27.5 3.4 35.2 1.9 43.9c-1.3 7.3-.2 14.8 3.3 21.3-2.4 3.6-4 7.6-4.7 11.8-1.6 8.9.5 18.1 5.7 25.4 11 15.7 32.6 20.3 48.2 10.4l27.5-17.6c7.5-4.7 12.7-12.4 14.2-21.1 1.3-7.3.2-14.8-3.3-21.3 2.4-3.6 4-7.6 4.7-11.8 1.7-9-.4-18.2-5.7-25.4"
+							fill="currentColor"
+						/>
 					</svg>
-					<span class="text-xs text-muted-foreground">MIT License · Built with Svelte + LangGraph</span>
+					<span class="text-muted-foreground text-xs"
+						>MIT License · Maintained by SynergyAI · Built with Svelte + LangGraph</span
+					>
 				</div>
 				<div class="flex items-center gap-4">
 					<a
 						href={GITHUB_URL}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+						class="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs transition-colors"
 					>
 						<Github class="size-3.5" />
 						GitHub

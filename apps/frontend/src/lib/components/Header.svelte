@@ -16,14 +16,19 @@
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
+
+	const DOCS_URL = 'https://github.com/synergyai-nl/svelte-langgraph#readme';
 </script>
 
 <header class="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
 	<div class="flex h-16 items-center px-4">
 		<!-- Logo -->
-		<a href="/" class="flex items-center gap-2 font-semibold">
-			<MessageSquare class="h-6 w-6" />
-			<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
+		<a href="/" class="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2">
+			<span class="flex items-center gap-2 font-semibold">
+				<MessageSquare class="h-6 w-6" />
+				<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
+			</span>
+			<span class="text-muted-foreground hidden text-xs sm:inline">{m.app_tagline()}</span>
 		</a>
 
 		<!-- Centered Navigation Menu (Desktop only) -->
@@ -44,6 +49,16 @@
 							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
 						>
 							{m.nav_chat()}
+						</NavigationMenu.Link>
+					</NavigationMenu.Item>
+					<NavigationMenu.Item>
+						<NavigationMenu.Link
+							href={DOCS_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
+						>
+							{m.nav_docs()}
 						</NavigationMenu.Link>
 					</NavigationMenu.Item>
 				</NavigationMenu.List>
@@ -67,6 +82,11 @@
 					</DropdownMenu.Item>
 					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
 						{m.nav_chat()}
+					</DropdownMenu.Item>
+					<DropdownMenu.Item>
+						<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
+							{m.nav_docs()}
+						</a>
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
