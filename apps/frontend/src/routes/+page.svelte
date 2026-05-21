@@ -13,7 +13,6 @@
 		Check,
 		X,
 		Minus,
-		Terminal,
 		GitFork,
 		Cpu,
 		Layers,
@@ -23,6 +22,7 @@
 		ExternalLink
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
+	import HeroTerminal from '$lib/components/marketing/HeroTerminal.svelte';
 
 	interface Feature {
 		icon: Component<{ class?: string }>;
@@ -287,7 +287,7 @@
 
 <div class="overflow-hidden">
 	<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
-	<section class="relative flex min-h-[calc(100vh-4rem)] flex-col justify-center overflow-hidden">
+	<section class="relative min-h-[calc(100dvh-4rem)] overflow-hidden">
 		<div
 			class="absolute inset-0 [background-image:linear-gradient(hsl(var(--border-card))_1px,transparent_1px),linear-gradient(to_right,hsl(var(--border-card))_1px,transparent_1px)] [background-size:4rem_4rem] opacity-[0.15]"
 		></div>
@@ -299,114 +299,86 @@
 			class="animate-glow-pulse from-secondary-600/10 absolute -right-[10%] bottom-0 h-[50%] w-[50%] rounded-full bg-gradient-to-tl to-transparent blur-3xl [animation-delay:2s]"
 		></div>
 
-		<div class="relative mx-auto max-w-7xl px-6 py-24 text-center">
-			<div class="animate-fade-in-up mb-10 flex items-center justify-center gap-6">
-				<img
-					src="/logos/svelte.svg"
-					alt="Svelte"
-					class="h-10 w-10 opacity-60 transition-opacity hover:opacity-100"
-				/>
-				<span class="text-muted-foreground/40 text-3xl font-extralight">+</span>
-				<img
-					src="/logos/langgraph.svg"
-					alt="LangGraph"
-					class="h-10 w-10 opacity-80 transition-opacity hover:opacity-100"
-				/>
-			</div>
-
-			<div
-				class="animate-fade-in-up-delay-1 border-primary-600/20 bg-primary-600/5 mx-auto mb-8 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm backdrop-blur-sm"
-			>
-				<span class="bg-primary-500 size-2 animate-pulse rounded-full"></span>
-				<span class="text-muted-foreground"
-					>Production-ready · LangGraph native · OIDC built-in · MIT</span
+		<div
+			class="relative mx-auto grid max-w-7xl items-center gap-10 px-6 py-12 md:gap-12 md:py-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-14 lg:py-20"
+		>
+			<div class="text-center lg:text-left">
+				<div
+					class="animate-fade-in-up border-primary-600/20 bg-primary-600/5 mx-auto mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm backdrop-blur-sm lg:mx-0"
 				>
-			</div>
-
-			<p
-				class="animate-fade-in-up-delay-1 text-foreground/90 mx-auto mb-4 max-w-2xl text-lg font-medium text-balance"
-			>
-				The production SvelteKit frontend for LangGraph agents
-			</p>
-
-			<h1
-				class="animate-fade-in-up-delay-1 mb-6 text-5xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl xl:text-7xl"
-			>
-				Your agent works.<br />
-				<span class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
-					>Your frontend should too.</span
-				>
-			</h1>
-
-			<p
-				class="animate-fade-in-up-delay-2 text-muted-foreground mx-auto mb-10 max-w-2xl text-xl leading-relaxed text-balance"
-			>
-				Ship a secure, customizable agent UI without maintaining a separate TypeScript backend.
-				Connects directly to LangGraph. OIDC-ready. Built to pass security review and stay
-				maintainable for years.
-			</p>
-
-			<div class="animate-fade-in-up-delay-3 mb-4 flex flex-col justify-center gap-4 sm:flex-row">
-				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
-					<Button
-						size="lg"
-						class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
+					<span class="bg-primary-500 size-2 animate-pulse rounded-full"></span>
+					<span class="text-muted-foreground"
+						>Production-ready · LangGraph native · OIDC built-in · MIT</span
 					>
-						Try live demo
-						<ArrowRight class="size-4" />
-					</Button>
-				</a>
-				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
-						<Github class="size-5" />
-						View on GitHub
-					</Button>
-				</a>
-				<a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
-						Read the docs
-						<ExternalLink class="size-4" />
-					</Button>
-				</a>
-			</div>
-			<p class="animate-fade-in-up-delay-3 text-muted-foreground mb-16 text-sm">
-				Explore streaming, tool calls, and auth — no local setup required.
-			</p>
+				</div>
 
-			<!-- Terminal -->
-			<div
-				class="animate-fade-in-up-delay-4 bg-card/80 mx-auto max-w-2xl overflow-hidden rounded-xl border shadow-2xl ring-1 shadow-black/10 ring-white/5 backdrop-blur-md dark:shadow-black/30"
-			>
-				<div class="flex items-center gap-2 border-b px-4 py-3">
-					<div class="size-3 rounded-full bg-red-500/70"></div>
-					<div class="size-3 rounded-full bg-yellow-500/70"></div>
-					<div class="size-3 rounded-full bg-green-500/70"></div>
-					<span class="text-muted-foreground ml-3 flex items-center gap-1.5 text-xs">
-						<Terminal class="size-3" />
-						terminal
-					</span>
+				<p
+					class="animate-fade-in-up-delay-1 text-foreground/90 mx-auto mb-3 max-w-xl text-base font-medium text-balance sm:text-lg lg:mx-0"
+				>
+					The production SvelteKit frontend for LangGraph agents
+				</p>
+
+				<h1
+					class="animate-fade-in-up-delay-1 mb-5 text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl"
+				>
+					Your agent works.<br />
+					<span class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
+						>Your frontend should too.</span
+					>
+				</h1>
+
+				<p
+					class="animate-fade-in-up-delay-2 text-muted-foreground mx-auto mb-8 max-w-xl text-lg leading-relaxed text-balance lg:mx-0"
+				>
+					Ship a secure, customizable agent UI without maintaining a separate TypeScript backend.
+					Connects directly to LangGraph. OIDC-ready. Built to pass security review and stay
+					maintainable for years.
+				</p>
+
+				<div
+					class="animate-fade-in-up-delay-3 mb-3 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap lg:items-start lg:justify-start"
+				>
+					<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+						<Button
+							size="lg"
+							class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
+						>
+							Try live demo
+							<ArrowRight class="size-4" />
+						</Button>
+					</a>
+					<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
+						<Button
+							size="lg"
+							variant="outline"
+							class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
+						>
+							<Github class="size-5" />
+							View on GitHub
+						</Button>
+					</a>
+					<a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+						<Button
+							size="lg"
+							variant="ghost"
+							class="w-full cursor-pointer gap-2 px-6 text-base sm:w-auto"
+						>
+							Read the docs
+							<ExternalLink class="size-4" />
+						</Button>
+					</a>
 				</div>
-				<div class="space-y-2 p-5 text-left font-mono text-sm leading-relaxed">
-					<div>
-						<span class="text-muted-foreground select-none">$ </span>
-						<span class="text-primary-600">proto</span>
-						<span class="text-foreground/80"> install</span>
-					</div>
-					<div>
-						<span class="text-muted-foreground select-none">$ </span>
-						<span class="text-primary-600">cp</span>
-						<span class="text-foreground/80"> .env.example .env</span>
-					</div>
-					<div>
-						<span class="text-muted-foreground select-none">$ </span>
-						<span class="text-primary-600">moon</span>
-						<span class="text-foreground/80"> :dev :oidc-mock</span>
-					</div>
-					<div class="flex items-center gap-2 pt-1 text-green-500/80">
-						<span>&#10003; Ready — frontend, backend, and OIDC mock running</span>
-						<span class="animate-typing-cursor inline-block h-4 w-0.5 bg-green-500/60"></span>
-					</div>
-				</div>
+				<p class="animate-fade-in-up-delay-3 text-muted-foreground text-sm">
+					Explore streaming, tool calls, and auth — no local setup required.
+				</p>
+			</div>
+
+			<div class="animate-fade-in-up-delay-2 relative mx-auto w-full max-w-xl lg:max-w-none">
+				<div
+					class="from-primary-600/20 pointer-events-none absolute -inset-6 rounded-3xl bg-gradient-to-br to-transparent opacity-60 blur-2xl"
+					aria-hidden="true"
+				></div>
+				<HeroTerminal class="relative" />
 			</div>
 		</div>
 	</section>
