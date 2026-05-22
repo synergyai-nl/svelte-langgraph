@@ -1,4 +1,10 @@
-<section class="border-t py-10">
+<script lang="ts">
+	import { cn } from '$lib/utils';
+
+	let { class: className = '' }: { class?: string } = $props();
+</script>
+
+<div class={cn('py-8', className)}>
 	<div
 		class="mx-auto flex max-w-7xl flex-col items-center justify-center gap-4 px-6 sm:flex-row sm:gap-6"
 	>
@@ -17,4 +23,4 @@
 			/>
 		</div>
 	</div>
-</section>
+</div>

@@ -290,7 +290,7 @@
 	<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
 	<section class="relative min-h-[calc(100dvh-4rem)] overflow-hidden">
 		<div
-			class="absolute inset-0 [background-image:linear-gradient(hsl(var(--border-card))_1px,transparent_1px),linear-gradient(to_right,hsl(var(--border-card))_1px,transparent_1px)] [background-size:4rem_4rem] opacity-[0.15]"
+			class="absolute inset-0 [background-image:linear-gradient(hsl(var(--border-card))_1px,transparent_1px),linear-gradient(to_right,hsl(var(--border-card))_1px,transparent_1px)] [mask-image:linear-gradient(to_bottom,black_50%,transparent)] [background-size:4rem_4rem] opacity-[0.15]"
 		></div>
 
 		<div
@@ -374,12 +374,12 @@
 				</div>
 			</div>
 		</div>
+
+		<StackLogos />
 	</section>
 
-	<StackLogos />
-
 	<!-- ── Value proposition ─────────────────────────────────────────────────── -->
-	<section class="border-t py-24">
+	<section class="py-24">
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="grid items-center gap-16 md:grid-cols-2">
 				<div>
@@ -411,7 +411,7 @@
 	</section>
 
 	<!-- ── Features ──────────────────────────────────────────────────────────── -->
-	<section class="relative border-t py-24">
+	<section class="relative py-24">
 		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
@@ -457,7 +457,7 @@
 	</section>
 
 	<!-- ── Getting started ──────────────────────────────────────────────────── -->
-	<section class="border-t py-24">
+	<section class="py-24">
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
@@ -486,7 +486,7 @@
 	</section>
 
 	<!-- ── Who it's for ──────────────────────────────────────────────────────── -->
-	<section class="relative border-t py-24">
+	<section class="relative py-24">
 		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
@@ -516,7 +516,7 @@
 	</section>
 
 	<!-- ── Landscape ─────────────────────────────────────────────────────────── -->
-	<section class="border-t py-24">
+	<section class="py-24">
 		<div class="mx-auto max-w-5xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
@@ -619,7 +619,7 @@
 	</section>
 
 	<!-- ── Roadmap ───────────────────────────────────────────────────────────── -->
-	<section class="relative border-t py-24">
+	<section class="relative py-24">
 		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-3xl px-6">
 			<div class="mb-16 text-center">
@@ -692,7 +692,7 @@
 	</section>
 
 	<!-- ── Built in the open ─────────────────────────────────────────────────── -->
-	<section class="border-t py-24">
+	<section class="py-24">
 		<div class="mx-auto max-w-4xl px-6 text-center">
 			<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
 				Built in the open
@@ -720,7 +720,7 @@
 	</section>
 
 	<!-- ── Final CTA ─────────────────────────────────────────────────────────── -->
-	<section class="relative border-t py-28">
+	<section class="relative py-28">
 		<div
 			class="animate-glow-pulse absolute inset-0 bg-[radial-gradient(ellipse_70%_50%_at_50%_50%,hsl(var(--accent)/0.15),transparent)]"
 		></div>
