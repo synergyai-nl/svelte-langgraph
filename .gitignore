@@ -3,6 +3,9 @@
 # local scratch / meeting notes (not committed)
 temp/
 
+# Product Brain local workspace (session, config, agent specs — not committed)
+.productbrain/
+
 .env
 .venv
 __pycache__/
