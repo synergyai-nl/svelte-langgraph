@@ -41,12 +41,7 @@
 			: 'bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'
 	)}
 >
-	<div
-		class={cn(
-			'flex h-16 items-center',
-			isMarketing ? 'mx-auto w-full max-w-7xl px-6' : 'px-4'
-		)}
-	>
+	<div class={cn('flex h-16 items-center', isMarketing ? 'mx-auto w-full max-w-7xl px-6' : 'px-4')}>
 		<!-- Logo -->
 		<a
 			href="/"
@@ -72,12 +67,7 @@
 		<!-- Desktop navigation -->
 		{#if isMarketing}
 			<nav class="hidden flex-1 items-center justify-center gap-1 md:flex" aria-label="Marketing">
-				<a
-					href={DEMO_URL}
-					target="_blank"
-					rel="noopener noreferrer"
-					class={marketingNavLinkClass}
-				>
+				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer" class={marketingNavLinkClass}>
 					Live demo
 				</a>
 				<a
