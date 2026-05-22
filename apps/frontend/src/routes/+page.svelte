@@ -12,7 +12,6 @@
 		ArrowRight,
 		Check,
 		X,
-		Minus,
 		GitFork,
 		Cpu,
 		Layers,
@@ -23,6 +22,9 @@
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 	import HeroTerminal from '$lib/components/marketing/HeroTerminal.svelte';
+	import LandscapeComparisonTable, {
+		type ComparisonRow
+	} from '$lib/components/marketing/LandscapeComparisonTable.svelte';
 	import StackLogos from '$lib/components/marketing/StackLogos.svelte';
 
 	interface Feature {
@@ -35,15 +37,6 @@
 		step: string;
 		title: string;
 		description: string;
-	}
-
-	interface ComparisonRow {
-		label: string;
-		svelteLanggraph: 'yes' | 'no' | 'partial';
-		langflow: 'yes' | 'no' | 'partial';
-		chainlit: 'yes' | 'no' | 'partial';
-		openWebui: 'yes' | 'no' | 'partial';
-		customReact: 'yes' | 'no' | 'partial';
 	}
 
 	interface RoadmapItem {
@@ -260,30 +253,12 @@
 	const DEMO_URL = 'https://svelte-langgraph-demo.synergyai.nl/';
 	const DOCS_URL = `${GITHUB_URL}#readme`;
 
-	type CellStatus = 'yes' | 'no' | 'partial';
-
-	function getRowCells(row: ComparisonRow): CellStatus[] {
-		return [row.svelteLanggraph, row.langflow, row.chainlit, row.openWebui, row.customReact];
-	}
-
 	const ecosystemLinks = [
 		{ name: 'Chainlit', href: 'https://chainlit.io' },
 		{ name: 'Langflow', href: 'https://www.langflow.org' },
 		{ name: 'Streamlit', href: 'https://streamlit.io' },
 		{ name: 'Open WebUI', href: 'https://openwebui.com' }
 	] as const;
-
-	function statusIcon(status: CellStatus) {
-		if (status === 'yes') return Check;
-		if (status === 'partial') return Minus;
-		return X;
-	}
-
-	function statusColor(status: CellStatus) {
-		if (status === 'yes') return 'text-green-500';
-		if (status === 'partial') return 'text-yellow-500';
-		return 'text-muted-foreground/30';
-	}
 </script>
 
 <div class="overflow-hidden">
@@ -529,67 +504,7 @@
 				</p>
 			</div>
 
-			<div class="overflow-x-auto">
-				<div class="min-w-[800px] overflow-hidden rounded-xl border">
-					<!-- Header -->
-					<div class="bg-muted/30 grid grid-cols-6 border-b">
-						<div class="text-muted-foreground p-4 text-sm font-medium"></div>
-						<div class="border-l p-4 text-center">
-							<span class="text-primary-600 font-semibold">svelte-langgraph</span>
-						</div>
-						<div class="border-l p-4 text-center">
-							<a
-								href="https://www.langflow.org"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
-							>
-								Langflow
-								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
-							</a>
-						</div>
-						<div class="border-l p-4 text-center">
-							<a
-								href="https://chainlit.io"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
-							>
-								Chainlit
-								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
-							</a>
-						</div>
-						<div class="border-l p-4 text-center">
-							<a
-								href="https://openwebui.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								class="text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1 font-semibold transition-colors"
-							>
-								Open WebUI
-								<ExternalLink class="size-3.5 shrink-0 opacity-60" />
-							</a>
-						</div>
-						<div class="border-l p-4 text-center">
-							<span class="text-muted-foreground font-semibold">Custom React</span>
-						</div>
-					</div>
-					<!-- Rows -->
-					{#each comparison as row, i (row.label)}
-						<div
-							class="grid grid-cols-6 border-b last:border-b-0 {i % 2 === 1 ? 'bg-muted/10' : ''}"
-						>
-							<div class="p-4 text-sm">{row.label}</div>
-							{#each getRowCells(row) as status, colIndex (`${row.label}-${colIndex}`)}
-								{@const Icon = statusIcon(status)}
-								<div class="flex items-center justify-center border-l p-4">
-									<Icon class="size-5 {statusColor(status)}" />
-								</div>
-							{/each}
-						</div>
-					{/each}
-				</div>
-			</div>
+			<LandscapeComparisonTable rows={comparison} />
 
 			<p class="text-muted-foreground mt-6 text-center text-sm">
 				Every project here represents real effort from people who care about the ecosystem. Choose
