@@ -12,6 +12,7 @@ from langgraph.types import Checkpointer
 
 from .models import get_chat_model
 from .tools import get_tools
+from .tracing import get_tracing_callbacks
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -48,6 +49,10 @@ def make_graph(
 ) -> CompiledStateGraph:
     model = get_chat_model()
     checkpointer = get_checkpointer()
+
+    callbacks = get_tracing_callbacks()
+    if callbacks:
+        model = model.with_config(callbacks=callbacks)
 
     agent = create_react_agent(
         model=model,
