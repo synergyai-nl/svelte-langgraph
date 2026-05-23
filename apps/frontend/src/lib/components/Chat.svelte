@@ -33,12 +33,33 @@
 		introTitle = ''
 	}: Props = $props();
 
+	const feedbackTokens = new SvelteMap<string, string>();
+
 	const stream = useStream({
 		client: langGraphClient,
 		assistantId,
 		threadId,
 		fetchStateHistory: true,
-		reconnectOnMount: true
+		reconnectOnMount: true,
+		onFinish: async (_state, run) => {
+			if (!run) return;
+			for (const msg of stream.messages) {
+				if (msg.type !== 'ai' || !msg.id || feedbackTokens.has(msg.id)) continue;
+				try {
+					const res = await fetch('/api/feedback/token', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ run_id: run.run_id })
+					});
+					if (res.ok) {
+						const { token } = await res.json();
+						feedbackTokens.set(msg.id, token);
+					}
+				} catch (err) {
+					console.error('Failed to get feedback token for message', msg.id, err);
+				}
+			}
+		}
 	});
 
 	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
@@ -155,6 +176,23 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
+	async function handleFeedback(message: Message, type: 'up' | 'down') {
+		const token = message.id ? feedbackTokens.get(message.id) : undefined;
+		if (!token) {
+			console.error('No feedback token for message', message.id);
+			return;
+		}
+		try {
+			await fetch('/api/feedback', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ token, score: type === 'up' ? 1 : 0 })
+			});
+		} catch (err) {
+			console.error('Failed to submit feedback', err);
+		}
+	}
+
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
 	// thread moves to the top. Fires on the isLoading true→false edge — not on message-count
 	// changes — so a same-length regenerate still refreshes. Safe against the initial history
@@ -217,6 +255,7 @@
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
+				onFeedback={handleFeedback}
 			/>
 		{/if}
 	</div>

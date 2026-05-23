@@ -16,6 +16,7 @@
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
+		onFeedback?: (message: Message, type: 'up' | 'down') => void;
 	}
 
 	let {
@@ -25,7 +26,8 @@
 		generationError = null,
 		onRetryError,
 		onEdit,
-		onRegenerate
+		onRegenerate,
+		onFeedback
 	}: Props = $props();
 
 	// The message currently being generated is always the last one in the list — while a
@@ -82,6 +84,7 @@
 						{message}
 						{onEdit}
 						{onRegenerate}
+						{onFeedback}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
 					/>
 				{/if}
