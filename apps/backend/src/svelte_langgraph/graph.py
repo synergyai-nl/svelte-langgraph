@@ -22,6 +22,7 @@ from svelte_langgraph.models import get_chat_model
 from svelte_langgraph.phase import DEFAULT_PHASE, VALID_PHASES, Phase
 from svelte_langgraph.reducers import last_value
 from svelte_langgraph.tools import get_tools
+from svelte_langgraph.tracing import get_tracing_callbacks
 
 
 # AgentState is generic over the structured-response type since langchain 1.3;
@@ -143,8 +144,14 @@ class PromptMiddleware(AgentMiddleware[AgentExtendedState, None, Any]):
 def make_graph(
     config: RunnableConfig,
 ) -> CompiledStateGraph:
+    model = get_chat_model()
+
+    callbacks = get_tracing_callbacks()
+    if callbacks:
+        model = model.with_config(callbacks=callbacks)
+
     return create_agent(
-        model=get_chat_model(),
+        model=model,
         tools=get_tools(),
         middleware=[phase_gate, PromptMiddleware()],
         state_schema=AgentExtendedState,
