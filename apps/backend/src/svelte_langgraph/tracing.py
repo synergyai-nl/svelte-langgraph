@@ -12,6 +12,7 @@ def get_tracing_callbacks() -> list[Any]:
     if os.getenv("LANGFUSE_SECRET_KEY"):
         try:
             from langfuse.langchain import CallbackHandler
+
             callbacks.append(CallbackHandler())
         except ImportError:
             pass
