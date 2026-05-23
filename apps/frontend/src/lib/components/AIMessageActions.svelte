@@ -11,7 +11,7 @@
 		message: BaseMessage;
 		isHovered: boolean;
 		onRegenerate?: (message: BaseMessage) => void;
-		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
+		onFeedback: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();

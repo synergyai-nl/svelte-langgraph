@@ -5,7 +5,7 @@
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, ToolMessage } from '$lib/langgraph/types';
+	import type { Message, ToolMessage, BaseMessage } from '$lib/langgraph/types';
 	import type { Client } from '@langchain/langgraph-sdk';
 
 	interface Props {
@@ -26,12 +26,33 @@
 		introTitle = ''
 	}: Props = $props();
 
+	const feedbackTokens = new SvelteMap<string, string>();
+
 	const stream = useStream({
 		client: langGraphClient,
 		assistantId,
 		threadId,
 		fetchStateHistory: true,
-		reconnectOnMount: true
+		reconnectOnMount: true,
+		onFinish: async (_state, run) => {
+			if (!run) return;
+			for (const msg of stream.messages) {
+				if (msg.type !== 'ai' || !msg.id || feedbackTokens.has(msg.id)) continue;
+				try {
+					const res = await fetch('/api/feedback/token', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ run_id: run.run_id })
+					});
+					if (res.ok) {
+						const { token } = await res.json();
+						feedbackTokens.set(msg.id, token);
+					}
+				} catch (err) {
+					console.error('Failed to get feedback token for message', msg.id, err);
+				}
+			}
+		}
 	});
 
 	let current_input = $state('');
@@ -128,6 +149,23 @@
 		);
 		return true;
 	}
+
+	async function handleFeedback(message: BaseMessage, type: 'up' | 'down') {
+		const token = feedbackTokens.get(message.id);
+		if (!token) {
+			console.error('No feedback token for message', message.id);
+			return;
+		}
+		try {
+			await fetch('/api/feedback', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ token, score: type === 'up' ? 1 : 0 })
+			});
+		} catch (err) {
+			console.error('Failed to submit feedback', err);
+		}
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
@@ -146,6 +184,7 @@
 				{generationError}
 				onRetryError={retryGeneration}
 				onEdit={handleEdit}
+				onFeedback={handleFeedback}
 			/>
 		{/if}
 	</div>

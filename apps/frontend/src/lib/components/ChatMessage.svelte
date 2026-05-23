@@ -12,7 +12,7 @@
 		message: BaseMessage;
 		onEdit: (message: BaseMessage, newText: string) => boolean;
 		onRegenerate?: (message: BaseMessage) => void;
-		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
+		onFeedback: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
 	let { message, onEdit, onRegenerate, onFeedback }: Props = $props();
