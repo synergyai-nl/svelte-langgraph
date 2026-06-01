@@ -3,6 +3,7 @@ from typing import Any
 from langfuse import get_client
 from langfuse.langchain import CallbackHandler
 
+
 def _to_langfuse_trace_id(run_id: str) -> str | None:
     """Convert a LangGraph run_id (UUIDv7) to a Langfuse-compatible 32-char hex trace ID."""
     return run_id.replace("-", "") if run_id else None
