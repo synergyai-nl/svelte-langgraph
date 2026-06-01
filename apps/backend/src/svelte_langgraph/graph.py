@@ -14,7 +14,7 @@ from langgraph.types import Checkpointer
 
 from .models import get_chat_model
 from .tools import get_tools
-from .tracing import get_tracing_callbacks
+from .tracing import get_run_callbacks
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
@@ -55,11 +55,14 @@ async def agent_node(
     state: AgentState,
     config: RunnableConfig,
 ) -> AgentState:
-    model = get_chat_model().bind_tools(get_tools())
+    run_id = config.get("configurable", {}).get("run_id")
+    run_callbacks = get_run_callbacks(str(run_id)) if run_id else []
 
+    model = get_chat_model().bind_tools(get_tools())
     messages = get_prompt(state, config)
 
-    response = await model.ainvoke(messages, config=config)
+    invoke_config = RunnableConfig(**{**config, "callbacks": run_callbacks})
+    response = await model.ainvoke(messages, config=invoke_config)
 
     return {"messages": [response]}
 
@@ -83,10 +86,4 @@ def make_graph(
     graph.add_conditional_edges("agent", should_continue)
     graph.add_edge("tools", "agent")
 
-    compiled = graph.compile(checkpointer=get_checkpointer())
-
-    callbacks = get_tracing_callbacks()
-    if callbacks:
-        compiled = compiled.with_config({"callbacks": callbacks})
-
-    return compiled
+    return graph.compile(checkpointer=get_checkpointer())

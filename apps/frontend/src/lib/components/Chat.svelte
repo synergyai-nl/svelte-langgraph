@@ -26,7 +26,8 @@
 		introTitle = ''
 	}: Props = $props();
 
-	const feedbackTokens = new SvelteMap<string, string>();
+	// messageId → signed feedback URL returned by /api/feedback/token
+	const feedbackUrls = new SvelteMap<string, string>();
 
 	const stream = useStream({
 		client: langGraphClient,
@@ -36,20 +37,24 @@
 		reconnectOnMount: true,
 		onFinish: async (_state, run) => {
 			if (!run) return;
+			// One token covers the whole run — request it once, then stamp every
+			// new AI message produced by this run with the same signed URL.
+			let url: string | null = null;
 			for (const msg of stream.messages) {
-				if (msg.type !== 'ai' || !msg.id || feedbackTokens.has(msg.id)) continue;
+				if (msg.type !== 'ai' || !msg.id || feedbackUrls.has(msg.id)) continue;
 				try {
-					const res = await fetch('/api/feedback/token', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ run_id: run.run_id })
-					});
-					if (res.ok) {
-						const { token } = await res.json();
-						feedbackTokens.set(msg.id, token);
+					if (!url) {
+						const res = await fetch('/api/feedback/token', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({ run_id: run.run_id })
+						});
+						if (!res.ok) continue;
+						({ url } = await res.json());
 					}
+					if (url) feedbackUrls.set(msg.id, url);
 				} catch (err) {
-					console.error('Failed to get feedback token for message', msg.id, err);
+					console.error('Failed to get feedback URL for message', msg.id, err);
 				}
 			}
 		}
@@ -151,16 +156,16 @@
 	}
 
 	async function handleFeedback(message: BaseMessage, type: 'up' | 'down') {
-		const token = feedbackTokens.get(message.id);
-		if (!token) {
-			console.error('No feedback token for message', message.id);
+		const url = feedbackUrls.get(message.id);
+		if (!url) {
+			console.error('No feedback URL for message', message.id);
 			return;
 		}
 		try {
-			await fetch('/api/feedback', {
+			await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ token, score: type === 'up' ? 1 : 0 })
+				body: JSON.stringify({ score: type === 'up' ? 1 : 0 })
 			});
 		} catch (err) {
 			console.error('Failed to submit feedback', err);

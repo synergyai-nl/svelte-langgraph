@@ -35,5 +35,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		.replace(/=+$/, '');
 
 	const sig = await sign(payload, secret);
-	return json({ token: `${payload}.${sig}` });
+	const token = `${payload}.${sig}`;
+	return json({ url: `/api/feedback?token=${token}` });
 };

@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { env as pubEnv } from '$env/dynamic/public';
 import type { RequestHandler } from './$types';
 
 async function verify(payload: string, sig: string, secret: string): Promise<boolean> {
@@ -16,12 +17,15 @@ async function verify(payload: string, sig: string, secret: string): Promise<boo
 	return crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(payload));
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, url, locals }) => {
 	const session = await locals.auth();
 	if (!session) error(401, 'Unauthorized');
 
-	const { token, score } = await request.json();
-	if (!token || typeof score !== 'number') error(400, 'token and score are required');
+	const token = url.searchParams.get('token');
+	if (!token) error(400, 'token query param is required');
+
+	const { score } = await request.json();
+	if (typeof score !== 'number') error(400, 'score is required');
 
 	const secret = env.AUTH_SECRET;
 	if (!secret) error(500, 'Server misconfigured');
@@ -42,30 +46,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (Date.now() > parsed.exp) error(403, 'Token expired');
 
-	const langfuseSecretKey = env.LANGFUSE_SECRET_KEY;
-	const langfusePublicKey = env.LANGFUSE_PUBLIC_KEY;
-	const langfuseHost = env.LANGFUSE_HOST ?? 'https://cloud.langfuse.com';
+	const backendUrl = pubEnv.PUBLIC_LANGGRAPH_API_URL ?? 'http://localhost:2024';
 
-	if (!langfuseSecretKey || !langfusePublicKey) error(503, 'Feedback service not configured');
-
-	const credentials = btoa(`${langfusePublicKey}:${langfuseSecretKey}`);
-
-	const response = await fetch(`${langfuseHost}/api/public/scores`, {
+	const response = await fetch(`${backendUrl}/feedback`, {
 		method: 'POST',
 		headers: {
-			Authorization: `Basic ${credentials}`,
-			'Content-Type': 'application/json'
+			'Content-Type': 'application/json',
+			Authorization: `Bearer ${session.accessToken}`
 		},
-		body: JSON.stringify({
-			traceId: parsed.run_id,
-			name: 'user_feedback',
-			value: score
-		})
+		body: JSON.stringify({ run_id: parsed.run_id, score })
 	});
 
 	if (!response.ok) {
-		const text = await response.text();
-		console.error('Langfuse score submission failed:', response.status, text);
+		console.error('Backend feedback call failed:', response.status);
 		error(502, 'Failed to submit feedback');
 	}
 
