@@ -1,23 +1,27 @@
 from collections.abc import Sequence
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import ToolNode
 from langgraph.types import Checkpointer
 
 from .models import get_chat_model
+from .tools import get_tools
+from .tracing import get_tracing_callbacks
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
 
 
 class AgentState(TypedDict):
-    messages: list[BaseMessage]
+    messages: Annotated[list[BaseMessage], add_messages]
 
 
 def get_prompt_template() -> ChatPromptTemplate:
@@ -51,16 +55,20 @@ async def agent_node(
     state: AgentState,
     config: RunnableConfig,
 ) -> AgentState:
-    model = get_chat_model()
+    model = get_chat_model().bind_tools(get_tools())
 
     messages = get_prompt(state, config)
 
-    response = await model.ainvoke(
-        messages,
-        config=config,
-    )
+    response = await model.ainvoke(messages, config=config)
 
-    return {"messages": state["messages"] + [response]}
+    return {"messages": [response]}
+
+
+def should_continue(state: AgentState) -> str:
+    last = state["messages"][-1]
+    if isinstance(last, AIMessage) and last.tool_calls:
+        return "tools"
+    return END
 
 
 def make_graph(
@@ -69,10 +77,16 @@ def make_graph(
     graph = StateGraph(AgentState)
 
     graph.add_node("agent", agent_node)
+    graph.add_node("tools", ToolNode(get_tools()))
 
     graph.add_edge(START, "agent")
-    graph.add_edge("agent", END)
+    graph.add_conditional_edges("agent", should_continue)
+    graph.add_edge("tools", "agent")
 
-    return graph.compile(
-        checkpointer=get_checkpointer(),
-    )
+    compiled = graph.compile(checkpointer=get_checkpointer())
+
+    callbacks = get_tracing_callbacks()
+    if callbacks:
+        compiled = compiled.with_config({"callbacks": callbacks})
+
+    return compiled
