@@ -24,8 +24,6 @@ async def main():
         callbacks=[langfuse_handler],
     )
 
-    # config = RunnableConfig(configurable={"thread_id": "1"})
-
     agent = make_graph(config).copy(update={"checkpointer": InMemorySaver()})
 
     user_input = input(f"{INITIAL_MESSAGE}\n")
