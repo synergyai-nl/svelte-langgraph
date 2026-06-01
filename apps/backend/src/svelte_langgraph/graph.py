@@ -1,21 +1,23 @@
 from collections.abc import Sequence
+from typing import TypedDict
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
+from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
-from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Checkpointer
 
 from .models import get_chat_model
-from .tools import get_tools
-from .tracing import get_tracing_callbacks
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
+
+
+class AgentState(TypedDict):
+    messages: list[BaseMessage]
 
 
 def get_prompt_template() -> ChatPromptTemplate:
@@ -28,37 +30,53 @@ def get_prompt_template() -> ChatPromptTemplate:
 
 
 def get_checkpointer() -> Checkpointer:
-    checkpointer = InMemorySaver()
-    return checkpointer
+    return InMemorySaver()
 
 
-def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessage]:
+def get_prompt(
+    state: AgentState,
+    config: RunnableConfig,
+) -> Sequence[BaseMessage]:
     assert "configurable" in config
-    assert isinstance(state["messages"], list)
 
     template = get_prompt_template()
 
     return (
-        template.format_messages(user_name=config["configurable"].get("user_name"))
+        template.format_messages(
+            user_name=config["configurable"].get("user_name")
+        )
         + state["messages"]
     )
+
+
+async def agent_node(
+    state: AgentState,
+    config: RunnableConfig,
+) -> AgentState:
+    model = get_chat_model()
+
+    messages = get_prompt(state, config)
+
+    response = await model.ainvoke(
+        messages,
+        config=config,
+    )
+
+    return {
+        "messages": state["messages"] + [response]
+    }
 
 
 def make_graph(
     config: RunnableConfig,
 ) -> CompiledStateGraph:
-    model = get_chat_model()
-    checkpointer = get_checkpointer()
+    graph = StateGraph(AgentState)
 
-    callbacks = get_tracing_callbacks()
-    if callbacks:
-        model = model.with_config(callbacks=callbacks)
+    graph.add_node("agent", agent_node)
 
-    agent = create_react_agent(
-        model=model,
-        tools=get_tools(),
-        prompt=get_prompt,  # type: ignore reportArgumentType
-        checkpointer=checkpointer,
+    graph.add_edge(START, "agent")
+    graph.add_edge("agent", END)
+
+    return graph.compile(
+        checkpointer=get_checkpointer(),
     )
-
-    return agent

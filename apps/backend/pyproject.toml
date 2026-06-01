@@ -13,6 +13,7 @@ dependencies = [
     "langgraph-cli[inmem]==0.4.*",
     "langgraph-api==0.7.*",
     "python-dotenv>=1.1.0",
+    "langfuse>=4.7.1",
 ]
 
 [dependency-groups]
