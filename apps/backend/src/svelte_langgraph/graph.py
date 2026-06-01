@@ -42,9 +42,7 @@ def get_prompt(
     template = get_prompt_template()
 
     return (
-        template.format_messages(
-            user_name=config["configurable"].get("user_name")
-        )
+        template.format_messages(user_name=config["configurable"].get("user_name"))
         + state["messages"]
     )
 
@@ -62,9 +60,7 @@ async def agent_node(
         config=config,
     )
 
-    return {
-        "messages": state["messages"] + [response]
-    }
+    return {"messages": state["messages"] + [response]}
 
 
 def make_graph(
