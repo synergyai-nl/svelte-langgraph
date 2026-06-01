@@ -16,7 +16,7 @@ def get_run_callbacks(run_id: str) -> list[Any]:
     so frontend feedback scores land on the correct trace without any lookup.
     """
     trace_id = _to_langfuse_trace_id(run_id)
-    return CallbackHandler(trace_context={"trace_id": trace_id})
+    return [CallbackHandler(trace_context={"trace_id": trace_id})]
 
 
 def record_score(run_id: str, score: float, name: str = "user_feedback") -> bool:
