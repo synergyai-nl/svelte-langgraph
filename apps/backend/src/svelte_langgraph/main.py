@@ -23,8 +23,6 @@ async def main():
         callbacks=[langfuse_handler],
     )
 
-    # config = RunnableConfig(configurable={"thread_id": "1"})
-
     agent = make_graph(config)
 
     user_input = input(f"{INITIAL_MESSAGE}\n")
