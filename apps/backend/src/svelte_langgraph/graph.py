@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import TypedDict
 
-from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
