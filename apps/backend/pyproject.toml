@@ -8,7 +8,6 @@ dependencies = [
     "authlib>=1.4.1",
     "httpx>=0.28.1",
     "langchain[openai]==1.0.*",
-    "langfuse>=2.0",
     "langgraph==1.0.*",
     "langgraph-cli[inmem]==0.4.*",
     "langgraph-api==0.7.*",

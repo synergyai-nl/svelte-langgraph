@@ -1589,7 +1589,6 @@ requires-dist = [
     { name = "authlib", specifier = ">=1.4.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["openai"], specifier = "==1.0.*" },
-    { name = "langfuse", specifier = ">=2.0" },
     { name = "langfuse", specifier = ">=4.7.1" },
     { name = "langgraph", specifier = "==1.0.*" },
     { name = "langgraph-api", specifier = "==0.7.*" },
