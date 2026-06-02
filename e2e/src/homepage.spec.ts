@@ -13,9 +13,7 @@ test.describe('Homepage landscape comparison table', () => {
 			el.scrollLeft = 280;
 		});
 
-		await expect(
-			region.getByRole('rowheader', { name: 'Security review friendly' })
-		).toBeVisible();
+		await expect(region.getByRole('rowheader', { name: 'Security review friendly' })).toBeVisible();
 	});
 
 	test('keeps column header visible when scrolled vertically on mobile', async ({ page }) => {
