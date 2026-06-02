@@ -3,6 +3,12 @@ import { env } from '$env/dynamic/private';
 import { env as pubEnv } from '$env/dynamic/public';
 import type { RequestHandler } from './$types';
 
+function base64urlToBytes(b64url: string): Uint8Array {
+	const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+	const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+	return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+
 async function verify(payload: string, sig: string, secret: string): Promise<boolean> {
 	const key = await crypto.subtle.importKey(
 		'raw',
@@ -11,10 +17,12 @@ async function verify(payload: string, sig: string, secret: string): Promise<boo
 		false,
 		['verify']
 	);
-	const sigBytes = Uint8Array.from(atob(sig.replace(/-/g, '+').replace(/_/g, '/')), (c) =>
-		c.charCodeAt(0)
+	return crypto.subtle.verify(
+		'HMAC',
+		key,
+		base64urlToBytes(sig),
+		new TextEncoder().encode(payload)
 	);
-	return crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(payload));
 }
 
 export const POST: RequestHandler = async ({ request, url, locals }) => {
@@ -39,7 +47,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 
 	let parsed: { run_id: string; exp: number };
 	try {
-		parsed = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+		parsed = JSON.parse(new TextDecoder().decode(base64urlToBytes(payload)));
 	} catch {
 		error(400, 'Malformed token');
 	}
