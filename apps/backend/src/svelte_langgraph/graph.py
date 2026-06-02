@@ -62,7 +62,9 @@ async def agent_node(
     messages = get_prompt(state, config)
 
     existing_callbacks = config.get("callbacks")
-    all_callbacks = (existing_callbacks if isinstance(existing_callbacks, list) else []) + run_callbacks
+    all_callbacks = (
+        existing_callbacks if isinstance(existing_callbacks, list) else []
+    ) + run_callbacks
     invoke_config = RunnableConfig(**{**config, "callbacks": all_callbacks})
 
     response = await model.ainvoke(messages, config=invoke_config)
