@@ -113,6 +113,7 @@
 	}
 
 	function getParentCheckpoint(message: Message): Checkpoint | null {
+		if (!message.id) throw new InvalidData('Message is missing an id', message);
 		const rawMsg = rawMessageById.get(message.id);
 		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
 		const metadata = stream.getMessagesMetadata(rawMsg);

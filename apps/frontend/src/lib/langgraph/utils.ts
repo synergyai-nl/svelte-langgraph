@@ -6,20 +6,20 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 		return {
 			type: 'user',
 			text: typeof item.content === 'string' ? item.content : '',
-			id: (item.id as string) || crypto.randomUUID()
+			id: (item.id as string) || ''
 		} as UserMessage;
 	} else if (item.type === 'ai') {
 		return {
 			type: 'ai',
 			text: typeof item.content === 'string' ? item.content : '',
-			id: (item.id as string) || crypto.randomUUID()
+			id: (item.id as string) || ''
 		} as AIMessage;
 	} else if (item.type === 'tool') {
 		return {
 			type: 'tool',
 			text: typeof item.content === 'string' ? item.content : '',
 			tool_name: (item.name as string) || '',
-			id: (item.tool_call_id as string) || (item.id as string) || crypto.randomUUID(),
+			id: (item.tool_call_id as string) || (item.id as string) || '',
 			status: (item.status as 'success' | 'error') || 'success'
 		} as ToolMessage;
 	}
