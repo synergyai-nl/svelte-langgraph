@@ -8,5 +8,9 @@
 	"python_version": "3.12",
 	"auth": {
 		"path": "svelte_langgraph.auth:auth"
+	},
+	"http": {
+		"app": "svelte_langgraph.routes:app",
+		"enable_custom_route_auth": true
 	}
 }

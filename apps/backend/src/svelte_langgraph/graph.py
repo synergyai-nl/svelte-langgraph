@@ -1,20 +1,27 @@
 from collections.abc import Sequence
+from typing import Annotated, TypedDict
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
-from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import ToolNode
 from langgraph.types import Checkpointer
 
 from .models import get_chat_model
 from .tools import get_tools
+from .tracing import get_run_callbacks
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
+
+
+class AgentState(TypedDict):
+    messages: Annotated[list[BaseMessage], add_messages]
 
 
 def get_prompt_template() -> ChatPromptTemplate:
@@ -27,13 +34,14 @@ def get_prompt_template() -> ChatPromptTemplate:
 
 
 def get_checkpointer() -> Checkpointer:
-    checkpointer = InMemorySaver()
-    return checkpointer
+    return InMemorySaver()
 
 
-def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessage]:
+def get_prompt(
+    state: AgentState,
+    config: RunnableConfig,
+) -> Sequence[BaseMessage]:
     assert "configurable" in config
-    assert isinstance(state["messages"], list)
 
     template = get_prompt_template()
 
@@ -43,17 +51,44 @@ def get_prompt(state: AgentState, config: RunnableConfig) -> Sequence[BaseMessag
     )
 
 
+async def agent_node(
+    state: AgentState,
+    config: RunnableConfig,
+) -> AgentState:
+    run_id = config.get("run_id") or config.get("configurable", {}).get("run_id")
+    run_callbacks = get_run_callbacks(str(run_id)) if run_id else []
+
+    model = get_chat_model().bind_tools(get_tools())
+    messages = get_prompt(state, config)
+
+    existing_callbacks = config.get("callbacks")
+    all_callbacks = (
+        existing_callbacks if isinstance(existing_callbacks, list) else []
+    ) + run_callbacks
+    invoke_config = RunnableConfig(**{**config, "callbacks": all_callbacks})
+
+    response = await model.ainvoke(messages, config=invoke_config)
+
+    return {"messages": [response]}
+
+
+def should_continue(state: AgentState) -> str:
+    last = state["messages"][-1]
+    if isinstance(last, AIMessage) and last.tool_calls:
+        return "tools"
+    return END
+
+
 def make_graph(
     config: RunnableConfig,
 ) -> CompiledStateGraph:
-    model = get_chat_model()
-    checkpointer = get_checkpointer()
+    graph = StateGraph(AgentState)
 
-    agent = create_react_agent(
-        model=model,
-        tools=get_tools(),
-        prompt=get_prompt,  # type: ignore reportArgumentType
-        checkpointer=checkpointer,
-    )
+    graph.add_node("agent", agent_node)
+    graph.add_node("tools", ToolNode(get_tools()))
 
-    return agent
+    graph.add_edge(START, "agent")
+    graph.add_conditional_edges("agent", should_continue)
+    graph.add_edge("tools", "agent")
+
+    return graph.compile(checkpointer=get_checkpointer())

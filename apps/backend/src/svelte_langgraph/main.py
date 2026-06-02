@@ -8,11 +8,20 @@ from langchain_core.runnables import RunnableConfig
 
 from svelte_langgraph.graph import make_graph, INITIAL_MESSAGE
 
+from langfuse.langchain import CallbackHandler
+
 
 async def main():
     load_dotenv()
 
-    config = RunnableConfig(configurable={"thread_id": "1"})
+    langfuse_handler = CallbackHandler()
+
+    config = RunnableConfig(
+        configurable={
+            "thread_id": "1",
+        },
+        callbacks=[langfuse_handler],
+    )
 
     agent = make_graph(config)
 

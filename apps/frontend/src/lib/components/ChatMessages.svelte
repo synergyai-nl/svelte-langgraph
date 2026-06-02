@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { Message, BaseMessage } from '$lib/langgraph/types';
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
@@ -13,6 +13,7 @@
 		generationError?: Error | null;
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
+		onFeedback: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
 	let {
@@ -20,7 +21,8 @@
 		finalAnswerStarted,
 		generationError = null,
 		onRetryError,
-		onEdit
+		onEdit,
+		onFeedback
 	}: Props = $props();
 </script>
 
@@ -31,7 +33,11 @@
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
 				{:else if message.text}
-					<ChatMessage {message} onEdit={(msg, newText) => onEdit(msg as Message, newText)} />
+					<ChatMessage
+						{message}
+						onEdit={(msg, newText) => onEdit(msg as Message, newText)}
+						{onFeedback}
+					/>
 				{/if}
 			</div>
 		{/each}
