@@ -11,12 +11,5 @@
   "license": "ISC",
   "engines": {
     "node": "~24"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "@tailwindcss/oxide",
-      "esbuild"
-    ]
   }
 }
