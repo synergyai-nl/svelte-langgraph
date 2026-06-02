@@ -54,7 +54,11 @@
 
 	function statusAriaLabel(status: CellStatus, toolName: string): string {
 		const level =
-			status === 'yes' ? 'Supported' : status === 'partial' ? 'Partially supported' : 'Not supported';
+			status === 'yes'
+				? 'Supported'
+				: status === 'partial'
+					? 'Partially supported'
+					: 'Not supported';
 		return `${level} for ${toolName}`;
 	}
 
@@ -71,7 +75,7 @@
 <div
 	role="region"
 	aria-label="Tool comparison"
-	class={cn('@container overflow-hidden rounded-xl border bg-card', className)}
+	class={cn('bg-card @container overflow-hidden rounded-xl border', className)}
 >
 	<div
 		data-testid="landscape-table-scroll"
@@ -83,20 +87,17 @@
 				community features
 			</caption>
 			<thead>
-				<tr class="border-b bg-muted">
+				<tr class="bg-muted border-b">
 					<th
 						scope="col"
 						aria-hidden="true"
 						class={cn(
-							'text-muted-foreground w-[min(28%,12rem)] bg-muted p-4 text-left font-medium',
+							'text-muted-foreground bg-muted w-[min(28%,12rem)] p-4 text-left font-medium',
 							stickyCornerCell
 						)}
 					></th>
 					{#each columns as column (column.key)}
-						<th
-							scope="col"
-							class={cn('border-l p-4 text-center font-semibold', stickyHeaderCell)}
-						>
+						<th scope="col" class={cn('border-l p-4 text-center font-semibold', stickyHeaderCell)}>
 							{#if column.href}
 								<a
 									href={column.href}
@@ -123,10 +124,7 @@
 						? 'bg-[color-mix(in_hsl,hsl(var(--muted))_14%,hsl(var(--card)))]'
 						: 'bg-card'}
 					<tr class={cn('border-b last:border-b-0', rowBg)}>
-						<th
-							scope="row"
-							class={cn('p-4 text-left font-normal', rowBg, stickyRowHeaderBase)}
-						>
+						<th scope="row" class={cn('p-4 text-left font-normal', rowBg, stickyRowHeaderBase)}>
 							{row.label}
 						</th>
 						{#each getRowCells(row) as status, colIndex (`${row.label}-${colIndex}`)}

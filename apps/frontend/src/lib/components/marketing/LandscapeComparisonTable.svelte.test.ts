@@ -1,9 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { render } from '@testing-library/svelte';
-import LandscapeComparisonTable, {
-	type ComparisonRow
-} from './LandscapeComparisonTable.svelte';
+import LandscapeComparisonTable, { type ComparisonRow } from './LandscapeComparisonTable.svelte';
 
 const sampleRows: ComparisonRow[] = [
 	{
