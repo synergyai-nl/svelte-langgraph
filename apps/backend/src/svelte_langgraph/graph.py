@@ -55,13 +55,16 @@ async def agent_node(
     state: AgentState,
     config: RunnableConfig,
 ) -> AgentState:
-    run_id = config.get("configurable", {}).get("run_id")
+    run_id = config.get("run_id") or config.get("configurable", {}).get("run_id")
     run_callbacks = get_run_callbacks(str(run_id)) if run_id else []
 
     model = get_chat_model().bind_tools(get_tools())
     messages = get_prompt(state, config)
 
-    invoke_config = RunnableConfig(**{**config, "callbacks": run_callbacks})
+    existing_callbacks = config.get("callbacks")
+    all_callbacks = (existing_callbacks if isinstance(existing_callbacks, list) else []) + run_callbacks
+    invoke_config = RunnableConfig(**{**config, "callbacks": all_callbacks})
+
     response = await model.ainvoke(messages, config=invoke_config)
 
     return {"messages": [response]}
