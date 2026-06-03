@@ -2,3 +2,7 @@ packages:
   - "e2e/"
   - "apps/*"
   - "packages/*"
+allowBuilds:
+  "esbuild": true
+  "@sentry/cli": true
+  "@tailwindcss/oxide": true
