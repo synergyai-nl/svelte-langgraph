@@ -1537,7 +1537,6 @@ dependencies = [
     { name = "httpx" },
     { name = "langchain", extra = ["openai"] },
     { name = "langgraph" },
-    { name = "langgraph-api" },
     { name = "langgraph-cli", extra = ["inmem"] },
     { name = "python-dotenv" },
 ]
@@ -1561,8 +1560,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["openai"], specifier = "==1.0.*" },
     { name = "langgraph", specifier = "==1.0.*" },
-    { name = "langgraph-api", specifier = "==0.7.*" },
-    { name = "langgraph-cli", extras = ["inmem"], specifier = "==0.4.*" },
+    { name = "langgraph-cli", extras = ["inmem"], specifier = ">=0.4" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
 ]
 
