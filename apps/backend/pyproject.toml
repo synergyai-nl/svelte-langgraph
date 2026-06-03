@@ -9,8 +9,7 @@ dependencies = [
     "httpx>=0.28.1",
     "langchain[openai]==1.0.*",
     "langgraph==1.0.*",
-    "langgraph-cli[inmem]==0.4.*",
-    "langgraph-api==0.7.*",
+    "langgraph-cli[inmem]>=0.4",
     "python-dotenv>=1.1.0",
 ]
 
