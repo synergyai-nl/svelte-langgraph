@@ -6,13 +6,13 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 		return {
 			type: 'user',
 			text: typeof item.content === 'string' ? item.content : '',
-			id: (item.id as string) || ''
+			id: (item.id as string) || crypto.randomUUID()
 		} as UserMessage;
 	} else if (item.type === 'ai') {
 		return {
 			type: 'ai',
 			text: typeof item.content === 'string' ? item.content : '',
-			id: (item.id as string) || ''
+			id: (item.id as string) || crypto.randomUUID()
 		} as AIMessage;
 	} else if (item.type === 'tool') {
 		return {
