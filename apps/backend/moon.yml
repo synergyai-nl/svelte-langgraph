@@ -53,6 +53,7 @@ tasks:
     preset: "server"
     env:
       NO_COLOR: "true"
+      MOCK_STREAM_DELAY: "0.05"
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user 2>&1"
     preset: "server"
