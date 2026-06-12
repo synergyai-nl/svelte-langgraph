@@ -203,8 +203,7 @@ test.describe('Cancellation', () => {
 		// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
 		// history from prior test iterations, we'll find exactly our message.
 		const hasOurMessage =
-			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ??
-			false;
+			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ?? false;
 		expect(hasOurMessage).toBe(true);
 
 		// Main assertion: the cancelled run must NOT have committed the full echo.
