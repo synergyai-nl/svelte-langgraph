@@ -83,6 +83,8 @@ test.describe('Edit message', () => {
 			.first();
 		await expect(aiMessage).toBeVisible();
 		await expect(aiMessage).not.toBeEmpty();
+		// Wait for streaming to finish — edit button is disabled while streaming.
+		await expect(chat.textInput).toBeEnabled();
 
 		// Edit the user message
 		const userMessageGroup = page
