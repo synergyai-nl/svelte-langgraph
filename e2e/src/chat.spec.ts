@@ -186,16 +186,22 @@ test.describe('Cancellation', () => {
 		// Poll until the run is no longer active (pending/running → success/interrupted/…).
 		// This replaces the fixed waitForTimeout(4000): we wait exactly as long as needed.
 		const deadline = Date.now() + 15_000;
+		let isActive = true;
 		while (Date.now() < deadline) {
 			const runsRes = await page.request.get(`${apiUrl}/threads/${threadId}/runs`, { headers });
+			expect(runsRes.ok()).toBeTruthy();
 			const runs = (await runsRes.json()) as Array<{ status: string }>;
-			const isActive = runs.some((r) => r.status === 'pending' || r.status === 'running');
+			isActive = runs.some((r) => r.status === 'pending' || r.status === 'running');
 			if (!isActive) break;
 			await page.waitForTimeout(200);
 		}
+		// Fail loudly if the deadline expired while the run was still active — otherwise
+		// the state read below could race and the test would pass on incomplete data.
+		expect(isActive).toBe(false);
 
 		// Read the committed thread state directly — no page reload needed.
 		const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
+		expect(stateRes.ok()).toBeTruthy();
 		const state = await stateRes.json();
 		const messages = state.values?.messages as
 			| Array<{ type: string; content: unknown }>
