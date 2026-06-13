@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
+import { LANGGRAPH_CONFIG } from './fixtures/backend';
 
 test('user can send a message and receive an AI response', async ({ page, chat }) => {
 	await authenticateUser(page);
@@ -82,6 +83,8 @@ test.describe('Edit message', () => {
 			.first();
 		await expect(aiMessage).toBeVisible();
 		await expect(aiMessage).not.toBeEmpty();
+		// Wait for streaming to finish — edit button is disabled while streaming.
+		await expect(chat.textInput).toBeEnabled();
 
 		// Edit the user message
 		const userMessageGroup = page
@@ -143,14 +146,24 @@ test.describe('Cancellation', () => {
 		page,
 		chat
 	}) => {
-		// Long unique input — ai-mock echoes it back character-by-character with a
-		// 10ms delay per chunk, giving a ~5s streaming window to click stop.
+		// Long unique input — ai-mock echoes it back with MOCK_STREAM_DELAY (50ms) per
+		// chunk, giving a wide streaming window for the cancel to land server-side.
 		const testInput = randomUUID().replace(/-/g, '').repeat(16); // ~512 hex chars
 		const partialEcho = testInput.slice(0, 20); // Wait for these before stopping
-		// The tail will only appear if the LangGraph run completed server-side.
-		// Aborting the stream should also cancel the run; if it doesn't (the bug),
-		// the backend finishes the full echo and stores it in the thread state.
+		// tailEcho only appears in thread state if the LangGraph run ran to completion.
 		const tailEcho = testInput.slice(-30);
+
+		// Intercept LangGraph requests to capture the Bearer token before we need it
+		// for direct API calls. Registered before the message is sent so the stream
+		// request (which fires on Enter) is guaranteed to be intercepted.
+		let capturedToken: string | null = null;
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/**`, async (route) => {
+			const authHeader = route.request().headers()['authorization'];
+			if (authHeader?.startsWith('Bearer ')) {
+				capturedToken = authHeader.substring(7);
+			}
+			await route.continue();
+		});
 
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
@@ -164,19 +177,48 @@ test.describe('Cancellation', () => {
 		// Confirm client-side streaming has stopped
 		await expect(chat.textInput).toBeEnabled();
 
-		// Allow time for the server-side run to complete if it wasn't cancelled.
-		// This must happen BEFORE reload: the frontend fetches thread state once on
-		// navigation, so we need the run to finish writing to the thread first.
-		await page.waitForTimeout(4000);
+		// By now streaming has started and stopped, so the token must be set
+		expect(capturedToken).toBeTruthy();
+		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
+		const apiUrl = LANGGRAPH_CONFIG.apiUrl;
+		const headers = { Authorization: `Bearer ${capturedToken!}` };
 
-		// Reload the page — fetches fresh thread state from the LangGraph server.
-		// If the run was NOT cancelled server-side, the backend will have finished
-		// and stored the full response; after reload the full message becomes visible.
-		await page.reload();
+		// Poll until the run is no longer active (pending/running → success/interrupted/…).
+		// This replaces the fixed waitForTimeout(4000): we wait exactly as long as needed.
+		const deadline = Date.now() + 15_000;
+		let isActive = true;
+		while (Date.now() < deadline) {
+			const runsRes = await page.request.get(`${apiUrl}/threads/${threadId}/runs`, { headers });
+			expect(runsRes.ok()).toBeTruthy();
+			const runs = (await runsRes.json()) as Array<{ status: string }>;
+			isActive = runs.some((r) => r.status === 'pending' || r.status === 'running');
+			if (!isActive) break;
+			await page.waitForTimeout(200);
+		}
+		// Fail loudly if the deadline expired while the run was still active — otherwise
+		// the state read below could race and the test would pass on incomplete data.
+		expect(isActive).toBe(false);
 
-		// The tail of the echo must NOT appear — the cancelled run should have
-		// committed only the partial response received before the stop.
-		// This assertion FAILS when the bug is present (full echo is in thread state).
-		await expect(page.getByText(tailEcho, { exact: false })).not.toBeVisible();
+		// Read the committed thread state directly — no page reload needed.
+		const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
+		expect(stateRes.ok()).toBeTruthy();
+		const state = await stateRes.json();
+		const messages = state.values?.messages as
+			| Array<{ type: string; content: unknown }>
+			| undefined;
+
+		// Positive guard: our human message must exist in state, confirming the run fired.
+		// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
+		// history from prior test iterations, we'll find exactly our message.
+		const hasOurMessage =
+			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ?? false;
+		expect(hasOurMessage).toBe(true);
+
+		// Main assertion: the cancelled run must NOT have committed the full echo.
+		// tailEcho only appears when the model node ran to completion before cancel landed.
+		const aiContent = (messages?.filter((m) => m.type === 'ai') ?? [])
+			.map((m) => String(m.content))
+			.join('');
+		expect(aiContent).not.toContain(tailEcho);
 	});
 });

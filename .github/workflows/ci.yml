@@ -16,6 +16,7 @@ jobs:
   ci-job:
     name: "CI Job"
     runs-on: "ubuntu-latest"
+    timeout-minutes: 30
     permissions:
       contents: read       # checkout
       checks: write        # run-report-action
@@ -30,11 +31,7 @@ jobs:
         with:
           cache-base: main
           auto-install: true
-      - uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: "moon ci --color"
+      - run: moon ci --color
       - uses: moonrepo/run-report-action@v1
         if: success() || failure()
         with:
