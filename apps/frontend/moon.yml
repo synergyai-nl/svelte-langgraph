@@ -21,15 +21,20 @@ fileGroups:
 tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
+  clean:
+    command: 'rm -rf build src/lib/paraglide'
+    options:
+      cache: false
+
   build:
+    deps:
+      - clean
     inputs:
       - '@group(sources)'
       - '@group(messages)'
     outputs:
       - 'build'
       - 'src/lib/paraglide'
-    options:
-      retryCount: 1
 
   check:
     deps:
