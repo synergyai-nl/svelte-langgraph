@@ -79,7 +79,7 @@ tasks:
       - '@group(sources)'
       - '$CI'
     options:
-      runInCI: false   # run only in the dedicated container E2E job (see .github/workflows/ci.yml)
+      runInCI: false # run only in the dedicated container E2E job (see .github/workflows/ci.yml)
 
   test-ui:
     extends: test
