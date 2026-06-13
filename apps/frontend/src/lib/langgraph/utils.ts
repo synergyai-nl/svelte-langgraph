@@ -19,7 +19,7 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 			type: 'tool',
 			text: typeof item.content === 'string' ? item.content : '',
 			tool_name: (item.name as string) || '',
-			id: (item.tool_call_id as string) || (item.id as string) || crypto.randomUUID(),
+			id: (item.tool_call_id as string) || (item.id as string) || '',
 			status: (item.status as 'success' | 'error') || 'success'
 		} as ToolMessage;
 	}
