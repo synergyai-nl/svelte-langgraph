@@ -103,8 +103,9 @@ jobs:
   e2e:
     name: "E2E"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
-      image: mcr.microsoft.com/playwright:v1.58.1-noble  # keep in sync with e2e/package.json @playwright/test
+      image: mcr.microsoft.com/playwright:v1.58.1-noble  # keep in sync with @playwright/test in e2e/pnpm-lock.yaml
       options: --init --ipc=host
     permissions:
       contents: read   # checkout
@@ -141,7 +142,7 @@ jobs:
     needs: [ci-job, build, e2e]
     if: always()
     steps:
-      - run: ${{!contains(needs.*.result, 'failure')}}
+      - run: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
 
   deploy:
     name: "Deploy"
