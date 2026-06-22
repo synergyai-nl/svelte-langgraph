@@ -13,6 +13,7 @@
 		generationError?: Error | null;
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
+		onRegenerate: (message: Message) => void;
 	}
 
 	let {
@@ -20,7 +21,8 @@
 		finalAnswerStarted,
 		generationError = null,
 		onRetryError,
-		onEdit
+		onEdit,
+		onRegenerate
 	}: Props = $props();
 </script>
 
@@ -31,7 +33,11 @@
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
 				{:else if message.text}
-					<ChatMessage {message} onEdit={(msg, newText) => onEdit(msg as Message, newText)} />
+					<ChatMessage
+						{message}
+						onEdit={(msg, newText) => onEdit(msg as Message, newText)}
+						onRegenerate={(msg) => onRegenerate(msg as Message)}
+					/>
 				{/if}
 			</div>
 		{/each}
