@@ -59,33 +59,39 @@ tasks:
     preset: "server"
     env:
       NO_COLOR: "true"
+  postgres:
+    command: "docker compose -f ../../docker-compose.yml up -d --wait postgres"
+    local: true
+    options:
+      cache: false
   dev:
-    command: 'langgraph dev'
-    args:
-     - '--no-browser'
-     - '--host localhost'
+    command: "uv run uvicorn aegra_api.main:app --host localhost --port 2026 --reload 2>&1"
     preset: "watcher"
+    deps:
+      - postgres
+    env:
+      # Aegra defaults to noop auth, which would silently disable OIDC and
+      # per-user isolation if AUTH_TYPE is missing from a pre-existing .env.
+      AUTH_TYPE: "custom"
     options:
       envFile: '/.env'
   serve-e2e:
-    extends: dev
-    args:
-      - '--no-reload'
+    # Remove and recreate the tmpfs-backed postgres-e2e container so every
+    # E2E run starts from a fresh, empty database.
+    script: "docker compose -f ../../docker-compose.yml rm -sf postgres-e2e && docker compose -f ../../docker-compose.yml up -d --wait postgres-e2e && uv run uvicorn aegra_api.main:app --host localhost --port 2026 2>&1"
+    preset: "server"
     options:
       envFile: '/.env.e2e'
-    preset: "server"
   build:
-    command: "langgraph build --tag svelte-langgraph-backend --pull"
+    command: "docker build -t svelte-langgraph-backend --pull ."
     deps:
       - lint
       - typecheck
   up:
-    command: "langgraph up"
+    command: "docker compose -f ../../docker-compose.yml up --build backend postgres"
     preset: "server"
     deps:
       - build
-    options:
-      envFile: '/.env'
   test:
     command: "pytest"
     args: 

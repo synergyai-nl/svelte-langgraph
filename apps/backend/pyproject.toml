@@ -5,11 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
+    "aegra-api==0.9.*",
     "authlib>=1.4.1",
     "httpx>=0.28.1",
-    "langchain[openai]==1.0.*",
-    "langgraph==1.0.*",
-    "langgraph-cli[inmem]>=0.4",
+    "langchain[openai]>=1.0,<2",
+    "langgraph>=1.0,<2",
+    "langgraph-sdk>=0.3",
     "python-dotenv>=1.1.0",
 ]
 

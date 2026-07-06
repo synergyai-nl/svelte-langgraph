@@ -5,4 +5,57 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
-    env_file: "apps/frontend/.env"
+    env_file:
+      - path: "apps/frontend/.env"
+        required: false
+
+  backend:
+    ports:
+      - "2026:2026"
+    build: apps/backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: "postgresql://aegra:aegra@postgres:5432/aegra"
+      AUTH_TYPE: "custom"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: aegra
+      POSTGRES_PASSWORD: aegra
+      POSTGRES_DB: aegra
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegra -d aegra"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # Ephemeral database for E2E runs: tmpfs storage means every container
+  # start begins with a fresh, empty database.
+  postgres-e2e:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: aegra
+      POSTGRES_PASSWORD: aegra
+      POSTGRES_DB: aegra_e2e
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegra -d aegra_e2e"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

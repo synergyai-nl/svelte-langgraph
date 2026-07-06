@@ -4,14 +4,14 @@
 [![Maintainability](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 [![Code Coverage](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 
-Opinionated SvelteKit-based LLM frontend for LangGraph server.
+Opinionated SvelteKit-based LLM frontend for LangGraph agents, served by [Aegra](https://docs.aegra.dev) — an open-source, self-hosted Agent Protocol server.
 
 ## Demo
 https://svelte-langgraph-demo.synergyai.nl/
 
 ## Architecture
 
-- **Backend**: Python 3.12 + LangGraph server for AI workflow management
+- **Backend**: Python 3.12 + [Aegra](https://docs.aegra.dev) (open-source Agent Protocol server) running LangGraph workflows, backed by PostgreSQL
 - **Frontend**: SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **Authentication**: Generic OIDC (OpenID Connect) integration
 - **Internationalization**: Paraglide-JS for multi-language support
@@ -23,6 +23,7 @@ https://svelte-langgraph-demo.synergyai.nl/
   - Node.js 24 LTS
   - [uv](https://docs.astral.sh/uv/) (Python package manager)
   - pnpm (Node.js package manager)
+- [Docker](https://docs.docker.com/get-docker/) — required for the backend's PostgreSQL database (started automatically by `moon backend:dev` and the E2E tests)
 
 ## Configuration
 
@@ -43,15 +44,16 @@ The `.env` file is organized into sections:
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
-- `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
-- `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (optional, defaults to EU region)
+- `DATABASE_URL` - PostgreSQL connection URL for Aegra (defaults to the `postgres` service from `docker-compose.yml`)
+- `AUTH_TYPE` - Must be `custom` to enable OIDC authentication and per-user isolation (Aegra defaults to `noop`, which disables auth)
+- `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
 - `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
-- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
+- `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
 ### AI Provider Configuration
@@ -132,8 +134,10 @@ moon :dev :oidc-mock
 
 This automatically starts:
 - **Frontend** dev server at `http://localhost:5173`
-- **Backend** LangGraph server at `http://localhost:2024`
+- **Backend** Aegra server at `http://localhost:2026` (plus its PostgreSQL database in Docker)
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
+
+Docker must be running: the backend depends on a PostgreSQL container defined in `docker-compose.yml`, which is started automatically.
 
 Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
 
@@ -145,7 +149,7 @@ Run all checks (linting, type checking, formatting, building, unit and E2E tests
 moon check --all
 ```
 
-This currently requires Docker to be running for the LangGraph server build.
+This requires Docker to be running for the backend's PostgreSQL database and Docker image build.
 
 ## Tooling
 
@@ -153,6 +157,7 @@ This currently requires Docker to be running for the LangGraph server build.
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
 
+- [Aegra](https://docs.aegra.dev) as the Agent Protocol server (FastAPI + PostgreSQL), SDK-compatible with LangGraph Platform
 - LangChain with OpenAI-compatible integration (OpenRouter, OpenAI, etc.)
 - Authlib for OIDC/JWT authentication
 - Python-dotenv for environment management
@@ -197,16 +202,16 @@ To run it:
 docker compose up [--build]
 ```
 
-For now, we will not be running the backend in Docker, so to test with the dev backend, it's required to make it available to the Docker container and inform the Docker container of your IP:
+This starts the frontend, the backend (Aegra), and PostgreSQL. The backend can also be built and run on its own:
 
 ```
-moon backend:dev -- --host 0.0.0.0
+moon backend:up
 ```
 
-And in a different terminal:
+The frontend container reaches the backend through your host, so when running both in Docker point it at the Docker host:
 
 ```
-PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2024 docker compose up --build
+PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2026 docker compose up --build
 ```
 
 ### Internationalization with Paraglide

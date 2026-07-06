@@ -14,6 +14,7 @@ import pytest_asyncio
 import respx
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import InMemorySaver
 from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
@@ -144,7 +145,7 @@ async def agent(thread_config: RunnableConfig, monkeypatch):
         return [get_weather]
 
     monkeypatch.setattr("svelte_langgraph.graph.get_tools", mock_get_tools)
-    return make_graph(thread_config)
+    return make_graph(thread_config).copy(update={"checkpointer": InMemorySaver()})
 
 
 @pytest.fixture

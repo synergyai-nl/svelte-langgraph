@@ -8,7 +8,7 @@ Opinionated SvelteKit-based LLM frontend for LangGraph server. This is a monorep
 
 ## Architecture
 
-- **Backend** (apps/backend/): Python 3.12 + LangGraph server for AI workflow management
+- **Backend** (apps/backend/): Python 3.12 + [Aegra](https://docs.aegra.dev) (open-source Agent Protocol server) running LangGraph workflows, backed by PostgreSQL in Docker
 - **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`.
 - **Build System**: [moonrepo](https://moonrepo.dev/docs) for task orchestration and dependency management
@@ -30,7 +30,7 @@ moon backend:dev
 ### Testing & Quality Checks
 ```bash
 # Run ALL checks (lint, typecheck, format, build, unit and E2E tests) for entire workspace
-# Note: Requires Docker to be running for the LangGraph server build
+# Note: Requires Docker to be running (backend PostgreSQL + Docker image build)
 moon check --all
 
 # Run checks for specific project
@@ -118,6 +118,7 @@ The monorepo uses a single `.env` file at the root:
 ## Notes
 
 - Always use moon commands instead of direct npm/pnpm/python commands for consistency
+- Docker must be running for `moon backend:dev`, `moon backend:serve-e2e`, and E2E tests — the backend (Aegra) requires the PostgreSQL services defined in the root `docker-compose.yml`
 - Moon caches results across the team via remote caching
 - The `:` prefix runs tasks across all projects (e.g., `moon :dev`)
 - Specific project tasks use `project:task` format (e.g., `moon frontend:test`)

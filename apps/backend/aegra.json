@@ -1,0 +1,13 @@
+{
+	"graphs": {
+		"chat": "./src/svelte_langgraph/graph.py:make_graph"
+	},
+	"auth": {
+		"path": "svelte_langgraph.auth:auth"
+	},
+	"http": {
+		"cors": {
+			"allow_origins": ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"]
+		}
+	}
+}

@@ -6,8 +6,11 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
-	// Opt out of parallel tests on CI.
-	workers: process.env.CI ? 1 : undefined,
+	// Run with a single worker: all tests share the same backend user, and
+	// parallel sessions race for the same idle thread via getOrCreateThread.
+	// Aegra runs concurrent runs on a shared thread without queueing them
+	// (no multitask strategy), which corrupts thread state across tests.
+	workers: 1,
 	expect: { timeout: 10_000 },
 	reporter: [
 		['html', { open: 'never' }],
@@ -49,18 +52,20 @@ export default defineConfig({
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
 			wait: {
-				stdout: /Uvicorn running on http:\/\/localhost:8080/
+				// Tolerate ANSI escape codes around the URL in colorized logs.
+				stdout: /Uvicorn running on .*localhost:8080/
 			}
 		},
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			timeout: 120000,
+			// First run may pull the postgres image and run database migrations.
+			timeout: 180000,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				stdout: /Application started up in/
+				stdout: /Application startup complete/
 			}
 		},
 		{
@@ -71,7 +76,8 @@ export default defineConfig({
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				stdout: /http:\/\/localhost:4173/
+				// Tolerate ANSI escape codes within the URL in colorized logs.
+				stdout: /http:\/\/localhost:.*4173/
 			}
 		}
 	]
