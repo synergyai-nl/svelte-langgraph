@@ -475,7 +475,7 @@ class TestGetCurrentUser:
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
                 await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_tampered_jwt_with_fake_signature(
@@ -495,7 +495,7 @@ class TestGetCurrentUser:
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
                 await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_garbage_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -509,7 +509,7 @@ class TestGetCurrentUser:
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
                 await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_alg_none_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -530,7 +530,7 @@ class TestGetCurrentUser:
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
                 await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_missing_alg_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -548,7 +548,7 @@ class TestGetCurrentUser:
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
                 await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
 
 class TestAddOwner:
