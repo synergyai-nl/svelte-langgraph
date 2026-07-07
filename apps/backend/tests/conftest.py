@@ -24,6 +24,7 @@ from openai.types.chat.chat_completion_message_tool_call import (
 )
 
 from svelte_langgraph.graph import make_graph
+from svelte_langgraph.tools import change_phase
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 
@@ -141,10 +142,19 @@ async def agent(thread_config: RunnableConfig, monkeypatch):
 
     # Mock the get_tools function where it's imported in graph.py
     def mock_get_tools():
-        return [get_weather]
+        return [get_weather, change_phase]
 
     monkeypatch.setattr("svelte_langgraph.graph.get_tools", mock_get_tools)
     return make_graph(thread_config)
+
+
+@pytest.fixture
+def mock_completion_optional(openai_base_url):
+    """Mock OpenAI API endpoint without requiring it to be called."""
+    actual_base_url = openai_base_url or DEFAULT_BASE_URL
+
+    with respx.mock(base_url=actual_base_url, assert_all_called=False) as respx_mock:
+        yield respx_mock.post("/chat/completions")
 
 
 @pytest.fixture
@@ -184,6 +194,34 @@ def openai_single_tool_call(mock_completion):
                 completion_tokens=25,
                 total_tokens=40,
             ),
+        ),
+    ]
+
+    yield mock_completion
+
+
+@pytest.fixture
+def openai_change_phase_tool_call(mock_completion):
+    """Mock OpenAI API for change_phase tool call scenario."""
+    mock_completion.side_effect = [
+        make_completion_response(
+            response_id="chatcmpl-test-1",
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_phase_1",
+                    type="function",
+                    function=Function(
+                        name="change_phase",
+                        arguments='{"phase": "review"}',
+                    ),
+                )
+            ],
+            finish_reason="tool_calls",
+        ),
+        make_completion_response(
+            response_id="chatcmpl-test-2",
+            created=1234567891,
+            message_content="I've changed the phase to review.",
         ),
     ]
 

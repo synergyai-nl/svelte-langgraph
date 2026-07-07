@@ -8,6 +8,8 @@
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData } from '$lib/langgraph/errors';
+	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
+	import StateField from './StateField.svelte';
 
 	interface Props {
 		langGraphClient: Client;
@@ -34,6 +36,8 @@
 		fetchStateHistory: true,
 		reconnectOnMount: true
 	});
+
+	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
 
 	let current_input = $state('');
 	let last_user_message = $state('');
@@ -149,6 +153,10 @@
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
+	<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
+	<div class="flex justify-end px-4 py-1">
+		<StateField name="phase" field={sync.field('phase')} />
+	</div>
 	<div class="flex-1 overflow-y-auto pb-24">
 		{#if !chat_started}
 			<ChatSuggestions

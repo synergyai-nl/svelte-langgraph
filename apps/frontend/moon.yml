@@ -22,7 +22,10 @@ tags: ['vite', 'vitest', 'sveltekit']
 
 tasks:
   clean:
-    command: 'rm -rf build src/lib/paraglide'
+    # Also wipe .svelte-kit: a stale generated/server/internal.js bakes an old
+    # __sveltekit_<version_hash> into the SSR bundle while the client pass computes
+    # a fresh one from live config — splitting the build and breaking hydration.
+    command: 'rm -rf build .svelte-kit src/lib/paraglide'
     options:
       cache: false
 

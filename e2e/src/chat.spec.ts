@@ -107,6 +107,89 @@ test.describe('Edit message', () => {
 	});
 });
 
+test.describe('Regenerate message', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await page.goto('/chat/');
+		await page.waitForURL(/\/chat\/[\w-]+/);
+	});
+
+	test('regenerating produces a new AI generation (not a checkpoint replay)', async ({
+		page,
+		chat
+	}) => {
+		// The echo mock makes regenerated content identical to the original, so the
+		// only honest signal that the model actually re-ran is a NEW message id in
+		// thread state. A checkpoint replay (the failure mode when the agent subgraph
+		// has its own persistence) would return the cached message with the same id.
+		const question = `Question ${randomUUID()}`;
+
+		// Capture the Bearer token for direct API reads (same pattern as cancellation).
+		let capturedToken: string | null = null;
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/**`, async (route) => {
+			const authHeader = route.request().headers()['authorization'];
+			if (authHeader?.startsWith('Bearer ')) {
+				capturedToken = authHeader.substring(7);
+			}
+			await route.continue();
+		});
+
+		await chat.textInput.fill(question);
+		await chat.textInput.press('Enter');
+
+		const aiMessage = page
+			.getByRole('group')
+			.filter({ has: page.locator('.prose') })
+			.filter({ hasText: question })
+			.last();
+		await expect(aiMessage).toBeVisible();
+		// Wait for streaming to finish — the regenerate button is unavailable while streaming.
+		await expect(chat.textInput).toBeEnabled();
+
+		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
+		const headers = { Authorization: `Bearer ${capturedToken!}` };
+
+		// Read the AI message answering our unique question from committed thread state.
+		const readAnswer = async () => {
+			const res = await page.request.get(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadId}/state`, {
+				headers
+			});
+			expect(res.ok()).toBeTruthy();
+			const state = await res.json();
+			const messages = (state.values?.messages ?? []) as Array<{
+				type: string;
+				id: string;
+				content: unknown;
+			}>;
+			const questionIndex = messages.findIndex(
+				(m) => m.type === 'human' && String(m.content).includes(question)
+			);
+			if (questionIndex < 0) return undefined;
+			return messages.slice(questionIndex + 1).find((m) => m.type === 'ai');
+		};
+
+		const before = await readAnswer();
+		expect(before).toBeTruthy();
+
+		await aiMessage.hover();
+		await aiMessage.getByTitle(/re-try/i).click();
+
+		// Poll until the branched head shows a different AI message id.
+		const deadline = Date.now() + 15_000;
+		let after = before;
+		while (Date.now() < deadline) {
+			after = await readAnswer();
+			if (after && after.id !== before!.id) break;
+			await page.waitForTimeout(200);
+		}
+		expect(after?.id, 'regenerate must produce a new AI message id').not.toBe(before!.id);
+
+		// The UI settles with a visible answer and the input re-enabled.
+		await expect(aiMessage).toBeVisible();
+		await expect(chat.textInput).toBeEnabled();
+	});
+});
+
 test.describe('Cancellation', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

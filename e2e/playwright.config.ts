@@ -33,6 +33,7 @@ export default defineConfig({
 			name: 'ai-mock',
 			command: 'moon backend:ai-mock-e2e',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -44,18 +45,23 @@ export default defineConfig({
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
 			wait: {
-				stdout: /Uvicorn running on http:\/\/localhost:8080/
+				// oidc-provider-mock colorizes its log output even with NO_COLOR set, so
+				// tolerate ANSI escape codes between "on" and the URL (breaks local runs
+				// where moon allocates a PTY; CI output is uncolored either way).
+				stdout: /Uvicorn running on .*localhost:8080/
 			}
 		},
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -67,11 +73,14 @@ export default defineConfig({
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				stdout: /http:\/\/localhost:4173/
+				// vite bolds the port number, splitting the URL with an ANSI escape when
+				// stdout is a PTY — don't require it to be contiguous.
+				stdout: /http:\/\/localhost:.*4173/
 			}
 		}
 	]

@@ -1,0 +1,21 @@
+{
+  "responses": [
+    {
+      "type": "function",
+      "input": "Please switch to the review phase",
+      "output": {
+        "name": "change_phase",
+        "arguments": {"phase": "review"}
+      }
+    },
+    {
+      "type": "text",
+      "input": {
+        "role": "system",
+        "offset": 1,
+        "content": "Current phase: draft"
+      },
+      "output": "PHASE_VISIBLE: draft"
+    }
+  ]
+}
