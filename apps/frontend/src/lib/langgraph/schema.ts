@@ -48,17 +48,86 @@ function resolveRef(ref: string, defs: Record<string, JSONSchema7>): JSONSchema7
 }
 
 /**
+ * Variant dispatcher rule: try to interpret `schema` as a particular JSON
+ * Schema "shape". Returns the parsed `FieldSchema` when the shape matches,
+ * or `undefined` to signal "not this shape, try the next dispatcher rule".
+ *
+ * Recursive calls always go back through the top-level `parseFieldSchema` so
+ * the `depth > 10` cyclic guard applies uniformly across every recursion path.
+ */
+type FieldSchemaVariantParser = (
+	schema: JSONSchema7,
+	defs: Record<string, JSONSchema7>,
+	depth: number
+) => FieldSchema | undefined;
+
+/** Rule 1: resolve `$ref` via the supplied `defs` map. */
+const resolveRefVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	if (!schema.$ref) return undefined;
+	const resolved = resolveRef(schema.$ref, defs);
+	if (resolved) return parseFieldSchema(resolved, defs, depth + 1);
+	return { kind: 'unknown' };
+};
+
+/**
+ * Rule 2: unwrap `anyOf`/`oneOf` — strip `null`-typed variants and recurse
+ * into the remaining variant(s). A single non-null variant is treated as the
+ * field type; multiple non-null variants → first one that isn't 'unknown'.
+ */
+const unwrapUnionVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	const ofVariants = schema.anyOf ?? schema.oneOf;
+	if (!ofVariants) return undefined;
+
+	const nonNull = ofVariants.filter(
+		(v) => !(v.type === 'null' || (Array.isArray(v.type) && (v.type as string[]).includes('null')))
+	);
+	if (nonNull.length === 1) {
+		return parseFieldSchema(nonNull[0], defs, depth + 1);
+	}
+	if (nonNull.length > 1) {
+		// Return first variant that resolves to something meaningful
+		for (const v of nonNull) {
+			const s = parseFieldSchema(v, defs, depth + 1);
+			if (s.kind !== 'unknown') return s;
+		}
+	}
+	return { kind: 'unknown' };
+};
+
+/** Rule 3: non-empty string `enum` → `kind: 'enum'` (bare enums without type are valid). */
+function parseEnumVariant(schema: JSONSchema7): FieldSchema | undefined {
+	if (!Array.isArray(schema.enum)) return undefined;
+	const options = (schema.enum as unknown[]).filter((v): v is string => typeof v === 'string');
+	if (options.length > 0) return { kind: 'enum', options };
+	return undefined;
+}
+
+/** Rule 4: scalar types `boolean`, `string`, `number`, `integer` → corresponding kind. */
+function parseScalarVariant(schema: JSONSchema7): FieldSchema | undefined {
+	const type = schema.type;
+	if (type === 'boolean') return { kind: 'boolean' };
+	if (type === 'string') return { kind: 'string' };
+	if (type === 'number' || type === 'integer') return { kind: 'number' };
+	return undefined;
+}
+
+/** Rule 5: `object` with `properties` → `kind: 'object'` with recursively parsed fields. */
+const parseObjectVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	if (schema.type !== 'object' || !schema.properties) return undefined;
+	const properties: Record<string, FieldSchema> = {};
+	for (const [key, val] of Object.entries(schema.properties)) {
+		properties[key] = parseFieldSchema(val, defs, depth + 1);
+	}
+	return { kind: 'object', properties };
+};
+
+/**
  * Recursively parse a single field schema node.
  *
- * Rules applied in order:
- *  1. Resolve `$ref` via the supplied `defs` map.
- *  2. Unwrap `anyOf`/`oneOf` — strip `null`-typed variants and recurse into
- *     the remaining variant(s).  A single non-null variant is treated as the
- *     field type; multiple non-null variants → first one that isn't 'unknown'.
- *  3. Non-empty string `enum` → `kind: 'enum'`.
- *  4. Scalar types: `boolean`, `string`, `number`, `integer` → corresponding kind.
- *  5. `object` with `properties` → `kind: 'object'` with recursively parsed fields.
- *  6. Anything unrecognised → `kind: 'unknown'` (never throws).
+ * Dispatches to the variant rules in order (see each helper's doc comment for
+ * details): `$ref` resolution, `anyOf`/`oneOf` unwrapping, `enum`, scalar
+ * types, then `object`. Anything unrecognised → `kind: 'unknown'` (never
+ * throws).
  */
 function parseFieldSchema(
 	schema: JSONSchema7,
@@ -68,57 +137,13 @@ function parseFieldSchema(
 	// Guard against malformed cyclic schemas
 	if (depth > 10) return { kind: 'unknown' };
 
-	// 1. Resolve $ref
-	if (schema.$ref) {
-		const resolved = resolveRef(schema.$ref, defs);
-		if (resolved) return parseFieldSchema(resolved, defs, depth + 1);
-		return { kind: 'unknown' };
-	}
-
-	// 2. Unwrap anyOf / oneOf (handle nullable: anyOf [T, null])
-	const ofVariants = schema.anyOf ?? schema.oneOf;
-	if (ofVariants) {
-		const nonNull = ofVariants.filter(
-			(v) =>
-				!(v.type === 'null' || (Array.isArray(v.type) && (v.type as string[]).includes('null')))
-		);
-		if (nonNull.length === 1) {
-			return parseFieldSchema(nonNull[0], defs, depth + 1);
-		}
-		if (nonNull.length > 1) {
-			// Return first variant that resolves to something meaningful
-			for (const v of nonNull) {
-				const s = parseFieldSchema(v, defs, depth + 1);
-				if (s.kind !== 'unknown') return s;
-			}
-		}
-		return { kind: 'unknown' };
-	}
-
-	// 3. Enum (string enum values only; bare enums without type are valid)
-	if (Array.isArray(schema.enum)) {
-		const options = (schema.enum as unknown[]).filter((v): v is string => typeof v === 'string');
-		if (options.length > 0) return { kind: 'enum', options };
-	}
-
-	const type = schema.type;
-
-	// 4. Scalar types
-	if (type === 'boolean') return { kind: 'boolean' };
-	if (type === 'string') return { kind: 'string' };
-	if (type === 'number' || type === 'integer') return { kind: 'number' };
-
-	// 5. Object
-	if (type === 'object' && schema.properties) {
-		const properties: Record<string, FieldSchema> = {};
-		for (const [key, val] of Object.entries(schema.properties)) {
-			properties[key] = parseFieldSchema(val, defs, depth + 1);
-		}
-		return { kind: 'object', properties };
-	}
-
-	// 6. Fallback
-	return { kind: 'unknown' };
+	return (
+		resolveRefVariant(schema, defs, depth) ??
+		unwrapUnionVariant(schema, defs, depth) ??
+		parseEnumVariant(schema) ??
+		parseScalarVariant(schema) ??
+		parseObjectVariant(schema, defs, depth) ?? { kind: 'unknown' }
+	);
 }
 
 /**
@@ -131,8 +156,10 @@ function parseFieldSchema(
  *
  * Returns `{ status: 'unavailable' }` when:
  *  - `schema` is `null`, `undefined`, or not an object
- *  - The schema has no `properties` (not an object schema)
  *  - An unexpected exception is thrown during parsing
+ *
+ * A schema with no `properties` is still a valid (empty) object schema and
+ * returns `{ status: 'ok', fields: {} }`, not `'unavailable'`.
  *
  * Never throws — all errors are absorbed and mapped to `'unavailable'`.
  */
