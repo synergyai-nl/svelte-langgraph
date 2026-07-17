@@ -103,6 +103,24 @@ OPENAI_BASE_URL=http://localhost:11434/v1
 CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 ```
 
+### Reasoning / Thinking Display
+
+The frontend shows LLM reasoning/thinking tokens in a collapsible block above AI messages, when the model provides them. Reasoning is picked up from `additional_kwargs.reasoning_content` (OpenRouter) and from `{type: "reasoning"}` / `{type: "thinking"}` content blocks (langchain v1 standard / Anthropic-native).
+
+By default, `CHAT_MODEL_NAME` is routed through the generic OpenAI-compatible path (`OPENAI_API_KEY`/`OPENAI_BASE_URL`), unchanged from before. To use a langchain-native provider integration instead, prefix `CHAT_MODEL_NAME` with a provider known to `init_chat_model` (e.g. `openrouter:deepseek/deepseek-r1`); it's then routed through that provider's integration instead of the generic path. Provider-specific options go in `CHAT_MODEL_KWARGS`, a JSON object splatted verbatim into `init_chat_model`.
+
+To enable reasoning output via OpenRouter:
+
+```bash
+# .env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+CHAT_MODEL_NAME=openrouter:deepseek/deepseek-r1
+CHAT_MODEL_KWARGS={"reasoning": {"effort": "medium"}}
+```
+
+**Caveat:** the generic OpenAI-compatible path (`ChatOpenAI` pointed at OpenRouter via `OPENAI_BASE_URL`) drops reasoning tokens entirely — a known langchain limitation ([langchain#34328](https://github.com/langchain-ai/langchain/issues/34328)). Reasoning display requires the `openrouter:` prefix above. Other langchain-integrated providers can expose reasoning the same way once their integration package is added to the backend dependencies.
+
 ## Getting Started
 
 ### Local Development with OIDC Mock Provider
