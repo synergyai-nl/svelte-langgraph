@@ -34,9 +34,11 @@ except (ValueError, TypeError):
 _original_streaming_response = _services.streaming_response
 
 
-def _chunk(id: str, model: str, delta: dict, finish_reason: str | None = None):
+def _chunk(
+    completion_id: str, model: str, delta: dict, finish_reason: str | None = None
+):
     payload = {
-        "id": id,
+        "id": completion_id,
         "object": "chat.completion.chunk",
         "created": int(time.time()),
         "model": model,
@@ -54,12 +56,12 @@ def _chunk(id: str, model: str, delta: dict, finish_reason: str | None = None):
 
 
 def _tool_call_streaming_response(model: str, tool_calls: list[dict]):
-    id = f"chatcmpl-{uuid4().hex}"
+    completion_id = f"chatcmpl-{uuid4().hex}"
 
     for n, tool_call in enumerate(tool_calls):
         # Header delta: identifies the tool call; arguments start empty.
         yield _chunk(
-            id,
+            completion_id,
             model,
             {
                 "role": "assistant",
@@ -85,12 +87,12 @@ def _tool_call_streaming_response(model: str, tool_calls: list[dict]):
         # Argument fragments: only index + arguments, per the OpenAI spec.
         for char in arguments_json:
             yield _chunk(
-                id,
+                completion_id,
                 model,
                 {"tool_calls": [{"index": n, "function": {"arguments": char}}]},
             )
 
-    yield _chunk(id, model, {}, finish_reason="tool_calls")
+    yield _chunk(completion_id, model, {}, finish_reason="tool_calls")
     yield "data: [DONE]\n\n"
 
 
