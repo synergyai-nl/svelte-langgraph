@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
+import { LANGGRAPH_CONFIG } from './fixtures/backend';
 
 /**
  * Phase state-sync E2E tests.
@@ -13,16 +15,53 @@ import { authenticateUser } from './fixtures/auth';
  * (root-level `values` events are per OUTER superstep — without streamSubgraphs
  * the tool's update is not visible mid-generation).
  *
- * These tests share backend thread state for the same authenticated user, so they
- * run serially to prevent races between concurrent phase mutations.
+ * Each test gets its own freshly created thread (see gotoFreshThread below), so
+ * these tests no longer share backend thread state with each other or with other
+ * spec files. Serial mode is kept as a belt-and-suspenders safeguard against any
+ * future same-file thread sharing, though it is not currently load-bearing.
  */
 test.describe.configure({ mode: 'serial' });
+
+/**
+ * Create a brand-new LangGraph thread and navigate directly to it.
+ *
+ * Every E2E spec authenticates as the same hardcoded OIDC identity (test-user,
+ * see pages/oidc.page.ts). Navigating to the plain `/chat` route calls
+ * getOrCreateThread() (apps/frontend/src/lib/langgraph/client.ts), which reuses
+ * the most-recently-updated *idle* thread for that user rather than creating a
+ * fresh one. That means this spec could otherwise end up sharing — and racing
+ * on — the exact same thread as chat.spec.ts, backend-integration.spec.ts, or
+ * auth.spec.ts when they run concurrently.
+ *
+ * The `/chat/[threadID]` route pins the app to whatever thread id is in the
+ * URL with no reuse logic of its own, so creating the thread directly via the
+ * LangGraph REST API and navigating straight there sidesteps getOrCreateThread
+ * entirely — a pure test concern, no production code changes needed.
+ */
+async function gotoFreshThread(page: Page) {
+	const sessionRes = await page.request.get('/auth/session');
+	expect(sessionRes.ok()).toBeTruthy();
+	const session = await sessionRes.json();
+	const accessToken = session?.accessToken as string | undefined;
+	expect(accessToken, 'expected an accessToken on the Auth.js session').toBeTruthy();
+
+	const threadRes = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads`, {
+		headers: {
+			Authorization: `Bearer ${accessToken}`,
+			'Content-Type': 'application/json'
+		},
+		data: { metadata: {} }
+	});
+	expect(threadRes.ok()).toBeTruthy();
+	const thread = (await threadRes.json()) as { thread_id: string };
+
+	await page.goto(`/chat/${thread.thread_id}`);
+}
 
 test.describe('Phase state-sync', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
-		await page.goto('/chat');
-		await page.waitForURL(/\/chat\/.+/);
+		await gotoFreshThread(page);
 	});
 
 	test('manual phase change is state-only and persists', async ({ page, chat }) => {
@@ -47,12 +86,12 @@ test.describe('Phase state-sync', () => {
 		// Optimistic update: dropdown reflects the new value immediately.
 		await expect(chat.phaseSelect).toHaveValue(targetValue);
 
-		// Bounded wait (~3 s) — the state-only run must NOT produce any chat message.
-		await page.waitForTimeout(3000);
-		expect(await aiGroups.count()).toBe(countBefore);
-
-		// Input re-enabled confirms the run completed cleanly.
+		// Input re-enabled is the reliable "run finished" signal (matches the house style
+		// in chat.spec.ts — no fixed sleeps). Only once it resolves do we know the
+		// state-only run has fully completed, so only then is it safe to assert that it
+		// did NOT produce any chat message.
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+		expect(await aiGroups.count()).toBe(countBefore);
 
 		// Reload to verify the server committed the phase (not just an optimistic value).
 		await page.reload();
