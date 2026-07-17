@@ -145,6 +145,43 @@ describe('Chat', () => {
 		});
 	});
 
+	describe('when a message includes thinking/reasoning', () => {
+		test('displays the thinking pill for a reasoning-only message', async () => {
+			mockModule.setMessages([
+				{
+					type: 'ai',
+					content: '',
+					additional_kwargs: { reasoning_content: 'Let me reason about this...' },
+					id: 'ai-thinking-1'
+				}
+			]);
+
+			renderChat();
+
+			await waitFor(() => {
+				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+			});
+		});
+
+		test('displays both the thinking pill and the text for a message with both', async () => {
+			mockModule.setMessages([
+				{
+					type: 'ai',
+					content: 'The answer is 42',
+					additional_kwargs: { reasoning_content: 'Let me reason about this...' },
+					id: 'ai-thinking-2'
+				}
+			]);
+
+			renderChat();
+
+			await waitFor(() => {
+				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+				expect(screen.getByText('The answer is 42')).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('when stop is clicked', () => {
 		test('stop button calls stream.stop', async () => {
 			const user = userEvent.setup();

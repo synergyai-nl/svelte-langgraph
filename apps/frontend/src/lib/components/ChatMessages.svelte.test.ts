@@ -41,6 +41,22 @@ describe('ChatMessages', () => {
 
 			expect(screen.getByText('Hello from AI')).toBeInTheDocument();
 		});
+
+		test('renders an AI message with only thinking and no text', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: '', thinking: 'Let me think...', id: 'ai-thinking' })]
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+		});
+
+		test('does not render an AI message with no text and no thinking', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: '', id: 'ai-empty' })]
+			});
+
+			expect(screen.queryByRole('group')).not.toBeInTheDocument();
+		});
 	});
 
 	test('displays waiting indicator when no messages and finalAnswerStarted=false', () => {

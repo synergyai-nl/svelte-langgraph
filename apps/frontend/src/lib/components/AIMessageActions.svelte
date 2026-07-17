@@ -2,16 +2,16 @@
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
 	import { RefreshCw } from '@lucide/svelte';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { Message } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
 
 	interface Props {
-		message: BaseMessage;
+		message: Message;
 		isHovered: boolean;
-		onRegenerate: (message: BaseMessage) => void;
-		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
+		onRegenerate: (message: Message) => void;
+		onFeedback?: (message: Message, type: 'up' | 'down') => void;
 	}
 
 	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();

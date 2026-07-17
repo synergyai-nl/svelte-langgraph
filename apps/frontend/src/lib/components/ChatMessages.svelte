@@ -32,12 +32,8 @@
 			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
-				{:else if message.text}
-					<ChatMessage
-						{message}
-						onEdit={(msg, newText) => onEdit(msg as Message, newText)}
-						onRegenerate={(msg) => onRegenerate(msg as Message)}
-					/>
+				{:else if message.text || (message.type === 'ai' && message.thinking)}
+					<ChatMessage {message} {onEdit} {onRegenerate} />
 				{/if}
 			</div>
 		{/each}
