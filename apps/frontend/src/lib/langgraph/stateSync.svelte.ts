@@ -80,6 +80,58 @@ export interface StateSyncOptions {
 }
 
 /**
+ * Fetch and parse the assistant's state schema.
+ * All error paths (fetch failure, unparseable schema) collapse to 'unavailable'.
+ */
+async function loadSchema(client: Client, assistantId: string): Promise<SchemaStatus> {
+	const graphSchema = await client.assistants.getSchemas(assistantId);
+	const result = parseObjectSchema(graphSchema.state_schema);
+	return result.status === 'ok'
+		? { status: 'ok', fields: result.fields }
+		: { status: 'unavailable' };
+}
+
+/** Look up a single field's schema, or `undefined` if unloaded/unavailable/unknown. */
+function getFieldSchema(name: string, schemaStatus: SchemaStatus): FieldSchema | undefined {
+	return schemaStatus.status === 'ok' ? schemaStatus.fields[name] : undefined;
+}
+
+/**
+ * In DEV mode, warn (without blocking) when `name` is absent from the loaded schema.
+ * `caller` identifies which entry point triggered the check, matching the
+ * historical wording of the two call sites (`field()` and `set()`).
+ */
+function warnIfFieldMissing(
+	name: string,
+	schemaStatus: SchemaStatus,
+	caller: 'field' | 'set'
+): void {
+	if (import.meta.env.DEV && schemaStatus.status === 'ok' && !(name in schemaStatus.fields)) {
+		console.warn(
+			`[stateSync] ${caller}() called for "${name}" which is absent from the loaded schema`
+		);
+	}
+}
+
+/** In DEV mode, warn (without blocking) when `set()` is called with an out-of-range enum value. */
+function warnIfEnumValueInvalid(
+	name: string,
+	value: unknown,
+	fieldSchema: FieldSchema | undefined
+): void {
+	if (
+		import.meta.env.DEV &&
+		fieldSchema?.kind === 'enum' &&
+		!fieldSchema.options.includes(value as string)
+	) {
+		console.warn(
+			`[stateSync] set() enum value "${String(value)}" not in options ` +
+				`[${fieldSchema.options.join(', ')}] for field "${name}"`
+		);
+	}
+}
+
+/**
  * Create a reactive state-sync controller for a LangGraph thread.
  *
  * Fetches the assistant's state schema once on creation and exposes
@@ -96,15 +148,13 @@ export interface StateSyncOptions {
 export function createStateSync({ stream, client, assistantId }: StateSyncOptions) {
 	let schemaStatus = $state<SchemaStatus>({ status: 'loading' });
 
-	// Fetch schema once; all error paths collapse to 'unavailable'
-	(async () => {
-		const graphSchema = await client.assistants.getSchemas(assistantId);
-		const result = parseObjectSchema(graphSchema.state_schema);
-		schemaStatus =
-			result.status === 'ok' ? { status: 'ok', fields: result.fields } : { status: 'unavailable' };
-	})().catch(() => {
-		schemaStatus = { status: 'unavailable' };
-	});
+	loadSchema(client, assistantId)
+		.then((s) => {
+			schemaStatus = s;
+		})
+		.catch(() => {
+			schemaStatus = { status: 'unavailable' };
+		});
 
 	/**
 	 * Return a reactive binding for a single field by name.
@@ -114,40 +164,23 @@ export function createStateSync({ stream, client, assistantId }: StateSyncOption
 	 *  - `set()` is called with an enum value that isn't in the field's options
 	 */
 	function field(name: string): FieldBinding {
-		if (import.meta.env.DEV && schemaStatus.status === 'ok' && !(name in schemaStatus.fields)) {
-			console.warn(
-				`[stateSync] field() called for "${name}" which is absent from the loaded schema`
-			);
-		}
+		warnIfFieldMissing(name, schemaStatus, 'field');
 
 		return {
 			get value(): unknown {
 				return stream.values?.[name];
 			},
 			get schema(): FieldSchema | undefined {
-				if (schemaStatus.status !== 'ok') return undefined;
-				return schemaStatus.fields[name];
+				return getFieldSchema(name, schemaStatus);
 			},
 			get options(): string[] {
-				if (schemaStatus.status !== 'ok') return [];
-				const fs = schemaStatus.fields[name];
+				const fs = getFieldSchema(name, schemaStatus);
 				return fs?.kind === 'enum' ? fs.options : [];
 			},
 			set(v: unknown): void {
-				if (import.meta.env.DEV) {
-					if (schemaStatus.status === 'ok' && !(name in schemaStatus.fields)) {
-						console.warn(
-							`[stateSync] set() called for "${name}" which is absent from the loaded schema`
-						);
-					}
-					const fs = schemaStatus.status === 'ok' ? schemaStatus.fields[name] : undefined;
-					if (fs?.kind === 'enum' && !fs.options.includes(v as string)) {
-						console.warn(
-							`[stateSync] set() enum value "${String(v)}" not in options ` +
-								`[${fs.options.join(', ')}] for field "${name}"`
-						);
-					}
-				}
+				warnIfFieldMissing(name, schemaStatus, 'set');
+				warnIfEnumValueInvalid(name, v, getFieldSchema(name, schemaStatus));
+				// SDK auto-enqueues busy-thread submits; see StreamOrchestrator.submit()
 				stream.submit(
 					{ [name]: v },
 					{
