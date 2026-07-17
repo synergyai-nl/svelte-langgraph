@@ -161,7 +161,7 @@ describe('StateField', () => {
 			// must be driven via its value binding instead.
 			const user = userEvent.setup();
 			const submit = vi.fn();
-			const state = $state<{ current: string | undefined }>({ current: 'research' });
+			const state: { current: string | undefined } = { current: 'research' };
 			const field: FieldBinding = {
 				get value() {
 					return state.current;
@@ -177,7 +177,7 @@ describe('StateField', () => {
 					submit(v);
 				}
 			};
-			render(StateField, { name: 'phase', field });
+			const { rerender } = render(StateField, { name: 'phase', field });
 
 			const select = screen.getByRole('combobox') as HTMLSelectElement;
 
@@ -187,11 +187,13 @@ describe('StateField', () => {
 
 			// AI/server-driven change arrives via stream.values
 			state.current = 'review';
+			await rerender({ name: 'phase', field });
 			await tick();
 			expect(select.value).toBe('review');
 
 			// Change back to the previously-user-selected option (the dirty one)
 			state.current = 'draft';
+			await rerender({ name: 'phase', field });
 			await tick();
 			expect(select.value).toBe('draft');
 		});
