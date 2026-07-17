@@ -200,18 +200,27 @@ test.describe('Cancellation', () => {
 		expect(isActive).toBe(false);
 
 		// Read the committed thread state directly — no page reload needed.
-		const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
-		expect(stateRes.ok()).toBeTruthy();
-		const state = await stateRes.json();
-		const messages = state.values?.messages as
-			| Array<{ type: string; content: unknown }>
-			| undefined;
+		// The inmem runtime flushes checkpoints asynchronously (dev persistence flush
+		// loop), so the human message may land in state shortly AFTER the run goes
+		// inactive. Poll briefly instead of reading once to avoid racing the flush.
+		let messages: Array<{ type: string; content: unknown }> | undefined;
+		let hasOurMessage = false;
+		const stateDeadline = Date.now() + 10_000;
+		while (Date.now() < stateDeadline) {
+			const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
+			expect(stateRes.ok()).toBeTruthy();
+			const state = await stateRes.json();
+			messages = state.values?.messages as Array<{ type: string; content: unknown }> | undefined;
 
-		// Positive guard: our human message must exist in state, confirming the run fired.
-		// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
-		// history from prior test iterations, we'll find exactly our message.
-		const hasOurMessage =
-			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ?? false;
+			// Positive guard: our human message must exist in state, confirming the run fired.
+			// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
+			// history from prior test iterations, we'll find exactly our message.
+			hasOurMessage =
+				messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ??
+				false;
+			if (hasOurMessage) break;
+			await page.waitForTimeout(250);
+		}
 		expect(hasOurMessage).toBe(true);
 
 		// Main assertion: the cancelled run must NOT have committed the full echo.
