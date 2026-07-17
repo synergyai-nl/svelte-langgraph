@@ -137,3 +137,26 @@ def test_invalid_chat_model_kwargs_json_raises(monkeypatch):
 
     with pytest.raises(json.JSONDecodeError):
         get_chat_model()
+
+
+@pytest.mark.parametrize(
+    ("value", "expected_type_name"),
+    [
+        ("[]", "list"),
+        ('"x"', "str"),
+    ],
+)
+def test_non_object_chat_model_kwargs_json_raises(
+    monkeypatch, value: str, expected_type_name: str
+) -> None:
+    """CHAT_MODEL_KWARGS that parses to valid JSON but isn't an object must
+    fail loudly with a clear message, rather than passing parsing and later
+    blowing up with a misleading AttributeError on `kwargs.setdefault`.
+    """
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", value)
+
+    with pytest.raises(
+        ValueError,
+        match=f"CHAT_MODEL_KWARGS must be a JSON object, got {expected_type_name}",
+    ):
+        get_chat_model()

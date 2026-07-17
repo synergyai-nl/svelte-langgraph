@@ -24,7 +24,11 @@ def _has_known_provider_prefix(model_name: str) -> bool:
 
 def get_chat_model() -> BaseChatModel:
     model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
-    kwargs: dict[str, Any] = json.loads(os.getenv("CHAT_MODEL_KWARGS", "{}"))
+    kwargs: Any = json.loads(os.getenv("CHAT_MODEL_KWARGS", "{}"))
+    if not isinstance(kwargs, dict):
+        raise ValueError(
+            f"CHAT_MODEL_KWARGS must be a JSON object, got {type(kwargs).__name__}"
+        )
     kwargs.setdefault("temperature", 0.9)
 
     if _has_known_provider_prefix(model_name):
