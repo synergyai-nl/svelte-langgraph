@@ -226,6 +226,11 @@ describe('extractThinkingFromContent', () => {
 		expect(extractThinkingFromContent('text', { reasoning_content: '' })).toBeUndefined();
 	});
 
+	it('should fall through to content array when reasoning_content is empty', () => {
+		const content = [{ type: 'thinking', thinking: 'X' }];
+		expect(extractThinkingFromContent(content, { reasoning_content: '' })).toBe('X');
+	});
+
 	it('should extract from content array thinking blocks', () => {
 		const content = [
 			{ type: 'thinking', thinking: 'Let me think' },

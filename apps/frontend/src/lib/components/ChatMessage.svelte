@@ -68,12 +68,14 @@
 						{#if message.thinking}
 							<ThinkingBlock thinking={message.thinking} />
 						{/if}
-						<Card.Root class="border-border-card bg-muted border shadow-sm">
-							<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
-								<Markdown md={message.text} {plugins} />
-							</Card.Content>
-						</Card.Root>
-						<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+						{#if message.text}
+							<Card.Root class="border-border-card bg-muted border shadow-sm">
+								<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
+									<Markdown md={message.text} {plugins} />
+								</Card.Content>
+							</Card.Root>
+							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">
 							<Card.Content

@@ -50,6 +50,15 @@ describe('ChatMessages', () => {
 			expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
 		});
 
+		test('does not render a message card or copy action for a reasoning-only AI message', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: '', thinking: 'Let me think...', id: 'ai-thinking' })]
+			});
+
+			const buttons = screen.queryAllByRole('button');
+			expect(buttons.some((b) => b.getAttribute('name') === 'copy')).toBe(false);
+		});
+
 		test('does not render an AI message with no text and no thinking', () => {
 			renderMessages({
 				messages: [anAIMessage({ text: '', id: 'ai-empty' })]

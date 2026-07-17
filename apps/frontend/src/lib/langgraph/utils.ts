@@ -26,8 +26,11 @@ export function extractThinkingFromContent(
 	content: unknown,
 	additionalKwargs?: Record<string, unknown>
 ): string | undefined {
-	if (typeof additionalKwargs?.reasoning_content === 'string') {
-		return additionalKwargs.reasoning_content || undefined;
+	if (
+		typeof additionalKwargs?.reasoning_content === 'string' &&
+		additionalKwargs.reasoning_content
+	) {
+		return additionalKwargs.reasoning_content;
 	}
 
 	if (Array.isArray(content)) {
