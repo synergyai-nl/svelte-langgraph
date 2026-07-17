@@ -8,6 +8,8 @@ function renderMessages(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(ChatMessages, {
 		messages: [],
 		finalAnswerStarted: true,
+		onEdit: vi.fn(),
+		onRegenerate: vi.fn(),
 		...overrides
 	});
 }

@@ -10,7 +10,7 @@
 	interface Props {
 		message: BaseMessage;
 		isHovered: boolean;
-		onRegenerate?: (message: BaseMessage) => void;
+		onRegenerate: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
@@ -50,18 +50,17 @@
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => onRegenerate?.(message)}
+				onclick={() => onRegenerate(message)}
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
 				title={m.message_regenerate()}
-				disabled
 			>
 				<RefreshCw size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.coming_soon()}
+			{m.message_regenerate()}
 		</TooltipContent>
 	</Tooltip>
 

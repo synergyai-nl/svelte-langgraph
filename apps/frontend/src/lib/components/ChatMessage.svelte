@@ -1,17 +1,17 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
-	import type { Message, BaseMessage } from '$lib/langgraph/types';
+	import type { BaseMessage } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
-	import ThinkingBlock from './ThinkingBlock.svelte';
+	import UserMessageEdit from './UserMessageEdit.svelte';
 
 	interface Props {
-		message: Message;
-		onEdit?: (message: BaseMessage) => void;
-		onRegenerate?: (message: BaseMessage) => void;
+		message: BaseMessage;
+		onEdit: (message: BaseMessage, newText: string) => boolean;
+		onRegenerate: (message: BaseMessage) => void;
 		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
 	}
 
@@ -20,6 +20,28 @@
 	const plugins = [gfmPlugin()];
 
 	let isHovered = $state(false);
+	let isEditing = $state(false);
+	let editText = $state('');
+
+	function startEditing() {
+		editText = message.text;
+		isEditing = true;
+	}
+
+	function cancelEditing() {
+		isEditing = false;
+	}
+
+	function confirmEdit() {
+		if (editText.trim() && editText !== message.text) {
+			// Only close the editor if the edit was accepted (rejected when a run is streaming)
+			if (onEdit(message, editText)) {
+				isEditing = false;
+			}
+		} else {
+			isEditing = false;
+		}
+	}
 </script>
 
 <div class="mb-6 w-full {message.type === 'user' ? 'flex justify-end' : 'flex justify-start'}">
@@ -32,33 +54,34 @@
 			<User size={20} class="text-foreground" />
 		</div>
 		<div class="relative w-full">
-			<div
-				role="group"
-				onmouseenter={() => (isHovered = true)}
-				onmouseleave={() => (isHovered = false)}
-				class="relative w-full"
-			>
-				{#if message.type === 'ai'}
-					{#if message.thinking}
-						<ThinkingBlock thinking={message.thinking} />
+			{#if message.type === 'user' && isEditing}
+				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
+			{:else}
+				<div
+					role="group"
+					onmouseenter={() => (isHovered = true)}
+					onmouseleave={() => (isHovered = false)}
+					class="relative w-full"
+				>
+					{#if message.type === 'ai'}
+						<Card.Root class="border-border-card bg-muted border shadow-sm">
+							<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
+								<Markdown md={message.text} {plugins} />
+							</Card.Content>
+						</Card.Root>
+						<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+					{:else}
+						<Card.Root class="bg-foreground border-0 shadow-sm">
+							<Card.Content
+								class="prose prose-invert text-background max-w-none text-sm whitespace-pre-wrap"
+							>
+								{message.text}
+							</Card.Content>
+						</Card.Root>
+						<UserMessageActions {isHovered} onEdit={startEditing} />
 					{/if}
-					<Card.Root class="border-border-card bg-muted border shadow-sm">
-						<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
-							<Markdown md={message.text} {plugins} />
-						</Card.Content>
-					</Card.Root>
-					<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
-				{:else}
-					<Card.Root class="bg-foreground border-0 shadow-sm">
-						<Card.Content
-							class="prose prose-invert text-background max-w-none text-sm whitespace-pre-wrap"
-						>
-							{message.text}
-						</Card.Content>
-					</Card.Root>
-					<UserMessageActions {message} {isHovered} {onEdit} />
-				{/if}
-			</div>
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

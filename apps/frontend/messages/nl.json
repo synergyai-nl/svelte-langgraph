@@ -50,5 +50,7 @@
 	"light_mode": "Lichte modus",
 	"message_copied": "Gekopieerd",
 	"chat_error_retry": "Opnieuw proberen",
-	"coming_soon": "Binnenkort beschikbaar!"
+	"coming_soon": "Binnenkort beschikbaar!",
+	"cancel": "Annuleren",
+	"save_and_send": "Opslaan & Verzenden"
 }

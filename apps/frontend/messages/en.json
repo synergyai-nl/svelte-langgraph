@@ -50,5 +50,7 @@
 	"message_edit": "Edit",
 	"message_copied": "Copied",
 	"chat_error_retry": "Retry",
-	"coming_soon": "Coming Soon!"
+	"coming_soon": "Coming Soon!",
+	"cancel": "Cancel",
+	"save_and_send": "Save & Send"
 }

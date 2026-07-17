@@ -5,7 +5,7 @@ FROM node:24-alpine AS base
 WORKDIR /app
 
 # Install moon binary
-RUN npm install -g '@moonrepo/cli@^1.41.7'
+RUN npm install -g '@moonrepo/cli@^1.41.7' 'pnpm@latest-11'
 
 # Disable toolchain and rely on system binaries
 ENV MOON_TOOLCHAIN_FORCE_GLOBALS=1
@@ -14,7 +14,6 @@ ENV MOON_TOOLCHAIN_FORCE_GLOBALS=1
 # Workaround https://github.com/moonrepo/moon/issues/2111
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
 
 #### SKELETON STAGE
 #### Scaffolds repository skeleton structures.

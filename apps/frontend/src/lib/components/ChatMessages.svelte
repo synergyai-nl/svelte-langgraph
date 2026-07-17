@@ -12,9 +12,18 @@
 		finalAnswerStarted: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
+		onEdit: (message: Message, newText: string) => boolean;
+		onRegenerate: (message: Message) => void;
 	}
 
-	let { messages = [], finalAnswerStarted, generationError = null, onRetryError }: Props = $props();
+	let {
+		messages = [],
+		finalAnswerStarted,
+		generationError = null,
+		onRetryError,
+		onEdit,
+		onRegenerate
+	}: Props = $props();
 </script>
 
 <ScrollableContainer>
@@ -23,8 +32,12 @@
 			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
-				{:else if message.text || (message.type === 'ai' && message.thinking)}
-					<ChatMessage {message} />
+				{:else if message.text}
+					<ChatMessage
+						{message}
+						onEdit={(msg, newText) => onEdit(msg as Message, newText)}
+						onRegenerate={(msg) => onRegenerate(msg as Message)}
+					/>
 				{/if}
 			</div>
 		{/each}
