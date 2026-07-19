@@ -87,14 +87,16 @@ name = "osv-scanner"
 
 [[plugin]]
 name = "prettier"
-package_file = "package.json"
-package_filters = ["prettier"]
+version = "3.6.2"
 prefix = "e2e"
 
 [[plugin]]
 name = "prettier"
-package_file = "package.json"
-package_filters = ["prettier"]
+version = "3.6.2"
+extra_packages = [
+  "prettier-plugin-svelte@3.4.0",
+  "prettier-plugin-tailwindcss@0.6.14",
+]
 prefix = "apps/frontend"
 
 [[plugin]]
