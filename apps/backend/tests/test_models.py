@@ -139,6 +139,64 @@ def test_invalid_chat_model_kwargs_json_raises(monkeypatch):
         get_chat_model()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", "   \n\t  "])
+async def test_empty_chat_model_kwargs_env_behaves_as_empty_object(
+    monkeypatch, value: str
+) -> None:
+    """An empty or whitespace-only CHAT_MODEL_KWARGS (e.g. `CHAT_MODEL_KWARGS=`
+    in a .env file) must be treated as `{}` rather than failing JSON parsing --
+    the intent of an empty value is clearly "no extra kwargs".
+    """
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", value)
+
+    response = make_completion_response(message_content="Hello!")
+
+    with respx.mock(base_url=DEFAULT_BASE_URL) as respx_mock:
+        respx_mock.post("/chat/completions").mock(return_value=response)
+
+        model = get_chat_model()
+        result = await model.ainvoke("hi")
+
+    assert result.content == "Hello!"
+
+
+@pytest.mark.parametrize(
+    "reserved_kwargs", ['{"model_provider": "openai"}', '{"model": "x"}']
+)
+def test_reserved_chat_model_kwargs_key_raises(
+    monkeypatch, reserved_kwargs: str
+) -> None:
+    """`model`/`model_provider` in CHAT_MODEL_KWARGS must fail loudly with a
+    clear message rather than blowing up with a confusing duplicate-kwarg
+    `TypeError` from `init_chat_model` -- provider/model selection belongs in
+    CHAT_MODEL_NAME.
+    """
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", reserved_kwargs)
+
+    with pytest.raises(ValueError, match="CHAT_MODEL_KWARGS must not include"):
+        get_chat_model()
+
+
+@pytest.mark.parametrize(
+    "reserved_kwargs", ['{"model_provider": "openai"}', '{"model": "x"}']
+)
+def test_reserved_chat_model_kwargs_key_raises_on_prefixed_path(
+    monkeypatch, reserved_kwargs: str
+) -> None:
+    """Same as above, but for the provider-prefixed CHAT_MODEL_NAME path, to
+    guard against the reserved-key check only being applied to one branch.
+    """
+    monkeypatch.setenv("CHAT_MODEL_NAME", "openrouter:deepseek/deepseek-r1")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", reserved_kwargs)
+
+    with pytest.raises(ValueError, match="CHAT_MODEL_KWARGS must not include"):
+        get_chat_model()
+
+
 @pytest.mark.parametrize(
     ("value", "expected_type_name"),
     [

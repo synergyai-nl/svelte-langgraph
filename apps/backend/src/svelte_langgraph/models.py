@@ -22,13 +22,28 @@ def _has_known_provider_prefix(model_name: str) -> bool:
     return prefix in _BUILTIN_PROVIDERS
 
 
+_RESERVED_CHAT_MODEL_KWARGS = {"model", "model_provider"}
+
+
 def get_chat_model() -> BaseChatModel:
     model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
-    kwargs: Any = json.loads(os.getenv("CHAT_MODEL_KWARGS", "{}"))
+
+    raw_kwargs = os.getenv("CHAT_MODEL_KWARGS")
+    raw_kwargs = raw_kwargs.strip() if raw_kwargs else ""
+    kwargs: Any = json.loads(raw_kwargs) if raw_kwargs else {}
     if not isinstance(kwargs, dict):
         raise ValueError(
             f"CHAT_MODEL_KWARGS must be a JSON object, got {type(kwargs).__name__}"
         )
+
+    reserved_keys_used = _RESERVED_CHAT_MODEL_KWARGS & kwargs.keys()
+    if reserved_keys_used:
+        offending_key = sorted(reserved_keys_used)[0]
+        raise ValueError(
+            f"CHAT_MODEL_KWARGS must not include {offending_key!r}; select the "
+            "model and provider via CHAT_MODEL_NAME instead."
+        )
+
     kwargs.setdefault("temperature", 0.9)
 
     if _has_known_provider_prefix(model_name):

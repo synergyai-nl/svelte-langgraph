@@ -140,20 +140,38 @@ class CompletionResponse(Response):
         super().__init__(status_code, json=payload)
 
 
+@dataclass
+class CompletionMeta:
+    """Response-shaping fields for `make_completion_response`, grouped so the
+    factory doesn't need a long flat parameter list.
+
+    These describe the *envelope* of a chat completion (its id, timestamp,
+    finish reason, and token usage) as opposed to the message content itself,
+    which callers pass directly to `make_completion_response`.
+    """
+
+    finish_reason: FinishReason = "stop"
+    response_id: str = "chatcmpl-test"
+    created: int = 1234567890
+    usage: CompletionUsage | None = None
+
+
 def make_completion_response(
     message_content: str | None = None,
-    finish_reason: FinishReason = "stop",
-    response_id: str = "chatcmpl-test",
     tool_calls: Sequence[ChatCompletionMessageToolCallUnion] | None = None,
-    created: int = 1234567890,
-    usage: CompletionUsage | None = None,
     reasoning: str | None = None,
+    meta: CompletionMeta | None = None,
 ):
     """Create OpenAI API response using OpenAI SDK types.
 
     `reasoning`, when given, is injected into `choices[0].message.reasoning`
-    to emulate an OpenRouter reasoning-model response.
+    to emulate an OpenRouter reasoning-model response. `meta` overrides the
+    response envelope (id, created timestamp, finish reason, usage) -- see
+    `CompletionMeta`.
     """
+    if meta is None:
+        meta = CompletionMeta()
+    usage = meta.usage
     if usage is None:
         usage = CompletionUsage(prompt_tokens=10, completion_tokens=20, total_tokens=30)
 
@@ -165,14 +183,14 @@ def make_completion_response(
     choice = Choice(
         index=0,
         message=message,
-        finish_reason=finish_reason,
+        finish_reason=meta.finish_reason,
         logprobs=None,
     )
 
     completion = ChatCompletion(
-        id=response_id,
+        id=meta.response_id,
         object="chat.completion",
-        created=created,
+        created=meta.created,
         model="gpt-4o-mini",
         choices=[choice],
         usage=usage,
@@ -220,7 +238,6 @@ def openai_single_tool_call(mock_completion):
     """Mock OpenAI API for single tool call scenario."""
     mock_completion.side_effect = [
         make_completion_response(
-            response_id="chatcmpl-test-1",
             tool_calls=[
                 ChatCompletionMessageToolCall(
                     id="call_1",
@@ -231,16 +248,20 @@ def openai_single_tool_call(mock_completion):
                     ),
                 )
             ],
-            finish_reason="tool_calls",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
         ),
         make_completion_response(
-            response_id="chatcmpl-test-2",
-            created=1234567891,
             message_content="Based on the weather information, it's always sunny in Paris! Perfect weather for sightseeing.",
-            usage=CompletionUsage(
-                prompt_tokens=15,
-                completion_tokens=25,
-                total_tokens=40,
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-2",
+                created=1234567891,
+                usage=CompletionUsage(
+                    prompt_tokens=15,
+                    completion_tokens=25,
+                    total_tokens=40,
+                ),
             ),
         ),
     ]
