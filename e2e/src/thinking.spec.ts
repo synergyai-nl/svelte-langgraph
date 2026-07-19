@@ -176,10 +176,25 @@ async function startHeldOpenStreamServer(options: {
 		close: () =>
 			new Promise<void>((resolve) => {
 				for (const timer of pendingTimers) clearTimeout(timer);
-				server.close(() => resolve());
-				// `close()` only stops new connections; force-destroy any still-open
-				// keep-alive sockets (e.g. if the test failed before the hold elapsed).
-				server.closeAllConnections?.();
+
+				// Guard against a second `close()` call: `server.close()` on an
+				// already-closed server invokes its callback with an
+				// `ERR_SERVER_NOT_RUNNING` error instead of shutting anything down
+				// further, which would otherwise mask the original test failure with
+				// a spurious secondary error in a `finally`/teardown path.
+				if (!server.listening) {
+					resolve();
+					return;
+				}
+
+				try {
+					server.close(() => resolve());
+					// `close()` only stops new connections; force-destroy any still-open
+					// keep-alive sockets (e.g. if the test failed before the hold elapsed).
+					server.closeAllConnections?.();
+				} catch {
+					resolve();
+				}
 			})
 	};
 }
