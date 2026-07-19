@@ -35,8 +35,8 @@ const gitignorePath = resolveSibling('.gitignore');
 let svelteConfig;
 try {
 	svelteConfig = (await import(pathToFileURL(resolveSibling('svelte.config.js')).href)).default;
-} catch {
-	svelteConfig = undefined;
+} catch (err) {
+	if (err?.code !== 'ERR_MODULE_NOT_FOUND') throw err;
 }
 
 export default ts.config(
