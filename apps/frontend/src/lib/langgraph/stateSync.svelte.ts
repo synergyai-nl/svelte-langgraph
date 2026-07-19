@@ -2,11 +2,16 @@
  * createStateSync — runes-based reactive factory for LangGraph state field bindings.
  *
  * ## Write path
- * `field.set(v)` calls `stream.submit({ [name]: v }, { optimisticValues: ... })`.
+ * `field.set(v)` calls
+ * `stream.submit({ [name]: v }, { optimisticValues: ..., config: { configurable: { state_only_submit: true } } })`.
  * This triggers a *state-only* run through the graph: the backend's entry router
- * applies the field update and exits without an LLM call.  useStream then
- * refetches server truth after the run completes.  Optimistic values give an
- * immediate UI update while the round-trip is in flight.
+ * applies the field update and exits without an LLM call.  The `state_only_submit`
+ * marker is carried in per-invocation run config (not state) so the router can
+ * tell a genuine field-only submit apart from a leftover dangling HumanMessage in
+ * checkpoint state (e.g. after a cancelled/failed generation) without the marker
+ * leaking into later chat submits.  useStream then refetches server truth after
+ * the run completes.  Optimistic values give an immediate UI update while the
+ * round-trip is in flight.
  *
  * Submitting while `stream.isLoading` is true enqueues the submission via
  * useStream's built-in queue — acceptable for lightweight state-only writes.
@@ -43,6 +48,12 @@ export interface StreamLike {
 			optimisticValues?: (
 				prev: Record<string, unknown>
 			) => Record<string, unknown> | Partial<Record<string, unknown>>;
+			/**
+			 * Per-invocation run config forwarded to the graph. Unlike `input`,
+			 * this is never persisted to checkpoint state — see `set()` below
+			 * for why that matters for the `state_only_submit` marker.
+			 */
+			config?: { configurable?: Record<string, unknown> };
 		}
 	): void;
 }
@@ -187,7 +198,17 @@ export function createStateSync({ stream, client, assistantId }: StateSyncOption
 						optimisticValues: (prev: Record<string, unknown>) => ({
 							...prev,
 							[name]: v
-						})
+						}),
+						// Tells the backend router (graph.py's _route_after_entry) this is
+						// a pure state update, not a chat turn. Sent via run config rather
+						// than as a state field: if the last committed message happens to
+						// be a dangling HumanMessage (e.g. a prior generation was cancelled
+						// or failed before the agent replied), the router can't otherwise
+						// tell that apart from a genuine new chat submission and would
+						// wrongly re-invoke the LLM. Config is per-invocation and never
+						// checkpointed, so — unlike a state field — it can't leak into a
+						// later real chat submit.
+						config: { configurable: { state_only_submit: true } }
 					}
 				);
 			}

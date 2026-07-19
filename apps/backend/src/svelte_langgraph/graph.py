@@ -76,8 +76,23 @@ def _entry_node(state: AgentExtendedState) -> dict:
     return {"phase": phase}
 
 
-def _route_after_entry(state: AgentExtendedState) -> str:
-    """Route to agent if last message is from user; otherwise END (state-only submit)."""
+def _route_after_entry(state: AgentExtendedState, config: RunnableConfig) -> str:
+    """Route to agent if last message is from user; otherwise END (state-only submit).
+
+    A field-only submit (`stateSync`'s `field.set()`) never adds a message, but
+    accumulated *checkpoint* state can still end in a HumanMessage left over from
+    a prior run that was cancelled or failed before the agent produced an AI
+    reply (the human message is committed by the `entry` superstep regardless).
+    Looking only at `state["messages"]` can't tell that apart from a genuine new
+    submission, so it would wrongly re-run the agent and regenerate an answer.
+
+    The frontend marks a state-only submit explicitly via
+    `configurable.state_only_submit`, passed through `RunnableConfig` rather than
+    graph state so it's per-invocation and never persisted to the checkpoint.
+    """
+    if config.get("configurable", {}).get("state_only_submit"):
+        return END
+
     messages = state.get("messages", [])
     if messages and isinstance(messages[-1], HumanMessage):
         return "agent"

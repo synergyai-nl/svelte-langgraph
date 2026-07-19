@@ -218,6 +218,30 @@ describe('createStateSync', () => {
 			);
 		});
 
+		it('marks the submit as state-only via run config, not state', async () => {
+			// The backend router (graph.py's _route_after_entry) uses this marker to
+			// distinguish a pure field write from a chat turn, even when checkpoint
+			// state still ends in a dangling HumanMessage (e.g. after a cancelled or
+			// failed prior generation). It must travel via config, which is never
+			// persisted to the checkpoint, rather than as a state key.
+			const stream = makeMockStream({ phase: 'research' });
+			const sync = createStateSync({
+				stream,
+				client: makeMockClient(validSchema) as unknown as Client,
+				assistantId: 'test'
+			});
+			await flushPromises();
+
+			sync.field('phase').set('draft');
+
+			expect(stream.submit).toHaveBeenCalledWith(
+				{ phase: 'draft' },
+				expect.objectContaining({
+					config: { configurable: { state_only_submit: true } }
+				})
+			);
+		});
+
 		it('optimisticValues function spreads prev and overrides the field', async () => {
 			const stream = makeMockStream({ phase: 'research' });
 			const sync = createStateSync({

@@ -9,6 +9,7 @@ This module contains tests for the LangGraph agent, covering:
 - Phase tool and schema
 """
 
+import httpx
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -237,6 +238,189 @@ async def test_change_phase_tool(
     tool_messages = [m for m in result["messages"] if isinstance(m, ToolMessage)]
     assert any("Phase changed to review." in m.content for m in tool_messages), (
         f"Expected 'Phase changed to review.' in tool messages, got: {[m.content for m in tool_messages]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_change_phase_tool_value_error_becomes_error_tool_message(
+    agent,
+    thread_config: RunnableConfig,
+    openai_change_phase_tool_call,
+    monkeypatch,
+):
+    """A ValueError raised from inside change_phase's body must become a
+    recoverable error ToolMessage instead of crashing the run.
+
+    In normal operation the `phase` Literal type means ToolNode's default
+    handle_tool_errors already intercepts a bad LLM-supplied phase via a
+    pydantic ValidationError before change_phase's body ever executes (see
+    test_change_phase_tool_invalid_arg_from_llm_is_graceful). This test forces
+    validate_phase() itself to raise -- the only way the manual runtime check
+    inside change_phase can fire -- to guard against the defense-in-depth
+    branch silently regressing into an uncaught crash (it used to: a bare
+    ValueError, not wrapped as a ToolInvocationError, is re-raised by
+    ToolNode's default error handler instead of becoming a ToolMessage).
+    """
+    import svelte_langgraph.tools as tools_mod
+
+    def always_raise(phase: str) -> None:
+        raise ValueError(f"forced failure for {phase!r}")
+
+    monkeypatch.setattr(tools_mod, "validate_phase", always_raise)
+
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Please switch to the review phase")]},
+        thread_config,
+    )
+
+    tool_messages = [m for m in result["messages"] if isinstance(m, ToolMessage)]
+    assert any(
+        getattr(m, "status", None) == "error" and "forced failure" in m.content
+        for m in tool_messages
+    ), (
+        f"Expected an error ToolMessage, got: "
+        f"{[(m.content, getattr(m, 'status', None)) for m in tool_messages]}"
+    )
+    # The phase must not have been updated since validation failed.
+    assert result["phase"] != "review"
+
+
+@pytest.mark.asyncio
+async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
+    agent, thread_config: RunnableConfig, mock_completion
+):
+    """An out-of-enum phase argument from the LLM is rejected by the tool's
+    pydantic schema (derived from the `Literal` type) before change_phase's
+    body runs. ToolNode's default handle_tool_errors converts that
+    ValidationError into a recoverable error ToolMessage and the run
+    completes with a final AI message -- it does not fail the run.
+    """
+    from openai.types.chat.chat_completion_message_tool_call import (
+        ChatCompletionMessageToolCall,
+        Function,
+    )
+
+    from tests.conftest import make_completion_response
+
+    mock_completion.side_effect = [
+        make_completion_response(
+            response_id="chatcmpl-test-1",
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_phase_bad",
+                    type="function",
+                    function=Function(
+                        name="change_phase",
+                        arguments='{"phase": "bogus_phase"}',
+                    ),
+                )
+            ],
+            finish_reason="tool_calls",
+        ),
+        make_completion_response(
+            response_id="chatcmpl-test-2",
+            created=1234567891,
+            message_content="Sorry, that is not a valid phase.",
+        ),
+    ]
+
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Please switch to bogus_phase")]},
+        thread_config,
+    )
+
+    tool_messages = [m for m in result["messages"] if isinstance(m, ToolMessage)]
+    assert any(getattr(m, "status", None) == "error" for m in tool_messages)
+    ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage)]
+    assert any(m.content == "Sorry, that is not a valid phase." for m in ai_messages)
+    # Phase is untouched -- coerced to the default by the entry node.
+    assert result["phase"] == "research"
+
+
+@pytest.mark.asyncio
+async def test_phase_only_submit_after_failed_generation_skips_llm(
+    agent, thread_config: RunnableConfig, mock_completion_optional
+):
+    """A state-only submit must not re-invoke the LLM even when the last
+    committed checkpoint message is a dangling HumanMessage left by a prior
+    generation that was cancelled or failed before the agent replied.
+
+    `_route_after_entry` can't tell that dangling HumanMessage apart from a
+    genuine new chat submission by looking at accumulated state alone -- both
+    end with `messages[-1]` being a HumanMessage. The frontend's `field.set()`
+    marks a state-only submit explicitly via the `state_only_submit` run
+    config (see stateSync.svelte.ts), which this test also sets.
+    """
+    mock_completion = mock_completion_optional
+
+    # First run: the model backend fails, simulating a cancelled/failed
+    # generation. The entry node's write (human message + phase) is committed
+    # as its own checkpoint superstep; the agent node's never completes.
+    mock_completion.mock(side_effect=httpx.ReadTimeout("simulated cancellation"))
+
+    with pytest.raises(Exception):  # noqa: B017 - any failure from the mocked call
+        await agent.ainvoke(
+            {"messages": [HumanMessage(content="Hello there")]},
+            thread_config,
+        )
+
+    state = await agent.aget_state(thread_config)
+    assert isinstance(state.values["messages"][-1], HumanMessage), (
+        "Expected the dangling HumanMessage to be committed even though "
+        "generation failed"
+    )
+    call_count_after_failure = mock_completion.call_count
+    assert call_count_after_failure >= 1
+
+    # Second run: a phase-only submit carrying the state_only_submit marker.
+    # The LLM endpoint must not be hit again.
+    state_only_config = RunnableConfig(
+        configurable={
+            **thread_config.get("configurable", {}),
+            "state_only_submit": True,
+        }
+    )
+    result = await agent.ainvoke({"phase": "draft"}, state_only_config)
+
+    assert result["phase"] == "draft"
+    ai_messages = [m for m in result.get("messages", []) if isinstance(m, AIMessage)]
+    assert len(ai_messages) == 0
+    assert mock_completion.call_count == call_count_after_failure
+
+
+@pytest.mark.asyncio
+async def test_phase_only_submit_without_marker_still_regenerates(
+    agent, thread_config: RunnableConfig, mock_completion
+):
+    """Documents the router's default behavior when the state_only_submit
+    marker is absent: a submit landing on a checkpoint that ends in a
+    HumanMessage still routes to the agent, exactly like the regenerate
+    flow. This is what makes the explicit marker in the test above
+    necessary rather than incidental.
+    """
+    mock_completion.side_effect = [
+        RuntimeError("First call should fail (simulated cancellation)"),
+    ]
+
+    with pytest.raises(Exception):  # noqa: B017 - any failure from the mocked call
+        await agent.ainvoke(
+            {"messages": [HumanMessage(content="Hello there")]},
+            thread_config,
+        )
+    call_count_after_failure = mock_completion.call_count
+
+    from tests.conftest import make_completion_response
+
+    mock_completion.side_effect = [
+        make_completion_response("Regenerated answer"),
+    ]
+
+    result = await agent.ainvoke({"phase": "draft"}, thread_config)
+
+    assert result["phase"] == "draft"
+    assert mock_completion.call_count == call_count_after_failure + 1, (
+        "Without the state_only_submit marker, a submit against a checkpoint "
+        "ending in a dangling HumanMessage is expected to route to the agent"
     )
 
 
