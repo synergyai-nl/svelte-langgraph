@@ -123,10 +123,16 @@ async function startHeldOpenStreamServer(options: {
 	const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
 
 	const server = http.createServer((req, res) => {
+		// Browsers do not reliably accept a wildcard for Access-Control-Allow-Headers
+		// on non-simple requests — notably it does not cover `Authorization` per the
+		// Fetch spec, and engines differ. Echo back whatever the preflight actually
+		// requested, falling back to the explicit headers this stream request sends
+		// (Authorization, Content-Type: application/json) if none was requested.
 		const corsHeaders = {
 			'Access-Control-Allow-Origin': '*',
 			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-			'Access-Control-Allow-Headers': '*',
+			'Access-Control-Allow-Headers':
+				req.headers['access-control-request-headers'] ?? 'authorization, content-type',
 			'Access-Control-Max-Age': '86400'
 		};
 
