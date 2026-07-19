@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { LANGGRAPH_CONFIG } from './fixtures/backend';
+import { LANGGRAPH_CONFIG, gotoFreshThread } from './fixtures/backend';
 
 test('user can send a message and receive an AI response', async ({ page, chat }) => {
 	await authenticateUser(page);
@@ -24,8 +24,11 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 test.describe('Edit message', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
-		await page.goto('/chat/');
-		await page.waitForURL(/\/chat\/[\w-]+/);
+		// Fresh thread per test (not page.goto('/chat/')) — these assertions match on
+		// message content/count, so they must not inherit another spec's idle thread
+		// (and its persisted state, e.g. `phase`) via getOrCreateThread's latest-idle
+		// reuse. See fixtures/backend.ts#gotoFreshThread for the full rationale.
+		await gotoFreshThread(page);
 	});
 
 	test('edit button opens a textarea with original message text', async ({ page, chat }) => {
@@ -110,8 +113,8 @@ test.describe('Edit message', () => {
 test.describe('Regenerate message', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
-		await page.goto('/chat/');
-		await page.waitForURL(/\/chat\/[\w-]+/);
+		// Fresh thread per test — see rationale in the 'Edit message' describe above.
+		await gotoFreshThread(page);
 	});
 
 	test('regenerating produces a new AI generation (not a checkpoint replay)', async ({
@@ -147,6 +150,9 @@ test.describe('Regenerate message', () => {
 		await expect(chat.textInput).toBeEnabled();
 
 		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
+		// Guard against a route that never observed an authenticated request (e.g. request
+		// timing changes) — fail with a clear message instead of a null-assertion crash below.
+		expect(capturedToken, 'no authenticated request observed via page.route').toBeTruthy();
 		const headers = { Authorization: `Bearer ${capturedToken!}` };
 
 		// Read the AI message answering our unique question from committed thread state.
@@ -193,8 +199,8 @@ test.describe('Regenerate message', () => {
 test.describe('Cancellation', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
-		await page.goto('/chat/');
-		await page.waitForURL(/\/chat\/[\w-]+/);
+		// Fresh thread per test — see rationale in the 'Edit message' describe above.
+		await gotoFreshThread(page);
 	});
 
 	test('user can cancel a running generation', async ({ page, chat }) => {
