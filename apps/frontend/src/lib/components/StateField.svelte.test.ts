@@ -219,6 +219,55 @@ describe('StateField', () => {
 		});
 	});
 
+	describe('number kind', () => {
+		function makeNumberBinding(current: number | undefined = undefined): FieldBinding {
+			const state = { current };
+			return {
+				get value() {
+					return state.current;
+				},
+				get schema() {
+					return { kind: 'number' as const };
+				},
+				get options() {
+					return [];
+				},
+				set(v: unknown) {
+					state.current = v as number;
+				}
+			};
+		}
+
+		it('renders an empty input on a fresh thread (undefined value)', () => {
+			const field = makeNumberBinding(undefined);
+			render(StateField, { name: 'count', field });
+
+			const input = screen.getByRole('spinbutton') as HTMLInputElement;
+			expect(input.value).toBe('');
+		});
+
+		it('renders the current numeric value', () => {
+			const field = makeNumberBinding(42);
+			render(StateField, { name: 'count', field });
+
+			const input = screen.getByRole('spinbutton') as HTMLInputElement;
+			expect(input.value).toBe('42');
+		});
+
+		it('calls field.set with the parsed number on change', async () => {
+			const user = userEvent.setup();
+			const field = makeNumberBinding(undefined);
+			const setSpy = vi.spyOn(field, 'set');
+			render(StateField, { name: 'count', field });
+
+			const input = screen.getByRole('spinbutton');
+			await user.type(input, '7');
+			await user.tab();
+
+			expect(setSpy).toHaveBeenCalledWith(7);
+		});
+	});
+
 	describe('schema unavailable / loading', () => {
 		it('renders nothing while schema is loading', () => {
 			const field = makeLoadingBinding();
