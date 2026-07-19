@@ -213,6 +213,26 @@ describe('extractTextFromContent', () => {
 		expect(extractTextFromContent(null)).toBe('');
 		expect(extractTextFromContent(undefined)).toBe('');
 	});
+
+	it('should skip text blocks with a missing text field', () => {
+		const content = [{ type: 'text' }];
+		expect(extractTextFromContent(content)).toBe('');
+	});
+
+	it('should skip text blocks with a null text field', () => {
+		const content = [{ type: 'text', text: null }];
+		expect(extractTextFromContent(content)).toBe('');
+	});
+
+	it('should join only valid text blocks when mixed with malformed ones', () => {
+		const content = [
+			{ type: 'text', text: 'Hello ' },
+			{ type: 'text' },
+			{ type: 'text', text: null },
+			{ type: 'text', text: 'world' }
+		];
+		expect(extractTextFromContent(content)).toBe('Hello world');
+	});
 });
 
 describe('extractThinkingFromContent', () => {
@@ -261,5 +281,24 @@ describe('extractThinkingFromContent', () => {
 
 	it('should return undefined for null/undefined content with no kwargs', () => {
 		expect(extractThinkingFromContent(null)).toBeUndefined();
+	});
+
+	it('should ignore a reasoning block whose reasoning field is an object', () => {
+		const content = [{ type: 'reasoning', reasoning: { text: 'nested' } }];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
+	});
+
+	it('should ignore a thinking block with a missing thinking field', () => {
+		const content = [{ type: 'thinking' }];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
+	});
+
+	it('should return undefined for a content array containing only malformed thinking blocks', () => {
+		const content = [
+			{ type: 'thinking' },
+			{ type: 'reasoning', reasoning: { text: 'nested' } },
+			{ type: 'reasoning', reasoning: null }
+		];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
 	});
 });

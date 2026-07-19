@@ -9,7 +9,9 @@ export function extractTextFromContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 	if (Array.isArray(content)) {
 		return content
-			.filter((b): b is { type: 'text'; text: string } => b?.type === 'text')
+			.filter(
+				(b): b is { type: 'text'; text: string } => b?.type === 'text' && typeof b.text === 'string'
+			)
 			.map((b) => b.text)
 			.join('');
 	}
@@ -36,10 +38,13 @@ export function extractThinkingFromContent(
 	if (Array.isArray(content)) {
 		const thinking = content
 			.filter(
-				(b): b is { type: 'reasoning' | 'thinking'; reasoning?: string; thinking?: string } =>
+				(b): b is { type: 'reasoning' | 'thinking'; reasoning?: unknown; thinking?: unknown } =>
 					b?.type === 'reasoning' || b?.type === 'thinking'
 			)
-			.map((b) => b.reasoning ?? b.thinking ?? '')
+			.map((b) => {
+				const value = b.reasoning ?? b.thinking;
+				return typeof value === 'string' ? value : '';
+			})
 			.join('');
 		return thinking || undefined;
 	}
