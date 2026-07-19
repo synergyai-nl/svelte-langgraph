@@ -17,7 +17,7 @@
 	<button
 		type="button"
 		aria-expanded={!collapsed}
-		aria-controls={contentId}
+		aria-controls={collapsed ? undefined : contentId}
 		class="inline-flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1 text-sm text-purple-700 transition-colors hover:bg-purple-100 focus:ring-2 focus:ring-purple-400 focus:ring-offset-1 focus:outline-none dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30"
 		onclick={() => (collapsed = !collapsed)}
 	>
