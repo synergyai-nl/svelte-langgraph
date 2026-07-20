@@ -6,8 +6,13 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
     env_file:
+      - path: .env
+        required: false
+      # App-specific overrides; later entries win.
       - path: "apps/frontend/.env"
         required: false
+    environment:
+      PUBLIC_LANGGRAPH_API_URL: "${PUBLIC_LANGGRAPH_API_URL:-http://host.docker.internal:2026}"
 
   backend:
     ports:
@@ -17,7 +22,7 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: "postgresql://aegra:aegra@postgres:5432/aegra"
+      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/aegra"
       AUTH_TYPE: "custom"
     depends_on:
       postgres:
@@ -26,33 +31,37 @@ services:
   postgres:
     image: pgvector/pgvector:pg18
     environment:
-      POSTGRES_USER: aegra
-      POSTGRES_PASSWORD: aegra
+      # Match Aegra's built-in POSTGRES_* defaults so the backend works even
+      # when DATABASE_URL is absent from .env.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aegra
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aegra -d aegra"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegra"]
       interval: 2s
       timeout: 3s
       retries: 15
 
   # Ephemeral database for E2E runs: tmpfs storage means every container
-  # start begins with a fresh, empty database.
+  # start begins with a fresh, empty database. Only started with
+  # `--profile e2e` (or when targeted explicitly), never by plain `up`.
   postgres-e2e:
+    profiles: ["e2e"]
     image: pgvector/pgvector:pg18
     environment:
-      POSTGRES_USER: aegra
-      POSTGRES_PASSWORD: aegra
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aegra_e2e
     ports:
       - "5433:5432"
     tmpfs:
       - /var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aegra -d aegra_e2e"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegra_e2e"]
       interval: 2s
       timeout: 3s
       retries: 15

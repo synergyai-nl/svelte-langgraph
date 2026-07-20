@@ -208,10 +208,10 @@ This starts the frontend, the backend (Aegra), and PostgreSQL. The backend can a
 moon backend:up
 ```
 
-The frontend container reaches the backend through your host, so when running both in Docker point it at the Docker host:
+The frontend container reads its configuration from the root `.env` file and defaults `PUBLIC_LANGGRAPH_API_URL` to `http://host.docker.internal:2026`, so it reaches the backend through your Docker host out of the box. Point it elsewhere by overriding the variable:
 
 ```
-PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2026 docker compose up --build
+PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
 ```
 
 ### Internationalization with Paraglide

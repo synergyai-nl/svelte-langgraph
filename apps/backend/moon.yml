@@ -78,7 +78,7 @@ tasks:
   serve-e2e:
     # Remove and recreate the tmpfs-backed postgres-e2e container so every
     # E2E run starts from a fresh, empty database.
-    script: "docker compose -f ../../docker-compose.yml rm -sf postgres-e2e && docker compose -f ../../docker-compose.yml up -d --wait postgres-e2e && uv run uvicorn aegra_api.main:app --host localhost --port 2026 2>&1"
+    script: "docker compose -f ../../docker-compose.yml --profile e2e rm -sf postgres-e2e && docker compose -f ../../docker-compose.yml --profile e2e up -d --wait postgres-e2e && uv run uvicorn aegra_api.main:app --host localhost --port 2026 2>&1"
     preset: "server"
     options:
       envFile: '/.env.e2e'
