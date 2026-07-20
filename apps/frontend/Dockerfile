@@ -49,11 +49,10 @@ RUN moon docker prune
 
 FROM node:24-alpine AS start
 
-# Install tzdata and set specific timezone
-RUN apk add --no-cache tzdata \
-	&& cp /usr/share/zoneinfo/UTC /etc/localtime \
-	&& echo "UTC" > /etc/timezone \
-	&& apk del tzdata
+# Alpine defaults to UTC without /etc/localtime, and Node's Intl uses its own
+# bundled ICU timezone data rather than system zoneinfo, so installing tzdata
+# just to configure UTC is unnecessary (and tripped hadolint DL3018's
+# pin-apk-versions rule). TZ makes the intent explicit.
 ENV TZ=UTC
 
 # Copy built sources
