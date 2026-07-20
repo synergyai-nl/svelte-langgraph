@@ -17,6 +17,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+# Aegra defaults to noop auth; bake in custom auth so the shipped image can
+# never silently run unauthenticated (required for wildcard CORS to be safe).
+# Override explicitly only if you know what you are doing.
+ENV AUTH_TYPE=custom
+
 EXPOSE 2026
 
 # Aegra runs its database migrations automatically at startup.

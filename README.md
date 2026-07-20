@@ -214,6 +214,10 @@ The frontend container reads its configuration from the root `.env` file and def
 PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
 ```
 
+### Security notes
+
+The backend image bakes in `AUTH_TYPE=custom`, so it always requires OIDC bearer tokens — it cannot silently fall back to Aegra's unauthenticated `noop` mode. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
+
 ### Internationalization with Paraglide
 
 This project uses [Paraglide-JS](https://inlang.com/m/gerre34r/library-inlang-paraglideJs) for type-safe internationalization. Paraglide offers a developer-friendly approach where you can:
