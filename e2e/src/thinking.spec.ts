@@ -570,3 +570,142 @@ test.describe('Thinking block UI', () => {
 		}
 	});
 });
+
+/**
+ * Builds enough prior human/AI exchanges that the message list overflows a
+ * standard viewport height, so a newly streamed message won't already be
+ * visible without the container actually scrolling.
+ */
+function seedOverflowingHistory(exchangeCount: number): unknown[] {
+	const messages: unknown[] = [];
+	for (let i = 0; i < exchangeCount; i++) {
+		messages.push(
+			historyHumanMessage(
+				`seed-human-${i}`,
+				`Seed question ${i + 1}: padding out the prior conversation so the message list ` +
+					'overflows the viewport before the new question is asked.'
+			)
+		);
+		messages.push(
+			historyAiMessage(
+				`seed-ai-${i}`,
+				`Seed answer ${i + 1}: a reasonably long reply so each exchange takes up real ` +
+					'vertical space and the conversation reliably overflows a standard viewport.'
+			)
+		);
+	}
+	return messages;
+}
+
+test.describe('Thinking block UI - scrolling with an already-overflowing history', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+	});
+
+	test('scrolls a live, thinking-only AI response into view when prior conversation already overflows the viewport', async ({
+		page,
+		chat
+	}) => {
+		// Same rationale as the held-open-stream test above: the held-open
+		// connection plus settle waits comfortably exceed the 30s default.
+		test.setTimeout(60_000);
+
+		const runId = 'run--test-thinking-overflow-001';
+		const messageId = 'msg-overflow-1';
+		const reasoning = 'Thinking about the question after a long prior conversation...';
+		const answer = 'The final answer, delivered after scrolling into view.';
+		const question = 'One more question after a long conversation';
+		const holdMs = 4000;
+
+		const seedMessages = seedOverflowingHistory(10);
+		let historyMessages: unknown[] = seedMessages;
+
+		// The initial thread-history fetch fires the instant Chat.svelte mounts
+		// (useStream's `initThreadId`), before this test body would otherwise get a
+		// chance to register a route — so unlike `mockThreadHistory` calls elsewhere
+		// in this file (registered right before submitting, to intercept only the
+		// *post-run* refetch), this route must be registered BEFORE navigating to
+		// /chat/ so it also covers that very first fetch. A single route handler
+		// reading a reassignable closure variable serves both the initial seeded
+		// history and, later, the post-run refetch.
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/history`, async (route) => {
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(buildHistoryState(historyMessages))
+			});
+		});
+
+		await page.goto('/chat/');
+		await page.waitForURL(/\/chat\/[\w-]+/);
+
+		// Sanity-check the seeded conversation actually overflows the viewport —
+		// otherwise this test would pass vacuously, since a container that never
+		// needs to scroll looks identical to one that scrolled correctly.
+		const scrollContainer = page.locator('.overflow-y-auto').first();
+		await expect(scrollContainer).toBeVisible();
+		await expect
+			.poll(() => scrollContainer.evaluate((el) => el.scrollHeight > el.clientHeight))
+			.toBe(true);
+
+		const server = await startHeldOpenStreamServer({
+			runId,
+			initialChunks: [
+				{ event: 'messages', data: aiChunk('', messageId, { reasoning_content: reasoning }) }
+			],
+			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId) }],
+			holdMs
+		});
+
+		try {
+			// Proxy the run-stream request to our locally-owned server (see
+			// startHeldOpenStreamServer) instead of fulfilling it outright — a
+			// `route.fulfill` response can only ever deliver a complete, static body,
+			// which cannot represent a stream that's still in progress.
+			await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/runs/stream`, async (route) => {
+				await route.continue({ url: server.url });
+			});
+
+			await chat.textInput.fill(question);
+			await chat.textInput.press('Enter');
+
+			// While the connection is held open server-side, the new AI message has
+			// thinking but no text yet, and the message list already overflows the
+			// viewport (asserted above). Confirms the end-to-end outcome that
+			// ScrollableContainer's `scrollToMe` fix targets: a thinking-only message
+			// is scrolled into view rather than staying below the fold.
+			//
+			// NOTE: this does not, on its own, discriminate the one-line regression the
+			// fix addresses — with a long prior conversation already rendered, every
+			// existing message row's own `scrollToMe` attachment also re-fires on each
+			// stream tick (ChatMessages' `messages` array is rebuilt with fresh object
+			// references on every update, so each keyed row's attach re-evaluates) and
+			// keeps the container pinned to the bottom regardless of the thinking-only
+			// row's own gate. Verified this by reverting only the ScrollableContainer
+			// fix and re-running this test: it still passed, and instrumenting
+			// `Element.prototype.scrollTo` showed ~40 calls firing during the stream
+			// from those other rows alone. The `ScrollableContainer.svelte.test.ts` unit
+			// tests isolate the single-row case and are the real regression guard for
+			// this fix; this E2E test remains valuable end-to-end coverage of the
+			// user-visible outcome (chat UX changes require E2E coverage per this
+			// repo's CLAUDE.md) and would catch a regression in the overall behavior.
+			const thinkingButton = page.getByRole('button', { name: /thinking/i });
+			await expect(thinkingButton).toBeVisible();
+			await expect(page.getByText(answer)).not.toBeVisible();
+			await expect(thinkingButton).toBeInViewport();
+
+			// Let the run complete, keeping the mocked history in sync with the
+			// finished exchange so the post-stream refetch (and teardown) sees a
+			// consistent state.
+			historyMessages = [
+				...seedMessages,
+				historyHumanMessage('e2e-history-human-overflow', question),
+				historyAiMessage(messageId, answer, { reasoning_content: reasoning })
+			];
+			await expect(page.getByText(answer)).toBeVisible({ timeout: holdMs + 10_000 });
+			await expect(thinkingButton).toBeInViewport();
+		} finally {
+			await server.close();
+		}
+	});
+});
