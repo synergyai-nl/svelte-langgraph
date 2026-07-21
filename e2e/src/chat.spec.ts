@@ -21,6 +21,58 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await expect(aiMessage).not.toBeEmpty();
 });
 
+test.describe('Streaming', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		// Fresh thread — content-sensitive assertions, see fixtures/backend.ts#gotoFreshThread.
+		await gotoFreshThread(page);
+	});
+
+	test('AI response streams into the UI incrementally, not only on completion', async ({
+		page,
+		chat
+	}) => {
+		// The mock echoes ~256 chars with a per-chunk delay (~13s total), which
+		// doesn't fit the default 30s test timeout together with first-token latency.
+		test.setTimeout(90_000);
+		// Regression test: the backend wraps the react agent as a subgraph node, and
+		// LangGraph only emits subgraph LLM token events when the client submits with
+		// streamSubgraphs — without it the answer pops in whole at run completion.
+		// The ai-mock echoes the input back chunk-by-chunk with a per-chunk delay,
+		// giving a multi-second window in which partial AI output must be visible.
+		// Distinct UUIDs (not one repeated) so the head and tail slices are
+		// unique substrings — a repeated input would contain its own "tail" in
+		// every repetition, making the mid-stream assertion below vacuous.
+		const testInput = Array.from({ length: 8 }, () => randomUUID().replace(/-/g, '')).join('');
+		const partialEcho = testInput.slice(0, 20);
+		const tailEcho = testInput.slice(-20);
+
+		await chat.textInput.fill(testInput);
+		await chat.textInput.press('Enter');
+
+		// Scope to AI message bodies — the user's own bubble contains the full
+		// input text, so a broader locator would match it trivially. AI cards use
+		// `prose` (with the literal class "dark:prose-invert"), user cards use
+		// `prose prose-invert`, so :not(.prose-invert) selects AI bubbles only.
+		const aiProse = page.locator('.prose:not(.prose-invert)');
+		const aiWithPartial = aiProse.filter({ hasText: partialEcho });
+		const aiWithTail = aiProse.filter({ hasText: tailEcho });
+
+		// The echo's head must appear in an AI bubble mid-run: before its tail
+		// exists and while the input is still disabled (run in flight). The
+		// generous timeout only tolerates first-token latency (cold dev server);
+		// incrementality itself is enforced by the two assertions that follow,
+		// which must hold at whatever moment the partial first renders.
+		await expect(aiWithPartial.first()).toBeVisible({ timeout: 30_000 });
+		await expect(aiWithTail).toHaveCount(0);
+		await expect(chat.textInput).toBeDisabled();
+
+		// The run then completes normally: full echo present, input re-enabled.
+		await expect(aiWithTail.first()).toBeVisible({ timeout: 45_000 });
+		await expect(chat.textInput).toBeEnabled({ timeout: 45_000 });
+	});
+});
+
 test.describe('Edit message', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

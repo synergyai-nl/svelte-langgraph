@@ -86,7 +86,9 @@ describe('Chat', () => {
 								content: 'Tell me about AI'
 							})
 						]
-					})
+					}),
+					// Agent runs inside a subgraph node — without this the UI gets no tokens
+					expect.objectContaining({ streamSubgraphs: true })
 				);
 			});
 		});
@@ -295,7 +297,7 @@ describe('Chat', () => {
 
 			expect(mockSubmit).toHaveBeenCalledWith(
 				{ messages: [{ type: 'human', content: 'Edited message' }] },
-				{ checkpoint: { id: 'checkpoint-1' } }
+				{ checkpoint: { id: 'checkpoint-1' }, streamSubgraphs: true }
 			);
 		});
 	});
@@ -319,7 +321,8 @@ describe('Chat', () => {
 			await user.click(await screen.findByTitle(/re-try/i));
 
 			expect(mockSubmit).toHaveBeenCalledWith(undefined, {
-				checkpoint: { id: 'checkpoint-ai-1' }
+				checkpoint: { id: 'checkpoint-ai-1' },
+				streamSubgraphs: true
 			});
 		});
 	});
