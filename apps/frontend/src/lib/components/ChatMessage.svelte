@@ -14,9 +14,11 @@
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		/** Whether this message's thinking block should show its "still streaming" animation. */
+		isThinkingActive?: boolean;
 	}
 
-	let { message, onEdit, onRegenerate, onFeedback }: Props = $props();
+	let { message, onEdit, onRegenerate, onFeedback, isThinkingActive = false }: Props = $props();
 
 	const plugins = [gfmPlugin()];
 
@@ -66,7 +68,7 @@
 				>
 					{#if message.type === 'ai'}
 						{#if message.thinking}
-							<ThinkingBlock thinking={message.thinking} />
+							<ThinkingBlock thinking={message.thinking} active={isThinkingActive} />
 						{/if}
 						{#if message.text}
 							<Card.Root class="border-border-card bg-muted border shadow-sm">

@@ -548,6 +548,10 @@ test.describe('Thinking block UI', () => {
 			await expect(thinkingButton).toBeVisible();
 			await expect(page.getByText(answer)).not.toBeVisible();
 
+			// The thinking pill's icon animates (data-streaming) while the run is still
+			// in flight, so the UI doesn't feel stuck during the thinking phase.
+			await expect(thinkingButton).toHaveAttribute('data-streaming', 'true');
+
 			await thinkingButton.click();
 			await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
 			// Both reasoning deltas, concatenated client-side, are visible mid-stream.
@@ -565,6 +569,10 @@ test.describe('Thinking block UI', () => {
 			await expect(thinkingButton).toBeVisible();
 			await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
 			await expect(page.getByText(fullReasoning)).toBeVisible();
+
+			// Once the run has completed and the post-stream history refetch has settled,
+			// the pill is no longer the in-flight message, so the streaming animation stops.
+			await expect(thinkingButton).toHaveAttribute('data-streaming', 'false');
 		} finally {
 			await server.close();
 		}

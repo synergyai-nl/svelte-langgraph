@@ -5,9 +5,11 @@
 
 	interface Props {
 		thinking: string;
+		/** Animate the icon while thinking tokens are actively streaming in. */
+		active?: boolean;
 	}
 
-	let { thinking }: Props = $props();
+	let { thinking, active = false }: Props = $props();
 	let collapsed = $state(true);
 	const uid = $props.id();
 	const contentId = `thinking-content-${uid}`;
@@ -20,8 +22,9 @@
 		aria-controls={collapsed ? undefined : contentId}
 		class="inline-flex items-center gap-2 rounded-full bg-purple-50 px-3 py-1 text-sm text-purple-700 transition-colors hover:bg-purple-100 focus:ring-2 focus:ring-purple-400 focus:ring-offset-1 focus:outline-none dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30"
 		onclick={() => (collapsed = !collapsed)}
+		data-streaming={active ? 'true' : 'false'}
 	>
-		<Brain size={16} class="text-purple-500 dark:text-purple-400" />
+		<Brain size={16} class="text-purple-500 dark:text-purple-400 {active ? 'animate-pulse' : ''}" />
 		<span>{m.thinking()}</span>
 		<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
 	</button>

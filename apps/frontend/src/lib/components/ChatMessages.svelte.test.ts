@@ -95,6 +95,59 @@ describe('ChatMessages', () => {
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	});
 
+	describe('thinking pill streaming animation', () => {
+		test('marks the last message as streaming when isStreaming is true', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: '', thinking: 'Thinking...', id: 'ai-streaming' })],
+				isStreaming: true
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'true'
+			);
+		});
+
+		test('does not mark a completed message as streaming once isStreaming is false', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: 'Done', thinking: 'Thinking...', id: 'ai-done' })],
+				isStreaming: false
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'false'
+			);
+		});
+
+		test('defaults to not streaming when isStreaming is omitted (e.g. historical messages after reload)', () => {
+			renderMessages({
+				messages: [anAIMessage({ text: 'Done', thinking: 'Thinking...', id: 'ai-historical' })]
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'false'
+			);
+		});
+
+		test('only the last message animates when isStreaming is true and prior messages also have thinking', () => {
+			renderMessages({
+				messages: [
+					anAIMessage({ text: 'Earlier answer', thinking: 'Earlier thinking...', id: 'ai-1' }),
+					aUserMessage({ text: 'Follow-up question', id: 'user-2' }),
+					anAIMessage({ text: '', thinking: 'Current thinking...', id: 'ai-2' })
+				],
+				isStreaming: true
+			});
+
+			const thinkingButtons = screen.getAllByRole('button', { name: /thinking/i });
+			expect(thinkingButtons).toHaveLength(2);
+			expect(thinkingButtons[0]).toHaveAttribute('data-streaming', 'false');
+			expect(thinkingButtons[1]).toHaveAttribute('data-streaming', 'true');
+		});
+	});
+
 	describe('when generationError is set', () => {
 		const error = new Error('Something went wrong');
 

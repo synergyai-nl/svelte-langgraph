@@ -55,4 +55,30 @@ describe('ThinkingBlock', () => {
 
 		expect(button).toHaveAttribute('aria-expanded', 'false');
 	});
+
+	describe('streaming animation', () => {
+		test('defaults to inactive when active is omitted', () => {
+			render(ThinkingBlock, { props: { thinking: 'My reasoning here' } });
+
+			const button = screen.getByRole('button', { name: /thinking/i });
+			expect(button).toHaveAttribute('data-streaming', 'false');
+			expect(button.querySelector('svg')).not.toHaveClass('animate-pulse');
+		});
+
+		test('does not animate the icon when active is false', () => {
+			render(ThinkingBlock, { props: { thinking: 'My reasoning here', active: false } });
+
+			const button = screen.getByRole('button', { name: /thinking/i });
+			expect(button).toHaveAttribute('data-streaming', 'false');
+			expect(button.querySelector('svg')).not.toHaveClass('animate-pulse');
+		});
+
+		test('animates the icon and marks data-streaming when active is true', () => {
+			render(ThinkingBlock, { props: { thinking: 'My reasoning here', active: true } });
+
+			const button = screen.getByRole('button', { name: /thinking/i });
+			expect(button).toHaveAttribute('data-streaming', 'true');
+			expect(button.querySelector('svg')).toHaveClass('animate-pulse');
+		});
+	});
 });

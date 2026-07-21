@@ -85,4 +85,45 @@ describe('ChatMessage', () => {
 			expect(buttons.some((b) => b.getAttribute('name') === 'copy')).toBe(true);
 		});
 	});
+
+	describe('when rendering an AI message with thinking and isThinkingActive', () => {
+		test('marks the thinking pill as streaming when isThinkingActive is true', () => {
+			const message = anAIMessage({ text: '', thinking: 'Let me think about this...' });
+			renderWithProviders(ChatMessage, {
+				message,
+				onEdit: vi.fn(),
+				onRegenerate: vi.fn(),
+				isThinkingActive: true
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'true'
+			);
+		});
+
+		test('does not mark the thinking pill as streaming when isThinkingActive is omitted', () => {
+			renderAIComponent({ text: '', thinking: 'Let me think about this...' });
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'false'
+			);
+		});
+
+		test('does not mark the thinking pill as streaming when isThinkingActive is false', () => {
+			const message = anAIMessage({ text: '', thinking: 'Let me think about this...' });
+			renderWithProviders(ChatMessage, {
+				message,
+				onEdit: vi.fn(),
+				onRegenerate: vi.fn(),
+				isThinkingActive: false
+			});
+
+			expect(screen.getByRole('button', { name: /thinking/i })).toHaveAttribute(
+				'data-streaming',
+				'false'
+			);
+		});
+	});
 });
