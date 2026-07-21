@@ -104,11 +104,8 @@ def make_graph(
 ) -> CompiledStateGraph:
     model = get_chat_model()
 
-    # checkpointer=False disables subgraph persistence entirely (None would inherit
-    # the parent's). With inherited checkpointing, resuming from a parent checkpoint
-    # (the frontend's regenerate flow) re-attaches to the subgraph's own completed
-    # namespaced checkpoints and replays the cached answer instead of re-running
-    # the model. Root state is checkpointed by the outer graph per superstep.
+    # checkpointer=False: inherited subgraph checkpoints would replay cached
+    # answers on regenerate (see test_regenerate_reexecutes_model).
     inner_agent = create_react_agent(
         model=model,
         tools=get_tools(),
