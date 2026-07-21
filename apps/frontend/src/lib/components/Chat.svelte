@@ -98,24 +98,18 @@
 		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
 	);
 
-	// The react agent runs as a subgraph node inside the outer router graph
-	// (backend graph.py), and LangGraph only emits events from inside subgraphs
-	// when asked: without streamSubgraphs the client gets no LLM token events
-	// and the answer only appears once the run completes.
-	const agentRunOptions = { streamSubgraphs: true };
-
 	function submitInput(text: string) {
 		if (!text.trim() || stream.isLoading) return;
 		last_user_message = text;
 		current_input = '';
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit({ messages: [{ type: 'human', content: text }] }, agentRunOptions);
+		stream.submit({ messages: [{ type: 'human', content: text }] });
 	}
 
 	function retryGenerationAfterError() {
 		if (!last_user_message) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit({ messages: [{ type: 'human', content: last_user_message }] }, agentRunOptions);
+		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
 	}
 
 	function stopGeneration() {
@@ -142,7 +136,7 @@
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(
 			{ messages: [{ type: 'human', content: newText }] },
-			{ checkpoint: parentCheckpoint, ...agentRunOptions }
+			{ checkpoint: parentCheckpoint }
 		);
 		return true;
 	}
@@ -154,7 +148,7 @@
 		// last_user_message is intentionally not updated here — retryGenerationAfterError only
 		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(undefined, { checkpoint: parentCheckpoint, ...agentRunOptions });
+		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 </script>
 
