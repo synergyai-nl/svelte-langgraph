@@ -47,7 +47,8 @@ function chunkMeta(runId: string) {
 function aiChunk(
 	content: unknown,
 	id: string,
-	additionalKwargs: Record<string, unknown> = {}
+	additionalKwargs: Record<string, unknown> = {},
+	runId: string = 'run--test-thinking-abc123'
 ): [unknown, unknown] {
 	return [
 		{
@@ -63,7 +64,7 @@ function aiChunk(
 			usage_metadata: null,
 			tool_call_chunks: []
 		},
-		chunkMeta(id)
+		chunkMeta(runId)
 	];
 }
 
@@ -327,8 +328,8 @@ test.describe('Thinking block UI', () => {
 		await mockRunStream(
 			page,
 			[
-				{ event: 'messages', data: aiChunk('', 'msg-1', { reasoning_content: reasoning }) },
-				{ event: 'messages', data: aiChunk(answer, 'msg-1') }
+				{ event: 'messages', data: aiChunk('', 'msg-1', { reasoning_content: reasoning }, runId) },
+				{ event: 'messages', data: aiChunk(answer, 'msg-1', {}, runId) }
 			],
 			runId
 		);
@@ -362,9 +363,9 @@ test.describe('Thinking block UI', () => {
 			[
 				...reasoningParts.map((part) => ({
 					event: 'messages',
-					data: aiChunk('', 'msg-2', { reasoning_content: part })
+					data: aiChunk('', 'msg-2', { reasoning_content: part }, runId)
 				})),
-				{ event: 'messages', data: aiChunk(answer, 'msg-2') }
+				{ event: 'messages', data: aiChunk(answer, 'msg-2', {}, runId) }
 			],
 			runId
 		);
@@ -401,8 +402,8 @@ test.describe('Thinking block UI', () => {
 		await mockRunStream(
 			page,
 			[
-				{ event: 'messages', data: aiChunk('', 'msg-3', { reasoning_content: reasoning }) },
-				{ event: 'messages', data: aiChunk(answer, 'msg-3') }
+				{ event: 'messages', data: aiChunk('', 'msg-3', { reasoning_content: reasoning }, runId) },
+				{ event: 'messages', data: aiChunk(answer, 'msg-3', {}, runId) }
 			],
 			runId
 		);
@@ -429,7 +430,11 @@ test.describe('Thinking block UI', () => {
 		const question = 'Hello';
 
 		await mockThreadHistory(page, question, [historyAiMessage('msg-4', answer)]);
-		await mockRunStream(page, [{ event: 'messages', data: aiChunk(answer, 'msg-4') }], runId);
+		await mockRunStream(
+			page,
+			[{ event: 'messages', data: aiChunk(answer, 'msg-4', {}, runId) }],
+			runId
+		);
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -452,7 +457,11 @@ test.describe('Thinking block UI', () => {
 		const question = 'Test Anthropic format';
 
 		await mockThreadHistory(page, question, [historyAiMessage('msg-5', content)]);
-		await mockRunStream(page, [{ event: 'messages', data: aiChunk(content, 'msg-5') }], runId);
+		await mockRunStream(
+			page,
+			[{ event: 'messages', data: aiChunk(content, 'msg-5', {}, runId) }],
+			runId
+		);
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -481,7 +490,11 @@ test.describe('Thinking block UI', () => {
 		const question = 'Test langchain v1 format';
 
 		await mockThreadHistory(page, question, [historyAiMessage('msg-6', content)]);
-		await mockRunStream(page, [{ event: 'messages', data: aiChunk(content, 'msg-6') }], runId);
+		await mockRunStream(
+			page,
+			[{ event: 'messages', data: aiChunk(content, 'msg-6', {}, runId) }],
+			runId
+		);
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -519,9 +532,9 @@ test.describe('Thinking block UI', () => {
 			runId,
 			initialChunks: reasoningParts.map((part) => ({
 				event: 'messages',
-				data: aiChunk('', messageId, { reasoning_content: part })
+				data: aiChunk('', messageId, { reasoning_content: part }, runId)
 			})),
-			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId) }],
+			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId, {}, runId) }],
 			holdMs
 		});
 
@@ -659,9 +672,12 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 		const server = await startHeldOpenStreamServer({
 			runId,
 			initialChunks: [
-				{ event: 'messages', data: aiChunk('', messageId, { reasoning_content: reasoning }) }
+				{
+					event: 'messages',
+					data: aiChunk('', messageId, { reasoning_content: reasoning }, runId)
+				}
 			],
-			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId) }],
+			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId, {}, runId) }],
 			holdMs
 		});
 
