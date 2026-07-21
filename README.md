@@ -107,7 +107,7 @@ CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 
 The frontend shows LLM reasoning/thinking tokens in a collapsible block above AI messages, when the model provides them. Reasoning is picked up from `additional_kwargs.reasoning_content` (OpenRouter) and from `{type: "reasoning"}` / `{type: "thinking"}` content blocks (langchain v1 standard / Anthropic-native).
 
-By default, `CHAT_MODEL_NAME` is routed through the generic OpenAI-compatible path (`OPENAI_API_KEY`/`OPENAI_BASE_URL`), unchanged from before. To use a langchain-native provider integration instead, prefix `CHAT_MODEL_NAME` with a provider known to `init_chat_model` (e.g. `openrouter:deepseek/deepseek-r1`); it's then routed through that provider's integration instead of the generic path. Provider-specific options go in `CHAT_MODEL_KWARGS`, a JSON object splatted verbatim into `init_chat_model`.
+By default, `CHAT_MODEL_NAME` is routed through the generic OpenAI-compatible path (`OPENAI_API_KEY`/`OPENAI_BASE_URL`), unchanged from before. To use a langchain-native provider integration instead, prefix `CHAT_MODEL_NAME` with a provider known to `init_chat_model` (e.g. `openrouter:deepseek/deepseek-r1`); it's then routed through that provider's integration instead of the generic path. Provider-specific options go in `CHAT_MODEL_KWARGS` (JSON) and are forwarded to `init_chat_model` as keyword args (with defaults like `temperature=0.9` applied; reserved keys like `model`/`model_provider` are rejected).
 
 To enable reasoning output via OpenRouter — the `openrouter:` prefix and API key alone are not enough, OpenRouter only emits reasoning tokens when explicitly requested via the `reasoning` key in `CHAT_MODEL_KWARGS`:
 
