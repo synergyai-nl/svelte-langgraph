@@ -416,12 +416,24 @@ test.describe('Thinking block UI', () => {
 		await expect(thinkingButton).toBeVisible();
 		await expect(answerText).toBeVisible();
 
-		// Thinking block renders above the message card within the same group.
-		const thinkingBox = await thinkingButton.boundingBox();
-		const answerBox = await answerText.boundingBox();
-		expect(thinkingBox).not.toBeNull();
-		expect(answerBox).not.toBeNull();
-		expect(thinkingBox!.y).toBeLessThan(answerBox!.y);
+		// Wait for the post-stream history refetch to land and its list-reflow transition
+		// to settle before measuring geometry. `boundingBox()` — unlike `toBeVisible()` —
+		// does not auto-retry, so measuring mid-swap (rows torn down and re-created by the
+		// refetch, see `waitForSettledHistory`) can catch a detached element and return
+		// null even though both elements were visible a moment ago.
+		await waitForSettledHistory(page, question);
+		await expect(thinkingButton).toBeVisible();
+		await expect(answerText).toBeVisible();
+
+		// Thinking block renders above the message card within the same group. Wrapped in
+		// `toPass()` so a residual mid-swap null (or stale box) retries instead of failing.
+		await expect(async () => {
+			const thinkingBox = await thinkingButton.boundingBox();
+			const answerBox = await answerText.boundingBox();
+			expect(thinkingBox).not.toBeNull();
+			expect(answerBox).not.toBeNull();
+			expect(thinkingBox!.y).toBeLessThan(answerBox!.y);
+		}).toPass();
 	});
 
 	test('non-thinking AI response does not show a thinking block', async ({ page, chat }) => {
