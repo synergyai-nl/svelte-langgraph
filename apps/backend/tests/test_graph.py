@@ -242,50 +242,6 @@ async def test_change_phase_tool(
 
 
 @pytest.mark.asyncio
-async def test_change_phase_tool_value_error_becomes_error_tool_message(
-    agent,
-    thread_config: RunnableConfig,
-    openai_change_phase_tool_call,
-    monkeypatch,
-):
-    """A ValueError raised from inside change_phase's body must become a
-    recoverable error ToolMessage instead of crashing the run.
-
-    In normal operation the `phase` Literal type means ToolNode's default
-    handle_tool_errors already intercepts a bad LLM-supplied phase via a
-    pydantic ValidationError before change_phase's body ever executes (see
-    test_change_phase_tool_invalid_arg_from_llm_is_graceful). This test forces
-    validate_phase() itself to raise -- the only way the manual runtime check
-    inside change_phase can fire -- to guard against the defense-in-depth
-    branch silently regressing into an uncaught crash (it used to: a bare
-    ValueError, not wrapped as a ToolInvocationError, is re-raised by
-    ToolNode's default error handler instead of becoming a ToolMessage).
-    """
-    import svelte_langgraph.tools as tools_mod
-
-    def always_raise(phase: str) -> None:
-        raise ValueError(f"forced failure for {phase!r}")
-
-    monkeypatch.setattr(tools_mod, "validate_phase", always_raise)
-
-    result = await agent.ainvoke(
-        {"messages": [HumanMessage(content="Please switch to the review phase")]},
-        thread_config,
-    )
-
-    tool_messages = [m for m in result["messages"] if isinstance(m, ToolMessage)]
-    assert any(
-        getattr(m, "status", None) == "error" and "forced failure" in m.content
-        for m in tool_messages
-    ), (
-        f"Expected an error ToolMessage, got: "
-        f"{[(m.content, getattr(m, 'status', None)) for m in tool_messages]}"
-    )
-    # The phase must not have been updated since validation failed.
-    assert result["phase"] != "review"
-
-
-@pytest.mark.asyncio
 async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
     agent, thread_config: RunnableConfig, mock_completion
 ):
@@ -333,7 +289,7 @@ async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
     assert any(getattr(m, "status", None) == "error" for m in tool_messages)
     ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage)]
     assert any(m.content == "Sorry, that is not a valid phase." for m in ai_messages)
-    # Phase is untouched -- coerced to the default by the entry node.
+    # Phase is untouched -- defaulted by the phase_gate middleware.
     assert result["phase"] == "research"
 
 
@@ -345,8 +301,8 @@ async def test_phase_only_submit_after_failed_generation_skips_llm(
     committed checkpoint message is a dangling HumanMessage left by a prior
     generation that was cancelled or failed before the agent replied.
 
-    `_route_after_entry` can't tell that dangling HumanMessage apart from a
-    genuine new chat submission by looking at accumulated state alone -- both
+    The phase_gate middleware can't tell that dangling HumanMessage apart from
+    a genuine new chat submission by looking at accumulated state alone -- both
     end with `messages[-1]` being a HumanMessage. The frontend's `field.set()`
     marks a state-only submit explicitly via the `state_only_submit` run
     config (see stateSync.svelte.ts), which this test also sets.
@@ -354,8 +310,8 @@ async def test_phase_only_submit_after_failed_generation_skips_llm(
     mock_completion = mock_completion_optional
 
     # First run: the model backend fails, simulating a cancelled/failed
-    # generation. The entry node's write (human message + phase) is committed
-    # as its own checkpoint superstep; the agent node's never completes.
+    # generation. The human message + phase write is committed as its own
+    # checkpoint superstep; the model call never completes.
     mock_completion.mock(side_effect=httpx.ReadTimeout("simulated cancellation"))
 
     with pytest.raises(Exception):  # noqa: B017 - any failure from the mocked call
@@ -425,22 +381,57 @@ async def test_phase_only_submit_without_marker_still_regenerates(
 
 
 @pytest.mark.asyncio
-async def test_invalid_phase_coerced(
+async def test_invalid_phase_rejected_then_recoverable(
     agent, thread_config: RunnableConfig, mock_completion_optional
 ):
-    """Router coerces an invalid phase to the default instead of raising.
+    """An invalid phase write raises loudly and keeps raising until a valid
+    phase write lands -- then the thread fully recovers.
 
-    Raising would wedge the thread: the input is checkpointed before the entry
-    node runs, so the bad value would be committed and every later run would
-    fail on it.
+    Fail-fast is deliberate: the bad value is checkpointed before phase_gate
+    runs, so message-only submits keep failing on it, surfacing the caller bug
+    instead of silently coercing it away.
     """
-    result = await agent.ainvoke({"phase": "invalid_phase"}, thread_config)
+    with pytest.raises(ValueError, match="Invalid phase"):
+        await agent.ainvoke({"phase": "invalid_phase"}, thread_config)
 
-    assert result["phase"] == "research"
+    # The bad value IS committed to thread state.
+    state = await agent.aget_state(thread_config)
+    assert state.values["phase"] == "invalid_phase"
 
-    # The thread must remain usable afterwards.
-    result = await agent.ainvoke({"phase": "draft"}, thread_config)
+    # A message-only submit on the wedged thread also raises, with zero LLM
+    # calls.
+    with pytest.raises(ValueError, match="Invalid phase"):
+        await agent.ainvoke(
+            {"messages": [HumanMessage(content="Hello?")]}, thread_config
+        )
+    assert mock_completion_optional.call_count == 0
+
+    # A valid phase write recovers the thread. It carries the
+    # state_only_submit marker (as the frontend's field.set() does) because
+    # the failed message submit above left a dangling HumanMessage in the
+    # checkpoint, which would otherwise trigger a regenerate.
+    state_only_config = RunnableConfig(
+        configurable={
+            **thread_config.get("configurable", {}),
+            "state_only_submit": True,
+        }
+    )
+    result = await agent.ainvoke({"phase": "draft"}, state_only_config)
     assert result["phase"] == "draft"
+    assert mock_completion_optional.call_count == 0
+
+    # A full chat turn now works again.
+    from tests.conftest import make_completion_response
+
+    mock_completion_optional.side_effect = [
+        make_completion_response("Recovered answer"),
+    ]
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Still there?")]}, thread_config
+    )
+    assert mock_completion_optional.call_count == 1
+    ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage)]
+    assert any(m.content == "Recovered answer" for m in ai_messages)
 
 
 @pytest.mark.asyncio
@@ -488,6 +479,16 @@ async def test_regenerate_reexecutes_model(
     assert mock_completion.call_count == 2, "regenerate must re-invoke the model"
     assert ai2.id != ai1.id
     assert ai2.content == "Second answer"
+
+
+def test_phase_enum_single_source_of_truth():
+    """VALID_PHASES and DEFAULT_PHASE are derived from the Phase Literal."""
+    from typing import get_args
+
+    from svelte_langgraph.phase import DEFAULT_PHASE, VALID_PHASES, Phase
+
+    assert VALID_PHASES == set(get_args(Phase))
+    assert DEFAULT_PHASE in VALID_PHASES
 
 
 def test_phase_in_state_schema(agent):

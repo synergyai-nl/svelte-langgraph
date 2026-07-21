@@ -1,26 +1,30 @@
-import logging
-from collections.abc import Sequence
-from typing import Literal
+from collections.abc import Awaitable, Callable, Sequence
+from typing import cast
 
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain.agents import create_agent
+from langchain.agents.middleware import AgentMiddleware, AgentState, before_agent
+from langchain.agents.middleware.types import (
+    ModelCallResult,
+    ModelRequest,
+    ModelResponse,
+)
+from langchain_core.messages import AnyMessage, BaseMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
-from langgraph.prebuilt.chat_agent_executor import AgentState
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.config import get_config
+from langgraph.graph.state import CompiledStateGraph
+from langgraph.runtime import Runtime
 from langgraph.types import Checkpointer
 
 from .models import get_chat_model
-from .tools import VALID_PHASES, get_tools
-
-logger = logging.getLogger(__name__)
+from .phase import DEFAULT_PHASE, VALID_PHASES, Phase
+from .tools import get_tools
 
 
 class AgentExtendedState(AgentState):
-    phase: Literal["research", "draft", "review"]
+    phase: Phase
 
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
@@ -49,7 +53,7 @@ def get_prompt(
     assert isinstance(state["messages"], list)
 
     template = get_prompt_template()
-    phase = state.get("phase") or "research"
+    phase = state.get("phase") or DEFAULT_PHASE
 
     return (
         template.format_messages(
@@ -60,67 +64,88 @@ def get_prompt(
     )
 
 
-def _entry_node(state: AgentExtendedState) -> dict:
-    """Normalize phase before routing.
+@before_agent(can_jump_to=["end"], state_schema=AgentExtendedState)
+def phase_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None:
+    """Validate phase and decide whether this run should reach the model.
 
-    Invalid values are coerced to the default rather than rejected: the input
-    is checkpointed before this node runs, so raising here would leave the bad
-    value committed to thread state and every subsequent run would fail on it.
-    Strict validation lives in the change_phase tool, where a bad LLM argument
-    becomes a recoverable ToolMessage error instead of a failed run.
+    A missing phase defaults to DEFAULT_PHASE (absence isn't invalid input),
+    but an invalid value raises. This fails fast by design: the bad value is
+    already checkpointed before this hook runs, so message-only submits keep
+    failing until a valid phase write lands — surfacing the caller bug loudly
+    instead of silently coercing it away.
+
+    The run ends without a model call when:
+
+    - The frontend marks a state-only submit (`stateSync`'s `field.set()`) via
+      `configurable.state_only_submit`, passed through `RunnableConfig` rather
+      than graph state so it's per-invocation and never persisted to the
+      checkpoint.
+    - The last message is not a HumanMessage. A field-only submit never adds a
+      message, but accumulated *checkpoint* state can still end in a
+      HumanMessage left over from a prior run that was cancelled or failed
+      before the agent produced an AI reply. Looking only at
+      `state["messages"]` can't tell that apart from a genuine new submission,
+      hence the explicit marker above.
     """
-    phase = state.get("phase") or "research"
-    if phase not in VALID_PHASES:
-        logger.warning("Coercing invalid phase %r to 'research'", phase)
-        phase = "research"
-    return {"phase": phase}
+    update: dict = {}
 
+    phase = state.get("phase")
+    if not phase:
+        update["phase"] = DEFAULT_PHASE
+    elif phase not in VALID_PHASES:
+        raise ValueError(
+            f"Invalid phase {phase!r}. Must be one of: {sorted(VALID_PHASES)}"
+        )
 
-def _route_after_entry(state: AgentExtendedState, config: RunnableConfig) -> str:
-    """Route to agent if last message is from user; otherwise END (state-only submit).
-
-    A field-only submit (`stateSync`'s `field.set()`) never adds a message, but
-    accumulated *checkpoint* state can still end in a HumanMessage left over from
-    a prior run that was cancelled or failed before the agent produced an AI
-    reply (the human message is committed by the `entry` superstep regardless).
-    Looking only at `state["messages"]` can't tell that apart from a genuine new
-    submission, so it would wrongly re-run the agent and regenerate an answer.
-
-    The frontend marks a state-only submit explicitly via
-    `configurable.state_only_submit`, passed through `RunnableConfig` rather than
-    graph state so it's per-invocation and never persisted to the checkpoint.
-    """
-    if config.get("configurable", {}).get("state_only_submit"):
-        return END
+    if get_config().get("configurable", {}).get("state_only_submit"):
+        update["jump_to"] = "end"
+        return update
 
     messages = state.get("messages", [])
-    if messages and isinstance(messages[-1], HumanMessage):
-        return "agent"
-    return END
+    if not messages or not isinstance(messages[-1], HumanMessage):
+        update["jump_to"] = "end"
+        return update
+
+    return update or None
+
+
+class PromptMiddleware(AgentMiddleware):
+    """Build the model input with get_prompt (system prompts + injected phase
+    message + AI greeting + state messages), replacing the agent's default
+    system-prompt handling."""
+
+    def _request_with_prompt(self, request: ModelRequest) -> ModelRequest:
+        state = cast(AgentExtendedState, request.state)
+        return request.override(
+            system_prompt=None,
+            messages=cast("list[AnyMessage]", list(get_prompt(state, get_config()))),
+        )
+
+    def wrap_model_call(
+        self,
+        request: ModelRequest,
+        handler: Callable[[ModelRequest], ModelResponse],
+    ) -> ModelCallResult:
+        return handler(self._request_with_prompt(request))
+
+    async def awrap_model_call(
+        self,
+        request: ModelRequest,
+        handler: Callable[[ModelRequest], Awaitable[ModelResponse]],
+    ) -> ModelCallResult:
+        return await handler(self._request_with_prompt(request))
 
 
 def make_graph(
     config: RunnableConfig,
 ) -> CompiledStateGraph:
-    model = get_chat_model()
-
-    # checkpointer=False: inherited subgraph checkpoints would replay cached
-    # answers on regenerate (see test_regenerate_reexecutes_model).
-    inner_agent = create_react_agent(
-        model=model,
+    return create_agent(
+        model=get_chat_model(),
         tools=get_tools(),
-        prompt=get_prompt,  # type: ignore reportArgumentType
+        # AgentMiddleware is invariant in its state type parameter, so a
+        # middleware typed with the extended state doesn't statically match
+        # create_agent's AgentState-bound parameter.
+        middleware=[phase_gate, PromptMiddleware()],  # pyright: ignore[reportArgumentType]
         state_schema=AgentExtendedState,
-        checkpointer=False,
+        checkpointer=get_checkpointer(),
     )
-
-    outer = StateGraph(AgentExtendedState)
-    outer.add_node("entry", _entry_node)
-    outer.add_node("agent", inner_agent)
-    outer.add_edge(START, "entry")
-    outer.add_conditional_edges(
-        "entry", _route_after_entry, {"agent": "agent", END: END}
-    )
-    outer.add_edge("agent", END)
-
-    return outer.compile(checkpointer=get_checkpointer())
