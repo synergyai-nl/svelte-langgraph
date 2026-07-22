@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { Message } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 
 	interface Props {
-		message: BaseMessage;
-		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
+		message: Message;
+		onFeedback?: (message: Message, type: 'up' | 'down') => void;
 	}
 
 	let { message, onFeedback }: Props = $props();

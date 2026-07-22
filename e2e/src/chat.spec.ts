@@ -3,6 +3,17 @@ import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
 import { LANGGRAPH_CONFIG } from './fixtures/backend';
 
+// Opt this file out of fullyParallel: the frontend reuses the most recent idle thread
+// per user, so tests in this file frequently land on the SAME LangGraph thread. Run
+// concurrently, the edit/branch tests rewind that shared thread's head to a parent
+// checkpoint while the cancellation test polls `/threads/{id}/state` — moving the head
+// to a branch that excludes the cancelled run's messages and making its positive guard
+// (human message present in state) fail nondeterministically. `mode: 'default'` runs
+// this file's tests sequentially in one worker (other files still run in parallel;
+// thinking.spec fully mocks the LangGraph endpoints and auth.spec never submits runs,
+// so they cannot mutate threads).
+test.describe.configure({ mode: 'default' });
+
 test('user can send a message and receive an AI response', async ({ page, chat }) => {
 	await authenticateUser(page);
 
@@ -146,6 +157,11 @@ test.describe('Cancellation', () => {
 		page,
 		chat
 	}) => {
+		// The state-polling and quiescence-settling loops below can legitimately take
+		// close to a minute on a cold run (first request against a freshly-started
+		// backend), well beyond Playwright's 30s default test timeout.
+		test.setTimeout(90_000);
+
 		// Long unique input — ai-mock echoes it back with MOCK_STREAM_DELAY (50ms) per
 		// chunk, giving a wide streaming window for the cancel to land server-side.
 		const testInput = randomUUID().replace(/-/g, '').repeat(16); // ~512 hex chars
@@ -200,22 +216,66 @@ test.describe('Cancellation', () => {
 		expect(isActive).toBe(false);
 
 		// Read the committed thread state directly — no page reload needed.
-		const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
-		expect(stateRes.ok()).toBeTruthy();
-		const state = await stateRes.json();
-		const messages = state.values?.messages as
-			| Array<{ type: string; content: unknown }>
-			| undefined;
+		type ThreadMessage = { type: string; content: unknown };
+		async function readState(): Promise<ThreadMessage[] | undefined> {
+			const stateRes = await page.request.get(`${apiUrl}/threads/${threadId}/state`, { headers });
+			expect(stateRes.ok()).toBeTruthy();
+			const state = await stateRes.json();
+			return state.values?.messages as ThreadMessage[] | undefined;
+		}
 
-		// Positive guard: our human message must exist in state, confirming the run fired.
-		// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
-		// history from prior test iterations, we'll find exactly our message.
-		const hasOurMessage =
-			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ?? false;
+		// The inmem runtime flushes checkpoints asynchronously (dev persistence flush
+		// loop), so the human message may land in state shortly AFTER the run goes
+		// inactive. Poll instead of reading once to avoid racing the flush — 10s was
+		// not always enough headroom on a cold run (freshly-started backend), so allow
+		// up to 30s here.
+		let messages: ThreadMessage[] | undefined;
+		let hasOurMessage = false;
+		const stateDeadline = Date.now() + 30_000;
+		while (Date.now() < stateDeadline) {
+			messages = await readState();
+
+			// Positive guard: our human message must exist in state, confirming the run fired.
+			// partialEcho is unique (randomUUID per run), so even if the thread has accumulated
+			// history from prior test iterations, we'll find exactly our message.
+			hasOurMessage =
+				messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho)) ??
+				false;
+			if (hasOurMessage) break;
+			await page.waitForTimeout(300);
+		}
 		expect(hasOurMessage).toBe(true);
 
-		// Main assertion: the cancelled run must NOT have committed the full echo.
-		// tailEcho only appears when the model node ran to completion before cancel landed.
+		// The human message landing does NOT mean the thread state has fully quiesced:
+		// the cancelled run's AI-side flush is subject to the exact same async
+		// persistence delay, so asserting absence right on the snapshot where the human
+		// message FIRST appears is racy — a real cancellation regression could flush a
+		// beat later and still slip past a same-snapshot check. Require quiescence
+		// first: keep re-reading state until two consecutive reads are identical (a
+		// fixed settle period alone isn't reliable, since flushes don't run on a fixed
+		// schedule), THEN assert the negative on that settled snapshot.
+		let settled = false;
+		let previousSnapshot = JSON.stringify(messages);
+		const quiescenceDeadline = Date.now() + 15_000;
+		while (Date.now() < quiescenceDeadline) {
+			await page.waitForTimeout(500);
+			messages = await readState();
+			const snapshot = JSON.stringify(messages);
+			if (snapshot === previousSnapshot) {
+				settled = true;
+				break;
+			}
+			previousSnapshot = snapshot;
+		}
+		expect(settled).toBe(true);
+
+		// Both assertions are made on the same settled snapshot: the positive guard
+		// (human message present, confirming the run fired) and the main assertion
+		// (the cancelled run must NOT have committed the full echo — tailEcho only
+		// appears when the model node ran to completion before cancel landed).
+		expect(
+			messages?.some((m) => m.type === 'human' && String(m.content).includes(partialEcho))
+		).toBe(true);
 		const aiContent = (messages?.filter((m) => m.type === 'ai') ?? [])
 			.map((m) => String(m.content))
 			.join('');
