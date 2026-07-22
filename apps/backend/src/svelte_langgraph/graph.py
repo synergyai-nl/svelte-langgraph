@@ -117,8 +117,8 @@ class PromptMiddleware(AgentMiddleware):
     def _request_with_prompt(self, request: ModelRequest) -> ModelRequest:
         state = cast(AgentExtendedState, request.state)
         return request.override(
-            system_prompt=None,
-            messages=cast("list[AnyMessage]", list(get_prompt(state, get_config()))),
+            system_message=None,
+            messages=cast(list[AnyMessage], list(get_prompt(state, get_config()))),
         )
 
     def wrap_model_call(

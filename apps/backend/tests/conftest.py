@@ -225,11 +225,11 @@ async def agent(thread_config: RunnableConfig, monkeypatch):
 
 
 @pytest.fixture
-def mock_completion_optional(openai_base_url):
-    """Mock OpenAI API endpoint without requiring it to be called."""
-    actual_base_url = openai_base_url or DEFAULT_BASE_URL
-
-    with respx.mock(base_url=actual_base_url, assert_all_called=False) as respx_mock:
+def mock_completion_optional(provider_case: ProviderCase):
+    """Mock the chat completions endpoint without requiring it to be called."""
+    with respx.mock(
+        base_url=provider_case.mock_base_url, assert_all_called=False
+    ) as respx_mock:
         yield respx_mock.post("/chat/completions")
 
 
@@ -284,7 +284,6 @@ def openai_change_phase_tool_call(mock_completion):
     """Mock OpenAI API for change_phase tool call scenario."""
     mock_completion.side_effect = [
         make_completion_response(
-            response_id="chatcmpl-test-1",
             tool_calls=[
                 ChatCompletionMessageToolCall(
                     id="call_phase_1",
@@ -295,12 +294,16 @@ def openai_change_phase_tool_call(mock_completion):
                     ),
                 )
             ],
-            finish_reason="tool_calls",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
         ),
         make_completion_response(
-            response_id="chatcmpl-test-2",
-            created=1234567891,
             message_content="I've changed the phase to review.",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-2",
+                created=1234567891,
+            ),
         ),
     ]
 

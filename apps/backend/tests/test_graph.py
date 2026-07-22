@@ -9,7 +9,6 @@ This module contains tests for the LangGraph agent, covering:
 - Phase tool and schema
 """
 
-import httpx
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -256,11 +255,10 @@ async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
         Function,
     )
 
-    from tests.conftest import make_completion_response
+    from tests.conftest import CompletionMeta, make_completion_response
 
     mock_completion.side_effect = [
         make_completion_response(
-            response_id="chatcmpl-test-1",
             tool_calls=[
                 ChatCompletionMessageToolCall(
                     id="call_phase_bad",
@@ -271,12 +269,16 @@ async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
                     ),
                 )
             ],
-            finish_reason="tool_calls",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
         ),
         make_completion_response(
-            response_id="chatcmpl-test-2",
-            created=1234567891,
             message_content="Sorry, that is not a valid phase.",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-2",
+                created=1234567891,
+            ),
         ),
     ]
 
@@ -312,7 +314,10 @@ async def test_phase_only_submit_after_failed_generation_skips_llm(
     # First run: the model backend fails, simulating a cancelled/failed
     # generation. The human message + phase write is committed as its own
     # checkpoint superstep; the model call never completes.
-    mock_completion.mock(side_effect=httpx.ReadTimeout("simulated cancellation"))
+    # A non-transport error: httpx transport errors (e.g. ReadTimeout) are
+    # retried with long backoff by both the openai SDK and the openrouter SDK
+    # (provider_case3), turning this test into a multi-minute retry storm.
+    mock_completion.mock(side_effect=RuntimeError("simulated cancellation"))
 
     with pytest.raises(Exception):  # noqa: B017 - any failure from the mocked call
         await agent.ainvoke(
@@ -444,11 +449,15 @@ async def test_regenerate_reexecutes_model(
     just before the AI message. With subgraph persistence enabled this would
     replay the cached answer (same id, one model call) instead of regenerating.
     """
-    from tests.conftest import make_completion_response
+    from tests.conftest import CompletionMeta, make_completion_response
 
     mock_completion.side_effect = [
-        make_completion_response("First answer", response_id="chatcmpl-first"),
-        make_completion_response("Second answer", response_id="chatcmpl-second"),
+        make_completion_response(
+            "First answer", meta=CompletionMeta(response_id="chatcmpl-first")
+        ),
+        make_completion_response(
+            "Second answer", meta=CompletionMeta(response_id="chatcmpl-second")
+        ),
     ]
 
     result1 = await agent.ainvoke(
