@@ -169,6 +169,7 @@
 			<ChatMessages
 				{messages}
 				finalAnswerStarted={final_answer_started}
+				isStreaming={stream.isLoading}
 				{generationError}
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}

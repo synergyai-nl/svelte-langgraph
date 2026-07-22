@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { convertThreadMessage } from './utils';
+import { convertThreadMessage, extractTextFromContent, extractThinkingFromContent } from './utils';
 import { InvalidData } from './errors';
 
 describe('convertThreadMessage', () => {
@@ -89,5 +89,216 @@ describe('convertThreadMessage', () => {
 
 		expect(() => convertThreadMessage(item)).toThrow(InvalidData);
 		expect(() => convertThreadMessage(item)).toThrow('Unexpected message type: unknown');
+	});
+
+	it('should convert ai message with array content to AIMessage', () => {
+		const item = {
+			type: 'ai',
+			content: [
+				{ type: 'thinking', thinking: 'Let me think...' },
+				{ type: 'text', text: 'Hello, human!' }
+			],
+			id: 'ai-msg-002'
+		};
+
+		const result = convertThreadMessage(item);
+
+		expect(result).toEqual({
+			type: 'ai',
+			text: 'Hello, human!',
+			thinking: 'Let me think...',
+			id: 'ai-msg-002'
+		});
+	});
+
+	it('should convert ai message with reasoning content block to AIMessage', () => {
+		const item = {
+			type: 'ai',
+			content: [
+				{ type: 'reasoning', reasoning: 'Let me reason...' },
+				{ type: 'text', text: 'Hello, human!' }
+			],
+			id: 'ai-msg-002b'
+		};
+
+		const result = convertThreadMessage(item);
+
+		expect(result).toEqual({
+			type: 'ai',
+			text: 'Hello, human!',
+			thinking: 'Let me reason...',
+			id: 'ai-msg-002b'
+		});
+	});
+
+	it('should convert ai message with additional_kwargs reasoning_content', () => {
+		const item = {
+			type: 'ai',
+			content: 'Hello, human!',
+			additional_kwargs: { reasoning_content: 'My reasoning here' },
+			id: 'ai-msg-003'
+		};
+
+		const result = convertThreadMessage(item);
+
+		expect(result).toEqual({
+			type: 'ai',
+			text: 'Hello, human!',
+			thinking: 'My reasoning here',
+			id: 'ai-msg-003'
+		});
+	});
+
+	it('should include thinking when content is empty but reasoning is present', () => {
+		const item = {
+			type: 'ai',
+			content: '',
+			additional_kwargs: { reasoning_content: 'Still reasoning...' },
+			id: 'ai-msg-004'
+		};
+
+		const result = convertThreadMessage(item);
+
+		expect(result).toEqual({
+			type: 'ai',
+			text: '',
+			thinking: 'Still reasoning...',
+			id: 'ai-msg-004'
+		});
+	});
+
+	it('should not include a thinking field when no thinking is present', () => {
+		const item = {
+			type: 'ai',
+			content: 'Plain response',
+			id: 'ai-msg-005'
+		};
+
+		const result = convertThreadMessage(item);
+
+		expect(result).not.toHaveProperty('thinking');
+	});
+});
+
+describe('extractTextFromContent', () => {
+	it('should return string content as-is', () => {
+		expect(extractTextFromContent('Hello')).toBe('Hello');
+	});
+
+	it('should return empty string for empty string content', () => {
+		expect(extractTextFromContent('')).toBe('');
+	});
+
+	it('should extract text from content array', () => {
+		const content = [
+			{ type: 'text', text: 'Hello ' },
+			{ type: 'text', text: 'world' }
+		];
+		expect(extractTextFromContent(content)).toBe('Hello world');
+	});
+
+	it('should skip non-text blocks in content array', () => {
+		const content = [
+			{ type: 'thinking', thinking: 'Let me think' },
+			{ type: 'text', text: 'Answer' }
+		];
+		expect(extractTextFromContent(content)).toBe('Answer');
+	});
+
+	it('should return empty string for empty content array', () => {
+		expect(extractTextFromContent([])).toBe('');
+	});
+
+	it('should return empty string for null/undefined', () => {
+		expect(extractTextFromContent(null)).toBe('');
+		expect(extractTextFromContent(undefined)).toBe('');
+	});
+
+	it('should skip text blocks with a missing text field', () => {
+		const content = [{ type: 'text' }];
+		expect(extractTextFromContent(content)).toBe('');
+	});
+
+	it('should skip text blocks with a null text field', () => {
+		const content = [{ type: 'text', text: null }];
+		expect(extractTextFromContent(content)).toBe('');
+	});
+
+	it('should join only valid text blocks when mixed with malformed ones', () => {
+		const content = [
+			{ type: 'text', text: 'Hello ' },
+			{ type: 'text' },
+			{ type: 'text', text: null },
+			{ type: 'text', text: 'world' }
+		];
+		expect(extractTextFromContent(content)).toBe('Hello world');
+	});
+});
+
+describe('extractThinkingFromContent', () => {
+	it('should extract from additional_kwargs.reasoning_content', () => {
+		expect(extractThinkingFromContent('text', { reasoning_content: 'My reasoning' })).toBe(
+			'My reasoning'
+		);
+	});
+
+	it('should return undefined for empty reasoning_content', () => {
+		expect(extractThinkingFromContent('text', { reasoning_content: '' })).toBeUndefined();
+	});
+
+	it('should fall through to content array when reasoning_content is empty', () => {
+		const content = [{ type: 'thinking', thinking: 'X' }];
+		expect(extractThinkingFromContent(content, { reasoning_content: '' })).toBe('X');
+	});
+
+	it('should extract from content array thinking blocks', () => {
+		const content = [
+			{ type: 'thinking', thinking: 'Let me think' },
+			{ type: 'text', text: 'Answer' }
+		];
+		expect(extractThinkingFromContent(content)).toBe('Let me think');
+	});
+
+	it('should extract from content array reasoning blocks', () => {
+		const content = [
+			{ type: 'reasoning', reasoning: 'Let me reason' },
+			{ type: 'text', text: 'Answer' }
+		];
+		expect(extractThinkingFromContent(content)).toBe('Let me reason');
+	});
+
+	it('should prefer additional_kwargs over content array', () => {
+		const content = [{ type: 'thinking', thinking: 'From content' }];
+		expect(extractThinkingFromContent(content, { reasoning_content: 'From kwargs' })).toBe(
+			'From kwargs'
+		);
+	});
+
+	it('should return undefined when no thinking present', () => {
+		expect(extractThinkingFromContent('plain text')).toBeUndefined();
+		expect(extractThinkingFromContent([{ type: 'text', text: 'Answer' }])).toBeUndefined();
+	});
+
+	it('should return undefined for null/undefined content with no kwargs', () => {
+		expect(extractThinkingFromContent(null)).toBeUndefined();
+	});
+
+	it('should ignore a reasoning block whose reasoning field is an object', () => {
+		const content = [{ type: 'reasoning', reasoning: { text: 'nested' } }];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
+	});
+
+	it('should ignore a thinking block with a missing thinking field', () => {
+		const content = [{ type: 'thinking' }];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
+	});
+
+	it('should return undefined for a content array containing only malformed thinking blocks', () => {
+		const content = [
+			{ type: 'thinking' },
+			{ type: 'reasoning', reasoning: { text: 'nested' } },
+			{ type: 'reasoning', reasoning: null }
+		];
+		expect(extractThinkingFromContent(content)).toBeUndefined();
 	});
 });

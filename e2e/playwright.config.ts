@@ -51,9 +51,8 @@ export default defineConfig({
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
 			wait: {
-				// oidc-provider-mock colorizes its log output even with NO_COLOR set, so
-				// tolerate ANSI escape codes between "on" and the URL (breaks local runs
-				// where moon allocates a PTY; CI output is uncolored either way).
+				// ANSI-tolerant: moon force-colors task output in some environments (it strips
+				// NO_COLOR from task env), so escape codes may appear inside the URL.
 				stdout: /Uvicorn running on .*localhost:8080/
 			}
 		},
@@ -78,8 +77,8 @@ export default defineConfig({
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				// vite bolds the port number, splitting the URL with an ANSI escape when
-				// stdout is a PTY — don't require it to be contiguous.
+				// ANSI-tolerant: vite bolds the port number, which may inject escape codes
+				// (e.g. "\x1b[1m") between "localhost:" and the port when colors are forced.
 				stdout: /http:\/\/localhost:.*4173/
 			}
 		}
