@@ -23,6 +23,7 @@ Environment:
 import json
 import os
 import time
+from typing import Any
 from uuid import uuid4
 
 import mockai.openai.services as _services
@@ -96,13 +97,19 @@ def _tool_call_streaming_response(model: str, tool_calls: list[dict]):
     yield "data: [DONE]\n\n"
 
 
-def _patched_streaming_response(
-    content: str | None, model: str, tool_calls: list[dict] | None
-):
+def _patched_streaming_response(*args, **kwargs):
+    # Signature-agnostic: mockai passes (content, model, tool_calls) today, but
+    # extract by position-or-keyword so a reordered or keyword-only upstream
+    # call keeps working; unknown extra parameters pass through untouched.
+    params: dict[str, Any] = dict(zip(("content", "model", "tool_calls"), args))
+    params.update(kwargs)
+    model = params.get("model") or "mock"
+    tool_calls = params.get("tool_calls")
+
     if tool_calls is not None:
         source = _tool_call_streaming_response(model, tool_calls)
     else:
-        source = _original_streaming_response(content, model, tool_calls)
+        source = _original_streaming_response(*args, **kwargs)
 
     for chunk in source:
         yield chunk
