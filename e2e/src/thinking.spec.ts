@@ -309,6 +309,15 @@ test.describe('Thinking block UI', () => {
 		await authenticateUser(page);
 		await page.goto('/chat/');
 		await page.waitForURL(/\/chat\/[\w-]+/);
+		// The on-mount thread-history fetch (useStream's `fetchStateHistory`) fires
+		// during hydration, BEFORE the test body registers its `mockThreadHistory`
+		// route — an already-in-flight request can't be intercepted, so it reaches
+		// the real backend and its empty `[]` response races the mocked post-run
+		// refetch. If the `[]` lands last it wipes the streamed messages (and the
+		// thinking button) right out from under the test's assertions. Waiting for
+		// the network to go idle here lets that mount fetch settle harmlessly on
+		// the still-empty thread before any test-specific routes are registered.
+		await page.waitForLoadState('networkidle');
 	});
 
 	test('thinking block appears collapsed when AI response includes thinking (additional_kwargs format)', async ({
