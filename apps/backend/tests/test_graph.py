@@ -440,6 +440,27 @@ async def test_invalid_phase_rejected_then_recoverable(
 
 
 @pytest.mark.asyncio
+async def test_empty_string_phase_rejected(
+    agent, thread_config: RunnableConfig, mock_completion_optional
+):
+    """An empty-string phase is rejected like any other invalid value, rather
+    than silently normalizing to DEFAULT_PHASE.
+
+    `phase=""` is a falsy-but-present value, distinct from a missing phase key
+    (see test_state_only_submit_default_phase). phase_gate must only default
+    a genuinely absent phase (None), so `""` falls through to the invalid-phase
+    branch and raises -- matching the fail-fast contract documented on
+    phase_gate.
+    """
+    with pytest.raises(ValueError, match="Invalid phase"):
+        await agent.ainvoke({"phase": ""}, thread_config)
+
+    state = await agent.aget_state(thread_config)
+    assert state.values["phase"] == ""
+    assert mock_completion_optional.call_count == 0
+
+
+@pytest.mark.asyncio
 async def test_regenerate_reexecutes_model(
     agent, thread_config: RunnableConfig, mock_completion
 ):

@@ -53,7 +53,9 @@ def get_prompt(
     assert isinstance(state["messages"], list)
 
     template = get_prompt_template()
-    phase = state.get("phase") or DEFAULT_PHASE
+    phase = state.get("phase")
+    if phase is None:
+        phase = DEFAULT_PHASE
 
     return (
         template.format_messages(
@@ -90,7 +92,7 @@ def phase_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None:
     update: dict = {}
 
     phase = state.get("phase")
-    if not phase:
+    if phase is None:
         update["phase"] = DEFAULT_PHASE
     elif phase not in VALID_PHASES:
         raise ValueError(

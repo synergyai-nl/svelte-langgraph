@@ -61,6 +61,24 @@ type FieldSchemaVariantParser = (
 	depth: number
 ) => FieldSchema | undefined;
 
+/**
+ * Normalize JSON Schema's "nullable via type array" convention
+ * (`{ type: ['string', 'null'] }`) down to a plain single-type schema.
+ *
+ * - Strips `'null'` from a `type` array.
+ * - Exactly one type remains → returns a shallow copy with `type` set to
+ *   that single string, ready for the scalar/object variant parsers.
+ * - Zero types remain (pure `{ type: ['null'] }`) or more than one type
+ *   remains (genuinely mixed, e.g. `['string', 'number', 'null']`) → returns
+ *   `schema` unchanged; callers treat those as "not a simple nullable type".
+ */
+function normalizeNullableType(schema: JSONSchema7): JSONSchema7 {
+	if (!Array.isArray(schema.type)) return schema;
+	const remaining = schema.type.filter((t) => t !== 'null');
+	if (remaining.length === 1) return { ...schema, type: remaining[0] };
+	return schema;
+}
+
 /** Rule 1: resolve `$ref` via the supplied `defs` map. */
 const resolveRefVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
 	if (!schema.$ref) return undefined;
@@ -70,17 +88,24 @@ const resolveRefVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
 };
 
 /**
- * Rule 2: unwrap `anyOf`/`oneOf` — strip `null`-typed variants and recurse
- * into the remaining variant(s). A single non-null variant is treated as the
+ * Rule 2: unwrap `anyOf`/`oneOf` — drop pure-null variants and recurse into
+ * the remaining variant(s). A single non-null variant is treated as the
  * field type; multiple non-null variants → first one that isn't 'unknown'.
+ *
+ * A variant whose `type` is an array (e.g. `['string', 'null']`) is
+ * normalized via `normalizeNullableType` before being counted/recursed into,
+ * so `anyOf: [{ type: ['string', 'null'] }]` parses as `kind: 'string'`
+ * rather than being dropped. Only *pure* null variants (`type === 'null'` or
+ * a type array containing only `'null'`) are excluded outright.
  */
 const unwrapUnionVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
 	const ofVariants = schema.anyOf ?? schema.oneOf;
 	if (!ofVariants) return undefined;
 
-	const nonNull = ofVariants.filter(
-		(v) => !(v.type === 'null' || (Array.isArray(v.type) && (v.type as string[]).includes('null')))
-	);
+	const isPureNull = (v: JSONSchema7) =>
+		v.type === 'null' || (Array.isArray(v.type) && v.type.every((t) => t === 'null'));
+
+	const nonNull = ofVariants.filter((v) => !isPureNull(v)).map(normalizeNullableType);
 	if (nonNull.length === 1) {
 		return parseFieldSchema(nonNull[0], defs, depth + 1);
 	}
@@ -102,9 +127,15 @@ function parseEnumVariant(schema: JSONSchema7): FieldSchema | undefined {
 	return undefined;
 }
 
-/** Rule 4: scalar types `boolean`, `string`, `number`, `integer` → corresponding kind. */
+/**
+ * Rule 4: scalar types `boolean`, `string`, `number`, `integer` → corresponding
+ * kind. Also handles a top-level (non-`anyOf`) nullable-via-type-array schema
+ * such as `{ type: ['string', 'null'] }` by normalizing it down to `'string'`
+ * first; a genuinely mixed array (e.g. `['string', 'number']`) or pure
+ * `['null']` is left as an array and falls through to `undefined`.
+ */
 function parseScalarVariant(schema: JSONSchema7): FieldSchema | undefined {
-	const type = schema.type;
+	const type = normalizeNullableType(schema).type;
 	if (type === 'boolean') return { kind: 'boolean' };
 	if (type === 'string') return { kind: 'string' };
 	if (type === 'number' || type === 'integer') return { kind: 'number' };

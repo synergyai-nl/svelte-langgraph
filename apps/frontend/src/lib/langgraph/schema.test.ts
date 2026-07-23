@@ -140,6 +140,62 @@ describe('parseObjectSchema', () => {
 				fields: { flag: { kind: 'boolean' } }
 			});
 		});
+
+		it('unwraps anyOf [{ type: ["string", "null"] }] to string', () => {
+			const result = parseObjectSchema({
+				type: 'object',
+				properties: {
+					name: {
+						anyOf: [{ type: ['string', 'null'] }]
+					}
+				}
+			});
+			expect(result).toEqual({
+				status: 'ok',
+				fields: { name: { kind: 'string' } }
+			});
+		});
+	});
+
+	describe('nullable-via-type-array', () => {
+		it('parses a top-level { type: ["number", "null"] } as number', () => {
+			const result = parseObjectSchema({
+				type: 'object',
+				properties: {
+					score: { type: ['number', 'null'] }
+				}
+			});
+			expect(result).toEqual({
+				status: 'ok',
+				fields: { score: { kind: 'number' } }
+			});
+		});
+
+		it('maps a pure { type: ["null"] } to unknown', () => {
+			const result = parseObjectSchema({
+				type: 'object',
+				properties: {
+					x: { type: ['null'] }
+				}
+			});
+			expect(result).toEqual({
+				status: 'ok',
+				fields: { x: { kind: 'unknown' } }
+			});
+		});
+
+		it('maps a mixed multi-type array { type: ["string", "number", "null"] } to unknown', () => {
+			const result = parseObjectSchema({
+				type: 'object',
+				properties: {
+					x: { type: ['string', 'number', 'null'] }
+				}
+			});
+			expect(result).toEqual({
+				status: 'ok',
+				fields: { x: { kind: 'unknown' } }
+			});
+		});
 	});
 
 	describe('scalar types', () => {
