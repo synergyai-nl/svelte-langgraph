@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable, Sequence
-from typing import cast
+from typing import Annotated, cast
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import AgentMiddleware, AgentState, before_agent
@@ -20,11 +20,16 @@ from langgraph.types import Checkpointer
 
 from .models import get_chat_model
 from .phase import DEFAULT_PHASE, VALID_PHASES, Phase
+from .reducers import last_value
 from .tools import get_tools
 
 
 class AgentExtendedState(AgentState):
-    phase: Phase
+    # `last_value` resolves two `change_phase` tool calls in one assistant
+    # message (parallel tool calls) deterministically to the most recent
+    # write, instead of LangGraph raising InvalidUpdateError -- see
+    # reducers.py for the mechanism.
+    phase: Annotated[Phase, last_value]
 
 
 SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."

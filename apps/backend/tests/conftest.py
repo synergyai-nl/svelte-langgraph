@@ -308,3 +308,41 @@ def openai_change_phase_tool_call(mock_completion):
     ]
 
     yield mock_completion
+
+
+@pytest.fixture
+def openai_double_change_phase_tool_call(mock_completion):
+    """Mock OpenAI API for two `change_phase` tool calls in one assistant
+    message (parallel tool calls) -- the concurrent-write hazard the
+    `last_value` reducer resolves. The tool calls are listed draft-then-review
+    so the LAST one ("review") is expected to win.
+    """
+    mock_completion.side_effect = [
+        make_completion_response(
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_phase_1",
+                    type="function",
+                    function=Function(
+                        name="change_phase", arguments='{"phase": "draft"}'
+                    ),
+                ),
+                ChatCompletionMessageToolCall(
+                    id="call_phase_2",
+                    type="function",
+                    function=Function(
+                        name="change_phase", arguments='{"phase": "review"}'
+                    ),
+                ),
+            ],
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
+        ),
+        make_completion_response(
+            message_content="I've changed the phase to review.",
+            meta=CompletionMeta(response_id="chatcmpl-test-2", created=1234567891),
+        ),
+    ]
+
+    yield mock_completion

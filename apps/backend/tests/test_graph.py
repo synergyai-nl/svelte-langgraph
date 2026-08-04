@@ -241,6 +241,50 @@ async def test_change_phase_tool(
 
 
 @pytest.mark.asyncio
+async def test_change_phase_tool_parallel_calls_last_write_wins(
+    agent,
+    thread_config: RunnableConfig,
+    openai_double_change_phase_tool_call,
+):
+    """Two `change_phase` tool calls in one assistant message (parallel tool
+    calls) must not crash with LangGraph's InvalidUpdateError -- `phase` is
+    annotated with the `last_value` reducer precisely to fold concurrent
+    per-step writes instead of raising. The LAST tool call in the message
+    ("review") wins over the first ("draft"), matching ToolNode's
+    executor.map, which preserves tool_call order. Both ToolMessages must
+    still be present and correlated to their originating tool_call_id, and
+    the run must complete with a final AI message.
+    """
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Switch to draft, then review")]},
+        thread_config,
+    )
+
+    assert result["phase"] == "review"
+
+    ai_tool_call_msg = next(
+        m for m in result["messages"] if isinstance(m, AIMessage) and m.tool_calls
+    )
+    assert [tc["id"] for tc in ai_tool_call_msg.tool_calls] == [
+        "call_phase_1",
+        "call_phase_2",
+    ]
+
+    tool_messages_by_id = {
+        m.tool_call_id: m for m in result["messages"] if isinstance(m, ToolMessage)
+    }
+    assert set(tool_messages_by_id) == {"call_phase_1", "call_phase_2"}
+    assert "Phase changed to draft." in tool_messages_by_id["call_phase_1"].content
+    assert "Phase changed to review." in tool_messages_by_id["call_phase_2"].content
+
+    final_ai_messages = [
+        m for m in result["messages"] if isinstance(m, AIMessage) and m.content
+    ]
+    assert final_ai_messages, "Expected a final AI message after both tool calls"
+    assert final_ai_messages[-1].content == "I've changed the phase to review."
+
+
+@pytest.mark.asyncio
 async def test_change_phase_tool_invalid_arg_from_llm_is_graceful(
     agent, thread_config: RunnableConfig, mock_completion
 ):

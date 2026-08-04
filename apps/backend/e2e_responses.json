@@ -16,6 +16,14 @@
         "content": "Current phase: draft"
       },
       "output": "PHASE_VISIBLE: draft"
+    },
+    {
+      "type": "function",
+      "input": "Please switch to draft then review",
+      "output": [
+        {"name": "change_phase", "arguments": {"phase": "draft"}},
+        {"name": "change_phase", "arguments": {"phase": "review"}}
+      ]
     }
   ]
 }

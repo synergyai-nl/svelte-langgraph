@@ -120,4 +120,39 @@ test.describe('Phase state-sync', () => {
 		await expect(aiMessage).toBeVisible({ timeout: 20000 });
 		await expect(aiMessage).not.toBeEmpty();
 	});
+
+	test('AI-driven parallel phase changes: last write wins', async ({ page, chat }) => {
+		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
+		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+
+		// Set a known starting phase so the AI-driven change is observable.
+		await chat.phaseSelect.selectOption('research');
+		await expect(chat.phaseSelect).toHaveValue('research');
+		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+
+		// The ai-mock answers this exact text with TWO change_phase tool calls in
+		// one assistant message (draft, then review) -- the parallel-tool-call
+		// hazard the `last_value` reducer fixes.
+		await chat.textInput.fill('Please switch to draft then review');
+		await chat.textInput.press('Enter');
+
+		// Both writes land in the same superstep; the LAST must win, and the run
+		// must not die with InvalidUpdateError.
+		await expect(chat.phaseSelect).toHaveValue('review', { timeout: 20000 });
+
+		// Run completed normally (input re-enabled => not stalled/errored).
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		const aiMessage = page
+			.getByRole('group')
+			.filter({ has: page.locator('.prose') })
+			.first();
+		await expect(aiMessage).toBeVisible({ timeout: 20000 });
+		await expect(aiMessage).not.toBeEmpty();
+
+		// Server actually committed "review" (not "draft", not a wedged thread).
+		await page.reload();
+		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
+		await expect(chat.phaseSelect).toHaveValue('review');
+	});
 });

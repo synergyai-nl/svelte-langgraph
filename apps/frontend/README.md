@@ -97,6 +97,15 @@ Caveats of graph-mediated writes:
 - **Checkpoint branching rewinds synced fields.** Regenerating or editing a message
   branches from an earlier checkpoint, restoring the _entire_ state at that point — a
   field changed after the original response is reverted on the new branch.
+- **Concurrent tool writes need a reducer.** If a tool can write a synced field via
+  `Command(update={...})` (like the demo `change_phase` tool), the backend's state
+  field must declare a reducer — e.g. `phase: Annotated[Phase, last_value]` in
+  `graph.py`, using `svelte_langgraph/reducers.py`'s `last_value`. Without one, two
+  calls to that tool inside a single assistant message (parallel tool calls) crash
+  the run with LangGraph's `InvalidUpdateError`, because `ToolNode` runs tool calls
+  concurrently and only merges `Command`s that target the parent graph. `last_value`
+  resolves concurrent writes to the most recently produced one — matching the
+  intuitive "last instruction wins" reading of a multi-step user request.
 
 ### Degraded mode
 
