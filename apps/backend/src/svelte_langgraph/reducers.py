@@ -21,15 +21,19 @@ from typing import TypeVar
 T = TypeVar("T")
 
 
-def last_value(left: T, right: T) -> T:
+def last_value(_left: T, right: T) -> T:
     """Reducer: resolve concurrent per-step writes to a channel by keeping
     the most recently produced value.
 
     LangGraph's `BinaryOperatorAggregate` channel folds pending writes for a
-    step by repeatedly calling this with the current channel value as `left`
-    and each new write as `right`, in write order -- so the result is simply
-    the last `right` seen. When the channel is empty (first write, e.g. a
-    state-only submit or graph input), it seeds with the first value and
-    never calls this at all.
+    step by repeatedly calling this with the current channel value as
+    `_left` and each new write as `right`, in write order -- so the result
+    is simply the last `right` seen. When the channel is empty (first write,
+    e.g. a state-only submit or graph input), it seeds with the first value
+    and never calls this at all.
+
+    The two-argument shape is required by that channel, so `_left` cannot be
+    dropped; it is underscore-prefixed to mark that last-write-wins discards
+    the accumulated value by definition.
     """
     return right

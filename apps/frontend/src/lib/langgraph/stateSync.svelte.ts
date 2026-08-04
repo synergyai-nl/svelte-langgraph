@@ -4,12 +4,13 @@
  * ## Write path
  * `field.set(v)` calls
  * `stream.submit({ [name]: v }, { optimisticValues: ..., config: { configurable: { state_only_submit: true } } })`.
- * This triggers a *state-only* run through the graph: the backend's entry router
- * applies the field update and exits without an LLM call.  The `state_only_submit`
- * marker is carried in per-invocation run config (not state) so the router can
- * tell a genuine field-only submit apart from a leftover dangling HumanMessage in
- * checkpoint state (e.g. after a cancelled/failed generation) without the marker
- * leaking into later chat submits.  useStream then refetches server truth after
+ * This triggers a *state-only* run through the graph: the backend's `phase_gate`
+ * middleware (a `@before_agent` hook in graph.py) applies the field update and
+ * jumps to `end` without an LLM call.  The `state_only_submit` marker is carried
+ * in per-invocation run config (not state) so the middleware can tell a genuine
+ * field-only submit apart from a leftover dangling HumanMessage in checkpoint
+ * state (e.g. after a cancelled/failed generation) without the marker leaking
+ * into later chat submits.  useStream then refetches server truth after
  * the run completes.  Optimistic values give an immediate UI update while the
  * round-trip is in flight.
  *
@@ -19,7 +20,9 @@
  * ## threads.updateState as an expert escape hatch
  * `client.threads.updateState` can write directly to the thread checkpoint,
  * bypassing the graph.  It is intentionally NOT used here because:
- *  - No server-side validation (the graph's entry node may reject invalid state)
+ *  - No server-side validation — the write bypasses the graph, so `phase_gate`
+ *    never runs to reject it; the bad value is checkpointed and then fails
+ *    every subsequent run until a valid value is written
  *  - Raises HTTP 409 if called while a run is active
  *  - Invisible to useStream — the live stream ignores the write until reconnect
  *  - Forks checkpoint history on the next submit (unexpected branch)
@@ -199,11 +202,11 @@ export function createStateSync({ stream, client, assistantId }: StateSyncOption
 							...prev,
 							[name]: v
 						}),
-						// Tells the backend router (graph.py's _route_after_entry) this is
-						// a pure state update, not a chat turn. Sent via run config rather
+						// Tells the backend's phase_gate middleware (graph.py) this is a
+						// pure state update, not a chat turn. Sent via run config rather
 						// than as a state field: if the last committed message happens to
 						// be a dangling HumanMessage (e.g. a prior generation was cancelled
-						// or failed before the agent replied), the router can't otherwise
+						// or failed before the agent replied), the middleware can't otherwise
 						// tell that apart from a genuine new chat submission and would
 						// wrongly re-invoke the LLM. Config is per-invocation and never
 						// checkpointed, so — unlike a state field — it can't leak into a

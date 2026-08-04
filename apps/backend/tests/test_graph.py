@@ -397,9 +397,9 @@ async def test_phase_only_submit_after_failed_generation_skips_llm(
 async def test_phase_only_submit_without_marker_still_regenerates(
     agent, thread_config: RunnableConfig, mock_completion
 ):
-    """Documents the router's default behavior when the state_only_submit
+    """Documents phase_gate's default behavior when the state_only_submit
     marker is absent: a submit landing on a checkpoint that ends in a
-    HumanMessage still routes to the agent, exactly like the regenerate
+    HumanMessage still reaches the agent, exactly like the regenerate
     flow. This is what makes the explicit marker in the test above
     necessary rather than incidental.
     """

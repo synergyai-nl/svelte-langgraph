@@ -142,17 +142,17 @@ from pydantic import ValidationError  # noqa: E402
 
 
 def _verify_structure(self):
-    if self.type == "function":
-        if not isinstance(self.output, (FunctionOutput, FunctionOutputs)):
-            raise ValueError(
-                "When a response is of type 'function', the output must be a "
-                "single FunctionOutput object or an array of FunctionOutput objects"
-            )
-    elif self.type == "text":
-        if not isinstance(self.output, str):
-            raise ValueError(
-                "When a response is of type 'text', the output must be a string."
-            )
+    if self.type == "function" and not isinstance(
+        self.output, (FunctionOutput, FunctionOutputs)
+    ):
+        raise ValueError(
+            "When a response is of type 'function', the output must be a "
+            "single FunctionOutput object or an array of FunctionOutput objects"
+        )
+    if self.type == "text" and not isinstance(self.output, str):
+        raise ValueError(
+            "When a response is of type 'text', the output must be a string."
+        )
     return self
 
 

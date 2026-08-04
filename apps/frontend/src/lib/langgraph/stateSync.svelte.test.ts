@@ -219,7 +219,7 @@ describe('createStateSync', () => {
 		});
 
 		it('marks the submit as state-only via run config, not state', async () => {
-			// The backend router (graph.py's _route_after_entry) uses this marker to
+			// The backend's phase_gate middleware (graph.py) uses this marker to
 			// distinguish a pure field write from a chat turn, even when checkpoint
 			// state still ends in a dangling HumanMessage (e.g. after a cancelled or
 			// failed prior generation). It must travel via config, which is never

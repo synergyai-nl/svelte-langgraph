@@ -78,8 +78,9 @@ You can preview the production build with `npm run preview`.
 
 `field.set(v)` calls `stream.submit({ [name]: v }, { optimisticValues: prev => ({ ...prev, [name]: v }) })`.
 
-This triggers a _state-only run_ through the graph: the backend entry router applies
-the new field value and exits without invoking the LLM. `useStream` refetches server
+This triggers a _state-only run_ through the graph: the backend's `phase_gate`
+middleware (a `@before_agent` hook in `graph.py`) applies the new field value and
+jumps to `end` without invoking the LLM. `useStream` refetches server
 truth once the run completes (this refetch requires `fetchStateHistory: true` — or a
 number — in the `useStream` options, as used in `Chat.svelte`). The `optimisticValues`
 callback gives an immediate UI update while the round-trip is in flight.
@@ -90,10 +91,12 @@ not applied on the queued path; the UI updates when the queued run completes.
 
 Caveats of graph-mediated writes:
 
-- **"State-only" depends on the router seeing merged state.** The demo router routes to
-  the agent whenever the thread's _last message_ is a human message. If the previous run
-  errored or was cancelled before an AI message was committed, a field write will also
-  trigger a generation for that dangling message.
+- **"State-only" depends on the `state_only_submit` marker.** `field.set()` sends that
+  marker in run config, so `phase_gate` ends the run without an LLM call even when
+  checkpoint state still ends in a dangling HumanMessage (e.g. a prior generation was
+  cancelled or failed). A state write submitted _without_ the marker falls back to the
+  last-message heuristic — the agent runs whenever the thread's last message is a human
+  message — and will trigger a generation for that dangling message.
 - **Checkpoint branching rewinds synced fields.** Regenerating or editing a message
   branches from an earlier checkpoint, restoring the _entire_ state at that point — a
   field changed after the original response is reverted on the new branch.
@@ -119,7 +122,9 @@ is needed in consuming components.
 `client.threads.updateState` can bypass the graph and write directly to the thread
 checkpoint. It is deliberately **not** used by `createStateSync` due to these hazards:
 
-- **No server-side validation** — the graph's entry router cannot reject invalid state.
+- **No server-side validation** — the write bypasses the graph, so `phase_gate` never
+  runs to reject it. The bad value is checkpointed and then fails every subsequent run
+  until a valid value is written.
 - **HTTP 409 during runs** — calling it while a run is active raises a conflict error.
 - **Invisible to `useStream`** — the live stream ignores the write until the next reconnect.
 - **Checkpoint forking** — the next `stream.submit` call branches from the wrong checkpoint.
