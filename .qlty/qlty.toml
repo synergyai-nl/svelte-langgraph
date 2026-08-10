@@ -67,32 +67,21 @@ name = "actionlint"
 [[plugin]]
 name = "bandit"
 
-# eslint is deliberately NOT run through qlty: moon already runs the identical
-# eslint.config.js for apps/frontend and e2e (see their moon.yml `lint` tasks)
-# at the lockfile-pinned eslint 9.31.0. qlty's driver stages a copy of those
-# configs into its own sandbox and resolves its own eslint (10.x as of
-# 2026-08), which both duplicates the check and mismatches the repo's major
-# version. See SLG-130.
+# eslint, prettier and ruff are deliberately NOT run through qlty: moon already
+# owns them (frontend/e2e `lint` and `format`, backend `lint`) at the versions
+# pinned by pnpm-lock.yaml / uv.lock. qlty resolves its own copies instead --
+# it reads exact JS tool versions only from package-lock.json / yarn.lock, and
+# this is a pnpm-only repo -- so each one needs a hand-maintained `version =`
+# pin and runs in a sandbox whose dependency graph differs from ours. That
+# duplicates the check and periodically breaks for reasons unrelated to the
+# code. qlty keeps the plugins below, which run analyses moon does not.
+# See SLG-130 / #265.
 
 [[plugin]]
 name = "hadolint"
 
 [[plugin]]
 name = "osv-scanner"
-
-[[plugin]]
-name = "prettier"
-version = "3.6.2"
-prefix = "e2e"
-
-[[plugin]]
-name = "prettier"
-version = "3.6.2"
-extra_packages = [
-  "prettier-plugin-svelte@3.4.0",
-  "prettier-plugin-tailwindcss@0.6.14",
-]
-prefix = "apps/frontend"
 
 [[plugin]]
 name = "radarlint-iac"
@@ -105,12 +94,6 @@ mode = "comment"
 [[plugin]]
 name = "ripgrep"
 mode = "comment"
-
-[[plugin]]
-name = "ruff"
-drivers = [
-  "lint",
-]
 
 [[plugin]]
 name = "trufflehog"
