@@ -129,6 +129,26 @@ OPENAI_BASE_URL=http://localhost:11434/v1
 CHAT_MODEL_NAME=llama3.2  # Your local Ollama model
 ```
 
+### Reasoning / Thinking Display
+
+The frontend shows LLM reasoning/thinking tokens in a collapsible block above AI messages, when the model provides them. Reasoning is picked up from `additional_kwargs.reasoning_content` (OpenRouter) and from `{type: "reasoning"}` / `{type: "thinking"}` content blocks (langchain v1 standard / Anthropic-native).
+
+By default, `CHAT_MODEL_NAME` is routed through the generic OpenAI-compatible path (`OPENAI_API_KEY`/`OPENAI_BASE_URL`), unchanged from before. To use a langchain-native provider integration instead, prefix `CHAT_MODEL_NAME` with a provider known to `init_chat_model` (e.g. `openrouter:deepseek/deepseek-r1`); it's then routed through that provider's integration instead of the generic path. Provider-specific options go in `CHAT_MODEL_KWARGS` (JSON) and are forwarded to `init_chat_model` as keyword args (with defaults like `temperature=0.9` applied; reserved keys like `model`/`model_provider` are rejected).
+
+To enable reasoning output via OpenRouter — the `openrouter:` prefix and API key alone are not enough, OpenRouter only emits reasoning tokens when explicitly requested via the `reasoning` key in `CHAT_MODEL_KWARGS`:
+
+```bash
+# .env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+CHAT_MODEL_NAME=openrouter:deepseek/deepseek-r1
+CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
+```
+
+`CHAT_MODEL_KWARGS` must be valid JSON, which requires double-quoted keys/strings. Wrap the value in double quotes and escape the inner ones as above; an unquoted value (`CHAT_MODEL_KWARGS={"reasoning": ...}`) fails to parse when loaded via moon's `envFile` task option (used by `moon backend:dev`/`moon backend:up`) and breaks on word-splitting if the variable is ever exported as a shell variable instead.
+
+**Caveat:** the generic OpenAI-compatible path (`ChatOpenAI` pointed at OpenRouter via `OPENAI_BASE_URL`) drops reasoning tokens entirely — a known langchain limitation ([langchain#34328](https://github.com/langchain-ai/langchain/issues/34328)). Reasoning display requires the `openrouter:` prefix above. Other langchain-integrated providers can expose reasoning the same way once their integration package is added to the backend dependencies.
+
 ## Getting Started
 
 1. **Install pinned tools** (from the repo root):

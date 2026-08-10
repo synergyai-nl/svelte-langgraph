@@ -1,21 +1,24 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { Message } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
 	import UserMessageActions from './UserMessageActions.svelte';
 	import UserMessageEdit from './UserMessageEdit.svelte';
+	import ThinkingBlock from './ThinkingBlock.svelte';
 
 	interface Props {
-		message: BaseMessage;
-		onEdit: (message: BaseMessage, newText: string) => boolean;
-		onRegenerate?: (message: BaseMessage) => void;
-		onFeedback?: (message: BaseMessage, type: 'up' | 'down') => void;
+		message: Message;
+		onEdit: (message: Message, newText: string) => boolean;
+		onRegenerate: (message: Message) => void;
+		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		/** Whether this message's thinking block should show its "still streaming" animation. */
+		isThinkingActive?: boolean;
 	}
 
-	let { message, onEdit, onRegenerate, onFeedback }: Props = $props();
+	let { message, onEdit, onRegenerate, onFeedback, isThinkingActive = false }: Props = $props();
 
 	const plugins = [gfmPlugin()];
 
@@ -64,12 +67,17 @@
 					class="relative w-full"
 				>
 					{#if message.type === 'ai'}
-						<Card.Root class="border-border-card bg-muted border shadow-sm">
-							<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
-								<Markdown md={message.text} {plugins} />
-							</Card.Content>
-						</Card.Root>
-						<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+						{#if message.thinking}
+							<ThinkingBlock thinking={message.thinking} active={isThinkingActive} />
+						{/if}
+						{#if message.text}
+							<Card.Root class="border-border-card bg-muted border shadow-sm">
+								<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
+									<Markdown md={message.text} {plugins} />
+								</Card.Content>
+							</Card.Root>
+							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">
 							<Card.Content

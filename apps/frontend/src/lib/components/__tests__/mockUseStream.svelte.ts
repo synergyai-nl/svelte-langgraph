@@ -19,6 +19,7 @@ export const mockStreamCallbacks: {
 let _messages = $state<Record<string, unknown>[]>([]);
 let _isLoading = $state(false);
 let _error = $state<unknown>(null);
+let _values = $state<Record<string, unknown>>({});
 
 export const mockStream = {
 	get messages() {
@@ -29,6 +30,9 @@ export const mockStream = {
 	},
 	get error() {
 		return _error;
+	},
+	get values() {
+		return _values;
 	},
 	get submit() {
 		return mockStreamCallbacks.submit;
@@ -53,10 +57,15 @@ export function setError(err: unknown) {
 	_error = err;
 }
 
+export function setValues(vals: Record<string, unknown>) {
+	_values = { ...vals };
+}
+
 export function resetMock() {
 	_messages = [];
 	_isLoading = false;
 	_error = null;
+	_values = {};
 	mockStreamCallbacks.submit = () => {};
 	mockStreamCallbacks.stop = () => {};
 	mockStreamCallbacks.getMessagesMetadata = () => undefined;

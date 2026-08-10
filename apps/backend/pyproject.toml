@@ -7,15 +7,16 @@ requires-python = "==3.12.*"
 dependencies = [
     "authlib>=1.4.1",
     "httpx>=0.28.1",
-    "langchain[openai]==1.0.*",
-    "langgraph==1.0.*",
+    "langchain[openai]==1.2.*",
+    "langchain-openrouter>=0.2.6,<0.3",
+    "langgraph==1.1.*",
     "langgraph-cli[inmem]>=0.4",
     "python-dotenv>=1.1.0",
 ]
 
 [dependency-groups]
 dev = [
-    "ai-mock>=0.3.1",
+    "ai-mock>=0.3.1,<0.4",
     "httpx>=0.28.1",
     "oidc-provider-mock>=0.3.2",
     "pyright>=1.1.403",

@@ -10,18 +10,31 @@
 	interface Props {
 		messages: Array<Message>;
 		finalAnswerStarted: boolean;
+		/** Whether a run is currently streaming in — used to animate the thinking pill of the in-flight message. */
+		isStreaming?: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
+		onRegenerate: (message: Message) => void;
 	}
 
 	let {
 		messages = [],
 		finalAnswerStarted,
+		isStreaming = false,
 		generationError = null,
 		onRetryError,
-		onEdit
+		onEdit,
+		onRegenerate
 	}: Props = $props();
+
+	// The message currently being generated is always the last one in the list — while a
+	// run is streaming, only that message's thinking pill should show the "still working"
+	// animation. Once the stream finishes (or on reload, when isStreaming is always false),
+	// this is undefined and no message animates.
+	let streamingMessageId = $derived(
+		isStreaming && messages.length > 0 ? messages[messages.length - 1].id : undefined
+	);
 </script>
 
 <ScrollableContainer>
@@ -30,8 +43,13 @@
 			<div {@attach scrollToMe(message)} transition:fly={{ y: 20, duration: 800 }}>
 				{#if message.type === 'tool'}
 					<ChatToolMessage {message} />
-				{:else if message.text}
-					<ChatMessage {message} onEdit={(msg, newText) => onEdit(msg as Message, newText)} />
+				{:else if message.text || (message.type === 'ai' && message.thinking)}
+					<ChatMessage
+						{message}
+						{onEdit}
+						{onRegenerate}
+						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
+					/>
 				{/if}
 			</div>
 		{/each}

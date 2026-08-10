@@ -6,7 +6,10 @@
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
-	import type { Client } from '@langchain/langgraph-sdk';
+	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
+	import { InvalidData } from '$lib/langgraph/errors';
+	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
+	import StateField from './StateField.svelte';
 
 	interface Props {
 		langGraphClient: Client;
@@ -33,6 +36,8 @@
 		fetchStateHistory: true,
 		reconnectOnMount: true
 	});
+
+	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
 
 	let current_input = $state('');
 	let last_user_message = $state('');
@@ -67,6 +72,9 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
+	let rawMessageById = $derived(
+		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
+	);
 
 	function isCancellationError(err: unknown): boolean {
 		if (err instanceof Error) {
@@ -98,7 +106,7 @@
 		stream.submit({ messages: [{ type: 'human', content: text }] });
 	}
 
-	function retryGeneration() {
+	function retryGenerationAfterError() {
 		if (!last_user_message) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
@@ -108,17 +116,21 @@
 		stream.stop();
 	}
 
+	function getParentCheckpoint(message: Message): Checkpoint | null {
+		if (!message.id) throw new InvalidData('Message is missing an id', message);
+		const rawMsg = rawMessageById.get(message.id);
+		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
+		const metadata = stream.getMessagesMetadata(rawMsg);
+		if (!metadata)
+			throw new InvalidData('No metadata found for message id: ' + message.id, message);
+		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
+		return metadata.firstSeenState?.parent_checkpoint ?? null;
+	}
+
 	function handleEdit(message: Message, newText: string): boolean {
 		if (stream.isLoading) return false;
-
-		// Match converted message back to the raw BaseMessage instance for metadata lookup
-		const rawMsg = stream.messages.find((m) => m.id === message.id);
-		if (!rawMsg) return false;
-
-		// Submit against the parent checkpoint to branch from before this message
-		const meta = stream.getMessagesMetadata(rawMsg);
-		const parentCheckpoint = meta?.firstSeenState?.parent_checkpoint;
-
+		const parentCheckpoint = getParentCheckpoint(message);
+		if (!parentCheckpoint) return false;
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
@@ -128,9 +140,23 @@
 		);
 		return true;
 	}
+
+	function handleRegenerate(message: Message) {
+		if (stream.isLoading) return;
+		const parentCheckpoint = getParentCheckpoint(message);
+		if (!parentCheckpoint) return;
+		// last_user_message is intentionally not updated here — retryGenerationAfterError only
+		// applies to user-initiated sends, not regenerations
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		stream.submit(undefined, { checkpoint: parentCheckpoint });
+	}
 </script>
 
 <div class="flex h-[calc(100vh-4rem)] flex-col">
+	<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
+	<div class="flex justify-end px-4 py-1">
+		<StateField name="phase" field={sync.field('phase')} />
+	</div>
 	<div class="flex-1 overflow-y-auto pb-24">
 		{#if !chat_started}
 			<ChatSuggestions
@@ -143,9 +169,11 @@
 			<ChatMessages
 				{messages}
 				finalAnswerStarted={final_answer_started}
+				isStreaming={stream.isLoading}
 				{generationError}
-				onRetryError={retryGeneration}
+				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
+				onRegenerate={handleRegenerate}
 			/>
 		{/if}
 	</div>

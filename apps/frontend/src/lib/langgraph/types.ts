@@ -6,6 +6,7 @@ export interface BaseMessage {
 
 export interface AIMessage extends BaseMessage {
 	type: 'ai';
+	thinking?: string;
 }
 
 export interface UserMessage extends BaseMessage {

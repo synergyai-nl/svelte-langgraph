@@ -25,6 +25,7 @@
 	"tool_parameters": "Parameters:",
 	"tool_no_parameters": "Geen parameters",
 	"tool_result": "Resultaat:",
+	"thinking": "Denken",
 	"chat_suggestion_0_title": "Voer een tool-workflow uit",
 	"chat_suggestion_0_description": "Bekijk streaming tool-aanroepen en resultaten",
 	"chat_suggestion_0_text": "Doorzoek onze docs en vat de deployment-stappen samen",
