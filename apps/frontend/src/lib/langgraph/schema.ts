@@ -1,0 +1,228 @@
+/**
+ * Generic JSON-Schema parser for LangGraph state schemas.
+ *
+ * Pure TypeScript — no Svelte or DOM dependencies — safe to reuse for
+ * tool-arg schemas, interrupt schemas, and any other JSON Schema payloads.
+ */
+
+/**
+ * Minimal structural JSONSchema7 type.
+ *
+ * `@types/json-schema` is only a transitive dependency of
+ * `@langchain/langgraph-sdk`, not a direct dependency of this package.
+ * Defining the subset we actually need keeps the import graph clean and
+ * avoids having to add a direct dev-dependency.
+ */
+export interface JSONSchema7 {
+	type?: string | string[];
+	enum?: unknown[];
+	properties?: Record<string, JSONSchema7>;
+	anyOf?: JSONSchema7[];
+	oneOf?: JSONSchema7[];
+	$ref?: string;
+	$defs?: Record<string, JSONSchema7>;
+	definitions?: Record<string, JSONSchema7>;
+	items?: JSONSchema7 | JSONSchema7[];
+	/** Allow arbitrary additional JSON Schema keywords without error. */
+	[key: string]: unknown;
+}
+
+export type FieldSchema =
+	| { kind: 'enum'; options: string[] }
+	| { kind: 'boolean' }
+	| { kind: 'string' }
+	| { kind: 'number' }
+	| { kind: 'object'; properties: Record<string, FieldSchema> }
+	| { kind: 'unknown' };
+
+export type ParseObjectSchemaResult =
+	| { status: 'ok'; fields: Record<string, FieldSchema> }
+	| { status: 'unavailable' };
+
+/** Resolve a local JSON Pointer `$ref` against the combined `$defs`/`definitions` map. */
+function resolveRef(ref: string, defs: Record<string, JSONSchema7>): JSONSchema7 | undefined {
+	// Handles both #/$defs/Name and #/definitions/Name
+	const match = /^#\/(?:\$defs|definitions)\/(.+)$/.exec(ref);
+	if (!match) return undefined;
+	return defs[match[1]];
+}
+
+/**
+ * Variant dispatcher rule: try to interpret `schema` as a particular JSON
+ * Schema "shape". Returns the parsed `FieldSchema` when the shape matches,
+ * or `undefined` to signal "not this shape, try the next dispatcher rule".
+ *
+ * Recursive calls always go back through the top-level `parseFieldSchema` so
+ * the `depth > 10` cyclic guard applies uniformly across every recursion path.
+ */
+type FieldSchemaVariantParser = (
+	schema: JSONSchema7,
+	defs: Record<string, JSONSchema7>,
+	depth: number
+) => FieldSchema | undefined;
+
+/**
+ * Normalize JSON Schema's "nullable via type array" convention
+ * (`{ type: ['string', 'null'] }`) down to a plain single-type schema.
+ *
+ * - Strips `'null'` from a `type` array.
+ * - Exactly one type remains → returns a shallow copy with `type` set to
+ *   that single string, ready for the scalar/object variant parsers.
+ * - Zero types remain (pure `{ type: ['null'] }`) or more than one type
+ *   remains (genuinely mixed, e.g. `['string', 'number', 'null']`) → returns
+ *   `schema` unchanged; callers treat those as "not a simple nullable type".
+ */
+function normalizeNullableType(schema: JSONSchema7): JSONSchema7 {
+	if (!Array.isArray(schema.type)) return schema;
+	const remaining = schema.type.filter((t) => t !== 'null');
+	if (remaining.length === 1) return { ...schema, type: remaining[0] };
+	return schema;
+}
+
+/** Rule 1: resolve `$ref` via the supplied `defs` map. */
+const resolveRefVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	if (!schema.$ref) return undefined;
+	const resolved = resolveRef(schema.$ref, defs);
+	if (resolved) return parseFieldSchema(resolved, defs, depth + 1);
+	return { kind: 'unknown' };
+};
+
+/**
+ * Rule 2: unwrap `anyOf`/`oneOf` — drop pure-null variants and recurse into
+ * the remaining variant(s). A single non-null variant is treated as the
+ * field type; multiple non-null variants → first one that isn't 'unknown'.
+ *
+ * A variant whose `type` is an array (e.g. `['string', 'null']`) is
+ * normalized via `normalizeNullableType` before being counted/recursed into,
+ * so `anyOf: [{ type: ['string', 'null'] }]` parses as `kind: 'string'`
+ * rather than being dropped. Only *pure* null variants (`type === 'null'` or
+ * a type array containing only `'null'`) are excluded outright.
+ */
+const unwrapUnionVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	const ofVariants = schema.anyOf ?? schema.oneOf;
+	if (!ofVariants) return undefined;
+
+	const isPureNull = (v: JSONSchema7) =>
+		v.type === 'null' || (Array.isArray(v.type) && v.type.every((t) => t === 'null'));
+
+	const nonNull = ofVariants.filter((v) => !isPureNull(v)).map(normalizeNullableType);
+	if (nonNull.length === 1) {
+		return parseFieldSchema(nonNull[0], defs, depth + 1);
+	}
+	if (nonNull.length > 1) {
+		// Return first variant that resolves to something meaningful
+		for (const v of nonNull) {
+			const s = parseFieldSchema(v, defs, depth + 1);
+			if (s.kind !== 'unknown') return s;
+		}
+	}
+	return { kind: 'unknown' };
+};
+
+/** Rule 3: non-empty string `enum` → `kind: 'enum'` (bare enums without type are valid). */
+function parseEnumVariant(schema: JSONSchema7): FieldSchema | undefined {
+	if (!Array.isArray(schema.enum)) return undefined;
+	const options = (schema.enum as unknown[]).filter((v): v is string => typeof v === 'string');
+	if (options.length > 0) return { kind: 'enum', options };
+	return undefined;
+}
+
+/**
+ * Rule 4: scalar types `boolean`, `string`, `number`, `integer` → corresponding
+ * kind. Also handles a top-level (non-`anyOf`) nullable-via-type-array schema
+ * such as `{ type: ['string', 'null'] }` by normalizing it down to `'string'`
+ * first; a genuinely mixed array (e.g. `['string', 'number']`) or pure
+ * `['null']` is left as an array and falls through to `undefined`.
+ */
+function parseScalarVariant(schema: JSONSchema7): FieldSchema | undefined {
+	const type = normalizeNullableType(schema).type;
+	if (type === 'boolean') return { kind: 'boolean' };
+	if (type === 'string') return { kind: 'string' };
+	if (type === 'number' || type === 'integer') return { kind: 'number' };
+	return undefined;
+}
+
+/** Rule 5: `object` with `properties` → `kind: 'object'` with recursively parsed fields. */
+const parseObjectVariant: FieldSchemaVariantParser = (schema, defs, depth) => {
+	if (schema.type !== 'object' || !schema.properties) return undefined;
+	const properties: Record<string, FieldSchema> = {};
+	for (const [key, val] of Object.entries(schema.properties)) {
+		properties[key] = parseFieldSchema(val, defs, depth + 1);
+	}
+	return { kind: 'object', properties };
+};
+
+/**
+ * Recursively parse a single field schema node.
+ *
+ * Dispatches to the variant rules in order (see each helper's doc comment for
+ * details): `$ref` resolution, `anyOf`/`oneOf` unwrapping, `enum`, scalar
+ * types, then `object`. Anything unrecognised → `kind: 'unknown'` (never
+ * throws).
+ */
+function parseFieldSchema(
+	schema: JSONSchema7,
+	defs: Record<string, JSONSchema7>,
+	depth = 0
+): FieldSchema {
+	// Guard against malformed cyclic schemas
+	if (depth > 10) return { kind: 'unknown' };
+
+	return (
+		resolveRefVariant(schema, defs, depth) ??
+		unwrapUnionVariant(schema, defs, depth) ??
+		parseEnumVariant(schema) ??
+		parseScalarVariant(schema) ??
+		parseObjectVariant(schema, defs, depth) ?? { kind: 'unknown' }
+	);
+}
+
+/**
+ * Parse the top-level JSON Schema describing a LangGraph graph state object.
+ *
+ * Accepts `unknown` so callers can pass the SDK's `GraphSchema.state_schema`
+ * directly without needing a cast (the SDK's `JSONSchema7` and our local one
+ * have different structural types for `properties` due to the JSON Schema spec
+ * allowing boolean sub-schemas, e.g. `{ "additionalProperties": false }`).
+ *
+ * Returns `{ status: 'unavailable' }` when:
+ *  - `schema` is `null`, `undefined`, or not an object
+ *  - An unexpected exception is thrown during parsing
+ *
+ * A schema with no `properties` is still a valid (empty) object schema and
+ * returns `{ status: 'ok', fields: {} }`, not `'unavailable'`.
+ *
+ * Never throws — all errors are absorbed and mapped to `'unavailable'`.
+ */
+export function parseObjectSchema(schema: unknown): ParseObjectSchemaResult {
+	if (schema == null || typeof schema !== 'object') return { status: 'unavailable' };
+
+	try {
+		// Cast to our working type now that we know it's an object
+		const s = schema as JSONSchema7;
+
+		// Build the combined $defs / definitions map for $ref resolution
+		const defs: Record<string, JSONSchema7> = {
+			...(s.$defs as Record<string, JSONSchema7> | undefined),
+			...(s.definitions as Record<string, JSONSchema7> | undefined)
+		};
+
+		const rawProperties = s.properties as Record<string, unknown> | undefined;
+		const fields: Record<string, FieldSchema> = {};
+
+		if (rawProperties) {
+			for (const [key, val] of Object.entries(rawProperties)) {
+				// Boolean schemas (e.g. `false` for disallowed props) → unknown
+				if (typeof val !== 'object' || val === null) {
+					fields[key] = { kind: 'unknown' };
+				} else {
+					fields[key] = parseFieldSchema(val as JSONSchema7, defs, 0);
+				}
+			}
+		}
+
+		return { status: 'ok', fields };
+	} catch {
+		return { status: 'unavailable' };
+	}
+}

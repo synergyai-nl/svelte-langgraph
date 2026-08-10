@@ -307,8 +307,19 @@ async function waitForSettledHistory(page: Page, humanText: string): Promise<voi
 test.describe('Thinking block UI', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);
+		// The on-mount thread-history fetch (useStream's `fetchStateHistory`) fires
+		// during hydration, BEFORE the test body registers its `mockThreadHistory`
+		// route — an already-in-flight request can't be intercepted, so it reaches
+		// the real backend and its empty `[]` response races the mocked post-run
+		// refetch. If the `[]` lands last it wipes the streamed messages (and the
+		// thinking button) right out from under the test's assertions. Registering
+		// this wait before navigation (so we can't miss the response) and awaiting
+		// it here lets that mount fetch settle harmlessly on the still-empty thread
+		// before any test-specific routes are registered.
+		const historySettled = page.waitForResponse((r) => /\/threads\/[^/]+\/history/.test(r.url()));
 		await page.goto('/chat/');
 		await page.waitForURL(/\/chat\/[\w-]+/);
+		await historySettled;
 	});
 
 	test('thinking block appears collapsed when AI response includes thinking (additional_kwargs format)', async ({

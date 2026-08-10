@@ -67,17 +67,12 @@ name = "actionlint"
 [[plugin]]
 name = "bandit"
 
-[[plugin]]
-name = "eslint"
-package_file = "package.json"
-package_filters = ["eslint", "jest", "prettier"]
-prefix = "apps/frontend"
-
-[[plugin]]
-name = "eslint"
-package_file = "package.json"
-package_filters = ["eslint", "jest", "prettier"]
-prefix = "e2e"
+# eslint is deliberately NOT run through qlty: moon already runs the identical
+# eslint.config.js for apps/frontend and e2e (see their moon.yml `lint` tasks)
+# at the lockfile-pinned eslint 9.31.0. qlty's driver stages a copy of those
+# configs into its own sandbox and resolves its own eslint (10.x as of
+# 2026-08), which both duplicates the check and mismatches the repo's major
+# version. See SLG-130.
 
 [[plugin]]
 name = "hadolint"
