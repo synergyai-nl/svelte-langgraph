@@ -14,7 +14,10 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-const mockClient = {} as Client;
+// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
+const mockClient = {
+	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
+} as unknown as Client;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },

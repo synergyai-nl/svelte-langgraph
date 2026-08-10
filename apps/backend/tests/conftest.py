@@ -29,6 +29,7 @@ from openai.types.chat.chat_completion_message_tool_call import (
 )
 
 from svelte_langgraph.graph import make_graph
+from svelte_langgraph.tools import change_phase
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
 OPENROUTER_MOCK_BASE_URL = "https://mock-openrouter.test/api/v1"
@@ -217,10 +218,19 @@ async def agent(thread_config: RunnableConfig, monkeypatch):
 
     # Mock the get_tools function where it's imported in graph.py
     def mock_get_tools():
-        return [get_weather]
+        return [get_weather, change_phase]
 
     monkeypatch.setattr("svelte_langgraph.graph.get_tools", mock_get_tools)
     return make_graph(thread_config)
+
+
+@pytest.fixture
+def mock_completion_optional(provider_case: ProviderCase):
+    """Mock the chat completions endpoint without requiring it to be called."""
+    with respx.mock(
+        base_url=provider_case.mock_base_url, assert_all_called=False
+    ) as respx_mock:
+        yield respx_mock.post("/chat/completions")
 
 
 @pytest.fixture
@@ -263,6 +273,75 @@ def openai_single_tool_call(mock_completion):
                     total_tokens=40,
                 ),
             ),
+        ),
+    ]
+
+    yield mock_completion
+
+
+@pytest.fixture
+def openai_change_phase_tool_call(mock_completion):
+    """Mock OpenAI API for change_phase tool call scenario."""
+    mock_completion.side_effect = [
+        make_completion_response(
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_phase_1",
+                    type="function",
+                    function=Function(
+                        name="change_phase",
+                        arguments='{"phase": "review"}',
+                    ),
+                )
+            ],
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
+        ),
+        make_completion_response(
+            message_content="I've changed the phase to review.",
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-2",
+                created=1234567891,
+            ),
+        ),
+    ]
+
+    yield mock_completion
+
+
+@pytest.fixture
+def openai_double_change_phase_tool_call(mock_completion):
+    """Mock OpenAI API for two `change_phase` tool calls in one assistant
+    message (parallel tool calls) -- the concurrent-write hazard the
+    `last_value` reducer resolves. The tool calls are listed draft-then-review
+    so the LAST one ("review") is expected to win.
+    """
+    mock_completion.side_effect = [
+        make_completion_response(
+            tool_calls=[
+                ChatCompletionMessageToolCall(
+                    id="call_phase_1",
+                    type="function",
+                    function=Function(
+                        name="change_phase", arguments='{"phase": "draft"}'
+                    ),
+                ),
+                ChatCompletionMessageToolCall(
+                    id="call_phase_2",
+                    type="function",
+                    function=Function(
+                        name="change_phase", arguments='{"phase": "review"}'
+                    ),
+                ),
+            ],
+            meta=CompletionMeta(
+                response_id="chatcmpl-test-1", finish_reason="tool_calls"
+            ),
+        ),
+        make_completion_response(
+            message_content="I've changed the phase to review.",
+            meta=CompletionMeta(response_id="chatcmpl-test-2", created=1234567891),
         ),
     ]
 

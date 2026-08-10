@@ -1669,7 +1669,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "ai-mock", specifier = ">=0.3.1" },
+    { name = "ai-mock", specifier = ">=0.3.1,<0.4" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "oidc-provider-mock", specifier = ">=0.3.2" },
     { name = "pyright", specifier = ">=1.1.403" },

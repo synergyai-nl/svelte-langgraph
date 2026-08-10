@@ -10,6 +10,10 @@ export class ChatPage {
 	// Chat elements
 	readonly textInput: Locator;
 
+	// Phase state field (data-testid="state-field-phase")
+	readonly phaseWrapper: Locator;
+	readonly phaseSelect: Locator;
+
 	// Login modal (shown when unauthenticated)
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
@@ -18,6 +22,10 @@ export class ChatPage {
 		this.app = app;
 
 		this.textInput = app.main.getByRole('textbox', { name: 'Message...' });
+
+		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
+		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');
+		this.phaseSelect = app.page.locator('#state-field-input-phase');
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Sign in', { exact: true });
