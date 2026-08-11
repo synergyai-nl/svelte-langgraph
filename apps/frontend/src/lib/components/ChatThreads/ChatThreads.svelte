@@ -42,8 +42,12 @@
 		/** The reactive thread list instance, consumed whole. */
 		list: ThreadList;
 		activeThreadId?: string | null;
-		/** Side-effect only; the mobile drawer close is handled internally. */
-		onNewThread: () => void;
+		/**
+		 * Start a new conversation. The mobile drawer close is handled internally, but only once
+		 * this resolves to something other than `false` — return `false` to report failure and
+		 * keep the drawer open, so an `error` rendered inside it stays visible.
+		 */
+		onNewThread: () => void | boolean | Promise<void | boolean>;
 		/** Thread creation in flight; disables the "New chat" button alongside `disabled`. */
 		busy?: boolean;
 		/** No client / signed out; disables the "New chat" button. */
@@ -76,9 +80,13 @@
 
 	const sidebar = Sidebar.useSidebar();
 
-	function handleNewThread() {
-		sidebar.setOpenMobile(false);
-		onNewThread();
+	async function handleNewThread() {
+		// Close only once creation has actually succeeded. On mobile this panel *is* the Sheet,
+		// so closing first and failing afterwards would hide the resulting `error` behind a shut
+		// drawer and leave the user on the old conversation with no feedback at all. A caller
+		// that can't fail returns undefined, which counts as success.
+		const created = await onNewThread();
+		if (created !== false) sidebar.setOpenMobile(false);
 	}
 </script>
 
@@ -114,7 +122,7 @@
 						variant="secondary"
 						size="sm"
 						class="w-fit"
-						onclick={() => list.refresh()}
+						onclick={() => list.retry()}
 					>
 						{l.retry}
 					</Button>
@@ -153,7 +161,7 @@
 							variant="secondary"
 							size="sm"
 							class="w-fit"
-							onclick={() => list.loadMore()}
+							onclick={() => list.retry()}
 						>
 							{l.retry}
 						</Button>

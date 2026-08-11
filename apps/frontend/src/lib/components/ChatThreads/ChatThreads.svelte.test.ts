@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
 import { aThread } from '../__tests__/fixtures';
 import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
@@ -14,6 +14,7 @@ interface ListStubOverrides {
 	hasMore?: boolean;
 	refresh?: () => void;
 	loadMore?: () => void;
+	retry?: () => void;
 }
 
 function makeListStub(overrides: ListStubOverrides = {}): ThreadList {
@@ -24,6 +25,7 @@ function makeListStub(overrides: ListStubOverrides = {}): ThreadList {
 		hasMore: overrides.hasMore ?? false,
 		refresh: overrides.refresh ?? vi.fn(),
 		loadMore: overrides.loadMore ?? vi.fn(),
+		retry: overrides.retry ?? vi.fn(),
 		setClient: vi.fn(),
 		setActiveThreadId: vi.fn()
 	} as unknown as ThreadList;
@@ -127,6 +129,28 @@ describe('ChatThreads', () => {
 			expect(sidebar!.openMobile).toBe(false);
 			expect(onNewThread).toHaveBeenCalledOnce();
 		});
+
+		test('keeps the mobile drawer open when creation fails, so the error stays visible', async () => {
+			let sidebar: ReturnType<typeof useSidebar> | null = null;
+			// The layout's handler resolves false on failure; on mobile this panel *is* the Sheet,
+			// so closing it would hide the `error` it renders.
+			const onNewThread = vi.fn().mockResolvedValue(false);
+
+			renderComponent({
+				onNewThread,
+				onSidebar: (s: ReturnType<typeof useSidebar>) => {
+					sidebar = s;
+				}
+			});
+
+			sidebar!.setOpenMobile(true);
+
+			await fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
+			await tick();
+
+			expect(onNewThread).toHaveBeenCalledOnce();
+			expect(sidebar!.openMobile).toBe(true);
+		});
 	});
 
 	describe('loading state', () => {
@@ -154,10 +178,10 @@ describe('ChatThreads', () => {
 	});
 
 	describe('error state', () => {
-		test('shows an alert with a retry button that calls refresh when there are no rows', async () => {
-			const refresh = vi.fn();
+		test('shows an alert with a retry button that calls retry when there are no rows', async () => {
+			const retry = vi.fn();
 			renderComponent({
-				list: makeListStub({ error: new Error('boom'), threads: [], refresh })
+				list: makeListStub({ error: new Error('boom'), threads: [], retry })
 			});
 
 			const alert = screen.getByRole('alert');
@@ -165,14 +189,15 @@ describe('ChatThreads', () => {
 
 			await fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
-			expect(refresh).toHaveBeenCalledOnce();
+			expect(retry).toHaveBeenCalledOnce();
 		});
 
-		test('keeps existing rows and shows an inline alert with a retry that calls loadMore when a background load fails', async () => {
+		test('keeps existing rows and shows an inline alert with a retry that replays the failed request', async () => {
 			const t1 = aThread();
+			const retry = vi.fn();
 			const loadMore = vi.fn();
 			renderComponent({
-				list: makeListStub({ error: new Error('boom'), threads: [t1], loadMore })
+				list: makeListStub({ error: new Error('boom'), threads: [t1], retry, loadMore })
 			});
 
 			expect(screen.getByRole('button', { name: threadLabel(t1) })).toBeInTheDocument();
@@ -182,7 +207,10 @@ describe('ChatThreads', () => {
 
 			await fireEvent.click(within(alert).getByRole('button', { name: /try again/i }));
 
-			expect(loadMore).toHaveBeenCalledOnce();
+			// retry(), not loadMore(): the failure may have been a refresh, which loadMore() cannot
+			// recover — it would no-op or re-append offset 0 behind the stale rows.
+			expect(retry).toHaveBeenCalledOnce();
+			expect(loadMore).not.toHaveBeenCalled();
 		});
 
 		test('renders the caller-supplied error prop as an inline alert', () => {

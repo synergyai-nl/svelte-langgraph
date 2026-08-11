@@ -53,17 +53,20 @@
 	let creating = $state(false);
 	let createError = $state<string | null>(null);
 
-	async function handleNewThread() {
-		if (creating || !client) return;
+	/** Returns false on failure so `ChatThreads` keeps the mobile drawer open over `createError`. */
+	async function handleNewThread(): Promise<boolean> {
+		if (creating || !client) return false;
 		creating = true;
 		createError = null;
 		try {
 			const thread = await createThread(client);
 			await goto(`/chat/${thread.thread_id}`);
 			threadList.refresh();
+			return true;
 		} catch (err) {
 			console.error('Failed to create a new thread', err);
 			createError = m.sidebar_new_chat_error();
+			return false;
 		} finally {
 			creating = false;
 		}

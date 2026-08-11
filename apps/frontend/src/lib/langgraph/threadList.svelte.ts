@@ -74,6 +74,8 @@ export class ThreadList {
 	#client: Client | null | undefined = undefined;
 	#activeThreadId: string | null = null;
 	#nextOffset = 0;
+	/** The last request that failed, replayed by `retry()`. Cleared on any successful load. */
+	#failedRequest: { offset: number; replace: boolean } | null = null;
 	#controller: AbortController | null = null;
 	#pinController: AbortController | null = null;
 	/** Id of the thread currently being pin-fetched, if any — guards duplicate concurrent fetches. */
@@ -152,6 +154,30 @@ export class ThreadList {
 	loadMore(): void {
 		if (this.#loading || !this.#hasMore) return;
 		this.#load({ offset: this.#nextOffset, replace: false });
+	}
+
+	/**
+	 * Re-run whichever request last failed, whether that was a page fetch or a refresh.
+	 *
+	 * Not the same as `loadMore()`: a failed `refresh()` leaves `#nextOffset` back at 0 while
+	 * `#hasMore` keeps the value from the last *successful* load, so retrying it as a pagination
+	 * step would either no-op outright (when `hasMore` is false) or re-request offset 0 with
+	 * `replace: false`, where `dedupeById` keeps the existing entries and the stale rows and
+	 * ordering survive untouched. Replaying the recorded request avoids both.
+	 *
+	 * Falls back to a full refresh when nothing has failed, so the button is never inert.
+	 */
+	retry(): void {
+		if (this.#loading) return;
+
+		const failed = this.#failedRequest;
+		if (!failed) {
+			this.refresh();
+			return;
+		}
+
+		this.#load(failed);
+		if (failed.replace) this.#reconcilePin();
 	}
 
 	/** Abort any in-flight request. Call when the owning component/context goes away. */
@@ -249,11 +275,17 @@ export class ThreadList {
 				this.#hasMore = results.length === this.#pageSize;
 				this.#nextOffset = offset + this.#pageSize;
 				this.#loading = false;
+				this.#failedRequest = null;
 				this.#reconcilePin();
 			})
 			.catch((err) => {
 				if (controller.signal.aborted) return;
 
+				// Remember exactly which request failed so `retry()` can replay *that* one. The
+				// SDK rejects with the raw `Response` rather than an `Error`, so this wrapping
+				// renders as "[object Response]" — harmless today, since the UI shows a fixed
+				// label rather than the message.
+				this.#failedRequest = { offset, replace };
 				this.#error = err instanceof Error ? err : new Error(String(err));
 				this.#loading = false;
 			});

@@ -356,6 +356,75 @@ describe('ThreadList', () => {
 		expect(list.threads.map((t) => t.id)).toEqual(['c']);
 	});
 
+	describe('retry', () => {
+		it('replays a failed refresh, which loadMore cannot recover', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			// A single short page: hasMore stays false, which is exactly what made the old
+			// loadMore()-based retry a silent no-op.
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
+			list.setClient(asClient(mock));
+			await flushPromises();
+			expect(list.hasMore).toBe(false);
+
+			mock.threads.search.mockRejectedValueOnce(new Error('boom'));
+			list.refresh();
+			await flushPromises();
+			expect(list.error).not.toBeNull();
+			expect(list.threads.map((t) => t.id)).toEqual(['a']);
+
+			// loadMore() would bail on !hasMore and never issue a request.
+			const callsBefore = mock.threads.search.mock.calls.length;
+			list.loadMore();
+			expect(mock.threads.search.mock.calls.length).toBe(callsBefore);
+
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('b')]);
+			list.retry();
+			await flushPromises();
+
+			expect(list.error).toBeNull();
+			// Replayed as the refresh it was: replace, not append.
+			expect(list.threads.map((t) => t.id)).toEqual(['b']);
+		});
+
+		it('replays a failed loadMore at its own offset, appending rather than replacing', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
+			list.setClient(asClient(mock));
+			await flushPromises();
+			expect(list.hasMore).toBe(true);
+
+			mock.threads.search.mockRejectedValueOnce(new Error('boom'));
+			list.loadMore();
+			await flushPromises();
+			expect(list.error).not.toBeNull();
+
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('c')]);
+			list.retry();
+			await flushPromises();
+
+			expect(list.error).toBeNull();
+			expect(list.threads.map((t) => t.id)).toEqual(['a', 'b', 'c']);
+			const lastQuery = mock.threads.search.mock.calls.at(-1)?.[0];
+			expect(lastQuery).toMatchObject({ offset: 2 });
+		});
+
+		it('falls back to a refresh when nothing has failed', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
+			list.setClient(asClient(mock));
+			await flushPromises();
+
+			mock.threads.search.mockResolvedValueOnce([makeRawThread('z')]);
+			list.retry();
+			await flushPromises();
+
+			expect(list.threads.map((t) => t.id)).toEqual(['z']);
+		});
+	});
+
 	it('dispose aborts an in-flight request, so its late resolution is ignored', async () => {
 		const list = new ThreadList();
 		const mock = makeMockClient();
