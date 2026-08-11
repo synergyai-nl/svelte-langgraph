@@ -1,10 +1,11 @@
 import { describe, test, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
 import { aThread } from '../__tests__/fixtures';
 import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
 import type { ThreadList } from '$lib/langgraph/threadList.svelte';
+import { useSidebar } from '$lib/components/ui/sidebar';
 
 interface ListStubOverrides {
 	threads?: ThreadSummary[];
@@ -23,7 +24,8 @@ function makeListStub(overrides: ListStubOverrides = {}): ThreadList {
 		hasMore: overrides.hasMore ?? false,
 		refresh: overrides.refresh ?? vi.fn(),
 		loadMore: overrides.loadMore ?? vi.fn(),
-		setClient: vi.fn()
+		setClient: vi.fn(),
+		setActiveThreadId: vi.fn()
 	} as unknown as ThreadList;
 }
 
@@ -103,6 +105,28 @@ describe('ChatThreads', () => {
 
 			expect(screen.getByRole('button', { name: /new chat/i })).toBeDisabled();
 		});
+
+		test('closes the mobile drawer', async () => {
+			let sidebar: ReturnType<typeof useSidebar> | null = null;
+			const onNewThread = vi.fn();
+
+			renderComponent({
+				onNewThread,
+				onSidebar: (s: ReturnType<typeof useSidebar>) => {
+					sidebar = s;
+				}
+			});
+
+			// Asserting `openMobile === false` without setting it `true` first proves nothing — it
+			// starts `false`.
+			sidebar!.setOpenMobile(true);
+			expect(sidebar!.openMobile).toBe(true);
+
+			await fireEvent.click(screen.getByRole('button', { name: /new chat/i }));
+
+			expect(sidebar!.openMobile).toBe(false);
+			expect(onNewThread).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('loading state', () => {
@@ -144,11 +168,32 @@ describe('ChatThreads', () => {
 			expect(refresh).toHaveBeenCalledOnce();
 		});
 
-		test('keeps existing rows and suppresses the alert when a background refresh fails', () => {
+		test('keeps existing rows and shows an inline alert with a retry that calls loadMore when a background load fails', async () => {
 			const t1 = aThread();
-			renderComponent({ list: makeListStub({ error: new Error('boom'), threads: [t1] }) });
+			const loadMore = vi.fn();
+			renderComponent({
+				list: makeListStub({ error: new Error('boom'), threads: [t1], loadMore })
+			});
 
 			expect(screen.getByRole('button', { name: threadLabel(t1) })).toBeInTheDocument();
+
+			const alert = screen.getByRole('alert');
+			expect(alert).toHaveTextContent(/couldn't load your conversations/i);
+
+			await fireEvent.click(within(alert).getByRole('button', { name: /try again/i }));
+
+			expect(loadMore).toHaveBeenCalledOnce();
+		});
+
+		test('renders the caller-supplied error prop as an inline alert', () => {
+			renderComponent({ error: "Couldn't start a new chat." });
+
+			expect(screen.getByRole('alert')).toHaveTextContent("Couldn't start a new chat.");
+		});
+
+		test('does not render a caller error alert when the prop is unset', () => {
+			renderComponent({});
+
 			expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 		});
 	});

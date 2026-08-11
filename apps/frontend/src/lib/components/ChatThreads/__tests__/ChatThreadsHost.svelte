@@ -1,9 +1,15 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import ChatThreads from '../ChatThreads.svelte';
+	import SidebarNotifier from './SidebarNotifier.svelte';
 	import type { ComponentProps } from 'svelte';
 
-	let props: ComponentProps<typeof ChatThreads> = $props();
+	interface HostProps {
+		/** Hands the test the real `SidebarState` (e.g. to `setOpenMobile(true)` before asserting). */
+		onSidebar?: (s: ReturnType<typeof Sidebar.useSidebar>) => void;
+	}
+
+	let { onSidebar, ...props }: ComponentProps<typeof ChatThreads> & HostProps = $props();
 </script>
 
 <!--
@@ -13,4 +19,7 @@
 -->
 <Sidebar.Provider>
 	<ChatThreads {...props} />
+	{#if onSidebar}
+		<SidebarNotifier {onSidebar} />
+	{/if}
 </Sidebar.Provider>

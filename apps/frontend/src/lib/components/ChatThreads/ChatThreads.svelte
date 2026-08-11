@@ -7,6 +7,10 @@
 		error: string;
 		retry: string;
 		loadMore: string;
+		/** `Sheet.Title` for the mobile drawer's sr-only header. */
+		mobileTitle: string;
+		/** `Sheet.Description` for the mobile drawer's sr-only header. */
+		mobileDescription: string;
 	}
 
 	export const defaultChatThreadsLabels: ChatThreadsLabels = {
@@ -16,7 +20,9 @@
 		loading: 'Loading conversations',
 		error: "Couldn't load your conversations.",
 		retry: 'Try again',
-		loadMore: 'Load more'
+		loadMore: 'Load more',
+		mobileTitle: 'Sidebar',
+		mobileDescription: 'Displays the mobile sidebar.'
 	};
 
 	/** Fixed number of skeleton rows shown while the first page is loading. Not configurable. */
@@ -36,6 +42,7 @@
 		/** The reactive thread list instance, consumed whole. */
 		list: ThreadList;
 		activeThreadId?: string | null;
+		/** Side-effect only; the mobile drawer close is handled internally. */
 		onNewThread: () => void;
 		/** Thread creation in flight; disables the "New chat" button alongside `disabled`. */
 		busy?: boolean;
@@ -47,6 +54,8 @@
 		onSelect?: (id: string) => void;
 		/** Per-row override; when given, replaces the default row content. */
 		item?: Snippet<[ThreadSummary]>;
+		/** Caller-supplied failure (e.g. thread creation), rendered as an inline alert near "New chat". */
+		error?: string | null;
 		labels?: Partial<ChatThreadsLabels>;
 	}
 
@@ -59,23 +68,40 @@
 		hrefFor,
 		onSelect,
 		item,
+		error = null,
 		labels
 	}: Props = $props();
 
 	const l = $derived({ ...defaultChatThreadsLabels, ...labels });
+
+	const sidebar = Sidebar.useSidebar();
+
+	function handleNewThread() {
+		sidebar.setOpenMobile(false);
+		onNewThread();
+	}
 </script>
 
-<Sidebar.Root collapsible="offcanvas">
+<Sidebar.Root
+	collapsible="offcanvas"
+	mobileTitle={l.mobileTitle}
+	mobileDescription={l.mobileDescription}
+>
 	<Sidebar.Header>
 		<Button
 			type="button"
-			onclick={onNewThread}
+			onclick={handleNewThread}
 			disabled={disabled || busy}
 			class="w-full justify-start gap-2"
 		>
 			<Plus />
 			{l.newChat}
 		</Button>
+		{#if error}
+			<div role="alert" class="text-destructive p-2 text-sm">
+				{error}
+			</div>
+		{/if}
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<Sidebar.Group>
@@ -119,7 +145,20 @@
 						{/if}
 					{/each}
 				</Sidebar.Menu>
-				{#if list.hasMore}
+				{#if list.error}
+					<div role="alert" class="text-destructive flex flex-col gap-2 p-2 text-sm">
+						<p>{l.error}</p>
+						<Button
+							type="button"
+							variant="secondary"
+							size="sm"
+							class="w-fit"
+							onclick={() => list.loadMore()}
+						>
+							{l.retry}
+						</Button>
+					</div>
+				{:else if list.hasMore}
 					<Button
 						type="button"
 						variant="ghost"
