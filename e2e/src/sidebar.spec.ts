@@ -113,20 +113,26 @@ test.describe('Sidebar - real backend', () => {
 		app,
 		sidebar
 	}) => {
-		const threadId = await gotoFreshThread(page);
+		await gotoFreshThread(page);
 
 		await sidebar.toggle.click();
 		await expect(sidebar.collapsedRoot).toBeVisible();
 
 		// Leaving `/chat` entirely unmounts chat/+layout.svelte (and its `Sidebar.Provider`), so
-		// navigating back is a genuine client-side remount, not just a route param change — the
-		// scenario `parseSidebarCookie` exists for (chat/+layout.svelte's `sidebarOpen` $state
-		// init reads `document.cookie` fresh on every mount, since SvelteKit's root `load` only
-		// reruns on a hard navigation). `page.goBack()` keeps this a client-side (popstate)
-		// transition rather than a full reload, unlike `page.goto`.
+		// coming back is a genuine client-side remount rather than a route param change — the
+		// scenario `parseSidebarCookie` exists for (that `sidebarOpen` $state initialiser reads
+		// `document.cookie` fresh on every mount, since SvelteKit's root `load` only reruns on a
+		// hard navigation). Both hops go through the header's plain <a> links, which SvelteKit
+		// intercepts, so neither is a full reload.
+		//
+		// Which thread we land on is irrelevant here — `/chat` redirects to whichever thread
+		// getOrCreateThread settles on, and the assertion is purely about the collapse state
+		// surviving the remount.
 		await app.navigateToHome();
-		await page.goBack();
-		await page.waitForURL(`/chat/${threadId}`);
+		await page.waitForURL('/');
+
+		await app.navigateToChat();
+		await page.waitForURL(/\/chat\/[\w-]+/);
 
 		await expect(sidebar.collapsedRoot).toBeVisible();
 	});
