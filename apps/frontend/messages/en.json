@@ -53,5 +53,12 @@
 	"chat_error_retry": "Retry",
 	"coming_soon": "Coming Soon!",
 	"cancel": "Cancel",
-	"save_and_send": "Save & Send"
+	"save_and_send": "Save & Send",
+	"sidebar_new_chat": "New chat",
+	"sidebar_threads_label": "Conversations",
+	"sidebar_threads_empty": "No conversations yet",
+	"sidebar_threads_loading": "Loading conversations",
+	"sidebar_threads_error": "Couldn't load your conversations.",
+	"sidebar_threads_retry": "Try again",
+	"sidebar_threads_load_more": "Load more"
 }

@@ -53,5 +53,12 @@
 	"chat_error_retry": "पुनः प्रयास करें",
 	"coming_soon": "जल्द आ रहा है!",
 	"cancel": "रद्द करें",
-	"save_and_send": "सहेजें और भेजें"
+	"save_and_send": "सहेजें और भेजें",
+	"sidebar_new_chat": "नई चैट",
+	"sidebar_threads_label": "बातचीत",
+	"sidebar_threads_empty": "अभी तक कोई बातचीत नहीं",
+	"sidebar_threads_loading": "बातचीत लोड हो रही है",
+	"sidebar_threads_error": "आपकी बातचीत लोड नहीं हो सकीं।",
+	"sidebar_threads_retry": "फिर से कोशिश करें",
+	"sidebar_threads_load_more": "और लोड करें"
 }
