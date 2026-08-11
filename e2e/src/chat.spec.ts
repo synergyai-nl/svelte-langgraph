@@ -241,7 +241,7 @@ test.describe('Regenerate message', () => {
 		expect(before).toBeTruthy();
 
 		await aiMessage.hover();
-		await aiMessage.getByTitle(/re-try/i).click();
+		await aiMessage.getByTitle(/regenerate/i).click();
 
 		// Poll until the branched head shows a different AI message id.
 		const deadline = Date.now() + 15_000;
