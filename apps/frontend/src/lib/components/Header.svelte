@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 
-	import { LogOut, MessageSquare, Moon, Sun, Menu, Github } from '@lucide/svelte';
+	import { LogOut, MessageSquare, Moon, Sun, Menu } from '@lucide/svelte';
 	import * as Avatar from '$lib/components/ui/avatar';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -27,11 +27,7 @@
 	const isMarketing = $derived(variant === 'marketing');
 
 	const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
-	const DEMO_URL = 'https://svelte-langgraph-demo.synergyai.nl/';
 	const DOCS_URL = `${GITHUB_URL}#readme`;
-
-	const marketingNavLinkClass =
-		'text-muted-foreground hover:text-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors';
 </script>
 
 <header
@@ -42,51 +38,20 @@
 	)}
 >
 	<div class={cn('flex h-16 items-center', isMarketing ? 'mx-auto w-full max-w-7xl px-6' : 'px-4')}>
-		<!-- Logo -->
+		<!-- Logo — identical lockup in both variants so the brand doesn't shift between pages -->
 		<a
 			href="/"
-			class={cn(
-				'font-semibold',
-				isMarketing
-					? 'flex items-center gap-2.5'
-					: 'flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2'
-			)}
+			class="flex flex-col gap-0.5 font-semibold sm:flex-row sm:items-baseline sm:gap-2"
 		>
-			{#if isMarketing}
-				<img src="/logos/svelte.svg" alt="" class="h-7 w-7 shrink-0" aria-hidden="true" />
-				<span class="text-lg">{m.app_title()}</span>
-			{:else}
-				<span class="flex items-center gap-2">
-					<MessageSquare class="h-6 w-6" />
-					<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
-				</span>
-				<span class="text-muted-foreground hidden text-xs sm:inline">{m.app_tagline()}</span>
-			{/if}
+			<span class="flex items-center gap-2">
+				<MessageSquare class="h-6 w-6" />
+				<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
+			</span>
+			<span class="text-muted-foreground hidden text-xs sm:inline">{m.app_tagline()}</span>
 		</a>
 
-		<!-- Desktop navigation -->
-		{#if isMarketing}
-			<nav class="hidden flex-1 items-center justify-center gap-1 md:flex" aria-label="Marketing">
-				<a href="/chat" class={marketingNavLinkClass}>
-					{m.nav_chat()}
-				</a>
-				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer" class={marketingNavLinkClass}>
-					Live demo
-				</a>
-				<a
-					href={GITHUB_URL}
-					target="_blank"
-					rel="noopener noreferrer"
-					class={marketingNavLinkClass}
-				>
-					GitHub
-				</a>
-				<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class={marketingNavLinkClass}>
-					{m.nav_docs()}
-				</a>
-			</nav>
-		{:else}
-			<div class="hidden flex-1 justify-center md:flex">
+		<!-- Desktop navigation — same links in both variants; marketing only differs in chrome -->
+		<div class="hidden flex-1 justify-center md:flex">
 				<NavigationMenu.Root>
 					<NavigationMenu.List>
 						<NavigationMenu.Item>
@@ -117,8 +82,7 @@
 						</NavigationMenu.Item>
 					</NavigationMenu.List>
 				</NavigationMenu.Root>
-			</div>
-		{/if}
+		</div>
 
 		<!-- Mobile Menu Dropdown -->
 		<div class="mr-3 ml-auto md:hidden">
@@ -132,39 +96,17 @@
 				</DropdownMenu.Trigger>
 
 				<DropdownMenu.Content align="end" class="w-56">
-					{#if isMarketing}
-						<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
-							{m.nav_chat()}
-						</DropdownMenu.Item>
-						<DropdownMenu.Item>
-							<a href={DEMO_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
-								Live demo
-							</a>
-						</DropdownMenu.Item>
-						<DropdownMenu.Item>
-							<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
-								<Github class="mr-2 inline size-4" />
-								GitHub
-							</a>
-						</DropdownMenu.Item>
-						<DropdownMenu.Item>
-							<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
-								{m.nav_docs()}
-							</a>
-						</DropdownMenu.Item>
-					{:else}
-						<DropdownMenu.Item onclick={() => goto('/')} class="cursor-pointer">
-							{m.nav_home()}
-						</DropdownMenu.Item>
-						<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
-							{m.nav_chat()}
-						</DropdownMenu.Item>
-						<DropdownMenu.Item>
-							<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
-								{m.nav_docs()}
-							</a>
-						</DropdownMenu.Item>
-					{/if}
+					<DropdownMenu.Item onclick={() => goto('/')} class="cursor-pointer">
+						{m.nav_home()}
+					</DropdownMenu.Item>
+					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
+						{m.nav_chat()}
+					</DropdownMenu.Item>
+					<DropdownMenu.Item>
+						<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
+							{m.nav_docs()}
+						</a>
+					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
 

@@ -24,7 +24,8 @@ test.describe('Homepage hero', () => {
 	test('renders hero terminal and stack logos', async ({ page }) => {
 		await page.goto('/');
 
-		await expect(page.getByText('proto install')).toBeVisible();
+		// Scoped to the terminal: "proto install" also appears in the getting-started copy below.
+		await expect(page.getByTestId('hero-terminal-body').getByText('proto install')).toBeVisible();
 		await expect(page.getByAltText('Svelte')).toBeVisible();
 		await expect(page.getByAltText('LangGraph')).toBeVisible();
 	});

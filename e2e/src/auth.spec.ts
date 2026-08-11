@@ -146,17 +146,14 @@ test.describe('When authenticated', () => {
 });
 
 test.describe('Navigation', () => {
-	// "/" renders the marketing header variant, which drops the Home link (the logo
-	// already goes home) but must keep a way into the app.
-	test('marketing navbar has a chat link', async ({ page, app }) => {
-		await page.goto('/');
-		await expect(app.chatLink).toBeVisible();
-	});
-
-	test('app navbar has home and chat links', async ({ page, app }) => {
-		await page.goto('/chat');
-		await expect(app.homeLink).toBeVisible();
-		await expect(app.chatLink).toBeVisible();
+	// The marketing and app header variants differ only in chrome — both carry the
+	// same nav, so "/" must expose a way into the app just like "/chat" does.
+	[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
+		test(`navbar has home and chat links on ${location}`, async ({ page, app }) => {
+			await page.goto(location);
+			await expect(app.homeLink).toBeVisible();
+			await expect(app.chatLink).toBeVisible();
+		});
 	});
 
 	test('clicking chat link navigates to chat page', async ({ page, app }) => {

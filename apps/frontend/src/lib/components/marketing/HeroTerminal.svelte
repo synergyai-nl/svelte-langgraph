@@ -20,7 +20,10 @@
 			terminal
 		</span>
 	</div>
-	<div class="space-y-2 p-5 text-left font-mono text-sm leading-relaxed">
+	<div
+		data-testid="hero-terminal-body"
+		class="space-y-2 p-5 text-left font-mono text-sm leading-relaxed"
+	>
 		<div>
 			<span class="text-muted-foreground select-none">$ </span>
 			<span class="text-primary-600">proto</span>
