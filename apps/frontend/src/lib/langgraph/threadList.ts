@@ -54,9 +54,13 @@ export function toThreadSummary(t: SearchedThread): ThreadSummary {
 	};
 }
 
-/** Short, human-scannable stand-in for a thread's id (first 8 chars). */
+/**
+ * Short, human-scannable stand-in for a thread's id: the LAST 8 chars.
+ * Not the first 8 — thread ids are UUIDv7, whose leading hex digits are the high timestamp
+ * bits, so every thread created on the same day would render an identical label.
+ */
 export function shortenThreadId(id: string): string {
-	return id.slice(0, 8);
+	return id.slice(-8);
 }
 
 /** Display label for a thread: its title when known, else a shortened id. */

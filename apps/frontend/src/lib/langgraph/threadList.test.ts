@@ -55,12 +55,25 @@ describe('toThreadSummary', () => {
 });
 
 describe('shortenThreadId', () => {
-	it('returns the first 8 characters of the id', () => {
-		expect(shortenThreadId('thread-abcdefgh-1234')).toBe('thread-a');
+	it('returns the last 8 characters of the id', () => {
+		expect(shortenThreadId('0198c000-aaaa-7000-8000-0123456789ab')).toBe('456789ab');
 	});
 
 	it('returns the whole id when shorter than 8 characters', () => {
 		expect(shortenThreadId('abc')).toBe('abc');
+	});
+
+	it('produces different labels for two UUIDv7 ids sharing the same timestamp prefix', () => {
+		// UUIDv7's leading hex digits are the high-order timestamp bits, so threads created on
+		// the same day (as every thread in a single test run typically is) share them. The
+		// low-order bits — the tail — are random, which is why slicing from the end (not the
+		// start, the pre-SLG-104-fix behaviour) is what actually distinguishes rows in the
+		// sidebar. This is the case the first-8 bug missed entirely.
+		const sameDayPrefix = '0198c000-1a2b';
+		const a = `${sameDayPrefix}-7000-8000-aaaaaaaaaaaa`;
+		const b = `${sameDayPrefix}-7000-8000-bbbbbbbbbbbb`;
+
+		expect(shortenThreadId(a)).not.toBe(shortenThreadId(b));
 	});
 });
 
@@ -72,6 +85,6 @@ describe('threadLabel', () => {
 
 	it('falls back to the shortened id when there is no title', () => {
 		const summary = toThreadSummary(makeSearchedThread({ thread_id: 'abcdefghijkl' }));
-		expect(threadLabel(summary)).toBe('abcdefgh');
+		expect(threadLabel(summary)).toBe('efghijkl');
 	});
 });
