@@ -117,4 +117,57 @@ describe('Chat thread-list refresh notification', () => {
 
 		expect(refresh).not.toHaveBeenCalled();
 	});
+
+	test('refreshes on a same-length message replacement (regenerate)', async () => {
+		mockModule.setMessages([
+			{ type: 'human', content: 'Hello', id: 'user-1' },
+			{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
+		]);
+		mockModule.setIsLoading(true);
+
+		const refresh = renderChatWithRefresh();
+		await tick();
+		expect(refresh).not.toHaveBeenCalled();
+
+		// Regenerate replaces the AI message in place — same length, different content.
+		mockModule.setMessages([
+			{ type: 'human', content: 'Hello', id: 'user-1' },
+			{ type: 'ai', content: 'A different answer!', id: 'ai-2' }
+		]);
+		mockModule.setIsLoading(false);
+		await tick();
+
+		expect(refresh).toHaveBeenCalledTimes(1);
+	});
+
+	test('refreshes on every settle within the same mount, not just the first', async () => {
+		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+		mockModule.setIsLoading(true);
+
+		const refresh = renderChatWithRefresh();
+		await tick();
+
+		mockModule.setMessages([
+			{ type: 'human', content: 'Hello', id: 'user-1' },
+			{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
+		]);
+		mockModule.setIsLoading(false);
+		await tick();
+		expect(refresh).toHaveBeenCalledTimes(1);
+
+		// A second run starts and settles in the same mount — must refresh again.
+		mockModule.setIsLoading(true);
+		await tick();
+
+		mockModule.setMessages([
+			{ type: 'human', content: 'Hello', id: 'user-1' },
+			{ type: 'ai', content: 'Hi there!', id: 'ai-1' },
+			{ type: 'human', content: 'Another message', id: 'user-2' },
+			{ type: 'ai', content: 'Another reply', id: 'ai-2' }
+		]);
+		mockModule.setIsLoading(false);
+		await tick();
+
+		expect(refresh).toHaveBeenCalledTimes(2);
+	});
 });

@@ -153,36 +153,26 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
-	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated thread moves
-	// to the top. The context is optional: Chat renders fine (and stays testable) without it.
+	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
+	// thread moves to the top. Fires on the isLoading true→false edge — not on message-count
+	// changes — so a same-length regenerate still refreshes. Safe against the initial history
+	// fetch: `isLoading` reflects only an active run, never the separate history hydration
+	// (`isThreadLoading`). The context is optional: Chat renders fine (and stays testable)
+	// without it.
 	//
-	// Gated on `sawRun`: Chat remounts per thread (`{#key threadId}`), so on mount the initial
-	// history fetch can bump `messages.length` from 0 while `isLoading` never goes true this
-	// mount — that's hydration, not a run settling, and must not trigger a refresh. `sawRun` only
-	// flips true once this mount has actually observed `stream.isLoading` go true; only then does
-	// a later settle (isLoading false, signature changed) call refresh(). Until then, settles just
-	// record the baseline signature silently.
+	// This fires on every settle within the mount, including a stop()-cancelled or errored run
+	// (both flip `isLoading` through the same finally as a successful completion) — a few extra
+	// `threads.search` calls in exchange for correctness. Don't "optimize" this back to a
+	// success-only check.
 	const threadListRefresh = getThreadListRefresh();
-	let lastNotifiedSignature = '';
-	let sawRun = false;
+	let wasLoading = false;
 
 	$effect(() => {
 		if (!threadListRefresh) return;
-		// Only notify once the run has settled — mid-stream the server state is still in flux.
-		if (stream.isLoading) {
-			sawRun = true;
-			return;
-		}
-
-		const signature = `${threadId}:${messages.length}`;
-		const previous = untrack(() => lastNotifiedSignature);
-		lastNotifiedSignature = signature;
-		if (signature === previous) return;
-
-		// No run has settled this mount yet — this is hydration, not a change to notify about.
-		if (!sawRun) return;
-
-		untrack(() => threadListRefresh.refresh());
+		const loading = stream.isLoading;
+		const settled = wasLoading && !loading;
+		wasLoading = loading;
+		if (settled) untrack(() => threadListRefresh.refresh());
 	});
 </script>
 
