@@ -1,5 +1,5 @@
 <script lang="ts">
-	import IconPlaceholder from '$lib/components/icon-placeholder/icon-placeholder.svelte';
+	import { PanelLeft } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { cn } from '$lib/utils.js';
 	import { useSidebar } from './context.svelte.js';
@@ -31,12 +31,6 @@
 	}}
 	{...restProps}
 >
-	<IconPlaceholder
-		lucide="PanelLeftIcon"
-		tabler="IconLayoutSidebar"
-		hugeicons="SidebarLeftIcon"
-		phosphor="SidebarIcon"
-		remixicon="RiSideBarLine"
-	/>
+	<PanelLeft />
 	<span class="sr-only">Toggle Sidebar</span>
 </Button>
