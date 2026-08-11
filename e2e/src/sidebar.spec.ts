@@ -107,6 +107,45 @@ test.describe('Sidebar - real backend', () => {
 
 		await expect(sidebar.threadLink(threadId)).toHaveAttribute('aria-current', 'page');
 	});
+
+	test('the collapsed sidebar stays collapsed across client-side navigation', async ({
+		page,
+		app,
+		sidebar
+	}) => {
+		const threadId = await gotoFreshThread(page);
+
+		await sidebar.toggle.click();
+		await expect(sidebar.collapsedRoot).toBeVisible();
+
+		// Leaving `/chat` entirely unmounts chat/+layout.svelte (and its `Sidebar.Provider`), so
+		// navigating back is a genuine client-side remount, not just a route param change — the
+		// scenario `parseSidebarCookie` exists for (chat/+layout.svelte's `sidebarOpen` $state
+		// init reads `document.cookie` fresh on every mount, since SvelteKit's root `load` only
+		// reruns on a hard navigation). `page.goBack()` keeps this a client-side (popstate)
+		// transition rather than a full reload, unlike `page.goto`.
+		await app.navigateToHome();
+		await page.goBack();
+		await page.waitForURL(`/chat/${threadId}`);
+
+		await expect(sidebar.collapsedRoot).toBeVisible();
+	});
+
+	test('a thread created by /chat appears in the list without a reload', async ({
+		page,
+		sidebar
+	}) => {
+		// Bare `/chat` (not gotoFreshThread's `/chat/[threadID]`) exercises +page.svelte's own
+		// getOrCreateThread + redirect flow (see client.ts#getOrCreateThread and
+		// chat/+page.svelte#redirectToThread), which is what now nudges the sidebar via
+		// `threadListRefresh.refresh()` after redirecting.
+		await page.goto('/chat');
+		await page.waitForURL(/\/chat\/[\w-]+/);
+
+		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
+
+		await expect(sidebar.threadLink(threadId)).toBeVisible();
+	});
 });
 
 test.describe('Sidebar - mobile viewport', () => {
@@ -139,6 +178,25 @@ test.describe('Sidebar - mobile viewport', () => {
 
 		await row.click();
 		await expect(dialog).not.toBeVisible();
+	});
+
+	test('New chat closes the drawer', async ({ page, sidebar }) => {
+		const originalId = await gotoFreshThread(page);
+
+		await sidebar.toggle.click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
+
+		await sidebar.newChatButton.click();
+
+		await expect(dialog).not.toBeVisible();
+		// Same predicate-based wait as the desktop "New chat creates a brand-new thread" test:
+		// we start on `/chat/<originalId>`, which already matches a bare `/\/chat\/[\w-]+/`
+		// pattern, so the predicate must explicitly exclude the id we started on.
+		await page.waitForURL((url) => {
+			const id = url.pathname.split('/').at(-1);
+			return !!id && id !== originalId;
+		});
 	});
 });
 
@@ -228,5 +286,114 @@ test.describe('Sidebar - mocked thread search', () => {
 
 		await expect(secondPageRow).toBeVisible();
 		await expect(sidebar.loadMoreButton).not.toBeVisible();
+	});
+
+	test('the active thread is shown even when it is not in the first page', async ({
+		page,
+		sidebar
+	}) => {
+		// Same field shape as the `fakeThread` in the "Load more" test above — toThreadSummary
+		// (apps/frontend/src/lib/langgraph/threadList.ts) reads exactly these fields.
+		function fakeThread(n: number) {
+			const id = `${n.toString().padStart(8, '0')}-fake`;
+			const timestamp = new Date(Date.now() - n * 1000).toISOString();
+			return {
+				thread_id: id,
+				created_at: timestamp,
+				updated_at: timestamp,
+				status: 'idle',
+				metadata: {}
+			};
+		}
+
+		// 20 unrelated threads for the plain first-page fetch — deliberately none of them is the
+		// thread `gotoFreshThread` creates below, so the active thread falls outside the loaded
+		// page and ThreadList's pin-fetch (`#reconcilePin`/`#fetchPin` in threadList.svelte.ts)
+		// has to kick in, firing a second `threads.search` scoped by `ids: [id]`.
+		const firstPage = Array.from({ length: 20 }, (_, i) => fakeThread(i));
+
+		await page.route('**/threads/search', async (route) => {
+			const body = route.request().postDataJSON() as { ids?: string[] } | null;
+			if (body?.ids && body.ids.length > 0) {
+				const [id] = body.ids;
+				const timestamp = new Date().toISOString();
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify([
+						{
+							thread_id: id,
+							created_at: timestamp,
+							updated_at: timestamp,
+							status: 'idle',
+							metadata: {}
+						}
+					])
+				});
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(firstPage)
+			});
+		});
+
+		const targetId = await gotoFreshThread(page);
+
+		const row = sidebar.threadLink(targetId);
+		await expect(row).toBeVisible();
+		await expect(row).toHaveAttribute('aria-current', 'page');
+	});
+
+	test('a failed Load more keeps the rows and shows a retry', async ({ page, sidebar }) => {
+		function fakeThread(n: number) {
+			const id = `${n.toString().padStart(8, '0')}-fake`;
+			const timestamp = new Date(Date.now() - n * 1000).toISOString();
+			return {
+				thread_id: id,
+				created_at: timestamp,
+				updated_at: timestamp,
+				status: 'idle',
+				metadata: {}
+			};
+		}
+
+		const firstPage = Array.from({ length: 20 }, (_, i) => fakeThread(i));
+
+		await page.route('**/threads/search', async (route) => {
+			const body = route.request().postDataJSON() as { offset?: number } | null;
+			const offset = body?.offset ?? 0;
+			// Anything past the first page (the `loadMore()` request, offset 20) fails; the
+			// pin-fetch (`ids`-scoped, no `offset` key) and the initial page both fall through
+			// to the offset-0 branch, same as the "active thread" test above.
+			if (offset !== 0) {
+				await route.fulfill({
+					status: 400,
+					contentType: 'application/json',
+					body: JSON.stringify({ detail: 'boom' })
+				});
+				return;
+			}
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(firstPage)
+			});
+		});
+
+		await gotoFreshThread(page);
+
+		const survivingRow = sidebar.threadLink(firstPage[0].thread_id);
+		await expect(sidebar.loadMoreButton).toBeVisible();
+		await expect(survivingRow).toBeVisible();
+
+		await sidebar.loadMoreButton.click();
+
+		await expect(sidebar.loadMoreErrorAlert).toBeVisible();
+		await expect(sidebar.retryButton).toBeVisible();
+		await expect(sidebar.loadMoreButton).not.toBeVisible();
+		// The rows from the successful first page are untouched by the failed second page.
+		await expect(survivingRow).toBeVisible();
 	});
 });

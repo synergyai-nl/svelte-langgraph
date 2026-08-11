@@ -24,6 +24,22 @@ export class SidebarPage {
 	readonly emptyMessage: Locator;
 	/** The `[aria-current="page"]` row — the active thread's link, when one is loaded. */
 	readonly activeThread: Locator;
+	/**
+	 * The desktop `[data-slot="sidebar"]` element while collapsed. `collapsible="offcanvas"`
+	 * never removes the element — it just shrinks the inner container to `w-0` (see
+	 * sidebar.svelte) — so collapse assertions must check `data-state`, not visibility.
+	 * Desktop-only: on mobile the same `[data-slot="sidebar"]` is the Sheet drawer, which
+	 * doesn't carry `data-state`.
+	 */
+	readonly collapsedRoot: Locator;
+	/**
+	 * Inline `role="alert"` shown when `loadMore()` fails while rows are already loaded
+	 * (ChatThreads.svelte's `{#if list.error}` branch alongside the rendered `Sidebar.Menu`).
+	 * Distinct from `errorAlert`, which also matches the *initial*-load failure (list still
+	 * empty) and the caller-supplied `error` prop rendered in the header (e.g. "New chat"
+	 * failures) — scoping to `[data-sidebar="content"]` excludes that header alert.
+	 */
+	readonly loadMoreErrorAlert: Locator;
 
 	constructor(app: AppPage) {
 		this.app = app;
@@ -39,16 +55,19 @@ export class SidebarPage {
 		this.toggle = app.page.getByRole('button', { name: 'Toggle Sidebar' });
 
 		this.activeThread = this.root.locator('[aria-current="page"]');
+
+		this.collapsedRoot = app.page.locator('[data-slot="sidebar"][data-state="collapsed"]');
+		this.loadMoreErrorAlert = this.root.locator('[data-sidebar="content"]').getByRole('alert');
 	}
 
 	/**
 	 * Row link for the thread whose id is `id`.
 	 *
-	 * Scoped by `href`, not by accessible name: thread ids are UUIDv7, whose first 8 hex
-	 * chars are (most of) a millisecond timestamp — they only roll over about once a day,
-	 * so every thread created in the same test run shares an identical shortened-id label
-	 * (`threadLabel`/`shortenThreadId` in threadList.ts). Matching by visible text is
-	 * therefore ambiguous; the href is exact.
+	 * Scoped by `href`, not by accessible name: thread labels are only the last 8 hex chars
+	 * of the (UUIDv7) thread id (`threadLabel`/`shortenThreadId` in threadList.ts), which is
+	 * enough entropy to tell same-run threads apart in practice, but nothing here guarantees
+	 * uniqueness — a fake thread id crafted for a test (e.g. `fakeThread()` in sidebar.spec.ts)
+	 * could still collide with another row's label. The href is exact regardless.
 	 */
 	threadLink(id: string): Locator {
 		return this.root.locator(`a[href="/chat/${id}"]`);
