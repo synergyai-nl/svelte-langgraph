@@ -60,5 +60,9 @@
 	"sidebar_threads_loading": "Gesprekken laden",
 	"sidebar_threads_error": "Je gesprekken konden niet worden geladen.",
 	"sidebar_threads_retry": "Opnieuw proberen",
-	"sidebar_threads_load_more": "Meer laden"
+	"sidebar_threads_load_more": "Meer laden",
+	"sidebar_new_chat_error": "Kon geen nieuwe chat starten. Probeer het opnieuw.",
+	"sidebar_mobile_title": "Zijbalk",
+	"sidebar_mobile_description": "Toont de mobiele zijbalk.",
+	"sidebar_toggle": "Zijbalk wisselen"
 }

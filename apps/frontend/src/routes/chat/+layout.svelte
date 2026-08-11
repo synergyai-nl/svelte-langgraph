@@ -7,6 +7,7 @@
 	 * nothing about routing or i18n.
 	 */
 	import { onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 
@@ -15,6 +16,7 @@
 	import { createClient, createThread } from '$lib/langgraph/client';
 	import { ThreadList } from '$lib/langgraph/threadList.svelte';
 	import { setThreadListRefresh } from '$lib/langgraph/threadListContext';
+	import { parseSidebarCookie } from '$lib/sidebarCookie';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let { children } = $props();
@@ -26,7 +28,15 @@
 	let client = $derived(accessToken ? createClient(accessToken) : null);
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
-	const threadList = new ThreadList();
+	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`). The root `load` only
+	// reruns on a hard navigation, so on a client-side remount `page.data.sidebarOpen` can be
+	// stale — the cookie (written on every toggle) is the source of truth once we're in the
+	// browser.
+	let sidebarOpen = $state(
+		(browser ? parseSidebarCookie(document.cookie) : null) ?? page.data.sidebarOpen
+	);
+
+	const threadList = new ThreadList({ initialLoading: Boolean(page.data.session?.accessToken) });
 	setThreadListRefresh({ refresh: () => threadList.refresh() });
 
 	// The single wiring effect — `ThreadList` deliberately contains no effects of its own.
@@ -34,19 +44,26 @@
 		threadList.setClient(client);
 	});
 
+	$effect(() => {
+		threadList.setActiveThreadId(activeThreadId);
+	});
+
 	onDestroy(() => threadList.dispose());
 
 	let creating = $state(false);
+	let createError = $state<string | null>(null);
 
 	async function handleNewThread() {
 		if (creating || !client) return;
 		creating = true;
+		createError = null;
 		try {
 			const thread = await createThread(client);
 			await goto(`/chat/${thread.thread_id}`);
 			threadList.refresh();
 		} catch (err) {
 			console.error('Failed to create a new thread', err);
+			createError = m.sidebar_new_chat_error();
 		} finally {
 			creating = false;
 		}
@@ -54,7 +71,7 @@
 </script>
 
 <!-- `h-full min-h-0` overrides the provider's base `min-h-svh` via tailwind-merge. -->
-<Sidebar.Provider open={page.data.sidebarOpen} class="h-full min-h-0">
+<Sidebar.Provider bind:open={sidebarOpen} class="h-full min-h-0">
 	<ChatThreads
 		list={threadList}
 		{activeThreadId}
@@ -62,6 +79,7 @@
 		busy={creating}
 		disabled={!client}
 		hrefFor={(t) => `/chat/${t.id}`}
+		error={createError}
 		labels={{
 			newChat: m.sidebar_new_chat(),
 			threadsLabel: m.sidebar_threads_label(),
@@ -69,13 +87,15 @@
 			loading: m.sidebar_threads_loading(),
 			error: m.sidebar_threads_error(),
 			retry: m.sidebar_threads_retry(),
-			loadMore: m.sidebar_threads_load_more()
+			loadMore: m.sidebar_threads_load_more(),
+			mobileTitle: m.sidebar_mobile_title(),
+			mobileDescription: m.sidebar_mobile_description()
 		}}
 	/>
 
 	<div class="bg-background relative flex w-full min-w-0 flex-1 flex-col">
 		<div class="flex shrink-0 items-center px-2 py-1">
-			<Sidebar.Trigger />
+			<Sidebar.Trigger label={m.sidebar_toggle()} />
 		</div>
 		<div class="min-h-0 flex-1">
 			{@render children()}

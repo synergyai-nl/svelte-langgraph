@@ -60,5 +60,9 @@
 	"sidebar_threads_loading": "Loading conversations",
 	"sidebar_threads_error": "Couldn't load your conversations.",
 	"sidebar_threads_retry": "Try again",
-	"sidebar_threads_load_more": "Load more"
+	"sidebar_threads_load_more": "Load more",
+	"sidebar_new_chat_error": "Couldn't start a new chat. Please try again.",
+	"sidebar_mobile_title": "Sidebar",
+	"sidebar_mobile_description": "Displays the mobile sidebar.",
+	"sidebar_toggle": "Toggle Sidebar"
 }

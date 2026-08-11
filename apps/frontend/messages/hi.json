@@ -60,5 +60,9 @@
 	"sidebar_threads_loading": "बातचीत लोड हो रही है",
 	"sidebar_threads_error": "आपकी बातचीत लोड नहीं हो सकीं।",
 	"sidebar_threads_retry": "फिर से कोशिश करें",
-	"sidebar_threads_load_more": "और लोड करें"
+	"sidebar_threads_load_more": "और लोड करें",
+	"sidebar_new_chat_error": "नई चैट शुरू नहीं हो सकी। कृपया पुनः प्रयास करें।",
+	"sidebar_mobile_title": "साइडबार",
+	"sidebar_mobile_description": "मोबाइल साइडबार दिखाता है।",
+	"sidebar_toggle": "साइडबार टॉगल करें"
 }
