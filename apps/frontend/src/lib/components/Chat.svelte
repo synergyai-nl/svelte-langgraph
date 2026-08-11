@@ -9,6 +9,8 @@
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData } from '$lib/langgraph/errors';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
+	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
+	import { untrack } from 'svelte';
 	import StateField from './StateField.svelte';
 
 	interface Props {
@@ -150,14 +152,36 @@
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
+
+	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated thread moves
+	// to the top. The context is optional: Chat renders fine (and stays testable) without it.
+	const threadListRefresh = getThreadListRefresh();
+	let lastNotifiedSignature = '';
+
+	$effect(() => {
+		if (!threadListRefresh) return;
+		// Only notify once the run has settled — mid-stream the server state is still in flux.
+		if (stream.isLoading) return;
+
+		const signature = `${threadId}:${messages.length}`;
+		const previous = untrack(() => lastNotifiedSignature);
+		if (signature === previous) return;
+
+		const isInitialSettle = previous === '';
+		lastNotifiedSignature = signature;
+		// An empty thread on first settle is just the initial mount — nothing changed server-side.
+		if (isInitialSettle && messages.length === 0) return;
+
+		untrack(() => threadListRefresh.refresh());
+	});
 </script>
 
-<div class="flex h-[calc(100vh-4rem)] flex-col">
+<div class="flex h-full min-h-0 flex-col">
 	<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
 	<div class="flex justify-end px-4 py-1">
 		<StateField name="phase" field={sync.field('phase')} />
 	</div>
-	<div class="flex-1 overflow-y-auto pb-24">
+	<div class="min-h-0 flex-1 overflow-y-auto pb-4">
 		{#if !chat_started}
 			<ChatSuggestions
 				{suggestions}

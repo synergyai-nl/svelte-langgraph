@@ -31,7 +31,9 @@
 	import { cn, type WithElementRef, type WithoutChildrenOrChild } from '$lib/utils.js';
 	import { useSidebar } from './context.svelte.js';
 	import type { ComponentProps, Snippet } from 'svelte';
-	import type { HTMLAttributes } from 'svelte/elements';
+	// PATCHED vs upstream registry: typed as HTMLButtonAttributes (not HTMLAttributes), since this
+	// really does render a <button> — upstream's type rejects legitimate props like `type="button"`.
+	import type { HTMLButtonAttributes } from 'svelte/elements';
 
 	let {
 		ref = $bindable(null),
@@ -44,7 +46,7 @@
 		tooltipContent,
 		tooltipContentProps,
 		...restProps
-	}: WithElementRef<HTMLAttributes<HTMLButtonElement>, HTMLButtonElement> & {
+	}: WithElementRef<HTMLButtonAttributes, HTMLButtonElement> & {
 		isActive?: boolean;
 		variant?: SidebarMenuButtonVariant;
 		size?: SidebarMenuButtonSize;

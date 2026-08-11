@@ -17,9 +17,15 @@
 <ModeWatcher />
 
 <Tooltip.Provider>
-	<Header />
+	<!--
+		The only place in the app that is allowed to reference viewport height: everything below
+		sizes itself against its parent (h-full / flex-1), never against the viewport.
+	-->
+	<div class="flex h-svh flex-col">
+		<Header />
 
-	<main>
-		{@render children()}
-	</main>
+		<main class="min-h-0 flex-1 overflow-y-auto">
+			{@render children()}
+		</main>
+	</div>
 </Tooltip.Provider>
