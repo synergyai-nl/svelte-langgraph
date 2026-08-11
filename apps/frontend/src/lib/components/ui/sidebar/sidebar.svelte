@@ -11,6 +11,11 @@
 		side = 'left',
 		variant = 'sidebar',
 		collapsible = 'offcanvas',
+		// PATCHED vs upstream registry: upstream hard-codes the mobile Sheet's accessible
+		// title/description in English; taking them as props (defaulting to the upstream
+		// strings) lets callers pass localized text without importing paraglide into ui/ (SLG-104).
+		mobileTitle = 'Sidebar',
+		mobileDescription = 'Displays the mobile sidebar.',
 		class: className,
 		children,
 		...restProps
@@ -18,6 +23,8 @@
 		side?: 'left' | 'right';
 		variant?: 'sidebar' | 'floating' | 'inset';
 		collapsible?: 'offcanvas' | 'icon' | 'none';
+		mobileTitle?: string;
+		mobileDescription?: string;
 	} = $props();
 
 	const sidebar = useSidebar();
@@ -49,8 +56,8 @@
 			{side}
 		>
 			<Sheet.Header class="sr-only">
-				<Sheet.Title>Sidebar</Sheet.Title>
-				<Sheet.Description>Displays the mobile sidebar.</Sheet.Description>
+				<Sheet.Title>{mobileTitle}</Sheet.Title>
+				<Sheet.Description>{mobileDescription}</Sheet.Description>
 			</Sheet.Header>
 			<div class="flex h-full w-full flex-col">
 				{@render children?.()}
