@@ -104,13 +104,13 @@ describe('ThreadList', () => {
 	});
 
 	describe('select-rejection latch', () => {
-		it('falls back to a plain query when select is rejected, then skips select on later requests', async () => {
+		it('latches select off on an explicit 4xx rejection, then skips select on later requests', async () => {
 			const list = new ThreadList();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
-				if (query.select) throw new Error('select not supported');
+				if (query.select) throw { status: 400 };
 				return [makeRawThread('thread-1')];
 			});
 
@@ -160,6 +160,62 @@ describe('ThreadList', () => {
 			expect(mock.threads.search.mock.calls[2][0]).toHaveProperty('select');
 			expect(list.error).toBeNull();
 			expect(list.threads).toHaveLength(1);
+		});
+
+		it('does not latch on a 5xx even when the plain retry succeeds — a later refresh still sends select', async () => {
+			const list = new ThreadList();
+			const mock = makeMockClient();
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.select) throw { status: 500 };
+				return [makeRawThread('thread-1')];
+			});
+
+			list.setClient(asClient(mock));
+			await flushPromises();
+
+			expect(mock.threads.search).toHaveBeenCalledTimes(2);
+			expect(mock.threads.search.mock.calls[0][0]).toHaveProperty('select');
+			expect(mock.threads.search.mock.calls[1][0]).not.toHaveProperty('select');
+			expect(list.error).toBeNull();
+			expect(list.threads).toHaveLength(1);
+			expect(warnSpy).not.toHaveBeenCalled();
+
+			list.refresh();
+			await flushPromises();
+
+			// Not latched: the refresh tries `select` first, fails with 5xx again, and retries.
+			expect(mock.threads.search).toHaveBeenCalledTimes(4);
+			expect(mock.threads.search.mock.calls[2][0]).toHaveProperty('select');
+			expect(mock.threads.search.mock.calls[3][0]).not.toHaveProperty('select');
+			expect(warnSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not latch on an unclassified rejection (plain Error)', async () => {
+			const list = new ThreadList();
+			const mock = makeMockClient();
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.select) throw new Error('unclassified failure');
+				return [makeRawThread('thread-1')];
+			});
+
+			list.setClient(asClient(mock));
+			await flushPromises();
+
+			expect(mock.threads.search).toHaveBeenCalledTimes(2);
+			expect(list.error).toBeNull();
+			expect(list.threads).toHaveLength(1);
+			expect(warnSpy).not.toHaveBeenCalled();
+
+			list.refresh();
+			await flushPromises();
+
+			// Not latched: the refresh still tries `select` first.
+			expect(mock.threads.search).toHaveBeenCalledTimes(4);
+			expect(mock.threads.search.mock.calls[2][0]).toHaveProperty('select');
 		});
 	});
 
@@ -318,5 +374,229 @@ describe('ThreadList', () => {
 		expect(list.threads).toEqual([]);
 		expect(list.error).toBeNull();
 		expect(list.loading).toBe(false);
+	});
+
+	describe('pinning the active thread', () => {
+		it('fetches the pin by ids when the active thread is absent from the loaded pages', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+			await flushPromises();
+
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
+
+			const pinCall = mock.threads.search.mock.calls.find(
+				(call) => (call[0] as Record<string, unknown>).ids
+			);
+			expect(pinCall?.[0]).toMatchObject({ ids: ['target'], limit: 1 });
+		});
+
+		it('does not fetch a pin when the active thread is already in a loaded page', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			mock.threads.search.mockResolvedValue([makeRawThread('a'), makeRawThread('target')]);
+
+			list.setClient(asClient(mock));
+			await flushPromises();
+			mock.threads.search.mockClear();
+
+			list.setActiveThreadId('target');
+			await flushPromises();
+
+			expect(mock.threads.search).not.toHaveBeenCalled();
+			expect(list.threads.map((t) => t.id)).toEqual(['a', 'target']);
+		});
+
+		it('drops the pin once the real row surfaces via loadMore, without duplicating it', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				if (query.offset === 0) return [makeRawThread('a'), makeRawThread('b')];
+				return [makeRawThread('target'), makeRawThread('c')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+			await flushPromises();
+
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
+
+			list.loadMore();
+			await flushPromises();
+
+			expect(list.threads.map((t) => t.id)).toEqual(['a', 'b', 'target', 'c']);
+			expect(list.threads.filter((t) => t.id === 'target')).toHaveLength(1);
+		});
+
+		it('drops the pin once refresh surfaces the real row, without duplicating it', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+			await flushPromises();
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('target'), makeRawThread('a')];
+			});
+
+			list.refresh();
+			await flushPromises();
+
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a']);
+			expect(list.threads.filter((t) => t.id === 'target')).toHaveLength(1);
+		});
+
+		it('refresh does not re-fetch an already-successful pin', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+			await flushPromises();
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
+
+			mock.threads.search.mockClear();
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.refresh();
+			await flushPromises();
+
+			// Only the paged reload fired — the pin was already resolved for this active id.
+			expect(
+				mock.threads.search.mock.calls.some((call) => (call[0] as Record<string, unknown>).ids)
+			).toBe(false);
+			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
+		});
+
+		it('a failed pin fetch leaves error null and the list usable', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) throw new Error('pin lookup failed');
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+			await flushPromises();
+
+			expect(list.error).toBeNull();
+			expect(list.threads.map((t) => t.id)).toEqual(['a', 'b']);
+			expect(warnSpy).toHaveBeenCalled();
+		});
+
+		it('an empty pin result (foreign or deleted id) leaves the list usable with no pinned row', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('not-mine');
+			await flushPromises();
+
+			expect(list.error).toBeNull();
+			expect(list.threads.map((t) => t.id)).toEqual(['a', 'b']);
+		});
+
+		it('dispose aborts an in-flight pin fetch', async () => {
+			const list = new ThreadList();
+			const mock = makeMockClient();
+			const { promise: pagePromise } = deferred<unknown[]>();
+			const { promise: pinPromise } = deferred<unknown[]>();
+
+			mock.threads.search.mockImplementation((query: Record<string, unknown>) =>
+				query.ids ? pinPromise : pagePromise
+			);
+
+			list.setClient(asClient(mock));
+			list.setActiveThreadId('target');
+
+			const pinCall = mock.threads.search.mock.calls.find(
+				(call) => (call[0] as Record<string, unknown>).ids
+			);
+			const pinSignal = (pinCall?.[0] as Record<string, unknown>).signal as AbortSignal;
+			expect(pinSignal.aborted).toBe(false);
+
+			list.dispose();
+
+			expect(pinSignal.aborted).toBe(true);
+		});
+
+		it('the pin fetch honours the select latch', async () => {
+			const list = new ThreadList({ pageSize: 2 });
+			const mock = makeMockClient();
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			// Latch `select` off via the paged load's select-bearing request getting a 4xx.
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.select) throw { status: 400 };
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setClient(asClient(mock));
+			await flushPromises();
+
+			mock.threads.search.mockClear();
+			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+				if (query.ids) return [makeRawThread('target')];
+				return [makeRawThread('a'), makeRawThread('b')];
+			});
+
+			list.setActiveThreadId('target');
+			await flushPromises();
+
+			expect(mock.threads.search).toHaveBeenCalledTimes(1);
+			expect(mock.threads.search.mock.calls[0][0]).not.toHaveProperty('select');
+			expect(mock.threads.search.mock.calls[0][0]).toMatchObject({ ids: ['target'] });
+		});
+	});
+
+	describe('initialLoading', () => {
+		it('reports loading true before any client arrives, cleared by setClient(null)', () => {
+			const list = new ThreadList({ initialLoading: true });
+
+			expect(list.loading).toBe(true);
+			expect(list.threads).toEqual([]);
+			expect(list.error).toBeNull();
+
+			list.setClient(null);
+
+			expect(list.loading).toBe(false);
+		});
+
+		it('defaults to not loading when the option is omitted', () => {
+			const list = new ThreadList();
+			expect(list.loading).toBe(false);
+		});
 	});
 });
