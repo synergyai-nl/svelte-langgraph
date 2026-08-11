@@ -1,10 +1,11 @@
 import { test as base } from '@playwright/test';
-import { AppPage, ChatPage, OidcPage } from '../pages';
+import { AppPage, ChatPage, OidcPage, SidebarPage } from '../pages';
 
 type Fixtures = {
 	app: AppPage;
 	chat: ChatPage;
 	oidc: OidcPage;
+	sidebar: SidebarPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -45,6 +46,9 @@ export const test = base.extend<Fixtures>({
 	},
 	oidc: async ({ page }, use) => {
 		await use(new OidcPage(page));
+	},
+	sidebar: async ({ app }, use) => {
+		await use(new SidebarPage(app));
 	}
 });
 
