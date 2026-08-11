@@ -30,7 +30,10 @@
 			onOpenChange(value);
 
 			// This sets the cookie to keep the sidebar state.
-			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+			// PATCHED vs upstream registry: upstream omits SameSite, leaving it to the browser
+			// default. Setting it explicitly keeps behaviour consistent across browsers and stops
+			// the preference riding along on cross-site requests (SLG-104).
+			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}; SameSite=Lax`;
 		}
 	});
 </script>
