@@ -130,9 +130,11 @@ describe('ChatThreads', () => {
 	});
 
 	describe('error state', () => {
-		test('shows an alert with a retry button that calls refresh', async () => {
+		test('shows an alert with a retry button that calls refresh when there are no rows', async () => {
 			const refresh = vi.fn();
-			renderComponent({ list: makeListStub({ error: new Error('boom'), refresh }) });
+			renderComponent({
+				list: makeListStub({ error: new Error('boom'), threads: [], refresh })
+			});
 
 			const alert = screen.getByRole('alert');
 			expect(alert).toHaveTextContent(/couldn't load your conversations/i);
@@ -140,6 +142,14 @@ describe('ChatThreads', () => {
 			await fireEvent.click(screen.getByRole('button', { name: /try again/i }));
 
 			expect(refresh).toHaveBeenCalledOnce();
+		});
+
+		test('keeps existing rows and suppresses the alert when a background refresh fails', () => {
+			const t1 = aThread();
+			renderComponent({ list: makeListStub({ error: new Error('boom'), threads: [t1] }) });
+
+			expect(screen.getByRole('button', { name: threadLabel(t1) })).toBeInTheDocument();
+			expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 		});
 	});
 

@@ -155,22 +155,32 @@
 
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated thread moves
 	// to the top. The context is optional: Chat renders fine (and stays testable) without it.
+	//
+	// Gated on `sawRun`: Chat remounts per thread (`{#key threadId}`), so on mount the initial
+	// history fetch can bump `messages.length` from 0 while `isLoading` never goes true this
+	// mount — that's hydration, not a run settling, and must not trigger a refresh. `sawRun` only
+	// flips true once this mount has actually observed `stream.isLoading` go true; only then does
+	// a later settle (isLoading false, signature changed) call refresh(). Until then, settles just
+	// record the baseline signature silently.
 	const threadListRefresh = getThreadListRefresh();
 	let lastNotifiedSignature = '';
+	let sawRun = false;
 
 	$effect(() => {
 		if (!threadListRefresh) return;
 		// Only notify once the run has settled — mid-stream the server state is still in flux.
-		if (stream.isLoading) return;
+		if (stream.isLoading) {
+			sawRun = true;
+			return;
+		}
 
 		const signature = `${threadId}:${messages.length}`;
 		const previous = untrack(() => lastNotifiedSignature);
+		lastNotifiedSignature = signature;
 		if (signature === previous) return;
 
-		const isInitialSettle = previous === '';
-		lastNotifiedSignature = signature;
-		// An empty thread on first settle is just the initial mount — nothing changed server-side.
-		if (isInitialSettle && messages.length === 0) return;
+		// No run has settled this mount yet — this is hydration, not a change to notify about.
+		if (!sawRun) return;
 
 		untrack(() => threadListRefresh.refresh());
 	});

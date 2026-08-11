@@ -45,6 +45,8 @@
 			const thread = await createThread(client);
 			await goto(`/chat/${thread.thread_id}`);
 			threadList.refresh();
+		} catch (err) {
+			console.error('Failed to create a new thread', err);
 		} finally {
 			creating = false;
 		}

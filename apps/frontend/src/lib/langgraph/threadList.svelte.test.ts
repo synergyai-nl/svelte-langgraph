@@ -131,6 +131,36 @@ describe('ThreadList', () => {
 			expect(mock.threads.search.mock.calls[2][0]).not.toHaveProperty('select');
 			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
+
+		it('does not latch when the plain retry also fails — surfaces the error and tries select again next time', async () => {
+			const list = new ThreadList();
+			const mock = makeMockClient();
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			// Both the select-bearing request and the plain retry fail — a transient error (e.g.
+			// a 5xx), not something specific to `select`.
+			mock.threads.search.mockRejectedValue(new Error('server unavailable'));
+
+			list.setClient(asClient(mock));
+			await flushPromises();
+
+			expect(mock.threads.search).toHaveBeenCalledTimes(2);
+			expect(mock.threads.search.mock.calls[0][0]).toHaveProperty('select');
+			expect(mock.threads.search.mock.calls[1][0]).not.toHaveProperty('select');
+			expect(list.error).toBeInstanceOf(Error);
+			expect(list.loading).toBe(false);
+			expect(warnSpy).not.toHaveBeenCalled();
+
+			// Not latched: the next request tries `select` again.
+			mock.threads.search.mockResolvedValue([makeRawThread('thread-1')]);
+			list.refresh();
+			await flushPromises();
+
+			expect(mock.threads.search).toHaveBeenCalledTimes(3);
+			expect(mock.threads.search.mock.calls[2][0]).toHaveProperty('select');
+			expect(list.error).toBeNull();
+			expect(list.threads).toHaveLength(1);
+		});
 	});
 
 	it('discards results from a superseded client after an abort, without surfacing an error', async () => {
@@ -277,12 +307,16 @@ describe('ThreadList', () => {
 		mock.threads.search.mockReturnValue(promise);
 
 		list.setClient(asClient(mock));
+		expect(list.loading).toBe(true);
+
 		list.dispose();
+		expect(list.loading).toBe(false);
 
 		resolve([makeRawThread('thread-1')]);
 		await flushPromises();
 
 		expect(list.threads).toEqual([]);
 		expect(list.error).toBeNull();
+		expect(list.loading).toBe(false);
 	});
 });

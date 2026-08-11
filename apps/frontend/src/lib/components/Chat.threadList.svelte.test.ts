@@ -97,4 +97,24 @@ describe('Chat thread-list refresh notification', () => {
 
 		expect(refresh).toHaveBeenCalledTimes(1);
 	});
+
+	test('does not refresh when history hydrates after mount without a run ever loading', async () => {
+		// isLoading stays false throughout — this simulates an existing thread's history fetch
+		// resolving asynchronously after mount, not a run settling.
+		const refresh = renderChatWithRefresh();
+		await tick();
+		expect(refresh).not.toHaveBeenCalled();
+
+		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+		await tick();
+		expect(refresh).not.toHaveBeenCalled();
+
+		mockModule.setMessages([
+			{ type: 'human', content: 'Hello', id: 'user-1' },
+			{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
+		]);
+		await tick();
+
+		expect(refresh).not.toHaveBeenCalled();
+	});
 });

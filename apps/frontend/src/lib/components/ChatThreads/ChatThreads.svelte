@@ -80,7 +80,7 @@
 	<Sidebar.Content>
 		<Sidebar.Group>
 			<Sidebar.GroupLabel>{l.threadsLabel}</Sidebar.GroupLabel>
-			{#if list.error}
+			{#if list.error && list.threads.length === 0}
 				<div role="alert" class="text-sidebar-foreground/70 flex flex-col gap-2 p-2 text-sm">
 					<p>{l.error}</p>
 					<Button

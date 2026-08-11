@@ -96,6 +96,7 @@ export class ThreadList {
 	/** Abort any in-flight request. Call when the owning component/context goes away. */
 	dispose(): void {
 		this.#abortInFlight();
+		this.#loading = false;
 	}
 
 	#abortInFlight(): void {
@@ -151,15 +152,29 @@ export class ThreadList {
 		} catch (err) {
 			if (signal.aborted) throw err;
 
-			this.#supportsSelect = false;
-			if (!this.#warnedAboutSelect) {
-				this.#warnedAboutSelect = true;
-				console.warn(
-					'threads.search rejected the `select` param; retrying without it and disabling it for subsequent requests.',
-					err
-				);
+			// The `select`-bearing request failed — retry without it before concluding that
+			// `select` itself is the problem. A transient failure (e.g. a 5xx) would otherwise
+			// permanently disable `select` even though it had nothing to do with the error.
+			try {
+				const results = (await client.threads.search(baseQuery)) as SearchedThread[];
+
+				this.#supportsSelect = false;
+				if (!this.#warnedAboutSelect) {
+					this.#warnedAboutSelect = true;
+					console.warn(
+						'threads.search rejected the `select` param; retrying without it and disabling it for subsequent requests.',
+						err
+					);
+				}
+				return results;
+			} catch (retryErr) {
+				if (signal.aborted) throw retryErr;
+
+				// The plain retry failed too, so the original failure was probably unrelated to
+				// `select` — don't latch it off; let the next request try `select` again.
+				this.#supportsSelect = true;
+				throw retryErr;
 			}
-			return (await client.threads.search(baseQuery)) as SearchedThread[];
 		}
 	}
 }
