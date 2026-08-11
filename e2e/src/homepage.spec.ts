@@ -1,12 +1,24 @@
 import { test, expect } from './fixtures/test';
 
 test.describe('Homepage hero', () => {
-	test('renders headline and both CTA buttons', async ({ page }) => {
+	test('renders headline and all three CTA buttons', async ({ page }) => {
 		await page.goto('/');
 
 		await expect(page.getByRole('heading', { level: 1 })).toContainText('Your agent works.');
+		await expect(page.getByRole('link', { name: /open the chat/i }).first()).toBeVisible();
 		await expect(page.getByRole('link', { name: /try live demo/i }).first()).toBeVisible();
 		await expect(page.getByRole('link', { name: /view on github/i }).first()).toBeVisible();
+	});
+
+	test('primary CTA navigates to the chat app', async ({ page }) => {
+		await page.goto('/');
+
+		await page
+			.getByRole('link', { name: /open the chat/i })
+			.first()
+			.click();
+
+		await expect(page).toHaveURL(/\/chat/);
 	});
 
 	test('renders hero terminal and stack logos', async ({ page }) => {

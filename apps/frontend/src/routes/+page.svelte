@@ -18,7 +18,8 @@
 		Headphones,
 		CircleDot,
 		Circle,
-		ExternalLink
+		ExternalLink,
+		MessageSquare
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 	import HeroTerminal from '$lib/components/marketing/HeroTerminal.svelte';
@@ -303,19 +304,30 @@
 						<div
 							class="flex flex-col items-center justify-center gap-3 sm:flex-row lg:items-start lg:justify-start"
 						>
-							<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+							<a href="/chat">
 								<Button
 									size="lg"
 									class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
 								>
-									Try live demo
+									<MessageSquare class="size-4" />
+									Open the chat
 									<ArrowRight class="size-4" />
+								</Button>
+							</a>
+							<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+								<Button
+									size="lg"
+									variant="outline"
+									class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
+								>
+									Try live demo
+									<ExternalLink class="size-4" />
 								</Button>
 							</a>
 							<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
 								<Button
 									size="lg"
-									variant="outline"
+									variant="ghost"
 									class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
 								>
 									<Github class="size-5" />

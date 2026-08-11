@@ -146,8 +146,15 @@ test.describe('When authenticated', () => {
 });
 
 test.describe('Navigation', () => {
-	test('navbar has home and chat links', async ({ page, app }) => {
+	// "/" renders the marketing header variant, which drops the Home link (the logo
+	// already goes home) but must keep a way into the app.
+	test('marketing navbar has a chat link', async ({ page, app }) => {
 		await page.goto('/');
+		await expect(app.chatLink).toBeVisible();
+	});
+
+	test('app navbar has home and chat links', async ({ page, app }) => {
+		await page.goto('/chat');
 		await expect(app.homeLink).toBeVisible();
 		await expect(app.chatLink).toBeVisible();
 	});

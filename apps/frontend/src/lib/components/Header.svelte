@@ -67,6 +67,9 @@
 		<!-- Desktop navigation -->
 		{#if isMarketing}
 			<nav class="hidden flex-1 items-center justify-center gap-1 md:flex" aria-label="Marketing">
+				<a href="/chat" class={marketingNavLinkClass}>
+					{m.nav_chat()}
+				</a>
 				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer" class={marketingNavLinkClass}>
 					Live demo
 				</a>
@@ -130,6 +133,9 @@
 
 				<DropdownMenu.Content align="end" class="w-56">
 					{#if isMarketing}
+						<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
+							{m.nav_chat()}
+						</DropdownMenu.Item>
 						<DropdownMenu.Item>
 							<a href={DEMO_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
 								Live demo

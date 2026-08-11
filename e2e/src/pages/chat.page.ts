@@ -21,13 +21,13 @@ export class ChatPage {
 	constructor(app: AppPage) {
 		this.app = app;
 
-		this.textInput = app.main.getByRole('textbox', { name: 'Message...' });
+		this.textInput = app.main.getByRole('textbox', { name: 'Ask your agent…' });
 
 		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
 		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');
 		this.phaseSelect = app.page.locator('#state-field-input-phase');
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
-		this.modalSignInButton = this.loginModal.getByText('Sign in', { exact: true });
+		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
 	}
 }
