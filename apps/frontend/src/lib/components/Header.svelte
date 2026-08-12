@@ -37,7 +37,9 @@
 			: 'bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'
 	)}
 >
-	<div class={cn('flex h-16 items-center', isMarketing ? 'mx-auto w-full max-w-7xl px-6' : 'px-4')}>
+	<!-- Same container in both variants: the header must not shift when navigating
+	     between "/" and "/chat". -->
+	<div class="mx-auto flex h-16 w-full max-w-7xl items-center px-6">
 		<!-- Logo — identical lockup in both variants so the brand doesn't shift between pages -->
 		<a href="/" class="flex flex-col gap-0.5 font-semibold sm:flex-row sm:items-baseline sm:gap-2">
 			<span class="flex items-center gap-2">

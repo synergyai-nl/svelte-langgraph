@@ -196,10 +196,16 @@ describe('Header', () => {
 			expect(header).toHaveClass('border-b');
 		});
 
-		test('constrains the marketing header to the page container width', () => {
-			const { container } = renderHeader({ variant: 'marketing' });
+		// The container must NOT differ, or the header shifts sideways when navigating
+		// between "/" and "/chat".
+		(['app', 'marketing'] as const).forEach((variant) => {
+			test(`uses the shared container width in the ${variant} variant`, () => {
+				const { container } = renderHeader({ variant });
 
-			expect(container.querySelector('header > div')).toHaveClass('max-w-7xl');
+				const inner = container.querySelector('header > div');
+				expect(inner).toHaveClass('max-w-7xl');
+				expect(inner).toHaveClass('px-6');
+			});
 		});
 
 		test('defaults to the app variant', () => {
