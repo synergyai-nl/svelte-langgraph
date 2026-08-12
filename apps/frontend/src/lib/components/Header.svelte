@@ -39,10 +39,7 @@
 >
 	<div class={cn('flex h-16 items-center', isMarketing ? 'mx-auto w-full max-w-7xl px-6' : 'px-4')}>
 		<!-- Logo — identical lockup in both variants so the brand doesn't shift between pages -->
-		<a
-			href="/"
-			class="flex flex-col gap-0.5 font-semibold sm:flex-row sm:items-baseline sm:gap-2"
-		>
+		<a href="/" class="flex flex-col gap-0.5 font-semibold sm:flex-row sm:items-baseline sm:gap-2">
 			<span class="flex items-center gap-2">
 				<MessageSquare class="h-6 w-6" />
 				<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
@@ -52,36 +49,36 @@
 
 		<!-- Desktop navigation — same links in both variants; marketing only differs in chrome -->
 		<div class="hidden flex-1 justify-center md:flex">
-				<NavigationMenu.Root>
-					<NavigationMenu.List>
-						<NavigationMenu.Item>
-							<NavigationMenu.Link
-								href="/"
-								class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
-							>
-								{m.nav_home()}
-							</NavigationMenu.Link>
-						</NavigationMenu.Item>
-						<NavigationMenu.Item>
-							<NavigationMenu.Link
-								href="/chat"
-								class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
-							>
-								{m.nav_chat()}
-							</NavigationMenu.Link>
-						</NavigationMenu.Item>
-						<NavigationMenu.Item>
-							<NavigationMenu.Link
-								href={DOCS_URL}
-								target="_blank"
-								rel="noopener noreferrer"
-								class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
-							>
-								{m.nav_docs()}
-							</NavigationMenu.Link>
-						</NavigationMenu.Item>
-					</NavigationMenu.List>
-				</NavigationMenu.Root>
+			<NavigationMenu.Root>
+				<NavigationMenu.List>
+					<NavigationMenu.Item>
+						<NavigationMenu.Link
+							href="/"
+							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
+						>
+							{m.nav_home()}
+						</NavigationMenu.Link>
+					</NavigationMenu.Item>
+					<NavigationMenu.Item>
+						<NavigationMenu.Link
+							href="/chat"
+							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
+						>
+							{m.nav_chat()}
+						</NavigationMenu.Link>
+					</NavigationMenu.Item>
+					<NavigationMenu.Item>
+						<NavigationMenu.Link
+							href={DOCS_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
+						>
+							{m.nav_docs()}
+						</NavigationMenu.Link>
+					</NavigationMenu.Item>
+				</NavigationMenu.List>
+			</NavigationMenu.Root>
 		</div>
 
 		<!-- Mobile Menu Dropdown -->
