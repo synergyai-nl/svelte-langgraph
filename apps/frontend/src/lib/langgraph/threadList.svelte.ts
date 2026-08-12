@@ -36,18 +36,19 @@ type BaseQuery = Omit<ThreadSearchQuery, 'signal' | 'select'>;
 
 /**
  * A rejected `threads.search` typically surfaces the raw `Response` (see
- * `@langchain/core`'s `AsyncCaller.fetch`), not an `Error`. A 4xx means the server understood
- * the request and refused `select` as written — that's the only signal worth permanently
- * latching on. 5xx/network/unclassified failures are transient, so keep probing with `select`
- * on the next request; latching those would permanently (and wrongly) fall back to full thread
- * payloads.
+ * `@langchain/core`'s `AsyncCaller.fetch`), not an `Error`. A `select` value the server itself
+ * rejects as invalid comes back as HTTP 422 — both of `langgraph-api`'s validation layers
+ * (the jsonschema request handler and `validate_select_columns`) use 422, never 400 — so that's
+ * the only status worth permanently latching on. Everything else (5xx, 408/429, network,
+ * unclassified) is transient or unrelated to `select` itself; latching those would permanently
+ * (and wrongly) fall back to full thread payloads after a blip.
  */
 function rejectedParameter(err: unknown): boolean {
 	const status =
 		typeof err === 'object' && err !== null && 'status' in err && typeof err.status === 'number'
 			? err.status
 			: undefined;
-	return status !== undefined && status >= 400 && status < 500;
+	return status === 422;
 }
 
 export class ThreadList {

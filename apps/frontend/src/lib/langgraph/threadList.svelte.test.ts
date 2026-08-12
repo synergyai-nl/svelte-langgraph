@@ -104,13 +104,13 @@ describe('ThreadList', () => {
 	});
 
 	describe('select-rejection latch', () => {
-		it('latches select off on an explicit 4xx rejection, then skips select on later requests', async () => {
+		it('latches select off on a 422 rejection, then skips select on later requests', async () => {
 			const list = new ThreadList();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
-				if (query.select) throw { status: 400 };
+				if (query.select) throw { status: 422 };
 				return [makeRawThread('thread-1')];
 			});
 
@@ -131,6 +131,35 @@ describe('ThreadList', () => {
 			expect(mock.threads.search.mock.calls[2][0]).not.toHaveProperty('select');
 			expect(warnSpy).toHaveBeenCalledTimes(1);
 		});
+
+		it.each([400, 408, 429])(
+			'does not latch on a %i rejection — select is probed again on the next request',
+			async (status) => {
+				const list = new ThreadList();
+				const mock = makeMockClient();
+				const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+				mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
+					if (query.select) throw { status };
+					return [makeRawThread('thread-1')];
+				});
+
+				list.setClient(asClient(mock));
+				await flushPromises();
+
+				expect(list.error).toBeNull();
+				expect(list.threads).toHaveLength(1);
+				expect(warnSpy).not.toHaveBeenCalled();
+
+				list.refresh();
+				await flushPromises();
+
+				// Not latched: the refresh tries `select` first (second-to-last call), fails with
+				// the same status again, and retries without it (last call).
+				expect(mock.threads.search.mock.calls.at(-2)?.[0]).toHaveProperty('select');
+				expect(mock.threads.search.mock.calls.at(-1)?.[0]).not.toHaveProperty('select');
+			}
+		);
 
 		it('does not latch when the plain retry also fails — surfaces the error and tries select again next time', async () => {
 			const list = new ThreadList();
@@ -626,9 +655,9 @@ describe('ThreadList', () => {
 			const mock = makeMockClient();
 			vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-			// Latch `select` off via the paged load's select-bearing request getting a 4xx.
+			// Latch `select` off via the paged load's select-bearing request getting a 422.
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
-				if (query.select) throw { status: 400 };
+				if (query.select) throw { status: 422 };
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
