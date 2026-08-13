@@ -169,10 +169,12 @@ test.describe('Sidebar - real backend', () => {
 		// Assert the attribute itself; the Tab-order check below covers the behaviour.
 		await expect(sidebar.collapsedRoot).toHaveAttribute('inert', '');
 
-		// The load-bearing assertion: Tab from the trigger must not land inside the sidebar.
-		// The zero-width clip alone doesn't guarantee this pre-fix.
+		// The load-bearing assertion: the trigger *follows* the sidebar in DOM order, so
+		// backwards traversal is the probe that would enter it — without `inert`, Shift+Tab
+		// from the trigger lands on the sidebar's last focusable element (the zero-width clip
+		// keeps elements focusable). Forward Tab would pass with or without the fix.
 		await sidebar.toggle.focus();
-		await page.keyboard.press('Tab');
+		await page.keyboard.press('Shift+Tab');
 		const focusedInsideSidebar = await page.evaluate(
 			() => document.activeElement?.closest('[data-slot="sidebar"]') != null
 		);
