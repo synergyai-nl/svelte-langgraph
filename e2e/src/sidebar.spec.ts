@@ -482,4 +482,49 @@ test.describe('Sidebar - mocked thread search', () => {
 
 		await expect(sidebar.errorAlert).not.toBeVisible();
 	});
+
+	test('a creation failure that lands after navigating away is not shown', async ({
+		page,
+		sidebar
+	}) => {
+		const threadA = await gotoFreshThread(page);
+		const threadB = await gotoFreshThread(page);
+		expect(page.url()).toContain(threadB);
+
+		// Hold the creation request open until after the user has navigated away, then fail
+		// it — the error would render over threadA, a thread the attempt had nothing to do
+		// with, so handleNewThread drops it instead. Same pathname scoping as the test above.
+		let releaseCreation!: () => void;
+		const creationGate = new Promise<void>((resolve) => (releaseCreation = resolve));
+		await page.route('**/threads', async (route) => {
+			const request = route.request();
+			if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/threads')) {
+				await creationGate;
+				await route.fulfill({
+					status: 400,
+					contentType: 'application/json',
+					body: JSON.stringify({ detail: 'boom' })
+				});
+				return;
+			}
+			await route.fallback();
+		});
+
+		await sidebar.newChatButton.click();
+		await sidebar.threadLink(threadA).click();
+		await page.waitForURL(`/chat/${threadA}`);
+
+		// Only now let the creation request fail, and wait for the rejection to land before
+		// asserting — a not-visible check straight after release would pass vacuously.
+		const failedCreation = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname.endsWith('/threads') &&
+				response.status() === 400
+		);
+		releaseCreation();
+		await failedCreation;
+
+		await expect(sidebar.errorAlert).not.toBeVisible();
+	});
 });

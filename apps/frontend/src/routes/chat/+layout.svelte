@@ -67,6 +67,12 @@
 		if (creating || !client) return false;
 		creating = true;
 		createError = null;
+		// `creating` only disables the New chat button, not the thread rows, so the user can
+		// navigate away while the request is still in flight. A failure that lands after such
+		// a navigation would render over the newly opened thread — and the clear-on-navigate
+		// effect above can't catch it, since activeThreadId won't change again — so it is
+		// dropped instead of shown.
+		const startedFrom = activeThreadId;
 		try {
 			const thread = await createThread(client);
 			await goto(`/chat/${thread.thread_id}`);
@@ -74,7 +80,7 @@
 			return true;
 		} catch (err) {
 			console.error('Failed to create a new thread', err);
-			createError = m.sidebar_new_chat_error();
+			if (activeThreadId === startedFrom) createError = m.sidebar_new_chat_error();
 			return false;
 		} finally {
 			creating = false;
