@@ -213,6 +213,16 @@ describe('ChatThreads', () => {
 			expect(loadMore).not.toHaveBeenCalled();
 		});
 
+		test('disables the inline retry button while a request is in flight', () => {
+			const t1 = aThread();
+			renderComponent({
+				list: makeListStub({ error: new Error('boom'), threads: [t1], loading: true })
+			});
+
+			const alert = screen.getByRole('alert');
+			expect(within(alert).getByRole('button', { name: /try again/i })).toBeDisabled();
+		});
+
 		test('renders the caller-supplied error prop as an inline alert', () => {
 			renderComponent({ error: "Couldn't start a new chat." });
 
@@ -242,6 +252,13 @@ describe('ChatThreads', () => {
 			renderComponent({ list: makeListStub({ threads: [t1], hasMore: false }) });
 
 			expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument();
+		});
+
+		test('is disabled while a request is in flight', () => {
+			const t1 = aThread();
+			renderComponent({ list: makeListStub({ threads: [t1], hasMore: true, loading: true }) });
+
+			expect(screen.getByRole('button', { name: /load more/i })).toBeDisabled();
 		});
 	});
 

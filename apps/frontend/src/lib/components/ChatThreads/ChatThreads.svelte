@@ -122,6 +122,8 @@
 						variant="secondary"
 						size="sm"
 						class="w-fit"
+						disabled={list.loading}
+						aria-busy={list.loading}
 						onclick={() => list.retry()}
 					>
 						{l.retry}
@@ -161,6 +163,8 @@
 							variant="secondary"
 							size="sm"
 							class="w-fit"
+							disabled={list.loading}
+							aria-busy={list.loading}
 							onclick={() => list.retry()}
 						>
 							{l.retry}
@@ -172,6 +176,8 @@
 						variant="ghost"
 						size="sm"
 						class="w-full"
+						disabled={list.loading}
+						aria-busy={list.loading}
 						onclick={() => list.loadMore()}
 					>
 						{l.loadMore}

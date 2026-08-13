@@ -3,6 +3,24 @@ import { authenticateUser } from './fixtures/auth';
 import { gotoFreshThread } from './fixtures/backend';
 
 /**
+ * Builds a fake `threads/search` row. toThreadSummary
+ * (apps/frontend/src/lib/langgraph/threadList.ts) reads exactly these fields off each
+ * searched thread. Shared by the "mocked thread search" tests below, which each mock
+ * `threads/search` with their own paging/failure behavior.
+ */
+function fakeThread(n: number) {
+	const id = `${n.toString().padStart(8, '0')}-fake`;
+	const timestamp = new Date(Date.now() - n * 1000).toISOString();
+	return {
+		thread_id: id,
+		created_at: timestamp,
+		updated_at: timestamp,
+		status: 'idle',
+		metadata: {}
+	};
+}
+
+/**
  * Thread-list sidebar E2E tests (SLG-104).
  *
  * All specs authenticate as the same hardcoded `test-user` identity (see
@@ -279,20 +297,6 @@ test.describe('Sidebar - mocked thread search', () => {
 	});
 
 	test('Load more appends the second page and then disappears', async ({ page, sidebar }) => {
-		// toThreadSummary (apps/frontend/src/lib/langgraph/threadList.ts) reads exactly these
-		// fields off each searched thread.
-		function fakeThread(n: number) {
-			const id = `${n.toString().padStart(8, '0')}-fake`;
-			const timestamp = new Date(Date.now() - n * 1000).toISOString();
-			return {
-				thread_id: id,
-				created_at: timestamp,
-				updated_at: timestamp,
-				status: 'idle',
-				metadata: {}
-			};
-		}
-
 		const firstPage = Array.from({ length: 20 }, (_, i) => fakeThread(i));
 		const secondPage = Array.from({ length: 5 }, (_, i) => fakeThread(1000 + i));
 
@@ -319,24 +323,44 @@ test.describe('Sidebar - mocked thread search', () => {
 		await expect(sidebar.loadMoreButton).not.toBeVisible();
 	});
 
+	test('Load more is disabled while the next page is loading', async ({ page, sidebar }) => {
+		const firstPage = Array.from({ length: 20 }, (_, i) => fakeThread(i));
+		const secondPage = Array.from({ length: 5 }, (_, i) => fakeThread(1000 + i));
+		let releaseSecondPage!: () => void;
+		const secondPageGate = new Promise<void>((resolve) => (releaseSecondPage = resolve));
+
+		await page.route('**/threads/search', async (route) => {
+			const body = route.request().postDataJSON() as { offset?: number } | null;
+			const offset = body?.offset ?? 0;
+			// Only the second-page request (offset 20, the `loadMore()` click) waits on the
+			// gate — the initial page must resolve immediately, or the sidebar never renders
+			// a "Load more" button to click in the first place.
+			if (offset === 20) await secondPageGate;
+			const threads = offset === 0 ? firstPage : offset === 20 ? secondPage : [];
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(threads)
+			});
+		});
+
+		await gotoFreshThread(page);
+		await expect(sidebar.loadMoreButton).toBeVisible();
+
+		await sidebar.loadMoreButton.click();
+		await expect(sidebar.loadMoreButton).toBeDisabled();
+
+		// Release right after the disabled assertion so the gated request can't hang the test.
+		releaseSecondPage();
+		// Second page (5 rows) is below the page size, so hasMore becomes false and the button
+		// disappears — same completion signal as the "Load more appends" test above.
+		await expect(sidebar.loadMoreButton).not.toBeVisible();
+	});
+
 	test('the active thread is shown even when it is not in the first page', async ({
 		page,
 		sidebar
 	}) => {
-		// Same field shape as the `fakeThread` in the "Load more" test above — toThreadSummary
-		// (apps/frontend/src/lib/langgraph/threadList.ts) reads exactly these fields.
-		function fakeThread(n: number) {
-			const id = `${n.toString().padStart(8, '0')}-fake`;
-			const timestamp = new Date(Date.now() - n * 1000).toISOString();
-			return {
-				thread_id: id,
-				created_at: timestamp,
-				updated_at: timestamp,
-				status: 'idle',
-				metadata: {}
-			};
-		}
-
 		// 20 unrelated threads for the plain first-page fetch — deliberately none of them is the
 		// thread `gotoFreshThread` creates below, so the active thread falls outside the loaded
 		// page and ThreadList's pin-fetch (`#reconcilePin`/`#fetchPin` in threadList.svelte.ts)
@@ -378,18 +402,6 @@ test.describe('Sidebar - mocked thread search', () => {
 	});
 
 	test('a failed Load more keeps the rows and shows a retry', async ({ page, sidebar }) => {
-		function fakeThread(n: number) {
-			const id = `${n.toString().padStart(8, '0')}-fake`;
-			const timestamp = new Date(Date.now() - n * 1000).toISOString();
-			return {
-				thread_id: id,
-				created_at: timestamp,
-				updated_at: timestamp,
-				status: 'idle',
-				metadata: {}
-			};
-		}
-
 		const firstPage = Array.from({ length: 20 }, (_, i) => fakeThread(i));
 
 		await page.route('**/threads/search', async (route) => {
