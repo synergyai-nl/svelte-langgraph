@@ -137,6 +137,31 @@ test.describe('Sidebar - real backend', () => {
 		await expect(sidebar.collapsedRoot).toBeVisible();
 	});
 
+	test('a collapsed sidebar removes its controls from the tab order and accessibility tree', async ({
+		page,
+		sidebar
+	}) => {
+		await gotoFreshThread(page);
+
+		await sidebar.toggle.click();
+		await expect(sidebar.collapsedRoot).toBeVisible(); // still rendered, just clipped
+
+		// Playwright's visibility/role checks exclude inert subtrees.
+		await expect(sidebar.newChatButton).not.toBeVisible();
+
+		// The load-bearing assertion: Tab from the trigger must not land inside the sidebar.
+		// The zero-width clip alone doesn't guarantee this pre-fix.
+		await sidebar.toggle.focus();
+		await page.keyboard.press('Tab');
+		const focusedInsideSidebar = await page.evaluate(
+			() => document.activeElement?.closest('[data-slot="sidebar"]') != null
+		);
+		expect(focusedInsideSidebar).toBe(false);
+
+		await sidebar.toggle.click();
+		await expect(sidebar.newChatButton).toBeVisible();
+	});
+
 	test('a thread created by /chat appears in the list without a reload', async ({
 		page,
 		sidebar

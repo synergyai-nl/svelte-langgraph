@@ -1,4 +1,8 @@
 <!-- PATCHED vs upstream registry: desktop renders in normal flex flow instead of fixed viewport positioning, so the sidebar is container-agnostic (SLG-104). -->
+<!-- PATCHED vs upstream registry: the collapsed off-canvas state is inert, not just zero-width —
+     upstream leaves the collapsed subtree focusable and exposed to assistive technology; only the
+     visual w-0/overflow-hidden clip changes. `inert` removes it from both the tab order and the
+     accessibility tree with no visual difference (SLG-104). -->
 <script lang="ts">
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
@@ -73,6 +77,7 @@
 		data-variant={variant}
 		data-side={side}
 		data-slot="sidebar"
+		inert={sidebar.state === 'collapsed' && collapsible === 'offcanvas'}
 	>
 		<div
 			data-slot="sidebar-container"
