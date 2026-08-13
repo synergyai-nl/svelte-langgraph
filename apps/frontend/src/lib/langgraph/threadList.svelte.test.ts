@@ -91,6 +91,23 @@ describe('ThreadList', () => {
 		expect(arg).not.toHaveProperty('status');
 	});
 
+	it('renders threads in exactly the order the server returned them, without re-sorting', async () => {
+		const list = new ThreadList();
+		const mock = makeMockClient();
+		// Deliberately neither id-alphabetical nor insertion-chronological — the server's
+		// updated_at desc ordering is trusted verbatim, nothing client-side reorders it.
+		mock.threads.search.mockResolvedValue([
+			makeRawThread('c'),
+			makeRawThread('a'),
+			makeRawThread('b')
+		]);
+
+		list.setClient(asClient(mock));
+		await flushPromises();
+
+		expect(list.threads.map((t) => t.id)).toEqual(['c', 'a', 'b']);
+	});
+
 	it('sets error and clears loading when search rejects', async () => {
 		const list = new ThreadList();
 		const mock = makeMockClient();
