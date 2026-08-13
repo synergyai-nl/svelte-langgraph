@@ -427,4 +427,42 @@ test.describe('Sidebar - mocked thread search', () => {
 		// The rows from the successful first page are untouched by the failed second page.
 		await expect(survivingRow).toBeVisible();
 	});
+
+	test('a failed New chat clears once the user navigates to another thread', async ({
+		page,
+		sidebar
+	}) => {
+		// Two real threads, same as the "clicking a thread row navigates to it" test above —
+		// `threadB` is where we start (and where the failed creation leaves us), `threadA` is
+		// the row we click into afterwards. Real backend, not a mocked search: seeding two real
+		// threads is simpler than teaching the search mock to also carry the active thread.
+		const threadA = await gotoFreshThread(page);
+		const threadB = await gotoFreshThread(page);
+		expect(page.url()).toContain(threadB);
+
+		// Fail only thread *creation* (`POST /threads`). Matching on pathname, not just method,
+		// keeps this from also catching `POST /threads/search`, which the sidebar list depends
+		// on for every render.
+		await page.route('**/threads', async (route) => {
+			const request = route.request();
+			if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/threads')) {
+				await route.fulfill({
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify({ detail: 'boom' })
+				});
+				return;
+			}
+			await route.fallback();
+		});
+
+		await sidebar.newChatButton.click();
+		await expect(sidebar.errorAlert).toBeVisible();
+		await expect(sidebar.errorAlert).toContainText("Couldn't start a new chat");
+
+		await sidebar.threadLink(threadA).click();
+		await page.waitForURL(`/chat/${threadA}`);
+
+		await expect(sidebar.errorAlert).not.toBeVisible();
+	});
 });

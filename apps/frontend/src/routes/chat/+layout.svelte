@@ -53,6 +53,15 @@
 	let creating = $state(false);
 	let createError = $state<string | null>(null);
 
+	// Any navigation to a different thread — including the one a successful handleNewThread
+	// performs via goto — supersedes whatever the sidebar was reporting before, so a stale
+	// creation error is cleared. A failed handleNewThread never changes activeThreadId, so
+	// the alert stays visible exactly where it was set.
+	$effect(() => {
+		void activeThreadId;
+		createError = null;
+	});
+
 	/** Returns false on failure so `ChatThreads` keeps the mobile drawer open over `createError`. */
 	async function handleNewThread(): Promise<boolean> {
 		if (creating || !client) return false;
