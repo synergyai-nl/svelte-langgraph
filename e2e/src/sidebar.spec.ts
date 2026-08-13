@@ -164,8 +164,10 @@ test.describe('Sidebar - real backend', () => {
 		await sidebar.toggle.click();
 		await expect(sidebar.collapsedRoot).toBeVisible(); // still rendered, just clipped
 
-		// Playwright's visibility/role checks exclude inert subtrees.
-		await expect(sidebar.newChatButton).not.toBeVisible();
+		// `inert` is invisible to Playwright's box-based visibility check — the w-0/overflow-hidden
+		// clip leaves the controls' boxes nonzero, so they report "visible" collapsed or not.
+		// Assert the attribute itself; the Tab-order check below covers the behaviour.
+		await expect(sidebar.collapsedRoot).toHaveAttribute('inert', '');
 
 		// The load-bearing assertion: Tab from the trigger must not land inside the sidebar.
 		// The zero-width clip alone doesn't guarantee this pre-fix.
@@ -458,8 +460,11 @@ test.describe('Sidebar - mocked thread search', () => {
 		await page.route('**/threads', async (route) => {
 			const request = route.request();
 			if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/threads')) {
+				// 400, not 500: the SDK's AsyncCaller retries 5xx with backoff (same reason the
+				// initial-load failure test above mocks a 400), and the retries would outlast
+				// the alert's expect timeout.
 				await route.fulfill({
-					status: 500,
+					status: 400,
 					contentType: 'application/json',
 					body: JSON.stringify({ detail: 'boom' })
 				});
