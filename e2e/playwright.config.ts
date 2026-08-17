@@ -36,6 +36,7 @@ export default defineConfig({
 			name: 'ai-mock',
 			command: 'moon backend:ai-mock-e2e',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -47,12 +48,14 @@ export default defineConfig({
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
 			wait: {
-				// Tolerate ANSI escape codes around the URL in colorized logs.
+				// ANSI-tolerant: moon force-colors task output in some environments (it strips
+				// NO_COLOR from task env), so escape codes may appear inside the URL.
 				stdout: /Uvicorn running on .*localhost:8080/
 			}
 		},
@@ -61,6 +64,7 @@ export default defineConfig({
 			command: 'moon backend:serve-e2e',
 			// First run may pull the postgres image and run database migrations.
 			timeout: 180000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -72,11 +76,13 @@ export default defineConfig({
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
 			timeout: 120000,
+			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				// Tolerate ANSI escape codes within the URL in colorized logs.
+				// ANSI-tolerant: vite bolds the port number, which may inject escape codes
+				// (e.g. "\x1b[1m") between "localhost:" and the port when colors are forced.
 				stdout: /http:\/\/localhost:.*4173/
 			}
 		}

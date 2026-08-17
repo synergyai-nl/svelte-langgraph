@@ -14,7 +14,10 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-const mockClient = {} as Client;
+// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
+const mockClient = {
+	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
+} as unknown as Client;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
@@ -141,6 +144,43 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Hi there!')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('when a message includes thinking/reasoning', () => {
+		test('displays the thinking pill for a reasoning-only message', async () => {
+			mockModule.setMessages([
+				{
+					type: 'ai',
+					content: '',
+					additional_kwargs: { reasoning_content: 'Let me reason about this...' },
+					id: 'ai-thinking-1'
+				}
+			]);
+
+			renderChat();
+
+			await waitFor(() => {
+				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+			});
+		});
+
+		test('displays both the thinking pill and the text for a message with both', async () => {
+			mockModule.setMessages([
+				{
+					type: 'ai',
+					content: 'The answer is 42',
+					additional_kwargs: { reasoning_content: 'Let me reason about this...' },
+					id: 'ai-thinking-2'
+				}
+			]);
+
+			renderChat();
+
+			await waitFor(() => {
+				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
+				expect(screen.getByText('The answer is 42')).toBeInTheDocument();
 			});
 		});
 	});

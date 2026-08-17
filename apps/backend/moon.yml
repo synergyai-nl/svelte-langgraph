@@ -54,6 +54,7 @@ tasks:
     env:
       NO_COLOR: "true"
       MOCK_STREAM_DELAY: "0.05"
+      MOCKAI_RESPONSES: "e2e_responses.json"
   oidc-mock:
     command: "oidc-provider-mock --port 8080 --host localhost --user test-user 2>&1"
     preset: "server"

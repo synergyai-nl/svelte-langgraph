@@ -40,7 +40,9 @@
 	function scrollToMe(message: BaseMessage | null = null): Attachment {
 		return (element: Element) => {
 			if (!(element instanceof HTMLElement)) return;
-			if (message && !message.text) return;
+			const isThinkingAIMessage =
+				message?.type === 'ai' && 'thinking' in message && !!message.thinking;
+			if (message && !message.text && !isThinkingAIMessage) return;
 
 			const container = findScrollContainer(element);
 			if (!container) return;
