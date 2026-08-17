@@ -8,6 +8,7 @@ type: application
 fileGroups:
   sources:
     - 'src/**/*'
+    - 'scripts/**/*'
     # Configs
     - '**/*.config.*'
     # Other files
@@ -60,7 +61,10 @@ tasks:
     preset: "server"
     env:
       NO_COLOR: "true"
-  postgres:
+  docker-postgres:
+    # Optional helper: provides the PostgreSQL server via Docker Compose for
+    # those not running their own (mirrors oidc-mock). The backend only needs
+    # a reachable PostgreSQL >= 13 at DATABASE_URL, however it is provided.
     command: "docker compose -f ../../docker-compose.yml up -d --wait postgres"
     local: true
     options:
@@ -68,8 +72,6 @@ tasks:
   dev:
     command: "uv run uvicorn aegra_api.main:app --host localhost --port 2026 --reload 2>&1"
     preset: "watcher"
-    deps:
-      - postgres
     env:
       # Aegra defaults to noop auth, which would silently disable OIDC and
       # per-user isolation if AUTH_TYPE is missing from a pre-existing .env.
@@ -77,9 +79,10 @@ tasks:
     options:
       envFile: '/.env'
   serve-e2e:
-    # Remove and recreate the tmpfs-backed postgres-e2e container so every
-    # E2E run starts from a fresh, empty database.
-    script: "docker compose -f ../../docker-compose.yml --profile e2e rm -sf postgres-e2e && docker compose -f ../../docker-compose.yml --profile e2e up -d --wait postgres-e2e && uv run uvicorn aegra_api.main:app --host localhost --port 2026 2>&1"
+    # Drop and recreate the TEST_DATABASE_URL database so every E2E run
+    # starts fresh; the guard in reset_test_db.py refuses to touch the
+    # DATABASE_URL (dev) database. Works with any reachable PostgreSQL.
+    script: "uv run python scripts/reset_test_db.py && DATABASE_URL=\"$TEST_DATABASE_URL\" uv run uvicorn aegra_api.main:app --host localhost --port 2026 2>&1"
     preset: "server"
     options:
       envFile: '/.env.e2e'

@@ -23,7 +23,7 @@ https://svelte-langgraph-demo.synergyai.nl/
   - Node.js 24 LTS
   - [uv](https://docs.astral.sh/uv/) (Python package manager)
   - pnpm (Node.js package manager)
-- [Docker](https://docs.docker.com/get-docker/) — required for the backend's PostgreSQL database (started automatically by `moon backend:dev` and the E2E tests)
+- [Docker](https://docs.docker.com/get-docker/) **or** a local PostgreSQL server (≥ 13) — the backend needs a reachable PostgreSQL database; Docker is one option, see "Without Docker" below
 
 ## Configuration
 
@@ -44,7 +44,7 @@ The `.env` file is organized into sections:
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
-- `DATABASE_URL` - PostgreSQL connection URL for Aegra (defaults to the `postgres` service from `docker-compose.yml`)
+- `DATABASE_URL` - PostgreSQL connection URL for Aegra (works with either the compose `postgres` helper service or a locally running PostgreSQL server)
 - `AUTH_TYPE` - Must be `custom` to enable OIDC authentication and per-user isolation (Aegra defaults to `noop`, which disables auth)
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
@@ -136,7 +136,7 @@ For local development and testing, the project includes a mock OIDC provider usi
 - Issues JWT tokens with configurable user claims
 - Supports the authorization code flow with PKCE
 - No client registration required - accepts any client ID/secret
-- Automatically started with `moon :dev` for seamless development
+- Started alongside the other dev servers via the `:oidc-mock` target (see below)
 
 **Configuration:**
 - **Issuer**: `http://localhost:8080`
@@ -146,20 +146,30 @@ For local development and testing, the project includes a mock OIDC provider usi
 
 ### Start dev servers
 
-The following command ensures dependencies are installed and starts dev servers for frontend, backend, and OIDC mock provider, with hot reload:
+The following command ensures dependencies are installed and starts dev servers for frontend, backend, Docker Postgres, and OIDC mock provider, with hot reload:
 
 ```bash
-moon :dev :oidc-mock
+moon :dev :docker-postgres :oidc-mock
 ```
 
 This automatically starts:
 - **Frontend** dev server at `http://localhost:5173`
-- **Backend** Aegra server at `http://localhost:2026` (plus its PostgreSQL database in Docker)
+- **Backend** Aegra server at `http://localhost:2026`
+- **Postgres** via the `backend:docker-postgres` task, which runs the compose `postgres` helper service
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
 
-Docker must be running: the backend depends on a PostgreSQL container defined in `docker-compose.yml`, which is started automatically.
+`:docker-postgres` is the Docker-based Postgres helper — include it if you want Docker to manage Postgres for you. If you're running your own local PostgreSQL server instead, omit it and run `moon :dev :oidc-mock`. On the very first run, start Postgres separately beforehand (`moon backend:docker-postgres`): the tasks start concurrently, and the backend exits if the database isn't reachable yet when it boots (e.g. while the image is still being pulled).
 
 Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
+
+#### Without Docker
+
+The backend only needs a reachable PostgreSQL server (≥ 13) — Docker isn't required:
+
+- A database named `aegra`, owned by the user configured in `DATABASE_URL`
+- Credentials passed via `DATABASE_URL` in `.env`
+- For E2E, a separate `aegra_e2e` database is created/dropped automatically before each run by `apps/backend/scripts/reset_test_db.py`, configured via `TEST_DATABASE_URL` in `.env.e2e`
+- `pgvector` is optional — only needed if Aegra's store semantic search is ever enabled
 
 ### Run local checks
 
@@ -169,7 +179,14 @@ Run all checks (linting, type checking, formatting, building, unit and E2E tests
 moon check --all
 ```
 
-This requires Docker to be running for the backend's PostgreSQL database and Docker image build.
+This requires Docker to be running for the backend Docker image build, and a running PostgreSQL server for the E2E tests — start one first with `moon backend:docker-postgres` unless you run your own.
+
+On machines without Docker, run the non-Docker equivalent instead — with a local PostgreSQL server running:
+
+```bash
+moon check backend frontend
+moon e2e:test
+```
 
 ## Tooling
 

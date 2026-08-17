@@ -62,7 +62,8 @@ export default defineConfig({
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			// First run may pull the postgres image and run database migrations.
+			// Startup drops/recreates the test database and runs Aegra's
+			// migrations against it, which can be slow on a cold server.
 			timeout: 180000,
 			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',

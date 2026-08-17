@@ -49,25 +49,5 @@ services:
       timeout: 3s
       retries: 15
 
-  # Ephemeral database for E2E runs: tmpfs storage means every container
-  # start begins with a fresh, empty database. Only started with
-  # `--profile e2e` (or when targeted explicitly), never by plain `up`.
-  postgres-e2e:
-    profiles: ["e2e"]
-    image: pgvector/pgvector:pg18
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: aegra_e2e
-    ports:
-      - "5433:5432"
-    tmpfs:
-      - /var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d aegra_e2e"]
-      interval: 2s
-      timeout: 3s
-      retries: 15
-
 volumes:
   postgres-data:
