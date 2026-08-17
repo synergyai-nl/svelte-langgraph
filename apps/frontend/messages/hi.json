@@ -16,6 +16,7 @@
 	"error_try_again": "कृपया कुछ समय बाद पुनः प्रयास करें अथवा मुखपृष्ठ पर लौटें।",
 	"error_return_home": "मुखपृष्ठ पर जाएँ",
 	"chat_input_placeholder": "संदेश लिखें...",
+	"chat_history_loading": "बातचीत लोड हो रही है…",
 	"tools_using": "मैं उपकरणों का उपयोग कर रहा हूँ...",
 	"tool_label": "उपकरण:",
 	"tool_parameters": "प्राचल:",

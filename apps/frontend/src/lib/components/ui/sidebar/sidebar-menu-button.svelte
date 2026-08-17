@@ -2,12 +2,12 @@
 	import { tv, type VariantProps } from 'tailwind-variants';
 
 	export const sidebarMenuButtonVariants = tv({
-		base: 'gap-2 rounded-md p-2 text-left text-sm ring-sidebar-ring transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground data-open:hover:bg-sidebar-accent data-open:hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground peer/menu-button group/menu-button flex w-full items-center overflow-hidden outline-hidden disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate',
+		base: 'gap-2 rounded-md p-2 text-left text-sm ring-sidebar-ring transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent/50 active:text-sidebar-accent-foreground data-open:hover:bg-sidebar-accent/50 data-open:hover:text-sidebar-accent-foreground data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[pending=true]:bg-sidebar-accent/70 data-[pending=true]:text-sidebar-accent-foreground peer/menu-button group/menu-button flex w-full items-center overflow-hidden outline-hidden disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 [&>span:last-child]:truncate',
 		variants: {
 			variant: {
-				default: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+				default: 'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
 				outline:
-					'bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]'
+					'bg-background shadow-[0_0_0_1px_var(--sidebar-border)] hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_var(--sidebar-accent)]'
 			},
 			size: {
 				default: 'h-8 text-sm',
@@ -43,11 +43,13 @@
 		variant = 'default',
 		size = 'default',
 		isActive = false,
+		isPending = false,
 		tooltipContent,
 		tooltipContentProps,
 		...restProps
 	}: WithElementRef<HTMLButtonAttributes, HTMLButtonElement> & {
 		isActive?: boolean;
+		isPending?: boolean;
 		variant?: SidebarMenuButtonVariant;
 		size?: SidebarMenuButtonSize;
 		tooltipContent?: Snippet | string;
@@ -63,6 +65,7 @@
 		'data-sidebar': 'menu-button',
 		'data-size': size,
 		'data-active': isActive,
+		'data-pending': isPending,
 		...restProps
 	});
 </script>

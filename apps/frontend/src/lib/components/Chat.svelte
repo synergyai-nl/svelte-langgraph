@@ -10,8 +10,10 @@
 	import { InvalidData } from '$lib/langgraph/errors';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
-	import { untrack } from 'svelte';
+	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
+	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
+	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
 		langGraphClient: Client;
@@ -174,6 +176,16 @@
 		wasLoading = loading;
 		if (settled) untrack(() => threadListRefresh.refresh());
 	});
+
+	// Report history-loading state up so the sidebar can mark this thread's row as pending.
+	// `threadId` is fixed per instance — the route remounts Chat via `{#key threadId}`.
+	const reporter = getThreadLoadingReporter();
+
+	$effect(() => {
+		reporter?.setLoading(threadId, stream.isThreadLoading);
+	});
+
+	onDestroy(() => reporter?.setLoading(threadId, false));
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
@@ -181,8 +193,15 @@
 	<div class="flex justify-end px-4 py-1">
 		<StateField name="phase" field={sync.field('phase')} />
 	</div>
-	<div class="min-h-0 flex-1 overflow-y-auto pb-4">
-		{#if !chat_started}
+	<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={stream.isThreadLoading}>
+		{#if stream.isThreadLoading}
+			<div data-testid="chat-history-loading" class="mx-auto w-full max-w-4xl space-y-4 p-4">
+				<p class="sr-only" role="status" aria-live="polite">{m.chat_history_loading()}</p>
+				<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
+				<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
+				<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
+			</div>
+		{:else if !chat_started}
 			<ChatSuggestions
 				{suggestions}
 				{introTitle}

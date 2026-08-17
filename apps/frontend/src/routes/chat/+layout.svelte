@@ -9,13 +9,14 @@
 	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { ChatThreads } from '$lib/components/ChatThreads';
 	import { createClient, createThread } from '$lib/langgraph/client';
 	import { ThreadList } from '$lib/langgraph/threadList.svelte';
 	import { setThreadListRefresh } from '$lib/langgraph/threadListContext';
+	import { setThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
 	import { parseSidebarCookie } from '$lib/sidebarCookie';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -38,6 +39,19 @@
 
 	const threadList = new ThreadList({ initialLoading: Boolean(page.data.session?.accessToken) });
 	setThreadListRefresh({ refresh: () => threadList.refresh() });
+
+	// A thread row is "pending" from the click (navigation start) until its history fetch
+	// resolves. `navigating` covers the click→mount window; `historyLoadingThreadId` — reported
+	// by the mounting `Chat` — covers the fetch. The `===` guard keeps a late setLoading(false)
+	// from the unmounting old Chat from clobbering the new thread's pending state.
+	let historyLoadingThreadId = $state<string | null>(null);
+	setThreadLoadingReporter({
+		setLoading(threadId, loading) {
+			if (loading) historyLoadingThreadId = threadId;
+			else if (historyLoadingThreadId === threadId) historyLoadingThreadId = null;
+		}
+	});
+	let pendingThreadId = $derived(navigating.to?.params?.threadID ?? historyLoadingThreadId);
 
 	// The single wiring effect — `ThreadList` deliberately contains no effects of its own.
 	$effect(() => {
@@ -93,6 +107,7 @@
 	<ChatThreads
 		list={threadList}
 		{activeThreadId}
+		{pendingThreadId}
 		onNewThread={handleNewThread}
 		busy={creating}
 		disabled={!client}

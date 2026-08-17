@@ -42,6 +42,8 @@
 		/** The reactive thread list instance, consumed whole. */
 		list: ThreadList;
 		activeThreadId?: string | null;
+		/** The row navigation is currently in flight for; renders a trailing spinner. */
+		pendingThreadId?: string | null;
 		/**
 		 * Start a new conversation. The mobile drawer close is handled internally, but only once
 		 * this resolves to something other than `false` — return `false` to report failure and
@@ -66,6 +68,7 @@
 	let {
 		list,
 		activeThreadId = null,
+		pendingThreadId = null,
 		onNewThread,
 		busy = false,
 		disabled = false,
@@ -149,6 +152,7 @@
 							<ChatThreadItem
 								thread={t}
 								isActive={t.id === activeThreadId}
+								isPending={t.id === pendingThreadId}
 								href={hrefFor?.(t)}
 								{onSelect}
 							/>

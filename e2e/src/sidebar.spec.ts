@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { gotoFreshThread } from './fixtures/backend';
+import { gotoFreshThread, LANGGRAPH_CONFIG } from './fixtures/backend';
 
 /**
  * Builds a fake `threads/search` row. toThreadSummary
@@ -89,6 +89,48 @@ test.describe('Sidebar - real backend', () => {
 		await expect(page.getByText('alpha').first()).toBeVisible();
 		await expect(sidebar.threadLink(threadA)).toHaveAttribute('aria-current', 'page');
 		await expect(sidebar.threadLink(threadB)).not.toHaveAttribute('aria-current', 'page');
+	});
+
+	test('the clicked row is marked pending and the chat pane shows a loading skeleton while history loads', async ({
+		page,
+		chat,
+		sidebar
+	}) => {
+		const threadA = await gotoFreshThread(page);
+		await chat.textInput.fill('alpha');
+		await chat.textInput.press('Enter');
+		// See the "sending a message" test above for why this timeout is generous.
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		const threadB = await gotoFreshThread(page);
+		await chat.textInput.fill('beta');
+		await chat.textInput.press('Enter');
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		// Gate threadA's history refetch (fired on mount of the remounted Chat instance,
+		// see `{#key threadId}` in [threadID]/+page.svelte) so the pending window is deterministically
+		// observable rather than racing a fast local response. Registered only now — after B
+		// is mounted and quiescent — so it doesn't also catch B's own on-mount history fetch.
+		let releaseHistory!: () => void;
+		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/history`, async (route) => {
+			await historyGate;
+			await route.continue();
+		});
+
+		await sidebar.threadLink(threadA).click();
+
+		await expect(sidebar.threadLink(threadA)).toHaveAttribute('data-pending', 'true');
+		await expect(chat.historyLoading).toBeVisible();
+
+		releaseHistory();
+
+		await expect(sidebar.threadLink(threadA)).toHaveAttribute('aria-current', 'page');
+		// The attribute is always present (see ChatThreadItem.svelte), just "false" once
+		// settled — assert on the value, not on absence.
+		await expect(sidebar.threadLink(threadA)).not.toHaveAttribute('data-pending', 'true');
+		await expect(sidebar.threadLink(threadB)).not.toHaveAttribute('aria-current', 'page');
+		await expect(chat.historyLoading).toBeHidden();
 	});
 
 	test('New chat creates a brand-new thread rather than reusing the idle one', async ({

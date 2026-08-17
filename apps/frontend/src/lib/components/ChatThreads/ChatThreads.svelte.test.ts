@@ -84,6 +84,22 @@ describe('ChatThreads', () => {
 			expect(link1).not.toHaveAttribute('aria-current');
 			expect(link2).toHaveAttribute('aria-current', 'page');
 		});
+
+		test('marks only the row matching pendingThreadId with data-pending="true"', () => {
+			const t1 = aThread({ id: 'aaaaaaaa-0000-0000-0000-000000000001' });
+			const t2 = aThread({ id: 'bbbbbbbb-0000-0000-0000-000000000002' });
+
+			renderComponent({
+				list: makeListStub({ threads: [t1, t2] }),
+				pendingThreadId: t2.id,
+				hrefFor: (t: ThreadSummary) => `/threads/${t.id}`
+			});
+
+			const link1 = screen.getByRole('link', { name: threadLabel(t1) });
+			const link2 = screen.getByRole('link', { name: threadLabel(t2) });
+			expect(link1).toHaveAttribute('data-pending', 'false');
+			expect(link2).toHaveAttribute('data-pending', 'true');
+		});
 	});
 
 	describe('new chat', () => {

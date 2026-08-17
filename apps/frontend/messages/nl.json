@@ -16,6 +16,7 @@
 	"error_try_again": "Probeer het later opnieuw of ga terug naar de homepage.",
 	"error_return_home": "Terug naar Home",
 	"chat_input_placeholder": "Bericht...",
+	"chat_history_loading": "Gesprek laden…",
 	"tools_using": "Ik gebruik tools...",
 	"tool_label": "Tool:",
 	"tool_parameters": "Parameters:",

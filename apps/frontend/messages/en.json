@@ -16,6 +16,7 @@
 	"error_try_again": "Please try again later or go back to the homepage.",
 	"error_return_home": "Return Home",
 	"chat_input_placeholder": "Message...",
+	"chat_history_loading": "Loading conversation…",
 	"tools_using": "I'm using tools...",
 	"tool_label": "Tool:",
 	"tool_parameters": "Parameters:",

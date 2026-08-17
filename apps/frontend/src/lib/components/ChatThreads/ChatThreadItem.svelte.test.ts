@@ -1,8 +1,8 @@
 import { describe, test, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
 import { aThread } from '../__tests__/fixtures';
-import { threadLabel } from '$lib/langgraph/threadList';
+import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
 import type { ThreadList } from '$lib/langgraph/threadList.svelte';
 import { useSidebar } from '$lib/components/ui/sidebar';
 
@@ -46,5 +46,61 @@ describe('ChatThreadItem', () => {
 		expect(sidebar!.openMobile).toBe(false);
 		expect(onSelect).toHaveBeenCalledOnce();
 		expect(onSelect).toHaveBeenCalledWith(t1.id);
+	});
+
+	describe('pending state', () => {
+		function renderRow(t1: ThreadSummary, props: Record<string, unknown>) {
+			const list = {
+				threads: [t1],
+				loading: false,
+				error: null,
+				hasMore: false,
+				refresh: vi.fn(),
+				loadMore: vi.fn(),
+				setClient: vi.fn(),
+				setActiveThreadId: vi.fn()
+			} as unknown as ThreadList;
+
+			return render(ChatThreadsHost, {
+				props: {
+					list,
+					onNewThread: vi.fn(),
+					hrefFor: (t: ThreadSummary) => `/threads/${t.id}`,
+					...props
+				}
+			});
+		}
+
+		test('marks the row data-pending="true" and shows a spinner when pending and not active', () => {
+			const t1 = aThread();
+
+			renderRow(t1, { pendingThreadId: t1.id });
+
+			const link = screen.getByRole('link', { name: threadLabel(t1) });
+			expect(link).toHaveAttribute('data-pending', 'true');
+			expect(link).not.toHaveAttribute('data-active', 'true');
+			expect(within(link).getByRole('status', { hidden: true })).toBeInTheDocument();
+		});
+
+		test('marks the row data-pending="true" and shows a spinner when pending and active', () => {
+			const t1 = aThread();
+
+			renderRow(t1, { activeThreadId: t1.id, pendingThreadId: t1.id });
+
+			const link = screen.getByRole('link', { name: threadLabel(t1) });
+			expect(link).toHaveAttribute('data-pending', 'true');
+			expect(link).toHaveAttribute('data-active', 'true');
+			expect(within(link).getByRole('status', { hidden: true })).toBeInTheDocument();
+		});
+
+		test('does not render a spinner or data-pending when not pending', () => {
+			const t1 = aThread();
+
+			renderRow(t1, {});
+
+			const link = screen.getByRole('link', { name: threadLabel(t1) });
+			expect(link).toHaveAttribute('data-pending', 'false');
+			expect(within(link).queryByRole('status', { hidden: true })).not.toBeInTheDocument();
+		});
 	});
 });
