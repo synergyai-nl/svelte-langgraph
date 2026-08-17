@@ -245,7 +245,7 @@ This starts the frontend, the backend (Aegra), and PostgreSQL. The backend can a
 moon backend:up
 ```
 
-The frontend container reads its configuration from the root `.env` file and defaults `PUBLIC_LANGGRAPH_API_URL` to `http://host.docker.internal:2026`, so it reaches the backend through your Docker host out of the box. Point it elsewhere by overriding the variable:
+The frontend container receives an allowlisted set of variables interpolated from the root `.env` (auth and `PUBLIC_*` settings — backend secrets like API keys and `DATABASE_URL` are deliberately not passed to it). `PUBLIC_LANGGRAPH_API_URL` is consumed by the browser, not the container; it defaults to `http://localhost:2026`, which works when your browser runs on the Docker host. Point it elsewhere for any other setup:
 
 ```
 PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build

@@ -6,16 +6,25 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
     env_file:
-      - path: .env
-        required: false
-      # App-specific overrides; later entries win, but only among env_file
-      # entries: the `environment:` block below always takes precedence, so
-      # PUBLIC_LANGGRAPH_API_URL is set from the compose shell/project .env
-      # (via interpolation), not from these files.
+      # Frontend-only extras; keys in the `environment:` block below always
+      # take precedence over env_file entries.
       - path: "apps/frontend/.env"
         required: false
+    # Allowlist instead of passing the whole root .env: it also holds
+    # backend-only secrets (OPENAI_API_KEY, DATABASE_URL, LANGFUSE_*) that
+    # must not reach the public-facing frontend process. Values interpolate
+    # from the compose shell / project .env.
     environment:
-      PUBLIC_LANGGRAPH_API_URL: "${PUBLIC_LANGGRAPH_API_URL:-http://host.docker.internal:2026}"
+      AUTH_TRUST_HOST: "${AUTH_TRUST_HOST:-}"
+      AUTH_OIDC_CLIENT_ID: "${AUTH_OIDC_CLIENT_ID:-}"
+      AUTH_OIDC_CLIENT_SECRET: "${AUTH_OIDC_CLIENT_SECRET:-}"
+      AUTH_OIDC_ISSUER: "${AUTH_OIDC_ISSUER:-}"
+      AUTH_SECRET: "${AUTH_SECRET:-}"
+      PUBLIC_SENTRY_DSN: "${PUBLIC_SENTRY_DSN:-}"
+      # Consumed by the browser (client.ts), not the container, so the
+      # default must be resolvable from where the browser runs: localhost
+      # works for a browser on the Docker host; set explicitly otherwise.
+      PUBLIC_LANGGRAPH_API_URL: "${PUBLIC_LANGGRAPH_API_URL:-http://localhost:2026}"
 
   backend:
     ports:
@@ -40,7 +49,10 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aegra
     ports:
-      - "5432:5432"
+      # Loopback only: this ships fixed postgres/postgres superuser
+      # credentials, so never publish it on external interfaces. In-cluster
+      # traffic (backend service) uses the compose network, not this mapping.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
