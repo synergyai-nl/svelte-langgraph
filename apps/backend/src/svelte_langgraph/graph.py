@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Annotated, cast
+from typing import Annotated, Any, cast
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import AgentMiddleware, AgentState, before_agent
@@ -24,7 +24,9 @@ from svelte_langgraph.reducers import last_value
 from svelte_langgraph.tools import get_tools
 
 
-class AgentExtendedState(AgentState):
+# AgentState is generic over the structured-response type since langchain 1.3;
+# we don't use response_format, hence None.
+class AgentExtendedState(AgentState[None]):
     # `last_value` resolves two `change_phase` tool calls in one assistant
     # message (parallel tool calls) deterministically to the most recent
     # write, instead of LangGraph raising InvalidUpdateError -- see
@@ -111,7 +113,7 @@ def phase_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None:
     return update or None
 
 
-class PromptMiddleware(AgentMiddleware):
+class PromptMiddleware(AgentMiddleware[AgentExtendedState, None, Any]):
     """Build the model input with get_prompt (system prompts + injected phase
     message + AI greeting + state messages), replacing the agent's default
     system-prompt handling."""
@@ -144,9 +146,6 @@ def make_graph(
     return create_agent(
         model=get_chat_model(),
         tools=get_tools(),
-        # AgentMiddleware is invariant in its state type parameter, so a
-        # middleware typed with the extended state doesn't statically match
-        # create_agent's AgentState-bound parameter.
-        middleware=[phase_gate, PromptMiddleware()],  # pyright: ignore[reportArgumentType]
+        middleware=[phase_gate, PromptMiddleware()],
         state_schema=AgentExtendedState,
     )
