@@ -8,7 +8,10 @@ services:
     env_file:
       - path: .env
         required: false
-      # App-specific overrides; later entries win.
+      # App-specific overrides; later entries win, but only among env_file
+      # entries: the `environment:` block below always takes precedence, so
+      # PUBLIC_LANGGRAPH_API_URL is set from the compose shell/project .env
+      # (via interpolation), not from these files.
       - path: "apps/frontend/.env"
         required: false
     environment:
