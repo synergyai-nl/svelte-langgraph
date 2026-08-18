@@ -101,10 +101,15 @@
 					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
 						{m.nav_chat()}
 					</DropdownMenu.Item>
-					<DropdownMenu.Item>
-						<a href={DOCS_URL} target="_blank" rel="noopener noreferrer" class="block w-full">
-							{m.nav_docs()}
-						</a>
+					<!-- Rendered via `child` so the anchor IS the menu item: bits-ui activates a
+					     menu item by calling `click()` on the item element itself, which would
+					     never reach a nested link. -->
+					<DropdownMenu.Item class="cursor-pointer">
+						{#snippet child({ props })}
+							<a {...props} href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+								{m.nav_docs()}
+							</a>
+						{/snippet}
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />

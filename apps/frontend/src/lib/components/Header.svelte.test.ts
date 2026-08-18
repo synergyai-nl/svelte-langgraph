@@ -105,6 +105,20 @@ describe('Header', () => {
 			expect(goto).toHaveBeenCalledWith('/chat');
 		});
 
+		test('renders the mobile docs entry as the menu item itself', async () => {
+			const user = userEvent.setup();
+			renderHeader();
+
+			await user.click(screen.getByRole('button', { name: 'Toggle menu' }));
+
+			// bits-ui activates a menu item by calling click() on the item element, which
+			// never reaches a nested link — so the anchor must BE the menuitem.
+			const docs = await screen.findByRole('menuitem', { name: m.nav_docs() });
+			expect(docs.tagName).toBe('A');
+			expect(docs).toHaveAttribute('href', expect.stringContaining('github.com'));
+			expect(docs.querySelector('a')).toBeNull();
+		});
+
 		test('navigates home from the mobile menu', async () => {
 			const user = userEvent.setup();
 			renderHeader();
