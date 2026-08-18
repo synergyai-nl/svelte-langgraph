@@ -1,5 +1,5 @@
-import { describe, test, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, test, expect, vi, afterEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/svelte';
 import LoginModal from './LoginModal.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -7,6 +7,14 @@ const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => goto(...args)
 }));
+
+afterEach(async () => {
+	// The dialog's body scroll lock is restored on a 24ms timer (bits-ui
+	// body-scroll-lock). Unmount and let it fire while jsdom still exists — otherwise
+	// it runs after teardown and throws "document is not defined".
+	cleanup();
+	await new Promise((resolve) => setTimeout(resolve, 30));
+});
 
 describe('LoginModal', () => {
 	describe('when open', () => {

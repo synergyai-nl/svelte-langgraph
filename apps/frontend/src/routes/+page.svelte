@@ -545,7 +545,7 @@
 								</div>
 							{:else if isActive}
 								<div class="bg-primary-600/15 flex size-7 items-center justify-center rounded-full">
-									<CircleDot class="text-primary-600 size-4 animate-pulse" />
+									<CircleDot class="text-primary-600 size-4 motion-safe:animate-pulse" />
 								</div>
 							{:else}
 								<div class="bg-muted flex size-7 items-center justify-center rounded-full">

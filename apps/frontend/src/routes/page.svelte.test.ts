@@ -126,6 +126,20 @@ describe('landing page', () => {
 			expect(screen.getAllByText('In progress').length).toBeGreaterThan(0);
 		});
 
+		test('gates the in-progress pulse behind motion-safe', () => {
+			// Decorative only, unlike the loading pulses elsewhere in the app, so it must
+			// respect prefers-reduced-motion. The custom marketing animations are handled
+			// by a media query in app.tailwind.css; Tailwind built-ins are not.
+			// `getAttribute` rather than `.className`: these are SVG elements, whose
+			// className is an SVGAnimatedString.
+			const pulsing = [...document.querySelectorAll('[class*="animate-pulse"]')];
+
+			expect(pulsing.length).toBeGreaterThan(0);
+			pulsing.forEach((el) =>
+				expect(el.getAttribute('class')).toContain('motion-safe:animate-pulse')
+			);
+		});
+
 		test('marks planned work', () => {
 			expect(screen.getByText('Conversation history')).toBeInTheDocument();
 			expect(screen.getAllByText('Planned').length).toBeGreaterThan(0);

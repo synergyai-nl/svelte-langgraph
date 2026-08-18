@@ -262,6 +262,12 @@
 	 * `both`, so removing the animation (instead of the fill) is what leaves the
 	 * content visible. The looping decorative effects — the hero glow, the shifting
 	 * gradient and the terminal cursor — simply stop.
+	 *
+	 * Scoped to these marketing utilities on purpose: Tailwind's built-in
+	 * `animate-pulse`/`animate-spin` also convey loading state elsewhere (ChatLoader
+	 * skeletons, the spinner, ThinkingBlock), and silencing those would remove real
+	 * feedback. Decorative uses of the built-ins are gated with `motion-safe:` at the
+	 * call site instead.
 	 */
 	@media (prefers-reduced-motion: reduce) {
 		.animate-fade-in-up,
