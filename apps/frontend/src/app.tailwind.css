@@ -255,4 +255,24 @@
 	.animate-typing-cursor {
 		animation: typing-cursor 1s step-end infinite;
 	}
+
+	/*
+	 * Honour the visitor's motion preference. Entrance animations are dropped
+	 * entirely rather than shortened: `fade-in-up` starts at opacity 0 with
+	 * `both`, so removing the animation (instead of the fill) is what leaves the
+	 * content visible. The looping decorative effects — the hero glow, the shifting
+	 * gradient and the terminal cursor — simply stop.
+	 */
+	@media (prefers-reduced-motion: reduce) {
+		.animate-fade-in-up,
+		.animate-fade-in-up-delay-1,
+		.animate-fade-in-up-delay-2,
+		.animate-fade-in-up-delay-3,
+		.animate-fade-in-up-delay-4,
+		.animate-glow-pulse,
+		.animate-gradient-shift,
+		.animate-typing-cursor {
+			animation: none;
+		}
+	}
 }

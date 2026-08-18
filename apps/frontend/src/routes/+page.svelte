@@ -304,36 +304,37 @@
 						<div
 							class="flex flex-col items-center justify-center gap-3 sm:flex-row lg:items-start lg:justify-start"
 						>
-							<a href="/chat">
-								<Button
-									size="lg"
-									class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
-								>
-									<MessageSquare class="size-4" />
-									Open the chat
-									<ArrowRight class="size-4" />
-								</Button>
-							</a>
-							<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
-								<Button
-									size="lg"
-									variant="outline"
-									class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
-								>
-									Try live demo
-									<ExternalLink class="size-4" />
-								</Button>
-							</a>
-							<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-								<Button
-									size="lg"
-									variant="ghost"
-									class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
-								>
-									<Github class="size-5" />
-									View on GitHub
-								</Button>
-							</a>
+							<Button
+								href="/chat"
+								size="lg"
+								class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
+							>
+								<MessageSquare class="size-4" />
+								Open the chat
+								<ArrowRight class="size-4" />
+							</Button>
+							<Button
+								href={DEMO_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								size="lg"
+								variant="outline"
+								class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
+							>
+								Try live demo
+								<ExternalLink class="size-4" />
+							</Button>
+							<Button
+								href={GITHUB_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								size="lg"
+								variant="ghost"
+								class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
+							>
+								<Github class="size-5" />
+								View on GitHub
+							</Button>
 						</div>
 						<p class="text-muted-foreground text-sm">
 							Explore streaming, tool calls, and auth — no local setup required.
@@ -630,18 +631,28 @@
 				built — contributors steer the roadmap as much as the maintainers.
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
-				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
-						<Github class="size-5" />
-						Star on GitHub
-					</Button>
-				</a>
-				<a href={`${GITHUB_URL}/issues`} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
-						Open an issue
-						<ExternalLink class="size-4" />
-					</Button>
-				</a>
+				<Button
+					href={GITHUB_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					size="lg"
+					variant="outline"
+					class="cursor-pointer gap-2 px-8 text-base"
+				>
+					<Github class="size-5" />
+					Star on GitHub
+				</Button>
+				<Button
+					href={`${GITHUB_URL}/issues`}
+					target="_blank"
+					rel="noopener noreferrer"
+					size="lg"
+					variant="ghost"
+					class="cursor-pointer gap-2 px-8 text-base"
+				>
+					Open an issue
+					<ExternalLink class="size-4" />
+				</Button>
 			</div>
 		</div>
 	</section>
@@ -663,27 +674,38 @@
 				still be proud of next year.
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
-				<a href={DEMO_URL} target="_blank" rel="noopener noreferrer">
-					<Button
-						size="lg"
-						class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
-					>
-						Try live demo
-						<ArrowRight class="size-4" />
-					</Button>
-				</a>
-				<a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="outline" class="cursor-pointer gap-2 px-8 text-base">
-						<Github class="size-5" />
-						View on GitHub
-					</Button>
-				</a>
-				<a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
-					<Button size="lg" variant="ghost" class="cursor-pointer gap-2 px-8 text-base">
-						Read the docs
-						<ExternalLink class="size-4" />
-					</Button>
-				</a>
+				<Button
+					href={DEMO_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					size="lg"
+					class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
+				>
+					Try live demo
+					<ArrowRight class="size-4" />
+				</Button>
+				<Button
+					href={GITHUB_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					size="lg"
+					variant="outline"
+					class="cursor-pointer gap-2 px-8 text-base"
+				>
+					<Github class="size-5" />
+					View on GitHub
+				</Button>
+				<Button
+					href={DOCS_URL}
+					target="_blank"
+					rel="noopener noreferrer"
+					size="lg"
+					variant="ghost"
+					class="cursor-pointer gap-2 px-8 text-base"
+				>
+					Read the docs
+					<ExternalLink class="size-4" />
+				</Button>
 			</div>
 		</div>
 	</section>

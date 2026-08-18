@@ -87,9 +87,13 @@ test.describe('Homepage landscape comparison table', () => {
 		await region.scrollIntoViewIfNeeded();
 
 		const scroller = region.getByTestId('landscape-table-scroll');
-		await scroller.evaluate((el) => {
+		// Assert the container genuinely scrolled: if it were tall enough to fit the
+		// whole table, scrollTop would stay 0 and the sticky header would be untested.
+		const scrollTop = await scroller.evaluate((el) => {
 			el.scrollTop = 400;
+			return el.scrollTop;
 		});
+		expect(scrollTop).toBeGreaterThan(0);
 
 		await expect(region.getByRole('columnheader', { name: /Langflow/i })).toBeVisible();
 	});

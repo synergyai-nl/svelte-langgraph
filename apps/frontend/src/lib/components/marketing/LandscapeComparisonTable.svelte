@@ -79,7 +79,7 @@
 >
 	<div
 		data-testid="landscape-table-scroll"
-		class="@max-[50rem]:max-h-[85vh] @max-[50rem]:overflow-auto"
+		class="@max-[50rem]:max-h-[min(70vh,32rem)] @max-[50rem]:overflow-auto"
 	>
 		<table class="w-full min-w-[800px] border-collapse text-sm">
 			<caption class="sr-only">
