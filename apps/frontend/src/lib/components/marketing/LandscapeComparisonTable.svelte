@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Check, X, Minus, ExternalLink } from '@lucide/svelte';
 	import type { Component } from 'svelte';
+	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils';
 
 	export type CellStatus = 'yes' | 'no' | 'partial';
@@ -53,13 +54,10 @@
 	}
 
 	function statusAriaLabel(status: CellStatus, toolName: string): string {
-		const level =
-			status === 'yes'
-				? 'Supported'
-				: status === 'partial'
-					? 'Partially supported'
-					: 'Not supported';
-		return `${level} for ${toolName}`;
+		// Tool names are product names and stay untranslated.
+		if (status === 'yes') return m.landing_table_status_supported({ tool: toolName });
+		if (status === 'partial') return m.landing_table_status_partial({ tool: toolName });
+		return m.landing_table_status_unsupported({ tool: toolName });
 	}
 
 	/** Compact = container narrower than table; opaque fills required for sticky overlap. */
@@ -74,7 +72,7 @@
 
 <div
 	role="region"
-	aria-label="Tool comparison"
+	aria-label={m.landing_table_region_label()}
 	class={cn('bg-card @container overflow-hidden rounded-xl border', className)}
 >
 	<div
@@ -83,8 +81,7 @@
 	>
 		<table class="w-full min-w-[800px] border-collapse text-sm">
 			<caption class="sr-only">
-				Comparison of agent UI tools across security, LangGraph support, customization, and
-				community features
+				{m.landing_table_caption()}
 			</caption>
 			<thead>
 				<tr class="bg-muted border-b">

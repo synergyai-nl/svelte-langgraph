@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Badge } from '$lib/components/ui/badge';
@@ -49,33 +50,29 @@
 	const features: Feature[] = [
 		{
 			icon: Zap,
-			title: 'Connect Python agents directly',
-			description:
-				'Connects directly to your LangGraph server. No TypeScript backend required. Full streaming for tool calls and complex agentic workflows.'
+			title: m.landing_feature_1_title(),
+			description: m.landing_feature_1_description()
 		},
 		{
 			icon: Shield,
-			title: 'Pass security review. Stay maintainable.',
-			description:
-				'OIDC built in. Auditable code for security teams — with long-term security support as a design goal, not a patch-and-pray cadence.'
+			title: m.landing_feature_2_title(),
+			description: m.landing_feature_2_description()
 		},
 		{
 			icon: Blocks,
-			title: 'Customize every layer — no lock-in',
-			description:
-				'Every component layer is independently configurable. Built on bits-ui and shadcn-svelte — override anything, extend everything.'
+			title: m.landing_feature_3_title(),
+			description: m.landing_feature_3_description()
 		},
 		{
 			icon: Key,
-			title: 'Swap models without rewriting',
-			description:
-				'All LLM providers via the OpenAI-compatible protocol — Anthropic, OpenAI, local models, Azure, and more.'
+			title: m.landing_feature_4_title(),
+			description: m.landing_feature_4_description()
 		}
-	] as const;
+	];
 
 	const comparison: ComparisonRow[] = [
 		{
-			label: 'Security review friendly',
+			label: m.landing_compare_security_review(),
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'partial',
@@ -83,7 +80,7 @@
 			customReact: 'yes'
 		},
 		{
-			label: 'LangGraph / Python native',
+			label: m.landing_compare_langgraph_native(),
 			svelteLanggraph: 'yes',
 			langflow: 'yes',
 			chainlit: 'yes',
@@ -91,7 +88,7 @@
 			customReact: 'partial'
 		},
 		{
-			label: 'Code quality & auditability',
+			label: m.landing_compare_code_quality(),
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'partial',
@@ -99,7 +96,7 @@
 			customReact: 'yes'
 		},
 		{
-			label: 'Security-first (OIDC built in)',
+			label: m.landing_compare_security_first(),
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'no',
@@ -107,7 +104,7 @@
 			customReact: 'no'
 		},
 		{
-			label: 'Full streaming (tools + workflows)',
+			label: m.landing_compare_full_streaming(),
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'yes',
@@ -115,7 +112,7 @@
 			customReact: 'partial'
 		},
 		{
-			label: 'Per-component customization',
+			label: m.landing_compare_customization(),
 			svelteLanggraph: 'yes',
 			langflow: 'partial',
 			chainlit: 'no',
@@ -123,7 +120,7 @@
 			customReact: 'yes'
 		},
 		{
-			label: 'No JS backend required',
+			label: m.landing_compare_no_js_backend(),
 			svelteLanggraph: 'yes',
 			langflow: 'yes',
 			chainlit: 'yes',
@@ -131,7 +128,7 @@
 			customReact: 'no'
 		},
 		{
-			label: 'Active large community',
+			label: m.landing_compare_community(),
 			svelteLanggraph: 'no',
 			langflow: 'yes',
 			chainlit: 'yes',
@@ -139,7 +136,7 @@
 			customReact: 'yes'
 		},
 		{
-			label: 'Broad feature surface',
+			label: m.landing_compare_feature_surface(),
 			svelteLanggraph: 'no',
 			langflow: 'yes',
 			chainlit: 'yes',
@@ -151,101 +148,81 @@
 	const personas: Feature[] = [
 		{
 			icon: Cpu,
-			title: 'Python AI developers',
-			description:
-				'Stop spending sprints on React glue. Focus on the agent — connect a frontend that speaks LangGraph natively without a TypeScript-heavy stack.'
+			title: m.landing_persona_1_title(),
+			description: m.landing_persona_1_description()
 		},
 		{
 			icon: GitFork,
-			title: 'Boutique AI agencies',
-			description:
-				'Ship branded agent UIs you can customize, maintain, and hand over to clients with confidence.'
+			title: m.landing_persona_2_title(),
+			description: m.landing_persona_2_description()
 		},
 		{
 			icon: Layers,
-			title: 'SaaS platform teams',
-			description:
-				'Embed OIDC-ready agent chat your security team can audit — built for the long haul inside your existing product.'
+			title: m.landing_persona_3_title(),
+			description: m.landing_persona_3_description()
 		},
 		{
 			icon: Headphones,
-			title: 'CX & support teams',
-			description:
-				'Deploy LangGraph-powered chatbots without a custom frontend team — fork, brand, and ship support agents on a budget.'
+			title: m.landing_persona_4_title(),
+			description: m.landing_persona_4_description()
 		}
 	];
 
 	const steps: Step[] = [
-		{
-			step: '01',
-			title: 'Install toolchain',
-			description:
-				'Install Proto in the repo root (`proto install`). Pins Moon, pnpm, Node, and Python per .prototools — one toolchain for the whole monorepo.'
-		},
-		{
-			step: '02',
-			title: 'Configure & run',
-			description:
-				'`cp .env.example .env`, then `moon :dev :oidc-mock` — frontend, backend, and OIDC mock with hot reload. Always include :oidc-mock for local auth.'
-		},
-		{
-			step: '03',
-			title: 'Deploy to your stack',
-			description:
-				'Deploy with the included config — Docker, your OIDC provider, your LangGraph server. Pull upstream security patches without the rewrite treadmill.'
-		}
+		{ step: '01', title: m.landing_step_1_title(), description: m.landing_step_1_description() },
+		{ step: '02', title: m.landing_step_2_title(), description: m.landing_step_2_description() },
+		{ step: '03', title: m.landing_step_3_title(), description: m.landing_step_3_description() }
 	];
 
 	const roadmap: RoadmapItem[] = [
 		{
-			title: 'Core chat UI with streaming',
-			description: 'Full message streaming and tool-call visibility in the chat UI',
+			title: m.landing_roadmap_1_title(),
+			description: m.landing_roadmap_1_description(),
 			status: 'done'
 		},
 		{
-			title: 'OIDC authentication',
-			description: 'Secure login with any OpenID Connect provider',
+			title: m.landing_roadmap_2_title(),
+			description: m.landing_roadmap_2_description(),
 			status: 'done'
 		},
 		{
-			title: 'Dark mode & theming',
-			description: 'Complete design system with light/dark mode and Tailwind CSS tokens',
+			title: m.landing_roadmap_3_title(),
+			description: m.landing_roadmap_3_description(),
 			status: 'done'
 		},
 		{
-			title: 'Multi-language support',
-			description: 'i18n with Paraglide — English, Dutch, and Hindi included',
+			title: m.landing_roadmap_4_title(),
+			description: m.landing_roadmap_4_description(),
 			status: 'done'
 		},
 		{
-			title: 'Conversation history',
-			description: 'Persistent threads backed by LangGraph checkpoints',
+			title: m.landing_roadmap_5_title(),
+			description: m.landing_roadmap_5_description(),
 			status: 'in-progress'
 		},
 		{
-			title: 'File upload & attachments',
-			description: 'Send images, PDFs, and documents to your agent',
+			title: m.landing_roadmap_6_title(),
+			description: m.landing_roadmap_6_description(),
 			status: 'in-progress'
 		},
 		{
-			title: 'Plugin system',
-			description: 'Drop-in extensions for custom tool renderers, message types, and layouts',
+			title: m.landing_roadmap_7_title(),
+			description: m.landing_roadmap_7_description(),
 			status: 'planned'
 		},
 		{
-			title: 'Installable package (no fork required)',
-			description: 'Use svelte-langgraph as a dependency — npm install and go',
+			title: m.landing_roadmap_8_title(),
+			description: m.landing_roadmap_8_description(),
 			status: 'planned'
 		},
 		{
-			title: 'Embeddable web component',
-			description:
-				'Drop the chat UI into any app — Svelte or not — as an in-app component or web component with auth',
+			title: m.landing_roadmap_9_title(),
+			description: m.landing_roadmap_9_description(),
 			status: 'planned'
 		},
 		{
-			title: 'Admin dashboard',
-			description: 'Monitor agents, view usage, and manage users from a built-in admin panel',
+			title: m.landing_roadmap_10_title(),
+			description: m.landing_roadmap_10_description(),
 			status: 'planned'
 		}
 	];
@@ -285,18 +262,17 @@
 						<h1
 							class="animate-fade-in-up-delay-1 text-4xl leading-[1.08] font-bold tracking-tight sm:text-5xl lg:text-6xl lg:text-wrap"
 						>
-							Your agent works.<br />
+							{m.landing_hero_title_line1()}<br />
 							<span
 								class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
-								>Your frontend should too.</span
+								>{m.landing_hero_title_line2()}</span
 							>
 						</h1>
 
 						<p
 							class="animate-fade-in-up-delay-2 text-muted-foreground text-lg leading-relaxed lg:max-w-xl lg:text-xl lg:leading-relaxed"
 						>
-							The production SvelteKit frontend for LangGraph agents. Ship a secure, customizable UI
-							without a TypeScript backend — OIDC-ready and built to stay maintainable for years.
+							{m.landing_hero_subtitle()}
 						</p>
 					</div>
 
@@ -310,7 +286,7 @@
 								class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
 							>
 								<MessageSquare class="size-4" />
-								Open the chat
+								{m.landing_cta_open_chat()}
 								<ArrowRight class="size-4" />
 							</Button>
 							<Button
@@ -321,7 +297,7 @@
 								variant="outline"
 								class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
 							>
-								Try live demo
+								{m.landing_cta_live_demo()}
 								<ExternalLink class="size-4" />
 							</Button>
 							<Button
@@ -333,18 +309,18 @@
 								class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
 							>
 								<Github class="size-5" />
-								View on GitHub
+								{m.landing_cta_view_github()}
 							</Button>
 						</div>
 						<p class="text-muted-foreground text-sm">
-							Explore streaming, tool calls, and auth — no local setup required.
+							{m.landing_hero_note()}
 							<a
 								href={DOCS_URL}
 								target="_blank"
 								rel="noopener noreferrer"
 								class="text-foreground/80 hover:text-foreground ml-1 inline-flex items-center gap-1 underline-offset-4 transition-colors hover:underline"
 							>
-								Read the docs
+								{m.landing_cta_read_docs()}
 								<ExternalLink class="size-3.5" />
 							</a>
 						</p>
@@ -372,20 +348,18 @@
 			<div class="grid items-center gap-16 md:grid-cols-2">
 				<div>
 					<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-						The gap
+						{m.landing_gap_eyebrow()}
 					</p>
 					<h2 class="mb-6 text-4xl font-bold tracking-tight text-balance">
-						Building the agent is the easy part.<br />
-						<span class="text-muted-foreground/70">The frontend shouldn't be hard.</span>
+						{m.landing_gap_title_line1()}<br />
+						<span class="text-muted-foreground/70">{m.landing_gap_title_line2()}</span>
 					</h2>
 					<p class="text-muted-foreground text-lg leading-relaxed">
-						Python and LangGraph make agentic AI tractable. But the frontend landscape leaves you
-						choosing between tools that break under maintenance pressure, lock you into opinionated
-						stacks, or demand a separate TypeScript backend just to render a chat window.
+						{m.landing_gap_body()}
 					</p>
 				</div>
 				<div class="space-y-4">
-					{#each ['Upstream UI changes break your customizations without warning', 'Codebases too complex or generated to meaningfully audit', "TypeScript backends you didn't ask for sitting between you and your Python agent", 'Forked repos that drift from upstream and lose security coverage', 'Integrations that work in the demo but crumble months into production'] as pain (pain)}
+					{#each [m.landing_pain_1(), m.landing_pain_2(), m.landing_pain_3(), m.landing_pain_4(), m.landing_pain_5()] as pain (pain)}
 						<div
 							class="border-destructive/15 bg-destructive/5 hover:border-destructive/25 flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors"
 						>
@@ -404,15 +378,14 @@
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-					Why svelte-langgraph
+					{m.landing_features_eyebrow()}
 				</p>
 				<h2 class="text-4xl font-bold tracking-tight">
-					Built for the long haul.<br />
-					<span class="text-muted-foreground/60">Not the demo.</span>
+					{m.landing_features_title_line1()}<br />
+					<span class="text-muted-foreground/60">{m.landing_features_title_line2()}</span>
 				</h2>
 				<p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
-					React has plenty of agent UIs. Svelte deserves a first-class LangGraph frontend — fast,
-					joyful to customize, and built for production ownership.
+					{m.landing_features_subtitle()}
 				</p>
 			</div>
 
@@ -438,8 +411,7 @@
 				{/each}
 			</div>
 			<p class="text-muted-foreground mt-10 text-center text-sm">
-				Built with Svelte, bits-ui, shadcn-svelte, Proto, and Moon — pinned toolchains across Node
-				and Python.
+				{m.landing_features_footnote()}
 			</p>
 		</div>
 	</section>
@@ -449,11 +421,11 @@
 		<div class="mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-					Getting started
+					{m.landing_steps_eyebrow()}
 				</p>
-				<h2 class="text-4xl font-bold tracking-tight">Clone it. Run it. Ship it.</h2>
+				<h2 class="text-4xl font-bold tracking-tight">{m.landing_steps_title()}</h2>
 				<p class="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
-					Today: clone or fork the repo. Soon: install as a package — no fork required.
+					{m.landing_steps_subtitle()}
 				</p>
 			</div>
 
@@ -479,9 +451,9 @@
 		<div class="relative mx-auto max-w-7xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-					Who it's for
+					{m.landing_personas_eyebrow()}
 				</p>
-				<h2 class="text-4xl font-bold tracking-tight">Built for builders.</h2>
+				<h2 class="text-4xl font-bold tracking-tight">{m.landing_personas_title()}</h2>
 			</div>
 
 			<div class="mx-auto grid max-w-6xl gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -508,22 +480,18 @@
 		<div class="mx-auto max-w-5xl px-6">
 			<div class="mb-16 text-center">
 				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-					The landscape
+					{m.landing_landscape_eyebrow()}
 				</p>
-				<h2 class="mb-4 text-4xl font-bold tracking-tight">Know what you're choosing.</h2>
+				<h2 class="mb-4 text-4xl font-bold tracking-tight">{m.landing_landscape_title()}</h2>
 				<p class="text-muted-foreground mx-auto max-w-2xl text-lg">
-					Every tool in this space makes different trade-offs. Here's an honest look at where
-					svelte-langgraph fits alongside other solid options.
+					{m.landing_landscape_subtitle()}
 				</p>
 			</div>
 
 			<LandscapeComparisonTable rows={comparison} />
 
 			<p class="text-muted-foreground mt-6 text-center text-sm">
-				Every project here represents real effort from people who care about the ecosystem. Choose
-				svelte-langgraph for quality, security, and long-term maintainability — when a
-				production-grade UI you can audit and support for years matters more than the broadest
-				feature set out of the box.
+				{m.landing_landscape_note()}
 			</p>
 
 			<div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
@@ -540,8 +508,7 @@
 				{/each}
 			</div>
 			<p class="text-muted-foreground/80 mt-4 text-center text-xs">
-				Streamlit excels at data apps and demos — a different category than production agent chat
-				UIs.
+				{m.landing_landscape_streamlit_note()}
 			</p>
 		</div>
 	</section>
@@ -551,10 +518,12 @@
 		<div class="from-muted/30 via-muted/10 absolute inset-0 bg-gradient-to-b to-transparent"></div>
 		<div class="relative mx-auto max-w-3xl px-6">
 			<div class="mb-16 text-center">
-				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">Roadmap</p>
-				<h2 class="mb-4 text-4xl font-bold tracking-tight">Where we are. Where we're going.</h2>
+				<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
+					{m.landing_roadmap_eyebrow()}
+				</p>
+				<h2 class="mb-4 text-4xl font-bold tracking-tight">{m.landing_roadmap_title()}</h2>
 				<p class="text-muted-foreground mx-auto max-w-xl text-lg">
-					We're building in the open. Here's what's shipped, what's in progress, and what's next.
+					{m.landing_roadmap_subtitle()}
 				</p>
 			</div>
 
@@ -599,16 +568,19 @@
 								{#if isDone}
 									<Badge
 										variant="outline"
-										class="border-green-600/30 bg-green-500/5 text-xs text-green-600">Shipped</Badge
+										class="border-green-600/30 bg-green-500/5 text-xs text-green-600"
+										>{m.landing_roadmap_status_shipped()}</Badge
 									>
 								{:else if isActive}
 									<Badge
 										variant="outline"
 										class="text-primary-600 border-primary-600/30 bg-primary-600/5 text-xs"
-										>In progress</Badge
+										>{m.landing_roadmap_status_in_progress()}</Badge
 									>
 								{:else}
-									<Badge variant="outline" class="text-muted-foreground/60 text-xs">Planned</Badge>
+									<Badge variant="outline" class="text-muted-foreground/60 text-xs"
+										>{m.landing_roadmap_status_planned()}</Badge
+									>
 								{/if}
 							</div>
 							<p class="text-muted-foreground mt-1 text-sm">{item.description}</p>
@@ -623,12 +595,11 @@
 	<section class="py-24">
 		<div class="mx-auto max-w-4xl px-6 text-center">
 			<p class="text-primary-600 mb-4 text-sm font-semibold tracking-widest uppercase">
-				Built in the open
+				{m.landing_open_eyebrow()}
 			</p>
-			<h2 class="mb-4 text-4xl font-bold tracking-tight">Help shape what ships next.</h2>
+			<h2 class="mb-4 text-4xl font-bold tracking-tight">{m.landing_open_title()}</h2>
 			<p class="text-muted-foreground mx-auto mb-8 max-w-2xl text-lg leading-relaxed">
-				MIT licensed on GitHub. Try the live demo, open an issue, send a PR, or tell us what you
-				built — contributors steer the roadmap as much as the maintainers.
+				{m.landing_open_body()}
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
 				<Button
@@ -640,7 +611,7 @@
 					class="cursor-pointer gap-2 px-8 text-base"
 				>
 					<Github class="size-5" />
-					Star on GitHub
+					{m.landing_cta_star_github()}
 				</Button>
 				<Button
 					href={`${GITHUB_URL}/issues`}
@@ -650,7 +621,7 @@
 					variant="ghost"
 					class="cursor-pointer gap-2 px-8 text-base"
 				>
-					Open an issue
+					{m.landing_cta_open_issue()}
 					<ExternalLink class="size-4" />
 				</Button>
 			</div>
@@ -664,14 +635,13 @@
 		></div>
 		<div class="relative mx-auto max-w-4xl px-6 text-center">
 			<h2 class="mb-6 text-5xl leading-tight font-bold tracking-tight text-balance sm:text-6xl">
-				Your agent is the product.<br />
+				{m.landing_final_title_line1()}<br />
 				<span class="from-primary-600 to-primary-400 bg-gradient-to-r bg-clip-text text-transparent"
-					>The frontend is how users trust it.</span
+					>{m.landing_final_title_line2()}</span
 				>
 			</h2>
 			<p class="text-muted-foreground mx-auto mb-10 max-w-2xl text-xl">
-				Open source. MIT licensed. Security-first. Fork it, configure it, and ship something you'll
-				still be proud of next year.
+				{m.landing_final_body()}
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
 				<Button
@@ -681,7 +651,7 @@
 					size="lg"
 					class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
 				>
-					Try live demo
+					{m.landing_cta_live_demo()}
 					<ArrowRight class="size-4" />
 				</Button>
 				<Button
@@ -693,7 +663,7 @@
 					class="cursor-pointer gap-2 px-8 text-base"
 				>
 					<Github class="size-5" />
-					View on GitHub
+					{m.landing_cta_view_github()}
 				</Button>
 				<Button
 					href={DOCS_URL}
@@ -703,7 +673,7 @@
 					variant="ghost"
 					class="cursor-pointer gap-2 px-8 text-base"
 				>
-					Read the docs
+					{m.landing_cta_read_docs()}
 					<ExternalLink class="size-4" />
 				</Button>
 			</div>
@@ -722,9 +692,7 @@
 							fill="currentColor"
 						/>
 					</svg>
-					<span class="text-muted-foreground text-xs"
-						>MIT License · Maintained by SynergyAI · Built with Svelte + LangGraph</span
-					>
+					<span class="text-muted-foreground text-xs">{m.landing_footer_credits()}</span>
 				</div>
 				<div class="flex items-center gap-4">
 					<a

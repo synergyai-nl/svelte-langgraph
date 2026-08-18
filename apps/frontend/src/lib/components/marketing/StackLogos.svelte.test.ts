@@ -1,10 +1,13 @@
 import { describe, test, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import StackLogos from './StackLogos.svelte';
+import * as m from '$lib/paraglide/messages.js';
 
 describe('StackLogos', () => {
 	test('renders both stack logos with accessible names', () => {
 		render(StackLogos);
+
+		expect(screen.getByText(m.landing_stack_built_with())).toBeInTheDocument();
 
 		expect(screen.getByAltText('Svelte')).toBeInTheDocument();
 		expect(screen.getByAltText('LangGraph')).toBeInTheDocument();

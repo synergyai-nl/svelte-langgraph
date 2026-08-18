@@ -1,12 +1,13 @@
 import { describe, test, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import HeroTerminal from './HeroTerminal.svelte';
+import * as m from '$lib/paraglide/messages.js';
 
 describe('HeroTerminal', () => {
 	test('renders the terminal chrome label', () => {
 		render(HeroTerminal);
 
-		expect(screen.getByText('terminal')).toBeInTheDocument();
+		expect(screen.getByText(m.landing_terminal_label())).toBeInTheDocument();
 	});
 
 	test('renders the documented setup commands in order', () => {
@@ -23,9 +24,7 @@ describe('HeroTerminal', () => {
 	test('renders the ready line naming all three dev services', () => {
 		render(HeroTerminal);
 
-		expect(
-			screen.getByText(/Ready — frontend, backend, and OIDC mock running/)
-		).toBeInTheDocument();
+		expect(screen.getByText(new RegExp(m.landing_terminal_ready()))).toBeInTheDocument();
 	});
 
 	test('exposes the body via a test id so callers can scope queries', () => {

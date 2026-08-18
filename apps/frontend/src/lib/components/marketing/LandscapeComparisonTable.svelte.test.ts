@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { render } from '@testing-library/svelte';
 import LandscapeComparisonTable, { type ComparisonRow } from './LandscapeComparisonTable.svelte';
+import * as m from '$lib/paraglide/messages.js';
 
 const sampleRows: ComparisonRow[] = [
 	{
@@ -21,7 +22,9 @@ describe('LandscapeComparisonTable', () => {
 		expect(screen.getByRole('table')).toBeInTheDocument();
 		expect(screen.getByRole('rowheader', { name: 'Security review friendly' })).toBeInTheDocument();
 		expect(screen.getByRole('columnheader', { name: /svelte-langgraph/i })).toBeInTheDocument();
-		expect(screen.getByRole('region', { name: 'Tool comparison' })).toBeInTheDocument();
+		expect(
+			screen.getByRole('region', { name: m.landing_table_region_label() })
+		).toBeInTheDocument();
 	});
 
 	describe('cell status rendering', () => {
@@ -41,7 +44,9 @@ describe('LandscapeComparisonTable', () => {
 			render(LandscapeComparisonTable, { rows: allStatusRows });
 
 			expect(
-				screen.getByRole('img', { name: 'Supported for svelte-langgraph' })
+				screen.getByRole('img', {
+					name: m.landing_table_status_supported({ tool: 'svelte-langgraph' })
+				})
 			).toBeInTheDocument();
 		});
 
@@ -49,15 +54,21 @@ describe('LandscapeComparisonTable', () => {
 			render(LandscapeComparisonTable, { rows: allStatusRows });
 
 			expect(
-				screen.getByRole('img', { name: 'Partially supported for Langflow' })
+				screen.getByRole('img', { name: m.landing_table_status_partial({ tool: 'Langflow' }) })
 			).toBeInTheDocument();
 		});
 
 		test('labels an unsupported cell', () => {
 			render(LandscapeComparisonTable, { rows: allStatusRows });
 
-			expect(screen.getByRole('img', { name: 'Not supported for Chainlit' })).toBeInTheDocument();
-			expect(screen.getByRole('img', { name: 'Not supported for Open WebUI' })).toBeInTheDocument();
+			expect(
+				screen.getByRole('img', { name: m.landing_table_status_unsupported({ tool: 'Chainlit' }) })
+			).toBeInTheDocument();
+			expect(
+				screen.getByRole('img', {
+					name: m.landing_table_status_unsupported({ tool: 'Open WebUI' })
+				})
+			).toBeInTheDocument();
 		});
 
 		test('colours each status differently', () => {
@@ -65,9 +76,15 @@ describe('LandscapeComparisonTable', () => {
 
 			const iconFor = (name: string) => screen.getByRole('img', { name }).querySelector('svg');
 
-			expect(iconFor('Supported for svelte-langgraph')).toHaveClass('text-green-500');
-			expect(iconFor('Partially supported for Langflow')).toHaveClass('text-yellow-500');
-			expect(iconFor('Not supported for Chainlit')).toHaveClass('text-muted-foreground/30');
+			expect(iconFor(m.landing_table_status_supported({ tool: 'svelte-langgraph' }))).toHaveClass(
+				'text-green-500'
+			);
+			expect(iconFor(m.landing_table_status_partial({ tool: 'Langflow' }))).toHaveClass(
+				'text-yellow-500'
+			);
+			expect(iconFor(m.landing_table_status_unsupported({ tool: 'Chainlit' }))).toHaveClass(
+				'text-muted-foreground/30'
+			);
 		});
 	});
 

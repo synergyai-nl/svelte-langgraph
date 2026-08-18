@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
 	import { cn } from '$lib/utils';
 
 	let { class: className = '' }: { class?: string } = $props();
@@ -8,7 +9,7 @@
 	<div
 		class="mx-auto flex max-w-7xl flex-col items-center justify-center gap-4 px-6 sm:flex-row sm:gap-6"
 	>
-		<span class="text-muted-foreground text-sm tracking-wide">Built with</span>
+		<span class="text-muted-foreground text-sm tracking-wide">{m.landing_stack_built_with()}</span>
 		<div class="flex items-center gap-5">
 			<img
 				src="/logos/svelte.svg"
