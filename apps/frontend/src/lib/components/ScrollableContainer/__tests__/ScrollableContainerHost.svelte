@@ -4,9 +4,13 @@
 
 	interface Props {
 		message?: BaseMessage | null;
+		/** When provided, renders one row per message instead of the single `message` row. */
+		messages?: BaseMessage[];
 	}
 
-	let { message = null }: Props = $props();
+	let { message = null, messages }: Props = $props();
+
+	const rows = $derived(messages ?? [message]);
 </script>
 
 <!--
@@ -15,6 +19,8 @@
 -->
 <ScrollableContainer>
 	{#snippet children({ scrollToMe })}
-		<div {@attach scrollToMe(message)}>row</div>
+		{#each rows as row, index (row?.id ?? index)}
+			<div {@attach scrollToMe(row)}>row</div>
+		{/each}
 	{/snippet}
 </ScrollableContainer>

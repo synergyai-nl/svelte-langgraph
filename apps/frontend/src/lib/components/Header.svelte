@@ -32,6 +32,7 @@
 
 <header
 	class={cn(
+		'shrink-0',
 		isMarketing
 			? 'bg-transparent'
 			: 'bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'

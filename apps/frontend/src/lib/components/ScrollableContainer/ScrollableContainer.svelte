@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createScrollListener } from '$lib/components/ScrollableContainer/scrollListener';
-	import { findScrollContainer, scrollToBottom } from './scrollControls';
+	import { findScrollContainer, createBottomScroller } from './scrollControls';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { BaseMessage } from '$lib/langgraph/types';
@@ -8,7 +8,9 @@
 	import { fade } from 'svelte/transition';
 
 	interface Props {
-		children: Snippet<[{ scrollToMe: (message?: BaseMessage | null) => Attachment }]>;
+		children: Snippet<
+			[{ scrollToMe: (message?: BaseMessage | null, behavior?: ScrollBehavior) => Attachment }]
+		>;
 	}
 
 	let { children }: Props = $props();
@@ -26,18 +28,23 @@
 		}
 	});
 
+	const bottomScroller = createBottomScroller(() => scrollContainerRef);
+
 	// Scroll to bottom on mount without animation
 	onMount(() => {
 		if (containerNode) {
-			const container = findScrollContainer(containerNode);
-			if (container) {
-				// Use instant scroll on initial mount
-				container.scrollTop = container.scrollHeight;
+			if (!scrollContainerRef) {
+				scrollContainerRef = findScrollContainer(containerNode);
 			}
+			// Use instant scroll on initial mount
+			bottomScroller.request('instant');
 		}
 	});
 
-	function scrollToMe(message: BaseMessage | null = null): Attachment {
+	function scrollToMe(
+		message: BaseMessage | null = null,
+		behavior: ScrollBehavior = 'smooth'
+	): Attachment {
 		return (element: Element) => {
 			if (!(element instanceof HTMLElement)) return;
 			const isThinkingAIMessage =
@@ -52,7 +59,7 @@
 			}
 
 			if (!isUserScrolledAway) {
-				scrollToBottom(container);
+				bottomScroller.request(behavior);
 			}
 		};
 	}

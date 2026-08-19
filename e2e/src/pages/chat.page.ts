@@ -14,6 +14,9 @@ export class ChatPage {
 	readonly phaseWrapper: Locator;
 	readonly phaseSelect: Locator;
 
+	// Loading skeleton shown while thread history is being fetched (data-testid="chat-history-loading")
+	readonly historyLoading: Locator;
+
 	// Login modal (shown when unauthenticated)
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
@@ -26,6 +29,8 @@ export class ChatPage {
 		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
 		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');
 		this.phaseSelect = app.page.locator('#state-field-input-phase');
+
+		this.historyLoading = app.page.locator('[data-testid="chat-history-loading"]');
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
