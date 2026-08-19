@@ -18,6 +18,7 @@ export const mockStreamCallbacks: {
 
 let _messages = $state<Record<string, unknown>[]>([]);
 let _isLoading = $state(false);
+let _isThreadLoading = $state(false);
 let _error = $state<unknown>(null);
 let _values = $state<Record<string, unknown>>({});
 
@@ -27,6 +28,9 @@ export const mockStream = {
 	},
 	get isLoading() {
 		return _isLoading;
+	},
+	get isThreadLoading() {
+		return _isThreadLoading;
 	},
 	get error() {
 		return _error;
@@ -53,6 +57,10 @@ export function setIsLoading(val: boolean) {
 	_isLoading = val;
 }
 
+export function setIsThreadLoading(val: boolean) {
+	_isThreadLoading = val;
+}
+
 export function setError(err: unknown) {
 	_error = err;
 }
@@ -64,6 +72,7 @@ export function setValues(vals: Record<string, unknown>) {
 export function resetMock() {
 	_messages = [];
 	_isLoading = false;
+	_isThreadLoading = false;
 	_error = null;
 	_values = {};
 	mockStreamCallbacks.submit = () => {};

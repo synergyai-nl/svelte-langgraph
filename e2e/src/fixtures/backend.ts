@@ -31,8 +31,11 @@ export const LANGGRAPH_CONFIG = {
  * Use this instead of `page.goto('/chat/')` in any spec whose assertions
  * depend on message content/count and don't specifically intend to exercise
  * the getOrCreateThread lazy-reuse-and-redirect flow itself.
+ *
+ * Returns the created thread's id, so callers that need it (e.g. sidebar specs
+ * asserting on a specific row) don't have to re-derive it from the URL.
  */
-export async function gotoFreshThread(page: Page) {
+export async function gotoFreshThread(page: Page): Promise<string> {
 	const sessionRes = await page.request.get('/auth/session');
 	expect(sessionRes.ok()).toBeTruthy();
 	const session = await sessionRes.json();
@@ -50,6 +53,8 @@ export async function gotoFreshThread(page: Page) {
 	const thread = (await threadRes.json()) as { thread_id: string };
 
 	await page.goto(`/chat/${thread.thread_id}`);
+
+	return thread.thread_id;
 }
 
 /**

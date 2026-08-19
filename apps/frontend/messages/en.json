@@ -16,6 +16,7 @@
 	"error_try_again": "Please try again later or go back to the homepage.",
 	"error_return_home": "Return Home",
 	"chat_input_placeholder": "Message...",
+	"chat_history_loading": "Loading conversation…",
 	"tools_using": "I'm using tools...",
 	"tool_label": "Tool:",
 	"tool_parameters": "Parameters:",
@@ -53,5 +54,16 @@
 	"chat_error_retry": "Retry",
 	"coming_soon": "Coming Soon!",
 	"cancel": "Cancel",
-	"save_and_send": "Save & Send"
+	"save_and_send": "Save & Send",
+	"sidebar_new_chat": "New chat",
+	"sidebar_threads_label": "Conversations",
+	"sidebar_threads_empty": "No conversations yet",
+	"sidebar_threads_loading": "Loading conversations",
+	"sidebar_threads_error": "Couldn't load your conversations.",
+	"sidebar_threads_retry": "Try again",
+	"sidebar_threads_load_more": "Load more",
+	"sidebar_new_chat_error": "Couldn't start a new chat. Please try again.",
+	"sidebar_mobile_title": "Sidebar",
+	"sidebar_mobile_description": "Displays the mobile sidebar.",
+	"sidebar_toggle": "Toggle Sidebar"
 }

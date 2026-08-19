@@ -686,10 +686,28 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 		// Sanity-check the seeded conversation actually overflows the viewport —
 		// otherwise this test would pass vacuously, since a container that never
 		// needs to scroll looks identical to one that scrolled correctly.
-		const scrollContainer = page.locator('.overflow-y-auto').first();
+		//
+		// `div.overflow-y-auto`, not the bare class, and NOT `.first()`: SLG-104's root
+		// layout restructuring (routes/+layout.svelte) made the app's <main> element itself
+		// `min-h-0 flex-1 overflow-y-auto`, as the single outer viewport-height reference.
+		// That <main> now sits ahead of Chat.svelte's own message-list container
+		// (`<div class="min-h-0 flex-1 overflow-y-auto pb-4">`) in DOM order, so plain
+		// `.overflow-y-auto`.first() picks the wrong (outer, non-scrolling — the actual
+		// scrolling happens in the inner container) element. ChatInput's textarea also
+		// carries `overflow-y-auto` and sits later in the DOM, so `.last()` is equally
+		// unreliable. Both the outer container and the textarea are non-`<div>` tags (`<main>`
+		// and `<textarea>` respectively), so a `div.overflow-y-auto` tag-scoped selector
+		// uniquely and stably identifies Chat's own scroll container.
+		//
+		// Generous poll timeout: this is pure layout/reflow of 10 seeded exchanges, which can
+		// take longer than the default 10s under full-suite parallel load (many headless
+		// Chromium instances competing for CPU) without indicating any real regression.
+		const scrollContainer = page.locator('div.overflow-y-auto').first();
 		await expect(scrollContainer).toBeVisible();
 		await expect
-			.poll(() => scrollContainer.evaluate((el) => el.scrollHeight > el.clientHeight))
+			.poll(() => scrollContainer.evaluate((el) => el.scrollHeight > el.clientHeight), {
+				timeout: 20000
+			})
 			.toBe(true);
 
 		const server = await startHeldOpenStreamServer({
