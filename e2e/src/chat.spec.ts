@@ -423,3 +423,119 @@ test.describe('Cancellation', () => {
 		expect(aiContent).not.toContain(tailEcho);
 	});
 });
+
+test.describe('History backlog rendering', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+	});
+
+	/**
+	 * Builds a minimal `ThreadState[]` response for the `/threads/{id}/history` endpoint.
+	 *
+	 * Mirrors `buildHistoryState` in thinking.spec.ts: a single-element history list
+	 * short-circuits the SDK's branch-sequence computation (`history.length <= 1` in
+	 * `@langchain/langgraph-sdk`'s `getBranchSequence`), so no parent/child checkpoint
+	 * wiring is required beyond a plausible-looking checkpoint object — `parent_checkpoint:
+	 * null` alone produces a valid one-node tree.
+	 */
+	function buildHistoryState(messages: unknown[]) {
+		return [
+			{
+				values: { messages },
+				next: [],
+				tasks: [],
+				metadata: {},
+				created_at: new Date(0).toISOString(),
+				checkpoint: { thread_id: 'test-thread-id', checkpoint_ns: '', checkpoint_id: 'ckpt-1' },
+				parent_checkpoint: null
+			}
+		];
+	}
+
+	/**
+	 * `count` alternating human/ai messages, as returned by the (mocked) thread-history
+	 * endpoint. `convertThreadMessage` (apps/frontend/src/lib/langgraph/utils.ts) only reads
+	 * `type`, `content`, and `id` for rendering; the extra fields mirror the shape real AI
+	 * messages carry (see `historyAiMessage` in thinking.spec.ts).
+	 */
+	function backlogMessages(count: number) {
+		return Array.from({ length: count }, (_, i) => {
+			const content = `Message number ${i}`;
+			const id = `msg-${i}`;
+			return i % 2 === 0
+				? { type: 'human', id, content, additional_kwargs: {}, response_metadata: {} }
+				: {
+						type: 'ai',
+						id,
+						content,
+						additional_kwargs: {},
+						response_metadata: {},
+						tool_calls: [],
+						invalid_tool_calls: []
+					};
+		});
+	}
+
+	test('a thread with 60 messages shows the loading skeleton, then reveals the newest 40 immediately and the rest in chunks, pinned to the bottom', async ({
+		page,
+		chat,
+		sidebar
+	}) => {
+		// Target thread: history will be mocked below. Left empty on the real backend —
+		// the mocked `/history` response is the only source of its 60 messages.
+		const threadA = await gotoFreshThread(page);
+		// A second fresh thread to navigate through, so clicking threadA's sidebar row
+		// below is a real navigation (not a no-op) that triggers the history refetch.
+		await gotoFreshThread(page);
+		// Let B's own on-mount history fetch (real, empty thread) settle before gating
+		// A's endpoint — same ordering as sidebar.spec.ts's pending-state test.
+		await expect(chat.historyLoading).toBeHidden();
+
+		const messages = backlogMessages(60);
+
+		let releaseHistory!: () => void;
+		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/history`, async (route) => {
+			await historyGate;
+			await route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify(buildHistoryState(messages))
+			});
+		});
+
+		await sidebar.threadLink(threadA).click();
+
+		await expect(sidebar.threadLink(threadA)).toHaveAttribute('data-pending', 'true');
+		await expect(chat.historyLoading).toBeVisible();
+
+		releaseHistory();
+
+		// First flush: only the newest WINDOW_CHUNK_SIZE (40) messages render synchronously
+		// (see ChatMessages.svelte), so the newest message is visible as soon as the
+		// skeleton clears.
+		await expect(page.getByText('Message number 59')).toBeVisible();
+		await expect(chat.historyLoading).toBeHidden();
+
+		// The rest reveal in rAF-chained chunks of 40 — well under a second, comfortably
+		// inside the default expect timeout, so no explicit wait is needed beyond retrying.
+		await expect(page.getByText('Message number 0')).toBeVisible();
+		await expect(page.getByText(/^Message number \d+$/)).toHaveCount(60);
+
+		// Scroll stays pinned to the bottom through the chunked reveal (rAF-batched
+		// instant scrolls in ScrollableContainer). Selector matches the overflow container
+		// established in thinking.spec.ts: `div.overflow-y-auto` (tag-scoped) uniquely
+		// identifies Chat's own message-list container, distinct from the outer `<main>`
+		// (also `overflow-y-auto`, but not a `<div>`) and ChatInput's textarea.
+		const scrollContainer = page.locator('div.overflow-y-auto').first();
+		await expect(async () => {
+			const gap = await scrollContainer.evaluate(
+				(el) => el.scrollHeight - el.scrollTop - el.clientHeight
+			);
+			expect(gap).toBeLessThan(150);
+		}).toPass();
+
+		// The sidebar row is not left pending once history has loaded.
+		await expect(sidebar.threadLink(threadA)).not.toHaveAttribute('data-pending', 'true');
+	});
+});

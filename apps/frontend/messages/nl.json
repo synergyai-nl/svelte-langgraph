@@ -16,6 +16,7 @@
 	"error_try_again": "Probeer het later opnieuw of ga terug naar de homepage.",
 	"error_return_home": "Terug naar Home",
 	"chat_input_placeholder": "Bericht...",
+	"chat_history_loading": "Gesprek laden…",
 	"tools_using": "Ik gebruik tools...",
 	"tool_label": "Tool:",
 	"tool_parameters": "Parameters:",
@@ -53,5 +54,16 @@
 	"chat_error_retry": "Opnieuw proberen",
 	"coming_soon": "Binnenkort beschikbaar!",
 	"cancel": "Annuleren",
-	"save_and_send": "Opslaan & Verzenden"
+	"save_and_send": "Opslaan & Verzenden",
+	"sidebar_new_chat": "Nieuwe chat",
+	"sidebar_threads_label": "Gesprekken",
+	"sidebar_threads_empty": "Nog geen gesprekken",
+	"sidebar_threads_loading": "Gesprekken laden",
+	"sidebar_threads_error": "Je gesprekken konden niet worden geladen.",
+	"sidebar_threads_retry": "Opnieuw proberen",
+	"sidebar_threads_load_more": "Meer laden",
+	"sidebar_new_chat_error": "Kon geen nieuwe chat starten. Probeer het opnieuw.",
+	"sidebar_mobile_title": "Zijbalk",
+	"sidebar_mobile_description": "Toont de mobiele zijbalk.",
+	"sidebar_toggle": "Zijbalk wisselen"
 }

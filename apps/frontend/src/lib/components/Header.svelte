@@ -18,7 +18,9 @@
 	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
 </script>
 
-<header class="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
+<header
+	class="bg-background/95 supports-[backdrop-filter]:bg-background/60 shrink-0 border-b backdrop-blur"
+>
 	<div class="flex h-16 items-center px-4">
 		<!-- Logo -->
 		<a href="/" class="flex items-center gap-2 font-semibold">

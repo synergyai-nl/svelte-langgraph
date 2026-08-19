@@ -39,6 +39,15 @@ export async function getOrCreateThread(client: Client): Promise<Thread<ThreadVa
 	}
 }
 
+/**
+ * Unconditionally create a new thread.
+ * Distinct from getOrCreateThread, which deliberately reuses the most recently updated *idle*
+ * thread. "New chat" means new — reuse would drop the user back into the conversation they left.
+ */
+export async function createThread(client: Client): Promise<Thread<ThreadValues>> {
+	return (await client.threads.create()) as Thread<ThreadValues>;
+}
+
 export async function getOrCreateAssistant(
 	client: Client,
 	graphId: string = 'chat'

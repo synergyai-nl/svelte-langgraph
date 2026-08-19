@@ -16,6 +16,10 @@ export function createScrollListener(
 		let scrollContainer: HTMLElement | null = null;
 		let userScrollTimeout: number | null = null;
 
+		// Deliberately never listens to the native `scroll` event — only `wheel`/`touchstart`/
+		// `touchmove`/`keydown` — so programmatic `scrollTo` jumps (e.g. the coalesced
+		// auto-scroll in scrollControls.ts) can never be misclassified as the user scrolling away.
+
 		// Detect ANY user scroll interaction (wheel, touch, keyboard)
 		const handleUserScrollIntent = () => {
 			stateUpdater.setIsUserScrolledAway(true);

@@ -4,7 +4,7 @@
 	import * as m from '$lib/paraglide/messages.js';
 </script>
 
-<main class="overflow-hidden">
+<div class="overflow-hidden">
 	<section>
 		<div class="relative pt-16">
 			<div class="mx-auto max-w-7xl px-6">
@@ -116,4 +116,4 @@
 			</div>
 		</div>
 	</section>
-</main>
+</div>
