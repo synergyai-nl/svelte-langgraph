@@ -31,12 +31,14 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] }
 		}
 	],
+	// Readiness is detected via `wait.stdout`, not a port/url probe, so Playwright's
+	// `reuseExistingServer` never applies here — every run starts fresh servers,
+	// which is what guarantees the test database reset actually happens.
 	webServer: [
 		{
 			name: 'ai-mock',
 			command: 'moon backend:ai-mock-e2e',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -48,7 +50,6 @@ export default defineConfig({
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -65,7 +66,6 @@ export default defineConfig({
 			// Startup drops/recreates the test database and runs Aegra's
 			// migrations against it, which can be slow on a cold server.
 			timeout: 180000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -77,7 +77,6 @@ export default defineConfig({
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },

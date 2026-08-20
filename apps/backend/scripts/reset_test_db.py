@@ -58,8 +58,22 @@ def reset(test_url: str, test_db: str) -> None:
         )
     with conn:
         ident = sql.Identifier(test_db)
-        conn.execute(sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(ident))
-        conn.execute(sql.SQL("CREATE DATABASE {}").format(ident))
+        try:
+            conn.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(ident)
+            )
+            conn.execute(sql.SQL("CREATE DATABASE {}").format(ident))
+        except psycopg.errors.InsufficientPrivilege:
+            # PostgreSQL uses SQLSTATE 42501 both for "no CREATEDB attribute" and
+            # for "must be owner" on the DROP, so name both remedies.
+            role = urlsplit(test_url).username
+            sys.exit(
+                f"reset_test_db: role {role!r} may not drop and recreate database "
+                f"{test_db!r}. The role in TEST_DATABASE_URL needs the CREATEDB "
+                f"attribute, and must own {test_db!r} if it already exists. As a "
+                f"superuser: `ALTER ROLE {role} CREATEDB;` and, if the database "
+                f"exists, `ALTER DATABASE {test_db} OWNER TO {role};`"
+            )
 
 
 def main() -> None:

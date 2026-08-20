@@ -44,7 +44,7 @@ The `.env` file is organized into sections:
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
-- `DATABASE_URL` - PostgreSQL connection URL for Aegra (works with either the compose `postgres` helper service or a locally running PostgreSQL server)
+- `DATABASE_URL` - PostgreSQL connection URL for Aegra. Leave unset for the common setups: `moon backend:dev` on the host defaults to `localhost:5432/aegra` (what `moon backend:docker-postgres` serves), and `docker compose up` points at the compose `postgres` service automatically. Set it only for your own/external database server. If you set up before this changed, see the [caveat under Production](#production) — `docker compose up` now honors an explicit `DATABASE_URL` instead of overriding it
 - `AUTH_TYPE` - Must be `custom` to enable OIDC authentication and per-user isolation (Aegra defaults to `noop`, which disables auth)
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
@@ -158,7 +158,7 @@ This automatically starts:
 - **Postgres** via the `backend:docker-postgres` task, which runs the compose `postgres` helper service
 - **OIDC mock provider** at `http://localhost:8080` (for local authentication)
 
-`:docker-postgres` is the Docker-based Postgres helper — include it if you want Docker to manage Postgres for you. If you're running your own local PostgreSQL server instead, omit it and run `moon :dev :oidc-mock`. On the very first run, start Postgres separately beforehand (`moon backend:docker-postgres`): the tasks start concurrently, and the backend exits if the database isn't reachable yet when it boots (e.g. while the image is still being pulled).
+`:docker-postgres` is the Docker-based Postgres helper — include it if you want Docker to manage Postgres for you. If you're running your own local PostgreSQL server instead, omit it and run `moon :dev :oidc-mock`.
 
 Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
 
@@ -166,9 +166,8 @@ Make sure to configure your `.env` file to point to the OIDC mock provider (see 
 
 The backend only needs a reachable PostgreSQL server (≥ 13) — Docker isn't required:
 
-- A database named `aegra`, owned by the user configured in `DATABASE_URL`
-- Credentials passed via `DATABASE_URL` in `.env`
-- For E2E, a separate `aegra_e2e` database is created/dropped automatically before each run by `apps/backend/scripts/reset_test_db.py`, configured via `TEST_DATABASE_URL` in `.env.e2e`
+- A database named `aegra`. With the default `postgres:postgres@localhost:5432` credentials you don't need to set anything; otherwise point `DATABASE_URL` in `.env` at your server
+- For E2E, a separate `aegra_e2e` database is created/dropped automatically before each run by `apps/backend/scripts/reset_test_db.py`, configured via `TEST_DATABASE_URL` in `.env.e2e` — the role in that URL needs the `CREATEDB` attribute (or superuser) to drop/recreate it: `ALTER ROLE <role> CREATEDB;`
 - `pgvector` is optional — only needed if Aegra's store semantic search is ever enabled
 
 ### Run local checks
@@ -250,6 +249,12 @@ The frontend container receives an allowlisted set of variables interpolated fro
 ```
 PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
 ```
+
+`DATABASE_URL` can be overridden the same way, to point the backend at an external or managed Postgres server instead of the bundled `postgres` service. It must be reachable _from inside the backend container_ — a `localhost` URL there means the container itself, not your host.
+
+A host-local Ollama (or other OpenAI-compatible provider bound to the Docker host) must be addressed as `OPENAI_BASE_URL=http://host.docker.internal:11434/v1`. Compose wires `extra_hosts: host.docker.internal:host-gateway`, so this resolves on Linux Docker Engine too (>= 20.10) — Docker Desktop provides it natively.
+
+**Caveat:** if your root `.env` already sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aegra` (the old shipped default), `docker compose up` now honors it instead of silently overriding it — and that `localhost` resolves to the container itself, not Postgres. Comment out the line, or change the host to `postgres`, to fix it.
 
 ### Security notes
 

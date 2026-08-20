@@ -66,9 +66,13 @@ tasks:
     # those not running their own (mirrors oidc-mock). The backend only needs
     # a reachable PostgreSQL >= 13 at DATABASE_URL, however it is provided.
     command: "docker compose -f ../../docker-compose.yml up -d --wait postgres"
+    # `local` gives the dev defaults (no caching, streamed output, skipped in CI
+    # and in `moon check`). Its implied `persistent: true` would schedule this in
+    # the same final batch as the `dev` servers though, letting the backend boot
+    # before Postgres is up — so override it and let `--wait` finish first.
     local: true
     options:
-      cache: false
+      persistent: false
   dev:
     command: "uv run uvicorn aegra_api.main:app --host localhost --port 2026 --reload 2>&1"
     preset: "watcher"

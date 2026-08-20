@@ -34,8 +34,16 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@postgres:5432/aegra"
+      # Falls back to the bundled postgres service; an explicit DATABASE_URL in
+      # the root .env / shell wins, for pointing at an external database. It must
+      # be reachable *from inside this container* — a `localhost` URL means the
+      # container itself, not your host.
+      DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/aegra}"
       AUTH_TYPE: "custom"
+    extra_hosts:
+      # Lets OPENAI_BASE_URL reach a provider running on the Docker host
+      # (e.g. Ollama at http://host.docker.internal:11434/v1).
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
