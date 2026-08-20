@@ -1,23 +1,33 @@
 # sv
 
+> **Monorepo note:** This app is part of the svelte-langgraph monorepo. See the [root README.md](../../README.md) for development setup (Proto + moon).
+
 Svelte frontend project.
 
 ## Getting started
 
 ### Requirements
 
-- pnpm
-- Node 24 LTS
+- Proto (installs pinned moon and pnpm via `.prototools`)
+- Node 24 LTS (managed by moon/proto)
 
-### Install deps
-
-```bash
-pnpm install
-```
+From the **repo root**, run `proto install` then use moon tasks — do not rely on `pnpm install` or `npm run dev` at the monorepo root.
 
 ### Developing
 
-Once you've created a project and installed dependencies, start a development server:
+Start the frontend dev server from the repo root:
+
+```bash
+moon frontend:dev
+```
+
+Or start the full local stack (frontend, backend, and OIDC mock):
+
+```bash
+moon :dev :oidc-mock
+```
+
+You can also use npm scripts from this directory if needed:
 
 ```bash
 npm run dev

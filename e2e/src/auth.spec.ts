@@ -146,10 +146,14 @@ test.describe('When authenticated', () => {
 });
 
 test.describe('Navigation', () => {
-	test('navbar has home and chat links', async ({ page, app }) => {
-		await page.goto('/');
-		await expect(app.homeLink).toBeVisible();
-		await expect(app.chatLink).toBeVisible();
+	// The marketing and app header variants differ only in chrome — both carry the
+	// same nav, so "/" must expose a way into the app just like "/chat" does.
+	[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
+		test(`navbar has home and chat links on ${location}`, async ({ page, app }) => {
+			await page.goto(location);
+			await expect(app.homeLink).toBeVisible();
+			await expect(app.chatLink).toBeVisible();
+		});
 	});
 
 	test('clicking chat link navigates to chat page', async ({ page, app }) => {

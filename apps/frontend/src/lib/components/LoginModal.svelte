@@ -36,7 +36,7 @@
 		</div>
 
 		<div class="flex justify-center">
-			<SignInButton />
+			<SignInButton label={m.auth_continue_sso()} size="default" />
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

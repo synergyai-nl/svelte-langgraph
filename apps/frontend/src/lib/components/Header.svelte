@@ -16,19 +16,41 @@
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
 	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
 	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
+	import { cn } from '$lib/utils';
+
+	interface Props {
+		variant?: 'app' | 'marketing';
+	}
+
+	let { variant = 'app' }: Props = $props();
+
+	const isMarketing = $derived(variant === 'marketing');
+
+	const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
+	const DOCS_URL = `${GITHUB_URL}#readme`;
 </script>
 
 <header
-	class="bg-background/95 supports-[backdrop-filter]:bg-background/60 shrink-0 border-b backdrop-blur"
+	class={cn(
+		'shrink-0',
+		isMarketing
+			? 'bg-transparent'
+			: 'bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'
+	)}
 >
-	<div class="flex h-16 items-center px-4">
-		<!-- Logo -->
-		<a href="/" class="flex items-center gap-2 font-semibold">
-			<MessageSquare class="h-6 w-6" />
-			<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
+	<!-- Same container in both variants: the header must not shift when navigating
+	     between "/" and "/chat". -->
+	<div class="mx-auto flex h-16 w-full max-w-7xl items-center px-6">
+		<!-- Logo — identical lockup in both variants so the brand doesn't shift between pages -->
+		<a href="/" class="flex flex-col gap-0.5 font-semibold sm:flex-row sm:items-baseline sm:gap-2">
+			<span class="flex items-center gap-2">
+				<MessageSquare class="h-6 w-6" />
+				<span class="text-sm font-semibold sm:text-lg">{m.app_title()}</span>
+			</span>
+			<span class="text-muted-foreground hidden text-xs sm:inline">{m.app_tagline()}</span>
 		</a>
 
-		<!-- Centered Navigation Menu (Desktop only) -->
+		<!-- Desktop navigation — same links in both variants; marketing only differs in chrome -->
 		<div class="hidden flex-1 justify-center md:flex">
 			<NavigationMenu.Root>
 				<NavigationMenu.List>
@@ -46,6 +68,16 @@
 							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
 						>
 							{m.nav_chat()}
+						</NavigationMenu.Link>
+					</NavigationMenu.Item>
+					<NavigationMenu.Item>
+						<NavigationMenu.Link
+							href={DOCS_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
+						>
+							{m.nav_docs()}
 						</NavigationMenu.Link>
 					</NavigationMenu.Item>
 				</NavigationMenu.List>
@@ -69,6 +101,16 @@
 					</DropdownMenu.Item>
 					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
 						{m.nav_chat()}
+					</DropdownMenu.Item>
+					<!-- Rendered via `child` so the anchor IS the menu item: bits-ui activates a
+					     menu item by calling `click()` on the item element itself, which would
+					     never reach a nested link. -->
+					<DropdownMenu.Item class="cursor-pointer">
+						{#snippet child({ props })}
+							<a {...props} href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+								{m.nav_docs()}
+							</a>
+						{/snippet}
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator />
@@ -110,7 +152,7 @@
 						</SignOutButton>
 					{:else}
 						<div class="p-2">
-							<SignInButton />
+							<SignInButton variant={isMarketing ? 'outline' : 'default'} />
 						</div>
 					{/if}
 
@@ -127,7 +169,6 @@
 		<div class="ml-auto hidden items-center gap-3 md:flex">
 			{#if page.data.session}
 				{@const session = page.data.session}
-				<!-- Avatar Dropdown Menu -->
 				<DropdownMenu.Root>
 					<DropdownMenu.Trigger>
 						{#snippet child({ props })}
@@ -175,9 +216,11 @@
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			{:else}
-				<SignInButton />
+				<SignInButton variant={isMarketing ? 'outline' : 'default'} />
 			{/if}
-			<SentryFeedbackButton />
+			{#if !isMarketing}
+				<SentryFeedbackButton />
+			{/if}
 			<ThemeSwitcher />
 			<LanguageSwitcher />
 		</div>

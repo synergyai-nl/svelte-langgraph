@@ -21,7 +21,7 @@ describe('AIMessageActions', () => {
 		});
 
 		test('renders the regenerate button', () => {
-			expect(screen.getByTitle(/re-try/i)).toBeInTheDocument();
+			expect(screen.getByTitle(/regenerate/i)).toBeInTheDocument();
 		});
 
 		test('includes FeedbackButtons', () => {
@@ -29,7 +29,7 @@ describe('AIMessageActions', () => {
 		});
 
 		test('regenerate button is enabled', () => {
-			const button = screen.getByTitle(/re-try/i) as HTMLButtonElement;
+			const button = screen.getByTitle(/regenerate/i) as HTMLButtonElement;
 			expect(button).not.toBeDisabled();
 		});
 	});
@@ -40,7 +40,7 @@ describe('AIMessageActions', () => {
 		});
 
 		test('does not show any action buttons', () => {
-			expect(screen.getByTitle(/re-try/i)).not.toBeVisible();
+			expect(screen.getByTitle(/regenerate/i)).not.toBeVisible();
 		});
 	});
 });

@@ -256,17 +256,30 @@ function historyHumanMessage(id: string, text: string) {
  * right as a test may be interacting with it. Always including the human turn here keeps
  * the post-refetch swap free of that surprise insertion.
  */
-async function mockThreadHistory(
-	page: Page,
-	humanText: string,
-	aiMessages: unknown[]
-): Promise<void> {
-	const humanMessage = historyHumanMessage('e2e-history-human-1', humanText);
+function threadHistoryMessages(humanText: string, aiMessages: unknown[]): unknown[] {
+	return [historyHumanMessage('e2e-history-human-1', humanText), ...aiMessages];
+}
+
+/**
+ * Registers the thread-history route and returns a setter for the payload it serves.
+ *
+ * Must be called BEFORE navigating to /chat/: the mount fetch (useStream's
+ * `fetchStateHistory`) fires during hydration, and a request already in flight cannot
+ * be intercepted. Registering late and merely waiting for one history response is not
+ * enough — `/chat/` redirects to `/chat/{threadId}`, so more than one real history
+ * request can be outstanding, and a second `[]` landing after the run wipes the
+ * streamed messages (and the thinking button) out from under the assertions. That is
+ * the race behind the intermittent "element(s) not found" failures on CI.
+ *
+ * One handler reading a reassignable payload serves both the initial (empty) history
+ * and the post-run refetch, so no history request ever reaches the real backend.
+ */
+async function mockThreadHistory(page: Page, getMessages: () => unknown[]): Promise<void> {
 	await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/history`, async (route) => {
 		await route.fulfill({
 			status: 200,
 			contentType: 'application/json',
-			body: JSON.stringify(buildHistoryState([humanMessage, ...aiMessages]))
+			body: JSON.stringify(buildHistoryState(getMessages()))
 		});
 	});
 }
@@ -305,21 +318,24 @@ async function waitForSettledHistory(page: Page, humanText: string): Promise<voi
 }
 
 test.describe('Thinking block UI', () => {
+	// Payload served by the history route registered in `beforeEach`. Tests reassign it
+	// (via `setThreadHistory`) to describe what the post-run refetch should return; it
+	// starts empty so the mount fetch sees a fresh thread. Safe as shared state: a
+	// worker runs its tests one at a time, and `beforeEach` resets it.
+	let historyMessages: unknown[] = [];
+
+	function setThreadHistory(humanText: string, aiMessages: unknown[]) {
+		historyMessages = threadHistoryMessages(humanText, aiMessages);
+	}
+
 	test.beforeEach(async ({ page }) => {
+		historyMessages = [];
 		await authenticateUser(page);
-		// The on-mount thread-history fetch (useStream's `fetchStateHistory`) fires
-		// during hydration, BEFORE the test body registers its `mockThreadHistory`
-		// route — an already-in-flight request can't be intercepted, so it reaches
-		// the real backend and its empty `[]` response races the mocked post-run
-		// refetch. If the `[]` lands last it wipes the streamed messages (and the
-		// thinking button) right out from under the test's assertions. Registering
-		// this wait before navigation (so we can't miss the response) and awaiting
-		// it here lets that mount fetch settle harmlessly on the still-empty thread
-		// before any test-specific routes are registered.
-		const historySettled = page.waitForResponse((r) => /\/threads\/[^/]+\/history/.test(r.url()));
+		// Registered before navigating, so it also covers the mount fetch — see
+		// `mockThreadHistory` for why waiting on that fetch instead is not enough.
+		await mockThreadHistory(page, () => historyMessages);
 		await page.goto('/chat/');
 		await page.waitForURL(/\/chat\/[\w-]+/);
-		await historySettled;
 	});
 
 	test('thinking block appears collapsed when AI response includes thinking (additional_kwargs format)', async ({
@@ -333,7 +349,7 @@ test.describe('Thinking block UI', () => {
 
 		// Register mocks BEFORE submitting — the history route must be in place before
 		// the post-stream refetch fires, and the stream route before the run is submitted.
-		await mockThreadHistory(page, question, [
+		setThreadHistory(question, [
 			historyAiMessage('msg-1', answer, { reasoning_content: reasoning })
 		]);
 		await mockRunStream(
@@ -366,7 +382,7 @@ test.describe('Thinking block UI', () => {
 		const answer = 'Here is my answer.';
 		const question = 'Explain something';
 
-		await mockThreadHistory(page, question, [
+		setThreadHistory(question, [
 			historyAiMessage('msg-2', answer, { reasoning_content: fullReasoning })
 		]);
 		await mockRunStream(
@@ -407,7 +423,7 @@ test.describe('Thinking block UI', () => {
 		const answer = 'This is the final answer text.';
 		const question = 'Give me an answer';
 
-		await mockThreadHistory(page, question, [
+		setThreadHistory(question, [
 			historyAiMessage('msg-3', answer, { reasoning_content: reasoning })
 		]);
 		await mockRunStream(
@@ -452,7 +468,7 @@ test.describe('Thinking block UI', () => {
 		const answer = 'Hello! How can I help you today?';
 		const question = 'Hello';
 
-		await mockThreadHistory(page, question, [historyAiMessage('msg-4', answer)]);
+		setThreadHistory(question, [historyAiMessage('msg-4', answer)]);
 		await mockRunStream(
 			page,
 			[{ event: 'messages', data: aiChunk(answer, 'msg-4', {}, runId) }],
@@ -479,7 +495,7 @@ test.describe('Thinking block UI', () => {
 		];
 		const question = 'Test Anthropic format';
 
-		await mockThreadHistory(page, question, [historyAiMessage('msg-5', content)]);
+		setThreadHistory(question, [historyAiMessage('msg-5', content)]);
 		await mockRunStream(
 			page,
 			[{ event: 'messages', data: aiChunk(content, 'msg-5', {}, runId) }],
@@ -512,7 +528,7 @@ test.describe('Thinking block UI', () => {
 		];
 		const question = 'Test langchain v1 format';
 
-		await mockThreadHistory(page, question, [historyAiMessage('msg-6', content)]);
+		setThreadHistory(question, [historyAiMessage('msg-6', content)]);
 		await mockRunStream(
 			page,
 			[{ event: 'messages', data: aiChunk(content, 'msg-6', {}, runId) }],
@@ -562,7 +578,7 @@ test.describe('Thinking block UI', () => {
 		});
 
 		try {
-			await mockThreadHistory(page, question, [
+			setThreadHistory(question, [
 				historyAiMessage(messageId, answer, { reasoning_content: fullReasoning })
 			]);
 

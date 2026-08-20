@@ -50,7 +50,7 @@ describe('Chat', () => {
 
 		test('displays chat input', () => {
 			renderChat();
-			expect(screen.getByPlaceholderText('Message...')).toBeInTheDocument();
+			expect(screen.getByPlaceholderText('Ask your agent…')).toBeInTheDocument();
 		});
 	});
 
@@ -100,7 +100,7 @@ describe('Chat', () => {
 			});
 			renderChat();
 
-			const textbox = screen.getByPlaceholderText('Message...');
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
 			await user.type(textbox, 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -119,7 +119,7 @@ describe('Chat', () => {
 			});
 			renderChat();
 
-			const textbox = screen.getByPlaceholderText('Message...');
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
 			await user.type(textbox, 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -138,7 +138,7 @@ describe('Chat', () => {
 			});
 			renderChat();
 
-			const textbox = screen.getByPlaceholderText('Message...');
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
 			await user.type(textbox, 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -193,7 +193,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 
 			renderChat();
-			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
 			const form = document.getElementById('input_form')!;
@@ -209,7 +209,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
-			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
 			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
@@ -231,7 +231,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
-			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
 			await screen.findByText('Partial response');
@@ -249,7 +249,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderChat();
-			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
 			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
@@ -353,7 +353,7 @@ describe('Chat', () => {
 			const aiMessage = await screen.findByText('AI response');
 			await user.hover(aiMessage);
 
-			await user.click(await screen.findByTitle(/re-try/i));
+			await user.click(await screen.findByTitle(/regenerate/i));
 
 			expect(mockSubmit).toHaveBeenCalledWith(undefined, {
 				checkpoint: { id: 'checkpoint-ai-1' }
@@ -393,7 +393,7 @@ describe('Chat', () => {
 			renderChat();
 
 			// Submit a message — this sets last_user_message, which retryGenerationAfterError() requires.
-			await user.type(screen.getByPlaceholderText('Message...'), 'Hello');
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
 			// Wait for the retry button to appear
