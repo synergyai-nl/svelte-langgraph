@@ -4,14 +4,14 @@
 [![Maintainability](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/maintainability.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 [![Code Coverage](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph/coverage.svg)](https://qlty.sh/gh/synergyai-nl/projects/svelte-langgraph)
 
-Opinionated SvelteKit-based LLM frontend for LangGraph server.
+Opinionated SvelteKit-based LLM frontend for LangGraph agents, served by [Aegra](https://docs.aegra.dev) — an open-source, self-hosted Agent Protocol server.
 
 ## Demo
 https://svelte-langgraph-demo.synergyai.nl/
 
 ## Architecture
 
-- **Backend**: Python 3.12 + LangGraph server for AI workflow management
+- **Backend**: Python 3.12 + [Aegra](https://docs.aegra.dev) (open-source Agent Protocol server) running LangGraph workflows, backed by PostgreSQL
 - **Frontend**: SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **Authentication**: Generic OIDC (OpenID Connect) integration
 - **Internationalization**: Paraglide-JS for multi-language support
@@ -49,6 +49,12 @@ This repo uses [Proto](https://moonrepo.dev/docs/proto/install) with `.prototool
    ```
 
 Do not run `pnpm install` or `pnpm dev` at the repo root — use `moon` tasks instead (see Getting Started).
+- [Install moonrepo](https://moonrepo.dev/docs/install), which installs all other dependencies:
+  - Python 3.12
+  - Node.js 24 LTS
+  - [uv](https://docs.astral.sh/uv/) (Python package manager)
+  - pnpm (Node.js package manager)
+- [Docker](https://docs.docker.com/get-docker/) **or** a local PostgreSQL server (≥ 13) — the backend needs a reachable PostgreSQL database; Docker is one option, see "Without Docker" below
 
 ## Configuration
 
@@ -69,15 +75,16 @@ The `.env` file is organized into sections:
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
 - `OPENAI_BASE_URL` - OpenAI-compatible API base URL (optional, defaults to OpenAI)
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
-- `LANGSMITH_API_KEY` - Your LangSmith API key for tracing (optional)
-- `LANGSMITH_ENDPOINT` - LangSmith endpoint URL (optional, defaults to EU region)
+- `DATABASE_URL` - PostgreSQL connection URL for Aegra. Leave unset for the common setups: `moon backend:dev` on the host defaults to `localhost:5432/aegra` (what `moon backend:docker-postgres` serves), and `docker compose up` points at the compose `postgres` service automatically. Set it only for your own/external database server. If you set up before this changed, see the [caveat under Production](#production) — `docker compose up` now honors an explicit `DATABASE_URL` instead of overriding it
+- `AUTH_TYPE` - Must be `custom` to enable OIDC authentication and per-user isolation (Aegra defaults to `noop`, which disables auth)
+- `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
 - `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
 - `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
-- `PUBLIC_LANGGRAPH_API_URL` - URL of your LangGraph server (typically `http://localhost:2024`)
+- `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
 ### AI Provider Configuration
@@ -187,6 +194,7 @@ The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (
 - Issues JWT tokens with configurable user claims
 - Supports the authorization code flow with PKCE
 - No client registration required - accepts any client ID/secret
+- Started alongside the other dev servers via the `:oidc-mock` target (see below)
 
 **Configuration:**
 - **Issuer**: `http://localhost:8080`
@@ -194,7 +202,31 @@ The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (
 - **Client Secret**: Any value (e.g., `secret`)
 - **Test User**: `test-user` (subject claim in JWT)
 
-Make sure your `.env` file points to the OIDC mock provider (see Configuration section above).
+### Start dev servers
+
+The following command ensures dependencies are installed and starts dev servers for frontend, backend, Docker Postgres, and OIDC mock provider, with hot reload:
+
+```bash
+moon :dev :docker-postgres :oidc-mock
+```
+
+This automatically starts:
+- **Frontend** dev server at `http://localhost:5173`
+- **Backend** Aegra server at `http://localhost:2026`
+- **Postgres** via the `backend:docker-postgres` task, which runs the compose `postgres` helper service
+- **OIDC mock provider** at `http://localhost:8080` (for local authentication)
+
+`:docker-postgres` is the Docker-based Postgres helper — include it if you want Docker to manage Postgres for you. If you're running your own local PostgreSQL server instead, omit it and run `moon :dev :oidc-mock`.
+
+Make sure to configure your `.env` file to point to the OIDC mock provider (see Configuration section above).
+
+#### Without Docker
+
+The backend only needs a reachable PostgreSQL server (≥ 13) — Docker isn't required:
+
+- A database named `aegra`. With the default `postgres:postgres@localhost:5432` credentials you don't need to set anything; otherwise point `DATABASE_URL` in `.env` at your server
+- For E2E, a separate `aegra_e2e` database is created/dropped automatically before each run by `apps/backend/scripts/reset_test_db.py`, configured via `TEST_DATABASE_URL` in `.env.e2e` — the role in that URL needs the `CREATEDB` attribute (or superuser) to drop/recreate it: `ALTER ROLE <role> CREATEDB;`
+- `pgvector` is optional — only needed if Aegra's store semantic search is ever enabled
 
 ### Run local checks
 
@@ -204,7 +236,14 @@ Run all checks (linting, type checking, formatting, building, unit and E2E tests
 moon check --all
 ```
 
-This currently requires Docker to be running for the LangGraph server build.
+This requires Docker to be running for the backend Docker image build, and a running PostgreSQL server for the E2E tests — start one first with `moon backend:docker-postgres` unless you run your own.
+
+On machines without Docker, run the non-Docker equivalent instead — with a local PostgreSQL server running:
+
+```bash
+moon check backend frontend
+moon e2e:test
+```
 
 ## Tooling
 
@@ -212,6 +251,7 @@ This currently requires Docker to be running for the LangGraph server build.
 
 The backend uses LangGraph for AI workflow orchestration with the following key dependencies:
 
+- [Aegra](https://docs.aegra.dev) as the Agent Protocol server (FastAPI + PostgreSQL), SDK-compatible with LangGraph Platform
 - LangChain with OpenAI-compatible integration (OpenRouter, OpenAI, etc.)
 - Authlib for OIDC/JWT authentication
 - Python-dotenv for environment management
@@ -256,17 +296,27 @@ To run it:
 docker compose up [--build]
 ```
 
-For now, we will not be running the backend in Docker, so to test with the dev backend, it's required to make it available to the Docker container and inform the Docker container of your IP:
+This starts the frontend, the backend (Aegra), and PostgreSQL. The backend can also be built and run on its own:
 
 ```
-moon backend:dev -- --host 0.0.0.0
+moon backend:up
 ```
 
-And in a different terminal:
+The frontend container receives an allowlisted set of variables interpolated from the root `.env` (auth and `PUBLIC_*` settings — backend secrets like API keys and `DATABASE_URL` are deliberately not passed to it). `PUBLIC_LANGGRAPH_API_URL` is consumed by the browser, not the container; it defaults to `http://localhost:2026`, which works when your browser runs on the Docker host. Point it elsewhere for any other setup:
 
 ```
-PUBLIC_LANGGRAPH_API_URL=http://host.docker.internal:2024 docker compose up --build
+PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
 ```
+
+`DATABASE_URL` can be overridden the same way, to point the backend at an external or managed Postgres server instead of the bundled `postgres` service. It must be reachable _from inside the backend container_ — a `localhost` URL there means the container itself, not your host.
+
+A host-local Ollama (or other OpenAI-compatible provider bound to the Docker host) must be addressed as `OPENAI_BASE_URL=http://host.docker.internal:11434/v1`. Compose wires `extra_hosts: host.docker.internal:host-gateway`, so this resolves on Linux Docker Engine too (>= 20.10) — Docker Desktop provides it natively.
+
+**Caveat:** if your root `.env` already sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aegra` (the old shipped default), `docker compose up` now honors it instead of silently overriding it — and that `localhost` resolves to the container itself, not Postgres. Comment out the line, or change the host to `postgres`, to fix it.
+
+### Security notes
+
+The backend image bakes in `AUTH_TYPE=custom`, so it always requires OIDC bearer tokens — it cannot silently fall back to Aegra's unauthenticated `noop` mode. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
 
 ### Internationalization with Paraglide
 

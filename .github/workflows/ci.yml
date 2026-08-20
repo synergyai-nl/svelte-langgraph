@@ -31,6 +31,8 @@ jobs:
         with:
           cache-base: main
           auto-install: true
+      - name: Start Postgres
+        run: docker compose up -d --wait postgres
       - run: moon ci --color
       - uses: moonrepo/run-report-action@v1
         if: success() || failure()

@@ -114,8 +114,15 @@ auth = Auth()
 
 
 @auth.authenticate
-async def get_current_user(authorization: str | None) -> MinimalUserDict:
-    """Check if the user's token is valid."""
+async def get_current_user(headers: dict[str, str] | None) -> MinimalUserDict:
+    """Check if the user's token is valid.
+
+    Aegra calls this handler with the request headers as a dict with
+    lowercase keys (unlike langgraph-api, which injected individual
+    parameters by name).
+    """
+
+    authorization = (headers or {}).get("authorization")
 
     if not authorization:
         logger.error("No authorization header provided.")
@@ -187,7 +194,11 @@ async def add_owner(
 
     # Get or create the metadata dictionary in the payload
     # This is where we store persistent info about the resource
-    metadata = value.setdefault("metadata", {})
+    # Note: Aegra builds the payload via model_dump(), so "metadata" may be
+    # present but None rather than absent.
+    metadata = value.get("metadata")
+    if metadata is None:
+        metadata = value["metadata"] = {}
 
     # Add owner to metadata - if this is a create or update operation,
     # this information will be saved with the resource

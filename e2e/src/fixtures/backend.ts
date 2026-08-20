@@ -4,7 +4,7 @@ import { expect, type Page, type APIResponse } from '@playwright/test';
  * LangGraph Backend Configuration
  */
 export const LANGGRAPH_CONFIG = {
-	apiUrl: 'http://localhost:2024'
+	apiUrl: 'http://localhost:2026'
 };
 
 /**
