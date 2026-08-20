@@ -5,4 +5,69 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
-    env_file: "apps/frontend/.env"
+    env_file:
+      # Frontend-only extras; keys in the `environment:` block below always
+      # take precedence over env_file entries.
+      - path: "apps/frontend/.env"
+        required: false
+    # Allowlist instead of passing the whole root .env: it also holds
+    # backend-only secrets (OPENAI_API_KEY, DATABASE_URL, LANGFUSE_*) that
+    # must not reach the public-facing frontend process. Values interpolate
+    # from the compose shell / project .env.
+    environment:
+      AUTH_TRUST_HOST: "${AUTH_TRUST_HOST:-}"
+      AUTH_OIDC_CLIENT_ID: "${AUTH_OIDC_CLIENT_ID:-}"
+      AUTH_OIDC_CLIENT_SECRET: "${AUTH_OIDC_CLIENT_SECRET:-}"
+      AUTH_OIDC_ISSUER: "${AUTH_OIDC_ISSUER:-}"
+      AUTH_SECRET: "${AUTH_SECRET:-}"
+      PUBLIC_SENTRY_DSN: "${PUBLIC_SENTRY_DSN:-}"
+      # Consumed by the browser (client.ts), not the container, so the
+      # default must be resolvable from where the browser runs: localhost
+      # works for a browser on the Docker host; set explicitly otherwise.
+      PUBLIC_LANGGRAPH_API_URL: "${PUBLIC_LANGGRAPH_API_URL:-http://localhost:2026}"
+
+  backend:
+    ports:
+      - "2026:2026"
+    build: apps/backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Falls back to the bundled postgres service; an explicit DATABASE_URL in
+      # the root .env / shell wins, for pointing at an external database. It must
+      # be reachable *from inside this container* — a `localhost` URL means the
+      # container itself, not your host.
+      DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/aegra}"
+      AUTH_TYPE: "custom"
+    extra_hosts:
+      # Lets OPENAI_BASE_URL reach a provider running on the Docker host
+      # (e.g. Ollama at http://host.docker.internal:11434/v1).
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      # Match Aegra's built-in POSTGRES_* defaults so the backend works even
+      # when DATABASE_URL is absent from .env.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aegra
+    ports:
+      # Loopback only: this ships fixed postgres/postgres superuser
+      # credentials, so never publish it on external interfaces. In-cluster
+      # traffic (backend service) uses the compose network, not this mapping.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aegra"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  postgres-data:

@@ -8,7 +8,7 @@ Opinionated SvelteKit-based LLM frontend for LangGraph server. This is a monorep
 
 ## Architecture
 
-- **Backend** (apps/backend/): Python 3.12 + LangGraph server for AI workflow management
+- **Backend** (apps/backend/): Python 3.12 + [Aegra](https://docs.aegra.dev) (open-source Agent Protocol server) running LangGraph workflows, backed by PostgreSQL (Docker Compose helper or your own server)
 - **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
 - **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`.
 - **Build System**: [moonrepo](https://moonrepo.dev/docs) for task orchestration and dependency management
@@ -19,8 +19,9 @@ All commands use moon for consistency and optimal caching:
 
 ### Development
 ```bash
-# Start frontend, backend, and OIDC mock provider dev servers with hot reload
-moon :dev :oidc-mock
+# Start frontend, backend, Docker Postgres, and OIDC mock provider dev servers with hot reload
+# :docker-postgres is the optional Docker Postgres helper — omit it if you run your own local PostgreSQL server
+moon :dev :docker-postgres :oidc-mock
 
 # Run development server for specific project
 moon frontend:dev
@@ -30,7 +31,8 @@ moon backend:dev
 ### Testing & Quality Checks
 ```bash
 # Run ALL checks (lint, typecheck, format, build, unit and E2E tests) for entire workspace
-# Note: Requires Docker to be running for the LangGraph server build
+# Note: Requires Docker (backend image build) and a running PostgreSQL server —
+# start one first with `moon backend:docker-postgres` unless you run your own
 moon check --all
 
 # Run checks for specific project
@@ -118,6 +120,7 @@ The monorepo uses a single `.env` file at the root:
 ## Notes
 
 - Always use moon commands instead of direct npm/pnpm/python commands for consistency
+- The backend (Aegra) requires a reachable PostgreSQL server (≥ 13); Docker Compose's `postgres` service, started via `moon backend:docker-postgres`, is an optional helper for it — not a requirement. E2E resets its own `aegra_e2e` database (from `TEST_DATABASE_URL` in `.env.e2e`) via `apps/backend/scripts/reset_test_db.py` on every run. Docker is still required for `moon backend:build`/`moon backend:up` and for a full `moon check --all`
 - Moon caches results across the team via remote caching
 - The `:` prefix runs tasks across all projects (e.g., `moon :dev`)
 - Specific project tasks use `project:task` format (e.g., `moon frontend:test`)

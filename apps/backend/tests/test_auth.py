@@ -385,10 +385,19 @@ class TestGetCurrentUser:
     """Tests for get_current_user function."""
 
     @pytest.mark.asyncio
+    async def test_raises_401_when_no_headers(self) -> None:
+        """Test that get_current_user raises 401 when headers are missing."""
+        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
+            await auth.get_current_user(None)
+
+        assert exc_info.value.status_code == 401
+        assert "No token provided" in exc_info.value.detail
+
+    @pytest.mark.asyncio
     async def test_raises_401_when_no_authorization(self) -> None:
         """Test that get_current_user raises 401 when no authorization header."""
         with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user(None)
+            await auth.get_current_user({"content-type": "application/json"})
 
         assert exc_info.value.status_code == 401
         assert "No token provided" in exc_info.value.detail
@@ -397,7 +406,7 @@ class TestGetCurrentUser:
     async def test_raises_401_when_invalid_header_format(self) -> None:
         """Test that get_current_user raises 401 for invalid header format."""
         with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user("InvalidHeader")
+            await auth.get_current_user({"authorization": "InvalidHeader"})
 
         assert exc_info.value.status_code == 401
         assert "Invalid authorization header format" in exc_info.value.detail
@@ -406,7 +415,7 @@ class TestGetCurrentUser:
     async def test_raises_401_when_not_bearer_scheme(self) -> None:
         """Test that get_current_user raises 401 for non-Bearer scheme."""
         with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user("Basic sometoken")
+            await auth.get_current_user({"authorization": "Basic sometoken"})
 
         assert exc_info.value.status_code == 401
         assert "Invalid auth scheme" in exc_info.value.detail
@@ -423,7 +432,9 @@ class TestGetCurrentUser:
         with patch.object(
             auth, "_validate_token", new=AsyncMock(return_value=mock_claims)
         ):
-            result = await auth.get_current_user("Bearer valid-token")
+            result = await auth.get_current_user(
+                {"authorization": "Bearer valid-token"}
+            )
 
             assert result["identity"] == "test-user-123"
             assert result.get("is_authenticated") is True
@@ -440,7 +451,9 @@ class TestGetCurrentUser:
         with patch.object(
             auth, "_validate_token", new=AsyncMock(return_value=mock_claims)
         ):
-            result = await auth.get_current_user("Bearer valid-token")
+            result = await auth.get_current_user(
+                {"authorization": "Bearer valid-token"}
+            )
 
             assert result.get("permissions") == []
 
@@ -460,9 +473,9 @@ class TestGetCurrentUser:
 
         with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user(authorization)
+                await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_tampered_jwt_with_fake_signature(
@@ -480,9 +493,9 @@ class TestGetCurrentUser:
 
         with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user(authorization)
+                await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_garbage_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -494,9 +507,9 @@ class TestGetCurrentUser:
 
         with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user(authorization)
+                await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_alg_none_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -515,9 +528,9 @@ class TestGetCurrentUser:
 
         with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user(authorization)
+                await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_missing_alg_jwt(self, mock_jwks: dict[str, Any]) -> None:
@@ -533,9 +546,9 @@ class TestGetCurrentUser:
 
         with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
             with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user(authorization)
+                await auth.get_current_user({"authorization": authorization})
 
-            assert exc_info.value.status_code in (401, 403)
+            assert exc_info.value.status_code == 401
 
 
 class TestAddOwner:
@@ -548,6 +561,23 @@ class TestAddOwner:
         mock_ctx.user.identity = "test-user-123"
 
         value: dict[str, Any] = {}
+
+        result = await auth.add_owner(mock_ctx, value)
+
+        assert result == {"owner": "test-user-123"}
+        assert value["metadata"]["owner"] == "test-user-123"
+
+    @pytest.mark.asyncio
+    async def test_adds_owner_when_metadata_is_none(self) -> None:
+        """Test that add_owner handles a payload with metadata explicitly None.
+
+        Aegra builds handler payloads via model_dump(), so optional metadata
+        arrives as None rather than being absent.
+        """
+        mock_ctx = MagicMock()
+        mock_ctx.user.identity = "test-user-123"
+
+        value: dict[str, Any] = {"metadata": None}
 
         result = await auth.add_owner(mock_ctx, value)
 

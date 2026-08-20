@@ -6,8 +6,11 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
-	// Opt out of parallel tests on CI.
-	workers: process.env.CI ? 1 : undefined,
+	// Run with a single worker: all tests share the same backend user, and
+	// parallel sessions race for the same idle thread via getOrCreateThread.
+	// Aegra runs concurrent runs on a shared thread without queueing them
+	// (no multitask strategy), which corrupts thread state across tests.
+	workers: 1,
 	expect: { timeout: 10_000 },
 	reporter: [
 		['html', { open: 'never' }],
@@ -28,12 +31,14 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] }
 		}
 	],
+	// Readiness is detected via `wait.stdout`, not a port/url probe, so Playwright's
+	// `reuseExistingServer` never applies here — every run starts fresh servers,
+	// which is what guarantees the test database reset actually happens.
 	webServer: [
 		{
 			name: 'ai-mock',
 			command: 'moon backend:ai-mock-e2e',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -45,7 +50,6 @@ export default defineConfig({
 			name: 'oidc',
 			command: 'moon backend:oidc-mock',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
@@ -59,20 +63,20 @@ export default defineConfig({
 		{
 			name: 'backend',
 			command: 'moon backend:serve-e2e',
-			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
+			// Startup drops/recreates the test database and runs Aegra's
+			// migrations against it, which can be slow on a cold server.
+			timeout: 180000,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			wait: {
-				stdout: /Application started up in/
+				stdout: /Application startup complete/
 			}
 		},
 		{
 			name: 'frontend',
 			command: 'moon frontend:serve-e2e',
 			timeout: 120000,
-			reuseExistingServer: !process.env.CI,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from langchain_core.messages import BaseMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import InMemorySaver
 
 from svelte_langgraph.graph import make_graph, INITIAL_MESSAGE
 
@@ -14,7 +15,7 @@ async def main():
 
     config = RunnableConfig(configurable={"thread_id": "1"})
 
-    agent = make_graph(config)
+    agent = make_graph(config).copy(update={"checkpointer": InMemorySaver()})
 
     user_input = input(f"{INITIAL_MESSAGE}\n")
 
@@ -26,7 +27,7 @@ async def main():
         ):
             assert isinstance(chunk, BaseMessage)
 
-            print(chunk.text(), end="")
+            print(chunk.text, end="")
 
         user_input = input("\n")
 

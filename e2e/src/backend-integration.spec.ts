@@ -2,14 +2,6 @@ import { authenticateUser } from './fixtures/auth';
 import { LANGGRAPH_CONFIG } from './fixtures/backend';
 import { expect, test } from './fixtures/test';
 
-// langgraph-api converts all auth errors to 403 due to a bug in its middleware.
-// See: https://github.com/langchain-ai/langgraph/issues/6552
-// The issue: langgraph_api/auth/custom.py converts Auth.exceptions.HTTPException
-// to Starlette's AuthenticationError (losing status_code), then middleware.py's
-// on_error handler always returns 403 regardless of the original status code.
-// We accept both 401 (correct) and 403 (current langgraph-api behavior) until fixed.
-const AUTH_ERROR_CODES = [401, 403];
-
 function toBase64Url(value: string): string {
 	return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -46,8 +38,11 @@ function createTamperedJWT(payload: Record<string, unknown>): string {
 test.describe('Backend Integration', () => {
 	test.describe('Health', () => {
 		test('should be accessible', async ({ page }) => {
-			const response = await page.request.get(`${LANGGRAPH_CONFIG.apiUrl}/ok`);
+			const response = await page.request.get(`${LANGGRAPH_CONFIG.apiUrl}/health`);
 			expect(response.ok()).toBeTruthy();
+			const body = await response.json();
+			expect(body.status).toBe('healthy');
+			expect(body.database).toBe('connected');
 		});
 	});
 
@@ -101,7 +96,7 @@ test.describe('Backend Integration', () => {
 				data: {}
 			});
 
-			expect(AUTH_ERROR_CODES).toContain(response.status());
+			expect(response.status()).toBe(401);
 		});
 
 		test('should reject JWT with tampered payload', async ({ page }) => {
@@ -118,7 +113,7 @@ test.describe('Backend Integration', () => {
 				data: {}
 			});
 
-			expect(AUTH_ERROR_CODES).toContain(response.status());
+			expect(response.status()).toBe(401);
 		});
 
 		test('should reject malformed token', async ({ page }) => {
@@ -130,7 +125,7 @@ test.describe('Backend Integration', () => {
 				data: {}
 			});
 
-			expect(AUTH_ERROR_CODES).toContain(response.status());
+			expect(response.status()).toBe(401);
 		});
 	});
 });
