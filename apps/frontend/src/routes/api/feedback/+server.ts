@@ -54,7 +54,10 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 
 	if (Date.now() > parsed.exp) error(403, 'Token expired');
 
-	const backendUrl = pubEnv.PUBLIC_LANGGRAPH_API_URL ?? 'http://localhost:2024';
+	// Fail loudly rather than defaulting to localhost, matching createClient: a
+	// silent fallback would send scores nowhere in a misconfigured deployment.
+	const backendUrl = pubEnv.PUBLIC_LANGGRAPH_API_URL;
+	if (!backendUrl) error(500, 'Server misconfigured');
 
 	const response = await fetch(`${backendUrl}/feedback`, {
 		method: 'POST',

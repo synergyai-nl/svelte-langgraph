@@ -407,4 +407,121 @@ describe('Chat', () => {
 			});
 		});
 	});
+
+	describe('when an AI message is rated', () => {
+		function mockFeedbackFetch() {
+			return vi.fn(async (input: unknown) => {
+				const url = String(input);
+				if (url === '/api/feedback/token') {
+					return new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					});
+				}
+				return new Response(JSON.stringify({ ok: true }), {
+					status: 200,
+					headers: { 'Content-Type': 'application/json' }
+				});
+			});
+		}
+
+		/** Hover the message with `text` and click one of ITS rating buttons.
+		 *  Scoped with `within` because every AI message renders its own pair. */
+		async function rate(title: RegExp, text = 'AI response') {
+			const user = userEvent.setup();
+			const aiMessage = await screen.findByText(text);
+			await user.hover(aiMessage);
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await user.click(await within(group).findByTitle(title));
+		}
+
+		test('mints a token for the run that produced the message, then posts the score', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback/token',
+					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-abc' }) })
+				);
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback?token=signed-token',
+					expect.objectContaining({ body: JSON.stringify({ score: 1 }) })
+				);
+			});
+		});
+
+		test('scores a message restored from history, with no live run', async () => {
+			// Regression: feedback used to be minted only in onFinish, so a message
+			// loaded from history had no URL and the click silently did nothing.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'historical-run' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-old' }]);
+
+			renderChat();
+			await rate(/bad response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback/token',
+					expect.objectContaining({ body: JSON.stringify({ run_id: 'historical-run' }) })
+				);
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback?token=signed-token',
+					expect.objectContaining({ body: JSON.stringify({ score: 0 }) })
+				);
+			});
+		});
+
+		test("attributes the score to the message's own run, not the newest one", async () => {
+			// Regression: onFinish stamped every unstamped AI message with the
+			// *current* run's URL, so rating an older answer scored the newest trace.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn((msg: unknown) => {
+				const id = (msg as { id?: string }).id;
+				return { firstSeenState: { metadata: { run_id: `run-for-${id}` } } };
+			});
+			mockModule.setMessages([
+				{ type: 'ai', content: 'AI response', id: 'ai-old' },
+				{ type: 'ai', content: 'Newest response', id: 'ai-new' }
+			]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback/token',
+					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-for-ai-old' }) })
+				);
+			});
+			expect(fetchMock).not.toHaveBeenCalledWith(
+				'/api/feedback/token',
+				expect.objectContaining({ body: JSON.stringify({ run_id: 'run-for-ai-new' }) })
+			);
+		});
+
+		test('does not post when the message has no resolvable run id', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue(undefined);
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+	});
 });

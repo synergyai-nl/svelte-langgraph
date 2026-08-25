@@ -1,8 +1,11 @@
+import logging
 import os
 from typing import Any
 
 from langfuse import get_client
 from langfuse.langchain import CallbackHandler
+
+logger = logging.getLogger(__name__)
 
 
 def is_configured() -> bool:
@@ -43,6 +46,6 @@ def record_score(run_id: str, score: float, name: str = "user_feedback") -> bool
             value=score,
         )
         return result is not None
-    except Exception as e:
-        print(f"Failed to record score for trace {run_id}: {e}")
+    except Exception:
+        logger.exception("Failed to record score for trace %s", run_id)
         return False

@@ -2,7 +2,10 @@ import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 
-const TOKEN_TTL_MS = 60 * 60 * 1000; // TODO: 1 hour enough ?
+// A rating is almost always given right after the answer arrives. An hour is
+// generous for that while keeping a leaked token short-lived; the token only
+// ever authorises scoring one run, so the blast radius is a single score.
+const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 async function sign(payload: string, secret: string): Promise<string> {
 	const key = await crypto.subtle.importKey(

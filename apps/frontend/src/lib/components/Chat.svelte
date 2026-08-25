@@ -33,7 +33,9 @@
 		introTitle = ''
 	}: Props = $props();
 
-	// messageId → signed feedback URL returned by /api/feedback/token
+	// runId → signed feedback URL returned by /api/feedback/token. Keyed by run,
+	// not by message: one token covers every message the run produced, and the
+	// run id is what the score is ultimately attributed to.
 	const feedbackUrls = new SvelteMap<string, string>();
 
 	const stream = useStream({
@@ -41,30 +43,7 @@
 		assistantId,
 		threadId,
 		fetchStateHistory: true,
-		reconnectOnMount: true,
-		onFinish: async (_state, run) => {
-			if (!run) return;
-			// One token covers the whole run — request it once, then stamp every
-			// new AI message produced by this run with the same signed URL.
-			let url: string | null = null;
-			for (const msg of stream.messages) {
-				if (msg.type !== 'ai' || !msg.id || feedbackUrls.has(msg.id)) continue;
-				try {
-					if (!url) {
-						const res = await fetch('/api/feedback/token', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({ run_id: run.run_id })
-						});
-						if (!res.ok) continue;
-						({ url } = await res.json());
-					}
-					if (url) feedbackUrls.set(msg.id, url);
-				} catch (err) {
-					console.error('Failed to get feedback URL for message', msg.id, err);
-				}
-			}
-		}
+		reconnectOnMount: true
 	});
 
 	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
@@ -181,18 +160,57 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
+	/** The run that produced this message.
+	 *
+	 * Read from the message's own checkpoint metadata rather than from the live
+	 * run, so a rating always scores the trace that actually generated the text —
+	 * including for messages restored from history, where there is no live run at
+	 * all. Aegra pins `configurable.run_id` on every run and LangGraph merges
+	 * `configurable` into checkpoint metadata, so this survives a reload.
+	 */
+	function getRunId(message: Message): string | null {
+		if (!message.id) return null;
+		const rawMsg = rawMessageById.get(message.id);
+		if (!rawMsg) return null;
+		const runId = stream.getMessagesMetadata(rawMsg)?.firstSeenState?.metadata?.run_id;
+		return typeof runId === 'string' && runId ? runId : null;
+	}
+
+	/** Mint (or reuse) the signed URL that authorises scoring this run. */
+	async function getFeedbackUrl(runId: string): Promise<string | null> {
+		const cached = feedbackUrls.get(runId);
+		if (cached) return cached;
+
+		const res = await fetch('/api/feedback/token', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ run_id: runId })
+		});
+		if (!res.ok) throw new Error(`Feedback token request failed: ${res.status}`);
+
+		const { url } = await res.json();
+		if (typeof url !== 'string' || !url) throw new Error('Feedback token response had no url');
+		feedbackUrls.set(runId, url);
+		return url;
+	}
+
 	async function handleFeedback(message: Message, type: 'up' | 'down') {
-		const url = message.id ? feedbackUrls.get(message.id) : undefined;
-		if (!url) {
-			console.error('No feedback URL for message', message.id);
+		const runId = getRunId(message);
+		if (!runId) {
+			console.error('No run id for message, cannot submit feedback', message.id);
 			return;
 		}
 		try {
-			await fetch(url, {
+			// Minted on demand rather than eagerly for every message: most messages
+			// are never rated, and a token has a TTL it would otherwise burn idle.
+			const url = await getFeedbackUrl(runId);
+			if (!url) return;
+			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ score: type === 'up' ? 1 : 0 })
 			});
+			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
 		} catch (err) {
 			console.error('Failed to submit feedback', err);
 		}
