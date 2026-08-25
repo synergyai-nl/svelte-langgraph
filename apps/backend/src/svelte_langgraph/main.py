@@ -8,20 +8,17 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
 
 from svelte_langgraph.graph import make_graph, INITIAL_MESSAGE
-
-from langfuse.langchain import CallbackHandler
+from svelte_langgraph.tracing import get_run_callbacks
 
 
 async def main():
     load_dotenv()
 
-    langfuse_handler = CallbackHandler()
-
     config = RunnableConfig(
         configurable={
             "thread_id": "1",
         },
-        callbacks=[langfuse_handler],
+        callbacks=get_run_callbacks("cli"),
     )
 
     agent = make_graph(config).copy(update={"checkpointer": InMemorySaver()})
