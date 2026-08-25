@@ -29,12 +29,11 @@
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
 				title={m.message_feedback_good()}
-				disabled
 			>
 				<ThumbsUp size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{m.message_feedback_good()}</TooltipContent>
 	</Tooltip>
 	<Tooltip>
 		<TooltipTrigger>
@@ -44,11 +43,10 @@
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
 				title={m.message_feedback_bad()}
-				disabled
 			>
 				<ThumbsDown size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{m.message_feedback_bad()}</TooltipContent>
 	</Tooltip>
 </div>
