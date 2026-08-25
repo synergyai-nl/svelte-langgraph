@@ -60,8 +60,12 @@
 			{#if message.type === 'user' && isEditing}
 				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
 			{:else}
+				<!-- data-testid carries the sender because nothing else in the rendered
+				     markup distinguishes an AI card from a user card except its Tailwind
+				     colour classes, which E2E must not depend on. -->
 				<div
 					role="group"
+					data-testid="message-{message.type}"
 					onmouseenter={() => (isHovered = true)}
 					onmouseleave={() => (isHovered = false)}
 					class="relative w-full"
