@@ -6,6 +6,8 @@
 		"path": "svelte_langgraph.auth:auth"
 	},
 	"http": {
+		"app": "svelte_langgraph.routes:app",
+		"enable_custom_route_auth": true,
 		"cors": {
 			"allow_origins": ["*"]
 		}
