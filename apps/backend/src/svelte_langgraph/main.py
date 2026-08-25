@@ -1,6 +1,7 @@
 #!/usr/bin/env uv run python
 
 import asyncio
+import uuid
 from dotenv import load_dotenv
 
 from langchain_core.messages import BaseMessage
@@ -18,7 +19,9 @@ async def main():
         configurable={
             "thread_id": "1",
         },
-        callbacks=get_run_callbacks("cli"),
+        # A trace id has to be a 32-char hex string; the CLI has no server-issued
+        # run id, so mint one per session.
+        callbacks=get_run_callbacks(uuid.uuid4().hex),
     )
 
     agent = make_graph(config).copy(update={"checkpointer": InMemorySaver()})
