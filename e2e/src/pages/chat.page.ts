@@ -21,6 +21,9 @@ export class ChatPage {
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
 
+	/** Every rendered AI message card. Rating buttons are scoped per-message. */
+	readonly aiMessages: Locator;
+
 	constructor(app: AppPage) {
 		this.app = app;
 
@@ -34,5 +37,16 @@ export class ChatPage {
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
+
+		this.aiMessages = app.page.getByRole('group').filter({ has: app.page.locator('.prose') });
+	}
+
+	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
+	 *  Actions only become visible on hover, so hover before clicking. */
+	feedbackButtons(aiMessage: Locator): { up: Locator; down: Locator } {
+		return {
+			up: aiMessage.getByTitle('Good Response'),
+			down: aiMessage.getByTitle('Bad Response')
+		};
 	}
 }
