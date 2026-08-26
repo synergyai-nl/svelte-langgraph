@@ -108,3 +108,27 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	expect(req.postDataJSON()).toEqual({ score: 0 });
 	expect(runIds).toHaveLength(1);
 });
+
+test('a rating is still shown after a reload', async ({ page, chat }) => {
+	// The rating is mirrored into thread metadata precisely so it can be read
+	// back here. Langfuse can't serve it: no batch-by-thread query, and a fresh
+	// score takes ~10s to become readable.
+	await sendAndAwaitReply(chat, 'Hello', 1);
+
+	const aiMessage = chat.aiMessages.first();
+	await aiMessage.hover();
+
+	const persisted = page.waitForRequest(
+		(req) => req.method() === 'PATCH' && /\/threads\//.test(req.url())
+	);
+	await chat.feedbackButtons(aiMessage).up.click();
+	await persisted;
+
+	await page.reload();
+	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
+
+	const restored = chat.aiMessages.first();
+	await restored.hover();
+	await expect(chat.feedbackButtons(restored).up).toHaveClass(/bg-muted/);
+	await expect(chat.feedbackButtons(restored).down).not.toHaveClass(/bg-muted/);
+});

@@ -14,11 +14,25 @@
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		/** Resolves the rating already recorded for a message. Passed as a function
+		 *  rather than a value because only Chat can map a message to its run. */
+		getRating?: (message: Message) => 'up' | 'down' | null;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
 	}
 
-	let { message, onEdit, onRegenerate, onFeedback, isThinkingActive = false }: Props = $props();
+	let {
+		message,
+		onEdit,
+		onRegenerate,
+		onFeedback,
+		getRating,
+		isThinkingActive = false
+	}: Props = $props();
+
+	// Reads Chat's ratings state through the closure, so it re-runs when a
+	// rating is added or rolled back.
+	let rating = $derived(getRating?.(message) ?? null);
 
 	const plugins = [gfmPlugin()];
 
@@ -80,7 +94,7 @@
 									<Markdown md={message.text} {plugins} />
 								</Card.Content>
 							</Card.Root>
-							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} {rating} />
 						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">

@@ -8,14 +8,17 @@
 	interface Props {
 		message: Message;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		/** The rating already recorded for this message, or null if unrated. */
+		rating?: 'up' | 'down' | null;
 	}
 
-	let { message, onFeedback }: Props = $props();
+	let { message, onFeedback, rating = null }: Props = $props();
 
-	let feedbackGiven = $state<'up' | 'down' | null>(null);
-
+	// Controlled by the parent rather than held locally: the highlight has to
+	// survive a remount and a reload, and it should reflect what was actually
+	// stored, not merely what was clicked.
 	function handleFeedback(type: 'up' | 'down') {
-		feedbackGiven = feedbackGiven === type ? null : type;
+		if (rating === type) return;
 		onFeedback?.(message, type);
 	}
 </script>
@@ -27,7 +30,7 @@
 				onclick={() => handleFeedback('up')}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
+				class="h-6 w-6 p-1.5 {rating === 'up' ? 'bg-muted' : ''}"
 				title={m.message_feedback_good()}
 			>
 				<ThumbsUp size={16} />
@@ -41,7 +44,7 @@
 				onclick={() => handleFeedback('down')}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
+				class="h-6 w-6 p-1.5 {rating === 'down' ? 'bg-muted' : ''}"
 				title={m.message_feedback_bad()}
 			>
 				<ThumbsDown size={16} />

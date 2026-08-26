@@ -38,6 +38,12 @@
 	// run id is what the score is ultimately attributed to.
 	const feedbackUrls = new SvelteMap<string, string>();
 
+	// runId → the rating the user gave. Mirrored into thread metadata so it
+	// survives a reload, because Langfuse can't serve this back: its scores API
+	// has no batch-by-session query, so rebuilding a thread would cost a lookup
+	// per message, and a fresh score takes ~10s to become readable anyway.
+	let ratings = $state<Record<string, 'up' | 'down'>>({});
+
 	const stream = useStream({
 		client: langGraphClient,
 		assistantId,
@@ -194,12 +200,40 @@
 		return url;
 	}
 
+	/** Ratings live in thread *metadata* (PATCH /threads/{id}, a shallow merge, so
+	 *  the whole map goes each time) rather than thread state. State would mean a
+	 *  checkpoint write, which forks history on the next submit and 409s during an
+	 *  active run — see the escape-hatch note in stateSync.svelte.ts. */
+	async function loadRatings() {
+		try {
+			const thread = await langGraphClient.threads.get(threadId);
+			const stored = (thread.metadata as { ratings?: Record<string, 'up' | 'down'> } | undefined)
+				?.ratings;
+			if (stored) ratings = { ...stored };
+		} catch (err) {
+			// Losing this costs the highlights and nothing else, so it must never
+			// block the thread from rendering.
+			console.error('Failed to load feedback ratings', err);
+		}
+	}
+	loadRatings();
+
+	function getRating(message: Message): 'up' | 'down' | null {
+		const runId = getRunId(message);
+		return runId ? (ratings[runId] ?? null) : null;
+	}
+
 	async function handleFeedback(message: Message, type: 'up' | 'down') {
 		const runId = getRunId(message);
 		if (!runId) {
 			console.error('No run id for message, cannot submit feedback', message.id);
 			return;
 		}
+
+		const previous = ratings[runId];
+		// Optimistic: the highlight belongs on the click, not two round trips later.
+		ratings = { ...ratings, [runId]: type };
+
 		try {
 			// Minted on demand rather than eagerly for every message: most messages
 			// are never rated, and a token has a TTL it would otherwise burn idle.
@@ -211,7 +245,15 @@
 				body: JSON.stringify({ score: type === 'up' ? 1 : 0 })
 			});
 			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
+			// Sends the current map, not a snapshot — a rating given while this was
+			// in flight belongs in the write too.
+			await langGraphClient.threads.update(threadId, { metadata: { ratings } });
 		} catch (err) {
+			// Roll back only this message's rating; others may have landed since.
+			const rolledBack = { ...ratings };
+			if (previous === undefined) delete rolledBack[runId];
+			else rolledBack[runId] = previous;
+			ratings = rolledBack;
 			console.error('Failed to submit feedback', err);
 		}
 	}
@@ -279,6 +321,7 @@
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
 				onFeedback={handleFeedback}
+				{getRating}
 			/>
 		{/if}
 	</div>
