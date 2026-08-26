@@ -127,8 +127,12 @@ test('a rating is still shown after a reload', async ({ page, chat }) => {
 	await page.reload();
 	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
 
+	// No hover here on purpose. The buttons are always in the DOM — hover only
+	// animates the container's opacity — and `toHaveClass` runs no actionability
+	// check. Hovering would instead race the tooltip: the virtual mouse is still
+	// parked on the button from the click above, so after the reload it reopens
+	// instantly and its content div swallows the pointer events.
 	const restored = chat.aiMessages.first();
-	await restored.hover();
 	await expect(chat.feedbackButtons(restored).up).toHaveClass(/bg-muted/);
 	await expect(chat.feedbackButtons(restored).down).not.toHaveClass(/bg-muted/);
 });
