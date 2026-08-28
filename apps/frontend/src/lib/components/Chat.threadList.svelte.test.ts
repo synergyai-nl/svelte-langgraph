@@ -252,9 +252,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		// captured title would then overwrite the newer one; serialization can't save us here,
 		// since the backfill is enqueued last and so would win.
 		let resolveGet!: (value: { metadata: Record<string, unknown> }) => void;
-		threadsGetMock.mockImplementationOnce(
-			() => new Promise((resolve) => (resolveGet = resolve))
-		);
+		threadsGetMock.mockImplementationOnce(() => new Promise((resolve) => (resolveGet = resolve)));
 
 		mockModule.setIsThreadLoading(true);
 		renderChatWithRefresh();
