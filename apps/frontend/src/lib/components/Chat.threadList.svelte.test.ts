@@ -203,6 +203,38 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
 	});
 
+	test('retries the mirror on the next settle when the PATCH failed', async () => {
+		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
+		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
+		// check has already run before the title existed, so it cannot backfill, and every later
+		// settle would skip the PATCH as "already mirrored" — leaving the row untitled for the
+		// rest of the mount.
+		threadsUpdateMock.mockRejectedValueOnce(new Error('network blip'));
+
+		const refresh = renderChatWithRefresh();
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Trip to Kyoto' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+
+		// A second run settles with the same title still in state — the failed write must be
+		// retried rather than skipped.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
+		expect(threadsUpdateMock).toHaveBeenLastCalledWith('test-123', {
+			metadata: { title: 'Trip to Kyoto' }
+		});
+		await waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
+	});
+
 	test('does not re-issue an identical PATCH on a later settle with the same title', async () => {
 		const refresh = renderChatWithRefresh();
 		await tick();

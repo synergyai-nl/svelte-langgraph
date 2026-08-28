@@ -847,3 +847,94 @@ async def test_title_generation_survives_injection_attempt_in_first_message(
     assert len(title) <= TITLE_MAX_CHARS
     assert not title.startswith("*")
     assert not title.endswith("*")
+
+
+def test_render_conversation_extracts_text_from_block_content():
+    """Providers reached through a `CHAT_MODEL_NAME` provider prefix (e.g.
+    `anthropic:...`) return block-form message content, not a plain string.
+
+    Rendering those with `str(message.content)` would serialize the whole
+    block list -- reasoning traces, signatures and media metadata included --
+    into the title prompt. `_render_conversation_for_title` uses `.text`, so
+    only `type: "text"` blocks survive, and a message carrying no text block
+    at all is skipped rather than rendered as an empty turn.
+    """
+    from svelte_langgraph.graph import _render_conversation_for_title
+
+    rendered = _render_conversation_for_title(
+        [
+            HumanMessage(content=[{"type": "text", "text": "Plan a trip to Paris"}]),
+            AIMessage(
+                content=[
+                    {"type": "thinking", "thinking": "internal reasoning, not content"},
+                    {"type": "text", "text": "Sure, here is an itinerary."},
+                ]
+            ),
+            AIMessage(content=[{"type": "thinking", "thinking": "no text block"}]),
+        ]
+    )
+
+    assert rendered == (
+        "User: Plan a trip to Paris\nAssistant: Sure, here is an itinerary."
+    )
+    assert "thinking" not in rendered
+    assert "internal reasoning" not in rendered
+
+
+@pytest.mark.asyncio
+async def test_title_from_block_content_response(
+    agent, thread_config: RunnableConfig, mock_completion, monkeypatch
+):
+    """A title model returning block-form content must yield the text of the
+    block, not the Python repr of the block list.
+
+    `str(response.content)` would have produced `[{'type': 'text', ...}]`,
+    which `sanitize_title` would then persist as a 60-character slice of that
+    repr -- a garbage title shown in the sidebar. `.text` extracts the real
+    string.
+    """
+    from tests.conftest import CompletionMeta, make_completion_response
+
+    mock_completion.mock(
+        return_value=make_completion_response(
+            "Hi there! Happy to help.",
+            meta=CompletionMeta(response_id="chatcmpl-chat"),
+        )
+    )
+
+    # The OpenAI-shaped mock transport can only carry string content, so the
+    # block-form response is injected at the model seam instead. `title_gate`
+    # resolves `get_chat_model()` at call time, whereas the agent's own chat
+    # model was already bound when the `agent` fixture built the graph — so
+    # patching here swaps *only* the title model, leaving the chat turn on the
+    # respx-mocked HTTP path.
+    class _BlockContentTitleModel:
+        """Minimal stand-in exposing just the builder chain title_gate uses."""
+
+        def model_copy(self, update=None):
+            return self
+
+        def bind(self, **kwargs):
+            return self
+
+        def with_config(self, **kwargs):
+            return self
+
+        async def ainvoke(self, prompt):
+            return AIMessage(
+                content=[
+                    {"type": "thinking", "thinking": "deciding on a title"},
+                    {"type": "text", "text": "Trip to Paris"},
+                ]
+            )
+
+    monkeypatch.setattr(
+        "svelte_langgraph.graph.get_chat_model", lambda: _BlockContentTitleModel()
+    )
+
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Help me plan a trip to Paris")]},
+        thread_config,
+    )
+
+    assert result["title"] == "Trip to Paris"

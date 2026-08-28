@@ -177,19 +177,25 @@
 	// visible there. `client.threads.update` is Aegra's shallow merge (`current_metadata.update`),
 	// so sending only `{ title }` cannot clobber the `owner` key the backend auth stamps.
 	//
-	// `mirroredTitle` remembers what this instance has already written, so a later settle with an
-	// unchanged title (e.g. a follow-up turn before the graph updates it again) doesn't reissue an
-	// identical PATCH. A failed PATCH is swallowed — a missing/stale title is purely cosmetic and
-	// backfills on the next settle or the next mount, so it must never surface as a chat error.
+	// `mirroredTitle` remembers what this instance has already *successfully* written, so a later
+	// settle with an unchanged title (e.g. a follow-up turn before the graph updates it again)
+	// doesn't reissue an identical PATCH. A failed PATCH is swallowed — a missing/stale title is
+	// purely cosmetic and must never surface as a chat error.
+	//
+	// It is recorded only after the PATCH resolves, which is what makes a transient failure
+	// recoverable *within this mount*: the next settle sees `title !== mirroredTitle` and retries.
+	// Recording it up front would be a silent one-shot — on a fresh thread the mount-time check
+	// has already run (and set `checkedInitialTitle`) before the title ever existed, so it cannot
+	// act as the safety net here, and the thread would stay untitled until the next page load.
 	let mirroredTitle: string | undefined;
 
 	async function mirrorTitle(title: string) {
-		mirroredTitle = title;
 		try {
 			await langGraphClient.threads.update(threadId, { metadata: { title } });
+			mirroredTitle = title;
 		} catch {
-			// Best-effort — see comment above. The mount-time check below is the safety net for
-			// exactly this case.
+			// Best-effort — see comment above. Leaving `mirroredTitle` unset is deliberate: it lets
+			// the next settle retry, and the mount-time check below covers a tab closed mid-run.
 		}
 	}
 

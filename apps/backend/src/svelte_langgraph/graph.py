@@ -238,10 +238,25 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
     """
     lines: list[str] = []
     for message in messages:
-        if isinstance(message, HumanMessage) and message.content:
-            lines.append(f"User: {message.content!s}")
-        elif isinstance(message, AIMessage) and message.content:
-            lines.append(f"Assistant: {message.content!s}")
+        if isinstance(message, HumanMessage):
+            role = "User"
+        elif isinstance(message, AIMessage):
+            role = "Assistant"
+        else:
+            continue
+
+        # `.text`, never `str(message.content)`: `content` is only a plain
+        # string for some providers. Anything reached through
+        # `CHAT_MODEL_NAME`'s provider prefix (e.g. `anthropic:...`, which
+        # `_has_known_provider_prefix` explicitly supports) returns *block*
+        # content, whose `str()` is the Python repr of the whole block list --
+        # reasoning traces, signatures and media metadata included. That would
+        # push a large amount of non-conversation data into the title prompt.
+        # `.text` concatenates just the `type: "text"` blocks and yields ""
+        # when there are none.
+        text = message.text.strip()
+        if text:
+            lines.append(f"{role}: {text}")
     return "\n".join(lines)
 
 
@@ -366,7 +381,13 @@ async def title_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None
             .with_config(tags=["nostream"])
         )
         response = await model.ainvoke(prompt)
-        title = sanitize_title(str(response.content))
+        # `.text` rather than `str(response.content)` for the same reason as in
+        # `_render_conversation_for_title`: on a block-content provider the
+        # latter stringifies the block list itself, and `sanitize_title` would
+        # then happily persist a 60-character slice of `[{'type': 'text',
+        # ...}]` as the visible thread title. `.text` is "" when the response
+        # carries no text block, which `sanitize_title` maps to None.
+        title = sanitize_title(response.text)
     except Exception:  # noqa: BLE001 - titling must never fail the chat turn
         return None
 
