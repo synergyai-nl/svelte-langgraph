@@ -267,6 +267,14 @@
 					// The next mount gets another chance.
 					return;
 				}
+				// `title` was captured before the awaited GET, and a run can settle while that GET
+				// is in flight — a regenerate branches from the pre-answer checkpoint and produces
+				// a *different* title. The GET would then return a snapshot predating that write,
+				// and queueing the captured title here would overwrite the newer one. Serializing
+				// the writes preserves their order but cannot help: this backfill is enqueued
+				// last, so it would win. Re-read instead, and drop the backfill if the graph's
+				// title has moved on.
+				if (stream.values.title !== title) return;
 				await mirrorTitle(title);
 				threadListRefresh?.refresh();
 			})();

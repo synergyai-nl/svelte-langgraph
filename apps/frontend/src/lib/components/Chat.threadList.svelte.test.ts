@@ -245,6 +245,51 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		expect(threadsUpdateMock.mock.calls[1][1]).toEqual({ metadata: { title: 'Title B' } });
 	});
 
+	test('drops a stale mount backfill when a newer title was mirrored while its GET was in flight', async () => {
+		// The mount backfill captures `values.title` *before* awaiting `threads.get`. If a run
+		// settles during that GET — regenerate branches from the pre-answer checkpoint and yields
+		// a different title — the GET returns a snapshot predating that write. Queueing the
+		// captured title would then overwrite the newer one; serialization can't save us here,
+		// since the backfill is enqueued last and so would win.
+		let resolveGet!: (value: { metadata: Record<string, unknown> }) => void;
+		threadsGetMock.mockImplementationOnce(
+			() => new Promise((resolve) => (resolveGet = resolve))
+		);
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		// History resolves carrying title A, with metadata still untitled -> backfill starts.
+		mockModule.setValues({ title: 'Title A' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// A regenerate settles while the GET is still open, mirroring title B.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title B' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
+			metadata: { title: 'Title B' }
+		});
+
+		// Now the stale GET returns, reporting metadata that predates B's write.
+		resolveGet({ metadata: {} });
+		await tick();
+		await tick();
+
+		// The backfill must be dropped — B stays the persisted title.
+		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
+		expect(threadsUpdateMock).not.toHaveBeenCalledWith('test-123', {
+			metadata: { title: 'Title A' }
+		});
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
