@@ -22,6 +22,7 @@ import respx
 from svelte_langgraph.models import (
     TITLE_MAX_OUTPUT_TOKENS,
     _REASONING_KWARGS,
+    _TOKEN_LIMIT_KWARGS,
     _has_known_provider_prefix,
     get_chat_model,
     get_title_model,
@@ -347,3 +348,36 @@ def test_title_model_rejects_reserved_kwargs(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="CHAT_MODEL_KWARGS must not include"):
         get_title_model()
+
+
+@pytest.mark.parametrize("limit_key", _TOKEN_LIMIT_KWARGS)
+def test_title_ceiling_survives_provider_native_token_limit_aliases(
+    monkeypatch, limit_key: str
+) -> None:
+    """A token limit configured for *chat* must not leak into the title call
+    and defeat its ceiling.
+
+    This is not merely cosmetic de-duplication: `ChatOpenAI.max_tokens`
+    declares `max_completion_tokens` as its pydantic alias and the model is
+    built with `populate_by_name=True`, so when both the field name and the
+    alias are supplied the *alias* wins. A deployment using the standard
+    OpenAI spelling `{"max_completion_tokens": 4096}` would therefore silently
+    override the title-specific ceiling unless every spelling is cleared
+    first.
+    """
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({limit_key: 4096}))
+
+    assert getattr(get_title_model(), "max_tokens", None) == TITLE_MAX_OUTPUT_TOKENS
+
+
+def test_chat_model_keeps_its_configured_token_limit(monkeypatch) -> None:
+    """Guards the test above from going vacuous: the limit really is applied
+    to the chat model, so the title model dropping it is a genuine
+    difference rather than the value never having taken effect."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"max_completion_tokens": 4096}))
+
+    assert getattr(get_chat_model(), "max_tokens", None) == 4096

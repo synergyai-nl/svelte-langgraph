@@ -72,6 +72,15 @@ def get_chat_model() -> BaseChatModel:
 # call cheap regardless of which provider CHAT_MODEL_NAME selects.
 _REASONING_KWARGS = ("reasoning", "reasoning_effort", "thinking")
 
+# Output-token spellings cleared before the title ceiling is applied. These are
+# not merely "other names we also set" -- leaving one in place actively defeats
+# the ceiling: `ChatOpenAI.max_tokens` declares `max_completion_tokens` as its
+# pydantic alias, and with `populate_by_name=True` the *alias* wins when both
+# are supplied. So `CHAT_MODEL_KWARGS={"max_completion_tokens": 4096}` would
+# silently override the 128 set below. Popping every spelling first guarantees
+# the title ceiling is the only one in play.
+_TOKEN_LIMIT_KWARGS = ("max_tokens", "max_completion_tokens", "max_output_tokens")
+
 # Output-token ceiling for a generated title. This must comfortably exceed
 # `graph.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
 # token is roughly one character, so a limit set at the character cap would
@@ -94,7 +103,9 @@ def get_title_model() -> BaseChatModel:
     - `max_tokens` bounds the completion. `sanitize_title` only truncates
       *after* the model has generated (and billed for) its output, so without
       this a model that follows an injected instruction could emit thousands
-      of tokens while the user's chat run sits there still loading.
+      of tokens while the user's chat run sits there still loading. Every
+      other spelling of the limit is cleared first, or a provider-native
+      alias would win over it -- see `_TOKEN_LIMIT_KWARGS`.
     - `temperature=0` keeps titles stable across retries, unlike chat's 0.9.
     - `disable_streaming=True` because the tokens are discarded either way:
       `graph.title_gate` tags the call `nostream` so LangGraph won't forward
@@ -103,7 +114,7 @@ def get_title_model() -> BaseChatModel:
       streaming callback handler is attached).
     """
     kwargs = _get_chat_model_kwargs()
-    for key in _REASONING_KWARGS:
+    for key in (*_REASONING_KWARGS, *_TOKEN_LIMIT_KWARGS):
         kwargs.pop(key, None)
 
     kwargs["temperature"] = 0

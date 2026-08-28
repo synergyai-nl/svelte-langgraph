@@ -189,14 +189,34 @@
 	// act as the safety net here, and the thread would stay untitled until the next page load.
 	let mirroredTitle: string | undefined;
 
-	async function mirrorTitle(title: string) {
-		try {
-			await langGraphClient.threads.update(threadId, { metadata: { title } });
-			mirroredTitle = title;
-		} catch {
-			// Best-effort — see comment above. Leaving `mirroredTitle` unset is deliberate: it lets
-			// the next settle retry, and the mount-time check below covers a tab closed mid-run.
-		}
+	// Writes are serialized through this chain rather than fired off independently. Two settles
+	// can otherwise leave two PATCHes in flight at once — reachable via regenerate, which branches
+	// from the pre-answer checkpoint and so generates a *different* title (see
+	// `test_regenerate_reexecutes_model`). Aegra's metadata write is last-write-wins, so if the
+	// first, slower PATCH lands after the second, the stale title wins both on the server and in
+	// `mirroredTitle`. Chaining keeps at most one in flight and preserves request order.
+	let mirrorQueue: Promise<void> = Promise.resolve();
+
+	function mirrorTitle(title: string): Promise<void> {
+		mirrorQueue = mirrorQueue
+			// A rejected link must not poison the chain for later writes. (`mirrorQueue` never
+			// actually rejects — the inner catch swallows — but this keeps that a local property
+			// of this function rather than an invariant callers have to preserve.)
+			.catch(() => {})
+			.then(async () => {
+				// Checked here, not at call time: by the time this link runs, an earlier queued
+				// write may already have persisted this exact title.
+				if (title === mirroredTitle) return;
+				try {
+					await langGraphClient.threads.update(threadId, { metadata: { title } });
+					mirroredTitle = title;
+				} catch {
+					// Best-effort — see comment above. Leaving `mirroredTitle` unset is deliberate:
+					// it lets the next settle retry, and the mount-time check below covers a tab
+					// closed mid-run.
+				}
+			});
+		return mirrorQueue;
 	}
 
 	$effect(() => {

@@ -203,6 +203,48 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
 	});
 
+	test('serializes concurrent writes so a slow earlier PATCH cannot overwrite a newer title', async () => {
+		// Reachable via regenerate: it branches from the pre-answer checkpoint, so the graph
+		// generates a *different* title for the same mount. Aegra's metadata write is
+		// last-write-wins, so two PATCHes in flight at once could persist the stale one if the
+		// first completes second.
+		let resolveFirst!: () => void;
+		const firstInFlight = new Promise<void>((resolve) => (resolveFirst = resolve));
+		threadsUpdateMock
+			.mockImplementationOnce(async () => {
+				await firstInFlight;
+				return {};
+			})
+			.mockImplementationOnce(async () => ({}));
+
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title A' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+
+		// Second run settles while the first PATCH is still open.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title B' });
+		mockModule.setIsLoading(false);
+		await tick();
+
+		// The load-bearing assertion: B must not be sent while A is unresolved.
+		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
+
+		resolveFirst();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
+
+		// ...and they land in request order, so the newest title is what persists.
+		expect(threadsUpdateMock.mock.calls[0][1]).toEqual({ metadata: { title: 'Title A' } });
+		expect(threadsUpdateMock.mock.calls[1][1]).toEqual({ metadata: { title: 'Title B' } });
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
