@@ -1,3 +1,4 @@
+import asyncio
 import re
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Annotated, Any, cast
@@ -186,6 +187,11 @@ Rules:
 # for why an unbounded prompt is a real failure mode rather than just waste.
 TITLE_CONVERSATION_MAX_TURNS = 2
 TITLE_CONVERSATION_MAX_CHARS_PER_TURN = 500
+
+# Wall-clock bound on the title model call. Generous enough that a healthy
+# provider always finishes, short enough that a sick one cannot hold the
+# user's composer disabled -- see `title_gate` for why this blocks the run.
+TITLE_TIMEOUT_SECONDS = 20.0
 
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _WHITESPACE_RUN_RE = re.compile(r"\s+")
@@ -398,7 +404,19 @@ async def title_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None
         # exchange of every spec and pushed unrelated tests past their
         # run-settle timeouts.
         model = get_title_model().with_config(tags=["nostream"])
-        response = await model.ainvoke(prompt)
+        # Bounded because this await blocks the *run*, not just the title.
+        # `after_agent` runs inside the run, so a provider that stalls or sits
+        # in a long internal retry backoff after the assistant answer has
+        # already streamed keeps the run in-flight -- and the frontend keeps
+        # the composer disabled -- for as long as the provider's own timeout
+        # allows, potentially minutes. The `except` below cannot help: it does
+        # not get to run until the call returns. A wall-clock bound here is
+        # provider-agnostic and also covers any retries the SDK performs
+        # internally, which is why no separate retry limit is configured.
+        # Timing out simply leaves `title` unset to backfill on the next turn.
+        response = await asyncio.wait_for(
+            model.ainvoke(prompt), timeout=TITLE_TIMEOUT_SECONDS
+        )
         # `.text` rather than `str(response.content)` for the same reason as in
         # `_render_conversation_for_title`: on a block-content provider the
         # latter stringifies the block list itself, and `sanitize_title` would

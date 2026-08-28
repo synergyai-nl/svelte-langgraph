@@ -81,6 +81,19 @@ _REASONING_KWARGS = ("reasoning", "reasoning_effort", "thinking")
 # the title ceiling is the only one in play.
 _TOKEN_LIMIT_KWARGS = ("max_tokens", "max_completion_tokens", "max_output_tokens")
 
+# Structured-output constraints stripped for the title call, which asks for
+# plain prose. Inheriting a chat-side `response_format` would either make the
+# provider reject this prompt (OpenAI JSON mode requires the word "JSON" in
+# the messages) or, in schema mode, return a JSON document that
+# `sanitize_title` would dutifully persist as the sidebar label. The Google
+# spellings are included for the same reason as the reasoning dialects: which
+# one applies depends on the provider `CHAT_MODEL_NAME` selects.
+_STRUCTURED_OUTPUT_KWARGS = (
+    "response_format",
+    "response_schema",
+    "response_mime_type",
+)
+
 # Output-token ceiling for a generated title. This must comfortably exceed
 # `graph.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
 # token is roughly one character, so a limit set at the character cap would
@@ -114,7 +127,11 @@ def get_title_model() -> BaseChatModel:
       streaming callback handler is attached).
     """
     kwargs = _get_chat_model_kwargs()
-    for key in (*_REASONING_KWARGS, *_TOKEN_LIMIT_KWARGS):
+    for key in (
+        *_REASONING_KWARGS,
+        *_TOKEN_LIMIT_KWARGS,
+        *_STRUCTURED_OUTPUT_KWARGS,
+    ):
         kwargs.pop(key, None)
 
     kwargs["temperature"] = 0

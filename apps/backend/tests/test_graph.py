@@ -977,3 +977,58 @@ def test_render_conversation_truncates_an_overlong_turn():
     assert len(rendered) < TITLE_CONVERSATION_MAX_CHARS_PER_TURN + 20
     assert rendered.startswith("User: xxx")
     assert rendered.endswith("…")
+
+
+@pytest.mark.asyncio
+async def test_title_call_timeout_does_not_stall_the_run(
+    agent, thread_config: RunnableConfig, mock_completion, monkeypatch
+):
+    """A stalled title provider must not hold the run open.
+
+    `title_gate` runs inside the run via `after_agent`, so awaiting a hung
+    title call keeps the run in-flight and the frontend composer disabled
+    long after the assistant answer has streamed. The `except` handler cannot
+    help, since it does not run until the call returns. A wall-clock bound
+    turns that into an ordinary "no title this turn", which backfills later.
+    """
+    import asyncio as _asyncio
+
+    from tests.conftest import CompletionMeta, make_completion_response
+
+    mock_completion.mock(
+        return_value=make_completion_response(
+            "Hi there! Happy to help.",
+            meta=CompletionMeta(response_id="chatcmpl-chat"),
+        )
+    )
+
+    class _HangingTitleModel:
+        def with_config(self, **kwargs):
+            return self
+
+        async def ainvoke(self, prompt):
+            await _asyncio.sleep(3600)  # never returns within the test
+            raise AssertionError("unreachable")
+
+    monkeypatch.setattr(
+        "svelte_langgraph.graph.get_title_model", lambda: _HangingTitleModel()
+    )
+    # Keep the test fast; the production value is deliberately far larger.
+    monkeypatch.setattr("svelte_langgraph.graph.TITLE_TIMEOUT_SECONDS", 0.05)
+
+    result = await _asyncio.wait_for(
+        agent.ainvoke(
+            {"messages": [HumanMessage(content="Help me plan a trip to Paris")]},
+            thread_config,
+        ),
+        # Generously above the title timeout: if the bound were missing this
+        # would raise rather than hang the suite, and the assertion below
+        # would never be reached.
+        timeout=30,
+    )
+
+    assert result.get("title") is None
+    ai_messages = [m for m in result["messages"] if isinstance(m, AIMessage)]
+    assert any("Happy to help" in str(m.content) for m in ai_messages), (
+        "the assistant reply must still land even though titling timed out"
+    )

@@ -257,9 +257,17 @@
 			if (typeof title !== 'string' || title.length === 0 || title === mirroredTitle) return;
 			void (async () => {
 				try {
+					// Any stored metadata title is authoritative, not just one matching ours. This
+					// backfill exists to fill an *absence* (a PATCH that failed, or a tab closed
+					// mid-run), so a thread that already carries a title is simply done. Comparing
+					// for equality instead would overwrite a title set deliberately elsewhere —
+					// `client.threads.update` is public SDK surface, so another client or tab can
+					// rename a thread today, and the rename UI noted as a follow-up would be
+					// silently undone every time the thread was reopened.
 					const thread = await langGraphClient.threads.get(threadId);
-					if (thread.metadata?.title === title) {
-						mirroredTitle = title;
+					const storedTitle = thread.metadata?.title;
+					if (typeof storedTitle === 'string' && storedTitle.length > 0) {
+						mirroredTitle = storedTitle;
 						return;
 					}
 				} catch {

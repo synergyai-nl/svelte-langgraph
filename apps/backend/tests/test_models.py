@@ -22,6 +22,7 @@ import respx
 from svelte_langgraph.models import (
     TITLE_MAX_OUTPUT_TOKENS,
     _REASONING_KWARGS,
+    _STRUCTURED_OUTPUT_KWARGS,
     _TOKEN_LIMIT_KWARGS,
     _has_known_provider_prefix,
     get_chat_model,
@@ -381,3 +382,27 @@ def test_chat_model_keeps_its_configured_token_limit(monkeypatch) -> None:
     monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"max_completion_tokens": 4096}))
 
     assert getattr(get_chat_model(), "max_tokens", None) == 4096
+
+
+@pytest.mark.parametrize("structured_key", _STRUCTURED_OUTPUT_KWARGS)
+def test_title_model_strips_structured_output_constraints(
+    monkeypatch, structured_key: str
+) -> None:
+    """The title call asks for plain prose, so chat-side structured-output
+    settings must not leak into it.
+
+    With OpenAI JSON mode the provider rejects a prompt that never mentions
+    JSON; with schema mode it returns a JSON document that `sanitize_title`
+    would dutifully persist as the sidebar label.
+    """
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({structured_key: {"type": "json_object"}})
+    )
+
+    title_dump = str(get_title_model().model_dump())
+    assert f"'{structured_key}'" not in title_dump
+
+    # Non-vacuous: the chat model really does carry it.
+    assert f"'{structured_key}'" in str(get_chat_model().model_dump())

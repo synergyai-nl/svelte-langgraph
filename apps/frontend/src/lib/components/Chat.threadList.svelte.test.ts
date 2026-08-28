@@ -288,6 +288,25 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		});
 	});
 
+	test('on mount, leaves an existing metadata title alone even when it differs from state', async () => {
+		// The backfill fills an *absence*. A thread that already carries a title is done — the
+		// stored value may be a deliberate rename from another client or tab (`threads.update` is
+		// public SDK surface), and overwriting it would undo that on every reopen.
+		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
