@@ -931,3 +931,49 @@ async def test_title_from_block_content_response(
     )
 
     assert result["title"] == "Trip to Paris"
+
+
+def test_render_conversation_is_bounded_on_both_axes():
+    """The title prompt must not grow with the conversation.
+
+    `should_generate_title` keeps returning True while no title is stored, so
+    a thread whose titling keeps failing would otherwise resend its entire
+    accumulated history on every subsequent turn -- escalating cost and
+    latency until it overflows the context window, past which the retries
+    could never recover. Only the opening exchange is rendered, and each turn
+    is capped.
+    """
+    from svelte_langgraph.graph import (
+        TITLE_CONVERSATION_MAX_TURNS,
+        _render_conversation_for_title,
+    )
+
+    rendered = _render_conversation_for_title(
+        [
+            HumanMessage(content="First question"),
+            AIMessage(content="First answer"),
+            HumanMessage(content="LATER_TURN_MARKER second question"),
+            AIMessage(content="LATER_TURN_MARKER second answer"),
+        ]
+    )
+
+    assert rendered == "User: First question\nAssistant: First answer"
+    assert "LATER_TURN_MARKER" not in rendered
+    assert len(rendered.splitlines()) == TITLE_CONVERSATION_MAX_TURNS
+
+
+def test_render_conversation_truncates_an_overlong_turn():
+    """A single huge message is capped too -- bounding the turn *count* alone
+    would still let one enormous first message blow up the prompt."""
+    from svelte_langgraph.graph import (
+        TITLE_CONVERSATION_MAX_CHARS_PER_TURN,
+        _render_conversation_for_title,
+    )
+
+    huge = "x" * (TITLE_CONVERSATION_MAX_CHARS_PER_TURN * 10)
+    rendered = _render_conversation_for_title([HumanMessage(content=huge)])
+
+    # "User: " prefix + the cap + the ellipsis marker.
+    assert len(rendered) < TITLE_CONVERSATION_MAX_CHARS_PER_TURN + 20
+    assert rendered.startswith("User: xxx")
+    assert rendered.endswith("…")

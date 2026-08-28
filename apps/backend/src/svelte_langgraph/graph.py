@@ -180,6 +180,13 @@ Rules:
 {conversation}
 </conversation>"""
 
+# Bounds on what `_render_conversation_for_title` feeds the title model. Two
+# turns is the opening exchange (first user message + first assistant reply),
+# which is what a thread's topic is actually derived from; see that function
+# for why an unbounded prompt is a real failure mode rather than just waste.
+TITLE_CONVERSATION_MAX_TURNS = 2
+TITLE_CONVERSATION_MAX_CHARS_PER_TURN = 500
+
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _WHITESPACE_RUN_RE = re.compile(r"\s+")
 # Characters `sanitize_title` peels off both edges of the model's raw output:
@@ -235,9 +242,24 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
     caller-influenced content the `<conversation>` framing in `TITLE_PROMPT`
     already has to defend against, so there's no reason to widen that
     surface further by including them.
+
+    Bounded on both axes -- `TITLE_CONVERSATION_MAX_TURNS` renderable turns,
+    each capped at `TITLE_CONVERSATION_MAX_CHARS_PER_TURN` characters. The
+    opening exchange is what establishes a thread's topic, so the cap costs
+    nothing in title quality, and without it the prompt grows without bound:
+    `should_generate_title` keeps returning True for as long as no title is
+    stored, so a thread whose titling keeps failing (model error, or output
+    that sanitizes to nothing) would resend its *entire* accumulated
+    conversation on every subsequent turn -- escalating input cost and
+    latency, and eventually overflowing the context window, at which point
+    the retries could never recover. It also bounds the injected-text surface
+    described on `TITLE_PROMPT`.
     """
     lines: list[str] = []
     for message in messages:
+        if len(lines) >= TITLE_CONVERSATION_MAX_TURNS:
+            break
+
         if isinstance(message, HumanMessage):
             role = "User"
         elif isinstance(message, AIMessage):
@@ -255,8 +277,11 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
         # `.text` concatenates just the `type: "text"` blocks and yields ""
         # when there are none.
         text = message.text.strip()
-        if text:
-            lines.append(f"{role}: {text}")
+        if not text:
+            continue
+        if len(text) > TITLE_CONVERSATION_MAX_CHARS_PER_TURN:
+            text = text[:TITLE_CONVERSATION_MAX_CHARS_PER_TURN].rstrip() + "…"
+        lines.append(f"{role}: {text}")
     return "\n".join(lines)
 
 
