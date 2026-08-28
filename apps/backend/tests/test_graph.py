@@ -904,18 +904,11 @@ async def test_title_from_block_content_response(
 
     # The OpenAI-shaped mock transport can only carry string content, so the
     # block-form response is injected at the model seam instead. `title_gate`
-    # resolves `get_chat_model()` at call time, whereas the agent's own chat
-    # model was already bound when the `agent` fixture built the graph — so
-    # patching here swaps *only* the title model, leaving the chat turn on the
-    # respx-mocked HTTP path.
+    # resolves `get_title_model()` at call time, and that entry point is used
+    # *only* for titling — so patching it swaps the title model alone, leaving
+    # the chat turn on the respx-mocked HTTP path.
     class _BlockContentTitleModel:
         """Minimal stand-in exposing just the builder chain title_gate uses."""
-
-        def model_copy(self, update=None):
-            return self
-
-        def bind(self, **kwargs):
-            return self
 
         def with_config(self, **kwargs):
             return self
@@ -929,7 +922,7 @@ async def test_title_from_block_content_response(
             )
 
     monkeypatch.setattr(
-        "svelte_langgraph.graph.get_chat_model", lambda: _BlockContentTitleModel()
+        "svelte_langgraph.graph.get_title_model", lambda: _BlockContentTitleModel()
     )
 
     result = await agent.ainvoke(

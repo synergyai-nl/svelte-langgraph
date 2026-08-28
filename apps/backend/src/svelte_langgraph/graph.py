@@ -24,7 +24,7 @@ from langgraph.runtime import Runtime
 
 # Absolute imports required: Aegra loads this file by path (outside the
 # package), so relative imports would fail at server startup.
-from svelte_langgraph.models import get_chat_model
+from svelte_langgraph.models import get_chat_model, get_title_model
 from svelte_langgraph.phase import DEFAULT_PHASE, VALID_PHASES, Phase
 from svelte_langgraph.reducers import last_value
 from svelte_langgraph.tools import get_tools
@@ -342,9 +342,14 @@ async def title_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None
     try:
         conversation = _render_conversation_for_title(state["messages"])
         prompt = TITLE_PROMPT.format(conversation=conversation)
-        # `.bind(temperature=0)`: titles must be stable across retries, unlike
-        # chat (which runs at temperature 0.9 -- see `get_chat_model`).
-        # `.with_config(tags=["nostream"])` is load-bearing, not cosmetic:
+        # `get_title_model()` (not `get_chat_model()`) applies the title-call
+        # configuration -- reasoning stripped, output tokens bounded,
+        # temperature 0, streaming disabled -- and documents why for each; see
+        # models.py.
+        #
+        # `.with_config(tags=["nostream"])` stays here because it is a property
+        # of *this call site* rather than of the model, and it is load-bearing,
+        # not cosmetic:
         # `make_graph` returns `create_agent(...)` directly with no parent
         # StateGraph/subgraph wrapping it (required to keep assistant token
         # streaming working at all, since Aegra defaults
@@ -358,28 +363,16 @@ async def title_gate(state: AgentExtendedState, runtime: Runtime) -> dict | None
         # "nostream", langgraph/constants.py) and skips streaming for runs
         # carrying it.
         #
-        # `disable_streaming=True` is a *separate* concern from that tag, and
-        # both are needed. The tag stops LangGraph forwarding these tokens to
-        # the client, but it does not stop the model streaming them over HTTP
-        # in the first place: `BaseChatModel._should_stream`
-        # (langchain_core/language_models/chat_models.py) returns True purely
-        # because LangGraph has attached a `_StreamingCallbackHandler`, tag or
-        # no tag. Since the tokens are discarded either way, streaming them is
-        # pure waste -- and against the E2E ai-mock it is actively harmful:
-        # mockai streams one *character* per SSE chunk and `slow_mock.py`
-        # sleeps `MOCK_STREAM_DELAY` (10ms) between chunks, so an unmatched
-        # title call echoing the ~500-character prompt back added ~5s of dead
-        # wall-clock to the first exchange of every E2E spec, pushing several
-        # unrelated tests past their run-settle timeouts. `_streaming_disabled`
-        # honours `disable_streaming=True` ahead of every affirmative trigger,
-        # and it's handled entirely in langchain_core, so nothing extra reaches
-        # the provider's request payload.
-        model = (
-            get_chat_model()
-            .model_copy(update={"disable_streaming": True})
-            .bind(temperature=0)
-            .with_config(tags=["nostream"])
-        )
+        # The tag and `get_title_model()`'s `disable_streaming=True` are
+        # complementary, not redundant: the tag stops LangGraph *forwarding*
+        # these tokens, while `disable_streaming` stops the model emitting them
+        # over HTTP at all. Concretely, that second half mattered against the
+        # E2E ai-mock, which streams one *character* per SSE chunk with a 10ms
+        # `slow_mock.py` delay -- an unmatched title call echoing the
+        # ~500-character prompt back added ~5s of dead wall-clock to the first
+        # exchange of every spec and pushed unrelated tests past their
+        # run-settle timeouts.
+        model = get_title_model().with_config(tags=["nostream"])
         response = await model.ainvoke(prompt)
         # `.text` rather than `str(response.content)` for the same reason as in
         # `_render_conversation_for_title`: on a block-content provider the

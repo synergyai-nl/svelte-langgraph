@@ -19,7 +19,13 @@ import json
 import pytest
 import respx
 
-from svelte_langgraph.models import _has_known_provider_prefix, get_chat_model
+from svelte_langgraph.models import (
+    TITLE_MAX_OUTPUT_TOKENS,
+    _REASONING_KWARGS,
+    _has_known_provider_prefix,
+    get_chat_model,
+    get_title_model,
+)
 
 from .conftest import (
     DEFAULT_BASE_URL,
@@ -218,3 +224,126 @@ def test_non_object_chat_model_kwargs_json_raises(
         match=f"CHAT_MODEL_KWARGS must be a JSON object, got {expected_type_name}",
     ):
         get_chat_model()
+
+
+def _effective_reasoning_config(model) -> dict:
+    """Reasoning settings actually in effect on a built model.
+
+    Substring-matching the model dump does not work: ChatOpenAI declares
+    `reasoning` and `reasoning_effort` as native fields, so those names are
+    always present in the dump regardless of whether they are configured.
+    What matters is their *values*, plus any dialect that fell through to
+    `model_kwargs` passthrough (e.g. Anthropic's `thinking`).
+    """
+    passthrough = getattr(model, "model_kwargs", {}) or {}
+    return {
+        "reasoning": getattr(model, "reasoning", None),
+        "reasoning_effort": getattr(model, "reasoning_effort", None),
+        "passthrough": {k: v for k, v in passthrough.items() if k in _REASONING_KWARGS},
+    }
+
+
+def _has_reasoning(model) -> bool:
+    config = _effective_reasoning_config(model)
+    return bool(
+        config["reasoning"] or config["reasoning_effort"] or config["passthrough"]
+    )
+
+
+def test_title_model_strips_reasoning_configuration(monkeypatch) -> None:
+    """`.env.example` documents CHAT_MODEL_KWARGS as the place to opt into
+    reasoning tokens. Inheriting that for the title call would make every
+    thread's first exchange pay for -- and wait on -- a reasoning completion
+    just to produce a 3-6 word label, so `get_title_model` strips it.
+
+    Asserted on the built model rather than over the wire, so the guarantee
+    holds regardless of how a given provider serializes the parameter.
+    """
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({"reasoning": {"effort": "low"}})
+    )
+
+    # The chat model keeps it -- this is what makes the title-model assertion
+    # below meaningful rather than vacuous.
+    assert _has_reasoning(get_chat_model())
+
+    assert not _has_reasoning(get_title_model())
+
+
+@pytest.mark.parametrize(
+    ("reasoning_key", "reasoning_value"),
+    [
+        # Each dialect's real shape -- ChatOpenAI validates `reasoning_effort`
+        # as a string, so a uniform dict would fail construction rather than
+        # exercise the stripping.
+        ("reasoning", {"effort": "low"}),
+        ("reasoning_effort", "low"),
+        ("thinking", {"type": "enabled", "budget_tokens": 1024}),
+    ],
+)
+def test_title_model_strips_every_reasoning_dialect(
+    monkeypatch, reasoning_key: str, reasoning_value
+) -> None:
+    """Each provider spells reasoning configuration differently (nested
+    `reasoning` for OpenRouter, flat `reasoning_effort` for OpenAI, `thinking`
+    for Anthropic). All are stripped, so the title call stays cheap whichever
+    provider `CHAT_MODEL_NAME` selects."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({reasoning_key: reasoning_value})
+    )
+
+    assert _has_reasoning(get_chat_model())
+    assert not _has_reasoning(get_title_model())
+
+
+def test_title_model_bounds_output_tokens_and_pins_temperature(monkeypatch) -> None:
+    """`sanitize_title` only truncates *after* the model has generated (and
+    billed for) its output, so the title call carries its own completion-token
+    ceiling. Temperature is pinned to 0 for stability across retries, and
+    streaming is disabled because the tokens are discarded either way.
+
+    The ceiling must comfortably exceed `graph.TITLE_MAX_CHARS`: for CJK a
+    token is roughly one character, so a limit set at the character cap would
+    truncate legitimate non-Latin titles mid-generation.
+    """
+    from svelte_langgraph.graph import TITLE_MAX_CHARS
+
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.delenv("CHAT_MODEL_KWARGS", raising=False)
+
+    model = get_title_model()
+
+    # `getattr`: these are provider-specific fields, not on `BaseChatModel`.
+    assert getattr(model, "max_tokens", None) == TITLE_MAX_OUTPUT_TOKENS
+    assert TITLE_MAX_OUTPUT_TOKENS > TITLE_MAX_CHARS
+    assert getattr(model, "temperature", None) == 0
+    assert model.disable_streaming is True
+
+
+def test_title_model_still_honours_non_reasoning_kwargs(monkeypatch) -> None:
+    """Stripping reasoning must not throw away unrelated CHAT_MODEL_KWARGS --
+    the title model is deliberately the *same* model as the chat model, just
+    configured for a one-shot completion."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS",
+        json.dumps({"reasoning": {"effort": "low"}, "timeout": 42}),
+    )
+
+    assert getattr(get_title_model(), "request_timeout", None) == 42
+
+
+def test_title_model_rejects_reserved_kwargs(monkeypatch) -> None:
+    """The reserved-key validation is shared, so it guards both entry points."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"model": "x"}))
+
+    with pytest.raises(ValueError, match="CHAT_MODEL_KWARGS must not include"):
+        get_title_model()

@@ -25,9 +25,12 @@ def _has_known_provider_prefix(model_name: str) -> bool:
 _RESERVED_CHAT_MODEL_KWARGS = {"model", "model_provider"}
 
 
-def get_chat_model() -> BaseChatModel:
-    model_name = os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+def _get_model_name() -> str:
+    return os.getenv("CHAT_MODEL_NAME", "gpt-4o-mini")
 
+
+def _get_chat_model_kwargs() -> dict[str, Any]:
+    """Parse and validate `CHAT_MODEL_KWARGS`, shared by both entry points."""
     raw_kwargs = os.getenv("CHAT_MODEL_KWARGS")
     raw_kwargs = raw_kwargs.strip() if raw_kwargs else ""
     kwargs: Any = json.loads(raw_kwargs) if raw_kwargs else {}
@@ -44,9 +47,67 @@ def get_chat_model() -> BaseChatModel:
             "model and provider via CHAT_MODEL_NAME instead."
         )
 
-    kwargs.setdefault("temperature", 0.9)
+    return kwargs
 
+
+def _build_chat_model(model_name: str, **kwargs: Any) -> BaseChatModel:
+    """Route `model_name` to `init_chat_model`, defaulting to the OpenAI
+    provider for names without a provider prefix langchain would recognize."""
     if _has_known_provider_prefix(model_name):
         return init_chat_model(model_name, **kwargs)
 
     return init_chat_model(model_name, model_provider="openai", **kwargs)
+
+
+def get_chat_model() -> BaseChatModel:
+    kwargs = _get_chat_model_kwargs()
+    kwargs.setdefault("temperature", 0.9)
+    return _build_chat_model(_get_model_name(), **kwargs)
+
+
+# Reasoning-configuration keys stripped for the title model. `reasoning` is the
+# nested OpenRouter form that `.env.example` documents
+# (`{"reasoning":{"effort":"low"}}`); `reasoning_effort` is the flat OpenAI
+# form; `thinking` is the Anthropic form. Popping all three keeps the title
+# call cheap regardless of which provider CHAT_MODEL_NAME selects.
+_REASONING_KWARGS = ("reasoning", "reasoning_effort", "thinking")
+
+# Output-token ceiling for a generated title. This must comfortably exceed
+# `graph.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
+# token is roughly one character, so a limit set at the character cap would
+# truncate legitimate non-Latin titles mid-generation. It is a cost/abuse
+# bound, not the length rule -- `sanitize_title` still enforces the real cap.
+TITLE_MAX_OUTPUT_TOKENS = 128
+
+
+def get_title_model() -> BaseChatModel:
+    """Chat model used to generate thread titles.
+
+    Deliberately the *same* model as `get_chat_model()` (no second env var to
+    keep in sync), but configured for a one-shot, throwaway, 3-6 word
+    completion rather than a conversation:
+
+    - Reasoning is stripped. `CHAT_MODEL_KWARGS` is documented in
+      `.env.example` as the place to opt into reasoning tokens, and inheriting
+      it here would make every thread's first exchange pay for -- and wait on
+      -- a reasoning completion just to produce a short label.
+    - `max_tokens` bounds the completion. `sanitize_title` only truncates
+      *after* the model has generated (and billed for) its output, so without
+      this a model that follows an injected instruction could emit thousands
+      of tokens while the user's chat run sits there still loading.
+    - `temperature=0` keeps titles stable across retries, unlike chat's 0.9.
+    - `disable_streaming=True` because the tokens are discarded either way:
+      `graph.title_gate` tags the call `nostream` so LangGraph won't forward
+      them, but that tag alone does not stop the model streaming them over
+      HTTP (`BaseChatModel._should_stream` returns True purely because a
+      streaming callback handler is attached).
+    """
+    kwargs = _get_chat_model_kwargs()
+    for key in _REASONING_KWARGS:
+        kwargs.pop(key, None)
+
+    kwargs["temperature"] = 0
+    kwargs["max_tokens"] = TITLE_MAX_OUTPUT_TOKENS
+    kwargs["disable_streaming"] = True
+
+    return _build_chat_model(_get_model_name(), **kwargs)
