@@ -248,9 +248,12 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 	test('drops a stale mount backfill when a newer title was mirrored while its GET was in flight', async () => {
 		// The mount backfill captures `values.title` *before* awaiting `threads.get`. If a run
 		// settles during that GET — regenerate branches from the pre-answer checkpoint and yields
-		// a different title — the GET returns a snapshot predating that write. Queueing the
-		// captured title would then overwrite the newer one; serialization can't save us here,
-		// since the backfill is enqueued last and so would win.
+		// a different title — the GET returns a snapshot predating that write, so writing the
+		// captured title would overwrite the newer one. The backfill re-reads and drops itself.
+		//
+		// Note the settle's own write is queued *behind* the mount decision, so it lands only
+		// once the GET resolves. That ordering is deliberate: it is what stops a settle racing an
+		// unresolved GET and clobbering a rename.
 		let resolveGet!: (value: { metadata: Record<string, unknown> }) => void;
 		threadsGetMock.mockImplementationOnce(() => new Promise((resolve) => (resolveGet = resolve)));
 
@@ -265,24 +268,28 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 
-		// A regenerate settles while the GET is still open, mirroring title B.
+		// A regenerate settles while the GET is still open, wanting to mirror title B. Nothing is
+		// written yet — it is queued behind the mount decision.
 		mockModule.setIsLoading(true);
 		await tick();
 		mockModule.setValues({ title: 'Title B' });
 		mockModule.setIsLoading(false);
 		await tick();
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// Now the stale GET returns, reporting metadata that predates B.
+		resolveGet({ metadata: {} });
+
 		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		await tick();
+		await tick();
+
+		// The backfill must be dropped — B is the only thing ever written.
+		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
 		expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
 			metadata: { title: 'Title B' }
 		});
-
-		// Now the stale GET returns, reporting metadata that predates B's write.
-		resolveGet({ metadata: {} });
-		await tick();
-		await tick();
-
-		// The backfill must be dropped — B stays the persisted title.
-		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
 		expect(threadsUpdateMock).not.toHaveBeenCalledWith('test-123', {
 			metadata: { title: 'Title A' }
 		});
@@ -328,6 +335,40 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		mockModule.setIsLoading(true);
 		await tick();
 		mockModule.setIsLoading(false);
+		await tick();
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
+	test('a settle while the mount GET is still open cannot clobber a rename', async () => {
+		// The race the "follow-up message" test above does NOT cover: that one waits for the GET
+		// to resolve before settling, so `suppressedGraphTitle` is already set. Here the settle
+		// happens while the GET is still in flight, when nothing yet knows a stored title exists.
+		// Only queueing the settle behind the mount decision prevents the clobber.
+		let resolveGet!: (value: { metadata: Record<string, unknown> }) => void;
+		threadsGetMock.mockImplementationOnce(() => new Promise((resolve) => (resolveGet = resolve)));
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+
+		// Follow-up settles with the GET still open.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// The GET finally reports an explicit rename.
+		resolveGet({ metadata: { title: 'Renamed by the user' } });
+		await tick();
 		await tick();
 		await tick();
 
