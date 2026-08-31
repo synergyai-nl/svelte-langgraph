@@ -33,6 +33,7 @@
 			empty: m.sidebar_threads_empty(),
 			loading: m.sidebar_threads_loading(),
 			error: m.sidebar_threads_error(),
+			newChatError: m.sidebar_new_chat_error(),
 			retry: m.sidebar_threads_retry(),
 			loadMore: m.sidebar_threads_load_more(),
 			mobileTitle: m.sidebar_mobile_title(),

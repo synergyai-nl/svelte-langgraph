@@ -5,6 +5,8 @@
 		empty: string;
 		loading: string;
 		error: string;
+		/** Shown when a context-defaulted "New chat" creation fails (see the `error` prop). */
+		newChatError: string;
 		retry: string;
 		loadMore: string;
 		/** `Sheet.Title` for the mobile drawer's sr-only header. */
@@ -19,6 +21,7 @@
 		empty: 'No conversations yet',
 		loading: 'Loading conversations',
 		error: "Couldn't load your conversations.",
+		newChatError: "Couldn't start a new chat. Please try again.",
 		retry: 'Try again',
 		loadMore: 'Load more',
 		mobileTitle: 'Sidebar',
@@ -121,9 +124,13 @@
 	);
 	const busy = $derived(busyProp ?? ctx?.creatingThread ?? false);
 	const hrefFor = $derived(hrefForProp ?? ctx?.hrefFor);
-	const error = $derived(errorProp ?? ctx?.createThreadError?.message ?? null);
 
 	const l = $derived(resolveLabels(defaultThreadListLabels, ctx?.labels?.threadList, labels));
+
+	// The context records the raw `Error` (useful to programmatic consumers), but the alert shows
+	// the localizable label — surfacing `error.message` would leak transport noise like
+	// `HTTP 400: {...}` into the sidebar.
+	const error = $derived(errorProp ?? (ctx?.createThreadError ? l.newChatError : null));
 
 	const sidebar = Sidebar.useSidebar();
 
