@@ -314,6 +314,25 @@ def should_generate_title(state: AgentExtendedState) -> bool:
     if state.get("title"):
         return False
 
+    # A middleware short-circuited this run, so it did no model work. `jump_to`
+    # is declared on `AgentState` as an `EphemeralValue` + `PrivateStateAttr`,
+    # so it is per-run (never checkpointed) and stays out of the public state
+    # schema -- and it is still present in the state `after_agent` receives.
+    #
+    # This matters because `phase_gate` short-circuits on *two* paths and both
+    # now route through here (`jump_to="end"` means "run after_agent, then
+    # end" as soon as any after_agent middleware exists -- see `title_gate`).
+    # The state-only path is caught by the explicit marker below, but a stale
+    # checkpoint whose last message is an already-completed `AIMessage` is not:
+    # `should_generate_title` would infer a finished exchange from the
+    # *persisted* messages and make a billable title call for a run that
+    # deliberately performed none.
+    if state.get("jump_to"):
+        return False
+
+    # Kept alongside the check above rather than folded into it: this marker is
+    # our own contract with the frontend's `stateSync`, so the guard survives
+    # even if langchain stops surfacing `jump_to` to `after_agent`.
     if get_config().get("configurable", {}).get("state_only_submit"):
         return False
 

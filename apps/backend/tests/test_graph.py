@@ -1032,3 +1032,69 @@ async def test_title_call_timeout_does_not_stall_the_run(
     assert any("Happy to help" in str(m.content) for m in ai_messages), (
         "the assistant reply must still land even though titling timed out"
     )
+
+
+@pytest.mark.asyncio
+async def test_title_not_generated_when_the_run_did_no_model_work(
+    agent, thread_config: RunnableConfig, mock_completion, monkeypatch
+):
+    """A run short-circuited by `phase_gate` must not make a title call.
+
+    `phase_gate` short-circuits on two paths and, since `title_gate` exists,
+    both route through it (`jump_to="end"` now means "run after_agent, then
+    end"). The state-only path carries an explicit marker, but a *stale
+    checkpoint* -- one whose last message is an already-completed `AIMessage`,
+    e.g. because an earlier title call failed -- carries none. Inferring a
+    finished exchange from the persisted messages alone would bill a title
+    call for a run that deliberately did no model work at all.
+    """
+    import svelte_langgraph.graph as g
+
+    from tests.conftest import CompletionMeta, make_completion_response
+
+    mock_completion.mock(
+        return_value=make_completion_response(
+            "Hi there!", meta=CompletionMeta(response_id="chatcmpl-chat")
+        )
+    )
+
+    class _FailingTitleModel:
+        def with_config(self, **kwargs):
+            return self
+
+        async def ainvoke(self, prompt):
+            raise RuntimeError("title backend down")
+
+    # First run: a real exchange whose titling fails, so `title` stays unset
+    # and the checkpoint ends on a completed AIMessage.
+    monkeypatch.setattr(g, "get_title_model", lambda: _FailingTitleModel())
+    first = await agent.ainvoke(
+        {"messages": [HumanMessage(content="Plan a trip")]}, thread_config
+    )
+    assert first.get("title") is None
+    assert isinstance(first["messages"][-1], AIMessage)
+
+    title_calls = {"n": 0}
+
+    class _CountingTitleModel:
+        def with_config(self, **kwargs):
+            return self
+
+        async def ainvoke(self, prompt):
+            title_calls["n"] += 1
+            return AIMessage(content="Some Title")
+
+    monkeypatch.setattr(g, "get_title_model", lambda: _CountingTitleModel())
+
+    # Second run: no new input, and no state-only marker. `phase_gate` ends it
+    # because the last message is not a HumanMessage.
+    await agent.ainvoke({}, thread_config)
+
+    assert title_calls["n"] == 0, (
+        "a run that performed no model work must not make a title call"
+    )
+    # Read the checkpoint rather than the invoke result: with every update on
+    # this run ephemeral (`jump_to`), `ainvoke` has no public state change to
+    # return.
+    state = await agent.aget_state(thread_config)
+    assert state.values.get("title") is None

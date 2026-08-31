@@ -263,6 +263,12 @@
 		} catch {
 			// Best-effort: a missing or stale title is cosmetic and must never surface as a chat
 			// error. Leaving `mirroredTitle` unset lets the next settle retry.
+			//
+			// That retry must not trust the cached authority, though. Our view of the metadata is
+			// now stale by an unknown amount — the write failed, and whatever happens next is
+			// unobserved — so another tab or SDK client could rename the thread before we try
+			// again. Re-reading is one extra GET on a path that is already failing.
+			authorityResolved = false;
 		}
 	}
 

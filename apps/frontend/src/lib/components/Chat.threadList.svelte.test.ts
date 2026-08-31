@@ -489,6 +489,39 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
 
+	test('a failed PATCH invalidates cached authority, so a later rename is not overwritten', async () => {
+		// Authority resolved "no stored title", then the write failed. Our view of the metadata is
+		// now stale by an unknown amount, so the retry must not trust it: another client can have
+		// renamed the thread in between, and reusing the cached decision would overwrite that.
+		threadsGetMock
+			.mockResolvedValueOnce({ metadata: {} })
+			.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
+		threadsUpdateMock.mockRejectedValueOnce(new Error('network blip'));
+
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		expect(threadsGetMock).toHaveBeenCalledTimes(1);
+
+		// The next settle must re-read metadata rather than reusing the stale decision.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(2));
+		await tick();
+		await tick();
+
+		// It now sees the rename and declines to write, leaving the failed PATCH un-retried.
+		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
