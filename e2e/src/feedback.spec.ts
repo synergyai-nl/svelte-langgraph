@@ -44,6 +44,8 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 
 	await expect(up).toBeVisible();
 	await expect(down).toBeVisible();
+	// Enabled only once the thread's stored ratings have loaded, so this also
+	// covers that the load actually completes against a real backend.
 	await expect(up).toBeEnabled();
 	await expect(down).toBeEnabled();
 });
@@ -107,4 +109,32 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	const req = await scorePost;
 	expect(req.postDataJSON()).toEqual({ score: 0 });
 	expect(runIds).toHaveLength(1);
+});
+
+test('a rating is still shown after a reload', async ({ page, chat }) => {
+	// The rating is mirrored into thread metadata precisely so it can be read
+	// back here. Langfuse can't serve it: no batch-by-thread query, and a fresh
+	// score takes ~10s to become readable.
+	await sendAndAwaitReply(chat, 'Hello', 1);
+
+	const aiMessage = chat.aiMessages.first();
+	await aiMessage.hover();
+
+	const persisted = page.waitForRequest(
+		(req) => req.method() === 'PATCH' && /\/threads\//.test(req.url())
+	);
+	await chat.feedbackButtons(aiMessage).up.click();
+	await persisted;
+
+	await page.reload();
+	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
+
+	// No hover here on purpose. The buttons are always in the DOM — hover only
+	// animates the container's opacity — and `toHaveClass` runs no actionability
+	// check. Hovering would instead race the tooltip: the virtual mouse is still
+	// parked on the button from the click above, so after the reload it reopens
+	// instantly and its content div swallows the pointer events.
+	const restored = chat.aiMessages.first();
+	await expect(chat.feedbackButtons(restored).up).toHaveClass(/bg-muted/);
+	await expect(chat.feedbackButtons(restored).down).not.toHaveClass(/bg-muted/);
 });

@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
@@ -14,10 +14,19 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
+// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
+// `threads` backs the rating round-trip: `get` restores previously stored ratings on
+// mount, `update` persists new ones into thread metadata.
 const mockClient = {
-	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
+	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
+	threads: {
+		get: vi.fn().mockResolvedValue({ metadata: {} }),
+		update: vi.fn().mockResolvedValue({})
+	}
 } as unknown as Client;
+
+/** The `threads` mock, typed for assertions. */
+const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
@@ -38,6 +47,8 @@ function renderChat(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	mockModule.resetMock();
+	mockThreads.get.mockReset().mockResolvedValue({ metadata: {} });
+	mockThreads.update.mockReset().mockResolvedValue({});
 });
 
 describe('Chat', () => {
@@ -456,6 +467,192 @@ describe('Chat', () => {
 					expect.objectContaining({ body: JSON.stringify({ score: 1 }) })
 				);
 			});
+		});
+
+		test('persists the rating into thread metadata', async () => {
+			// Thread metadata is what makes a rating survive a reload — Langfuse
+			// cannot be read back per-thread (no batch query, ~10s ingestion lag).
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(mockThreads.update).toHaveBeenCalledWith('test-123', {
+					// One flat key, not a nested map: Aegra merges metadata per
+					// top-level key, so this write can't disturb another rating.
+					metadata: { 'rating:run-abc': 'up' }
+				});
+			});
+		});
+
+		test('restores a stored rating on mount', async () => {
+			mockThreads.get.mockResolvedValue({ metadata: { 'rating:run-abc': 'down' } });
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/bad response/i)).toHaveClass('bg-muted');
+			});
+			expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+		});
+
+		test('rolls the rating back when the score fails to send', async () => {
+			// The highlight must reflect what was stored, not merely what was clicked.
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async (input: unknown) =>
+					String(input) === '/api/feedback/token'
+						? new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
+								status: 200,
+								headers: { 'Content-Type': 'application/json' }
+							})
+						: new Response('nope', { status: 502 })
+				)
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+			});
+			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('disables rating when the stored ratings could not be loaded', async () => {
+			// Rating against an unknown baseline would show a rated message as
+			// unrated, so the click is refused rather than allowed to drift.
+			mockThreads.get.mockRejectedValue(new Error('offline'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+			});
+			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('rating stays disabled until the stored ratings arrive', async () => {
+			// Otherwise an already-rated message would render as unrated and the
+			// first click would look like a change the user didn't make.
+			let release!: (v: { metadata: unknown }) => void;
+			mockThreads.get.mockReturnValue(
+				new Promise((resolve) => {
+					release = resolve;
+				})
+			);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+
+			release({ metadata: { 'rating:run-abc': 'up' } });
+
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+			});
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('keeps the rating when only the metadata write fails', async () => {
+			// The score is already recorded, so rolling back would claim the click
+			// was lost when it wasn't — and re-arm the button to post a duplicate.
+			mockThreads.update.mockRejectedValue(new Error('patch failed'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('marks a rating as failed without discarding the attempt', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async (input: unknown) =>
+					String(input) === '/api/feedback/token'
+						? new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
+								status: 200,
+								headers: { 'Content-Type': 'application/json' }
+							})
+						: new Response('nope', { status: 502 })
+				)
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			// The marker is what tells the user it didn't land; the thumb itself
+			// reverts so the button stays honest and retryable.
+			await waitFor(() => {
+				expect(within(group).getByTestId('feedback-failed')).toBeInTheDocument();
+			});
+			expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+			expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+		});
+
+		test('shows no failure marker once a rating lands', async () => {
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			expect(within(group).queryByTestId('feedback-failed')).not.toBeInTheDocument();
+			expect(within(group).queryByTestId('feedback-pending')).not.toBeInTheDocument();
 		});
 
 		test('scores a message restored from history, with no live run', async () => {

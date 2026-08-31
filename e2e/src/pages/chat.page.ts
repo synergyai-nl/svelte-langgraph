@@ -21,7 +21,8 @@ export class ChatPage {
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
 
-	/** Every rendered AI message card. Rating buttons are scoped per-message. */
+	/** Every rendered AI message (data-testid="message-ai"). Rating buttons are
+	 *  scoped per-message, so pass one of these to `feedbackButtons`. */
 	readonly aiMessages: Locator;
 
 	constructor(app: AppPage) {
@@ -38,7 +39,7 @@ export class ChatPage {
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
 
-		this.aiMessages = app.page.getByRole('group').filter({ has: app.page.locator('.prose') });
+		this.aiMessages = app.page.locator('[data-testid="message-ai"]');
 	}
 
 	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
