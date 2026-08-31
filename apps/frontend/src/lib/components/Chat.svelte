@@ -197,6 +197,19 @@
 	// `mirroredTitle`. Chaining keeps at most one in flight and preserves request order.
 	let mirrorQueue: Promise<void> = Promise.resolve();
 
+	// The one graph title we have deliberately declined to mirror, because the thread already
+	// carried a different stored title (see the mount backfill below). Without this, recording
+	// the stored title in `mirroredTitle` is not enough on its own: the very next settle would
+	// see `stream.values.title !== mirroredTitle` and PATCH the generated title straight back
+	// over the rename, so merely reopening a renamed thread and sending a follow-up message
+	// would undo it.
+	//
+	// Keyed on the *value*, not a boolean, so it suppresses exactly the title we already judged
+	// non-authoritative. A genuinely regenerated title is a different string, so it still gets
+	// mirrored — suppressing by flag would have silently disabled titling for the rest of the
+	// mount instead.
+	let suppressedGraphTitle: string | undefined;
+
 	function mirrorTitle(title: string): Promise<void> {
 		mirrorQueue = mirrorQueue
 			// A rejected link must not poison the chain for later writes. (`mirrorQueue` never
@@ -229,7 +242,12 @@
 			void (async () => {
 				// Await the PATCH before refreshing — that's what makes the sidebar pick up the new
 				// title on this refresh instead of the next one.
-				if (typeof title === 'string' && title.length > 0 && title !== mirroredTitle) {
+				if (
+					typeof title === 'string' &&
+					title.length > 0 &&
+					title !== mirroredTitle &&
+					title !== suppressedGraphTitle
+				) {
 					await mirrorTitle(title);
 				}
 				threadListRefresh?.refresh();
@@ -268,6 +286,8 @@
 					const storedTitle = thread.metadata?.title;
 					if (typeof storedTitle === 'string' && storedTitle.length > 0) {
 						mirroredTitle = storedTitle;
+						// Also suppress this graph title on later settles — see `suppressedGraphTitle`.
+						suppressedGraphTitle = title;
 						return;
 					}
 				} catch {

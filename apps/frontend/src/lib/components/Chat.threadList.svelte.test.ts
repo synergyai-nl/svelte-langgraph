@@ -307,6 +307,62 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
 
+	test('a follow-up message does not re-PATCH the generated title over a rename', async () => {
+		// Recording the stored title in `mirroredTitle` is not enough on its own: the next settle
+		// would see `values.title !== mirroredTitle` and write the generated title straight back,
+		// so reopening a renamed thread and sending any message would undo the rename.
+		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// A follow-up message settles; the graph still carries the same generated title.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
+	test('a genuinely regenerated title still overrides a stored one', async () => {
+		// The suppression is keyed on the specific title we declined to mirror, not a flag —
+		// otherwise finding a stored title once would disable titling for the rest of the mount.
+		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// Regenerate branches from the pre-answer checkpoint and yields a *different* title.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Freshly regenerated title' });
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
+			metadata: { title: 'Freshly regenerated title' }
+		});
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
