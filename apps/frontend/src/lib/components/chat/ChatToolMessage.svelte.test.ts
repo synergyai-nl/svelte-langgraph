@@ -2,9 +2,8 @@ import { describe, test, expect, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
-import ChatToolMessage from './ChatToolMessage.svelte';
+import ChatToolMessage, { defaultChatToolMessageLabels } from './ChatToolMessage.svelte';
 import { aToolMessage } from '../__tests__/fixtures';
-import * as m from '$lib/paraglide/messages.js';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const message = aToolMessage(overrides as Parameters<typeof aToolMessage>[0]);
@@ -22,7 +21,7 @@ describe('ChatToolMessage', () => {
 		});
 
 		test('shows the "using tools" label', () => {
-			expect(screen.getByText(m.tools_using())).toBeInTheDocument();
+			expect(screen.getByText(defaultChatToolMessageLabels.usingTools)).toBeInTheDocument();
 		});
 
 		test('button is collapsed by default', () => {
@@ -36,7 +35,7 @@ describe('ChatToolMessage', () => {
 		});
 
 		test('does not show payload or result by default', () => {
-			expect(screen.queryByText(m.tool_label())).not.toBeInTheDocument();
+			expect(screen.queryByText(defaultChatToolMessageLabels.toolLabel)).not.toBeInTheDocument();
 		});
 	});
 
@@ -73,7 +72,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_parameters())).toBeInTheDocument();
+				expect(screen.getByText(defaultChatToolMessageLabels.parameters)).toBeInTheDocument();
 			});
 		});
 
@@ -84,7 +83,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_result())).toBeInTheDocument();
+				expect(screen.getByText(defaultChatToolMessageLabels.result)).toBeInTheDocument();
 			});
 		});
 	});
@@ -97,7 +96,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_no_parameters())).toBeInTheDocument();
+				expect(screen.getByText(defaultChatToolMessageLabels.noParameters)).toBeInTheDocument();
 			});
 		});
 	});

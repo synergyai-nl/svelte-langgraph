@@ -10,13 +10,55 @@
 		type Message,
 		type ToolMessage
 	} from '@svelte-langgraph/client';
-	import Composer from './chat/Composer.svelte';
-	import MessagesList from './chat/MessagesList.svelte';
+	import Composer, { type ComposerLabels } from './chat/Composer.svelte';
+	import MessagesList, { type MessagesListLabels } from './chat/MessagesList.svelte';
 	import Suggestions, { type ChatSuggestion } from './chat/Suggestions.svelte';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './chat/StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+
+	// Localized labels for the de-paraglided chat components (SLG-133). `Chat.svelte` stays
+	// app-level — and so keeps its paraglide import — until the embeddable `<LangGraph>` provider
+	// (PR 3) takes over supplying these.
+	const composerLabels: ComposerLabels = {
+		placeholder: m.chat_input_placeholder()
+	};
+	const messagesListLabels: MessagesListLabels = {
+		message: {
+			aiActions: {
+				copy: m.message_copy(),
+				copied: m.message_copied(),
+				regenerate: m.message_regenerate(),
+				feedback: {
+					good: m.message_feedback_good(),
+					bad: m.message_feedback_bad(),
+					comingSoon: m.coming_soon()
+				}
+			},
+			userActions: {
+				edit: m.message_edit()
+			},
+			userEdit: {
+				edit: m.message_edit(),
+				cancel: m.cancel(),
+				saveAndSend: m.save_and_send()
+			},
+			thinking: {
+				thinking: m.thinking()
+			}
+		},
+		toolMessage: {
+			usingTools: m.tools_using(),
+			toolLabel: m.tool_label(),
+			parameters: m.tool_parameters(),
+			noParameters: m.tool_no_parameters(),
+			result: m.tool_result()
+		},
+		errorMessage: {
+			retry: m.chat_error_retry()
+		}
+	};
 
 	interface Props {
 		langGraphClient: Client;
@@ -408,6 +450,7 @@
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
+				labels={messagesListLabels}
 			/>
 		{/if}
 	</div>
@@ -416,5 +459,6 @@
 		isStreaming={stream.isLoading}
 		onSubmit={() => submitInput(current_input)}
 		onStop={() => stopGeneration()}
+		labels={composerLabels}
 	/>
 </div>

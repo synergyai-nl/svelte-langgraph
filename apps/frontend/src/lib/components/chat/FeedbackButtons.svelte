@@ -1,16 +1,33 @@
+<script lang="ts" module>
+	export interface FeedbackButtonsLabels {
+		good: string;
+		bad: string;
+		comingSoon: string;
+	}
+
+	export const defaultFeedbackButtonsLabels: FeedbackButtonsLabels = {
+		good: 'Good Response',
+		bad: 'Bad Response',
+		comingSoon: 'Coming soon'
+	};
+</script>
+
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
 	import type { Message } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		message: Message;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		labels?: DeepPartial<FeedbackButtonsLabels>;
 	}
 
-	let { message, onFeedback }: Props = $props();
+	let { message, onFeedback, labels }: Props = $props();
+
+	const l = $derived(resolveLabels(defaultFeedbackButtonsLabels, undefined, labels));
 
 	let feedbackGiven = $state<'up' | 'down' | null>(null);
 
@@ -28,13 +45,13 @@
 				variant="ghost"
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
-				title={m.message_feedback_good()}
+				title={l.good}
 				disabled
 			>
 				<ThumbsUp size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{l.comingSoon}</TooltipContent>
 	</Tooltip>
 	<Tooltip>
 		<TooltipTrigger>
@@ -43,12 +60,12 @@
 				variant="ghost"
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
-				title={m.message_feedback_bad()}
+				title={l.bad}
 				disabled
 			>
 				<ThumbsDown size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{l.comingSoon}</TooltipContent>
 	</Tooltip>
 </div>

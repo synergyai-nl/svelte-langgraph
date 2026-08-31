@@ -1,15 +1,29 @@
+<script lang="ts" module>
+	export interface ThinkingBlockLabels {
+		thinking: string;
+	}
+
+	export const defaultThinkingBlockLabels: ThinkingBlockLabels = {
+		thinking: 'Thinking'
+	};
+</script>
+
 <script lang="ts">
 	import { Brain, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
-	import { m } from '$lib/paraglide/messages.js';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		thinking: string;
 		/** Animate the icon while thinking tokens are actively streaming in. */
 		active?: boolean;
+		labels?: DeepPartial<ThinkingBlockLabels>;
 	}
 
-	let { thinking, active = false }: Props = $props();
+	let { thinking, active = false, labels }: Props = $props();
+
+	const l = $derived(resolveLabels(defaultThinkingBlockLabels, undefined, labels));
+
 	let collapsed = $state(true);
 	const uid = $props.id();
 	const contentId = `thinking-content-${uid}`;
@@ -25,7 +39,7 @@
 		data-streaming={active ? 'true' : 'false'}
 	>
 		<Brain size={16} class="text-purple-500 dark:text-purple-400 {active ? 'animate-pulse' : ''}" />
-		<span>{m.thinking()}</span>
+		<span>{l.thinking}</span>
 		<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
 	</button>
 

@@ -1,3 +1,34 @@
+<script lang="ts" module>
+	import {
+		defaultAIMessageActionsLabels,
+		type AIMessageActionsLabels
+	} from './AIMessageActions.svelte';
+	import {
+		defaultUserMessageActionsLabels,
+		type UserMessageActionsLabels
+	} from './UserMessageActions.svelte';
+	import {
+		defaultUserMessageEditLabels,
+		type UserMessageEditLabels
+	} from './UserMessageEdit.svelte';
+	import { defaultThinkingBlockLabels, type ThinkingBlockLabels } from './ThinkingBlock.svelte';
+
+	/** Purely a pass-through aggregate — `ChatMessage` renders no label strings of its own. */
+	export interface ChatMessageLabels {
+		aiActions: AIMessageActionsLabels;
+		userActions: UserMessageActionsLabels;
+		userEdit: UserMessageEditLabels;
+		thinking: ThinkingBlockLabels;
+	}
+
+	export const defaultChatMessageLabels: ChatMessageLabels = {
+		aiActions: defaultAIMessageActionsLabels,
+		userActions: defaultUserMessageActionsLabels,
+		userEdit: defaultUserMessageEditLabels,
+		thinking: defaultThinkingBlockLabels
+	};
+</script>
+
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
@@ -8,6 +39,7 @@
 	import UserMessageActions from './UserMessageActions.svelte';
 	import UserMessageEdit from './UserMessageEdit.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		message: Message;
@@ -16,9 +48,19 @@
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
+		labels?: DeepPartial<ChatMessageLabels>;
 	}
 
-	let { message, onEdit, onRegenerate, onFeedback, isThinkingActive = false }: Props = $props();
+	let {
+		message,
+		onEdit,
+		onRegenerate,
+		onFeedback,
+		isThinkingActive = false,
+		labels
+	}: Props = $props();
+
+	const l = $derived(resolveLabels(defaultChatMessageLabels, undefined, labels));
 
 	const plugins = [gfmPlugin()];
 
@@ -58,7 +100,12 @@
 		</div>
 		<div class="relative w-full">
 			{#if message.type === 'user' && isEditing}
-				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
+				<UserMessageEdit
+					bind:value={editText}
+					onConfirm={confirmEdit}
+					onCancel={cancelEditing}
+					labels={l.userEdit}
+				/>
 			{:else}
 				<div
 					role="group"
@@ -68,7 +115,11 @@
 				>
 					{#if message.type === 'ai'}
 						{#if message.thinking}
-							<ThinkingBlock thinking={message.thinking} active={isThinkingActive} />
+							<ThinkingBlock
+								thinking={message.thinking}
+								active={isThinkingActive}
+								labels={l.thinking}
+							/>
 						{/if}
 						{#if message.text}
 							<Card.Root class="border-border-card bg-muted border shadow-sm">
@@ -76,7 +127,13 @@
 									<Markdown md={message.text} {plugins} />
 								</Card.Content>
 							</Card.Root>
-							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+							<AIMessageActions
+								{message}
+								{isHovered}
+								{onRegenerate}
+								{onFeedback}
+								labels={l.aiActions}
+							/>
 						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">
@@ -86,7 +143,7 @@
 								{message.text}
 							</Card.Content>
 						</Card.Root>
-						<UserMessageActions {isHovered} onEdit={startEditing} />
+						<UserMessageActions {isHovered} onEdit={startEditing} labels={l.userActions} />
 					{/if}
 				</div>
 			{/if}

@@ -1,7 +1,17 @@
+<script lang="ts" module>
+	export interface ComposerLabels {
+		placeholder: string;
+	}
+
+	export const defaultComposerLabels: ComposerLabels = {
+		placeholder: 'Ask your agent…'
+	};
+</script>
+
 <script lang="ts">
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import SubmitButton from './SubmitButton.svelte';
-	import * as m from '$lib/paraglide/messages.js';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		value: string;
@@ -9,6 +19,7 @@
 		onSubmit: () => void;
 		onStop?: () => void;
 		placeholder?: string;
+		labels?: DeepPartial<ComposerLabels>;
 	}
 
 	let {
@@ -16,8 +27,12 @@
 		isStreaming = false,
 		onSubmit,
 		onStop,
-		placeholder = m.chat_input_placeholder()
+		placeholder,
+		labels
 	}: Props = $props();
+
+	const l = $derived(resolveLabels(defaultComposerLabels, undefined, labels));
+	const resolvedPlaceholder = $derived(placeholder ?? l.placeholder);
 
 	let isEmpty = $derived(!(value ?? '').trim());
 	function handleKeyPress(event: KeyboardEvent) {
@@ -42,7 +57,7 @@
 					<Textarea
 						id="user-input"
 						disabled={isStreaming}
-						{placeholder}
+						placeholder={resolvedPlaceholder}
 						rows={1}
 						name="message"
 						bind:value

@@ -1,15 +1,36 @@
+<script lang="ts" module>
+	export interface ChatToolMessageLabels {
+		usingTools: string;
+		toolLabel: string;
+		parameters: string;
+		noParameters: string;
+		result: string;
+	}
+
+	export const defaultChatToolMessageLabels: ChatToolMessageLabels = {
+		usingTools: "I'm using tools...",
+		toolLabel: 'Tool:',
+		parameters: 'Parameters:',
+		noParameters: 'No parameters',
+		result: 'Result:'
+	};
+</script>
+
 <script lang="ts">
 	import type { ToolMessage } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
-
 	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		message: ToolMessage;
+		labels?: DeepPartial<ChatToolMessageLabels>;
 	}
 
-	let { message }: Props = $props();
+	let { message, labels }: Props = $props();
+
+	const l = $derived(resolveLabels(defaultChatToolMessageLabels, undefined, labels));
+
 	let collapsed = $state(true);
 </script>
 
@@ -27,7 +48,7 @@
 				class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 focus:outline-none dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
 				onclick={() => (collapsed = !collapsed)}
 			>
-				<span class="text-gray-600 dark:text-gray-400">{m.tools_using()}</span>
+				<span class="text-gray-600 dark:text-gray-400">{l.usingTools}</span>
 				<span class="font-mono text-xs text-gray-500 dark:text-gray-400">{message.tool_name}</span>
 
 				{#if message.status === 'success'}
@@ -47,13 +68,13 @@
 					transition:slide
 				>
 					<div class="mb-1 text-gray-600 dark:text-gray-400">
-						<span class="font-medium">{m.tool_label()}</span>
+						<span class="font-medium">{l.toolLabel}</span>
 						{message.tool_name}
 					</div>
 
 					{#if message.payload && Object.keys(message.payload).length > 0}
 						<div class="mt-1 text-gray-700 dark:text-gray-300">
-							<span class="font-medium">{m.tool_parameters()}</span>
+							<span class="font-medium">{l.parameters}</span>
 							<pre
 								class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">{JSON.stringify(
 									message.payload,
@@ -62,12 +83,12 @@
 								)}</pre>
 						</div>
 					{:else}
-						<div class="mt-1 text-gray-500 italic dark:text-gray-400">{m.tool_no_parameters()}</div>
+						<div class="mt-1 text-gray-500 italic dark:text-gray-400">{l.noParameters}</div>
 					{/if}
 
 					{#if message.text}
 						<div class="mt-1 text-gray-700 dark:text-gray-300">
-							<span class="font-medium">{m.tool_result()}</span>
+							<span class="font-medium">{l.result}</span>
 							<p class="mt-1 overflow-x-auto rounded bg-gray-100 p-2 text-xs dark:bg-gray-700">
 								{message.text}
 							</p>

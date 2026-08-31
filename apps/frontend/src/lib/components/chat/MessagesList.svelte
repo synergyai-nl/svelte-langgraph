@@ -1,3 +1,28 @@
+<script lang="ts" module>
+	import { defaultChatMessageLabels, type ChatMessageLabels } from './ChatMessage.svelte';
+	import {
+		defaultChatToolMessageLabels,
+		type ChatToolMessageLabels
+	} from './ChatToolMessage.svelte';
+	import {
+		defaultChatErrorMessageLabels,
+		type ChatErrorMessageLabels
+	} from './ChatErrorMessage.svelte';
+
+	/** Purely a pass-through aggregate — `MessagesList` renders no label strings of its own. */
+	export interface MessagesListLabels {
+		message: ChatMessageLabels;
+		toolMessage: ChatToolMessageLabels;
+		errorMessage: ChatErrorMessageLabels;
+	}
+
+	export const defaultMessagesListLabels: MessagesListLabels = {
+		message: defaultChatMessageLabels,
+		toolMessage: defaultChatToolMessageLabels,
+		errorMessage: defaultChatErrorMessageLabels
+	};
+</script>
+
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
@@ -6,6 +31,7 @@
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
 	import { ScrollableContainer } from './ScrollableContainer';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		messages: Array<Message>;
@@ -16,6 +42,7 @@
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
+		labels?: DeepPartial<MessagesListLabels>;
 	}
 
 	let {
@@ -25,8 +52,11 @@
 		generationError = null,
 		onRetryError,
 		onEdit,
-		onRegenerate
+		onRegenerate,
+		labels
 	}: Props = $props();
+
+	const l = $derived(resolveLabels(defaultMessagesListLabels, undefined, labels));
 
 	// The message currently being generated is always the last one in the list — while a
 	// run is streaming, only that message's thinking pill should show the "still working"
@@ -76,13 +106,14 @@
 				transition:fly={{ y: 20, duration: backlog ? 0 : 800 }}
 			>
 				{#if message.type === 'tool'}
-					<ChatToolMessage {message} />
+					<ChatToolMessage {message} labels={l.toolMessage} />
 				{:else if message.text || (message.type === 'ai' && message.thinking)}
 					<ChatMessage
 						{message}
 						{onEdit}
 						{onRegenerate}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
+						labels={l.message}
 					/>
 				{/if}
 			</div>
@@ -92,7 +123,7 @@
 			transition:fly={{ y: 20, duration: revealFrom === 0 ? 800 : 0 }}
 		>
 			{#if generationError && onRetryError}
-				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
+				<ChatErrorMessage error={generationError} onRetry={onRetryError} labels={l.errorMessage} />
 			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}

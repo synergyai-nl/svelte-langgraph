@@ -1,20 +1,45 @@
+<script lang="ts" module>
+	import {
+		defaultFeedbackButtonsLabels,
+		type FeedbackButtonsLabels
+	} from './FeedbackButtons.svelte';
+
+	export interface AIMessageActionsLabels {
+		copy: string;
+		copied: string;
+		regenerate: string;
+		feedback: FeedbackButtonsLabels;
+	}
+
+	export const defaultAIMessageActionsLabels: AIMessageActionsLabels = {
+		copy: 'Copy to clipboard',
+		copied: 'Copied',
+		regenerate: 'Regenerate',
+		feedback: defaultFeedbackButtonsLabels
+	};
+</script>
+
 <script lang="ts">
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
 	import { RefreshCw } from '@lucide/svelte';
 	import type { Message } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		message: Message;
 		isHovered: boolean;
 		onRegenerate: (message: Message) => void;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		labels?: DeepPartial<AIMessageActionsLabels>;
 	}
 
-	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
+	let { message, isHovered, onRegenerate, onFeedback, labels }: Props = $props();
+
+	const l = $derived(resolveLabels(defaultAIMessageActionsLabels, undefined, labels));
+
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 </script>
@@ -43,7 +68,7 @@
 			/>
 		</TooltipTrigger>
 		<TooltipContent>
-			{copySuccess ? m.message_copied() : m.message_copy()}
+			{copySuccess ? l.copied : l.copy}
 		</TooltipContent>
 	</Tooltip>
 
@@ -54,15 +79,15 @@
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
-				title={m.message_regenerate()}
+				title={l.regenerate}
 			>
 				<RefreshCw size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.message_regenerate()}
+			{l.regenerate}
 		</TooltipContent>
 	</Tooltip>
 
-	<FeedbackButtons {message} {onFeedback} />
+	<FeedbackButtons {message} {onFeedback} labels={l.feedback} />
 </div>

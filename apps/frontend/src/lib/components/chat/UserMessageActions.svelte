@@ -1,15 +1,28 @@
+<script lang="ts" module>
+	export interface UserMessageActionsLabels {
+		edit: string;
+	}
+
+	export const defaultUserMessageActionsLabels: UserMessageActionsLabels = {
+		edit: 'Edit'
+	};
+</script>
+
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Pencil } from '@lucide/svelte';
-	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
+	import { resolveLabels, type DeepPartial } from './labels';
 
 	interface Props {
 		isHovered: boolean;
 		onEdit: () => void;
+		labels?: DeepPartial<UserMessageActionsLabels>;
 	}
 
-	let { isHovered, onEdit }: Props = $props();
+	let { isHovered, onEdit, labels }: Props = $props();
+
+	const l = $derived(resolveLabels(defaultUserMessageActionsLabels, undefined, labels));
 </script>
 
 <div
@@ -18,18 +31,12 @@
 >
 	<Tooltip>
 		<TooltipTrigger>
-			<Button
-				onclick={onEdit}
-				class="h-6 w-6"
-				variant="ghost"
-				size="icon-sm"
-				title={m.message_edit()}
-			>
+			<Button onclick={onEdit} class="h-6 w-6" variant="ghost" size="icon-sm" title={l.edit}>
 				<Pencil size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.message_edit()}
+			{l.edit}
 		</TooltipContent>
 	</Tooltip>
 </div>

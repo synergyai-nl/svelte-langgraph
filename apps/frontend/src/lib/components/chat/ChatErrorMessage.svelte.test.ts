@@ -2,8 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
-import ChatErrorMessage from './ChatErrorMessage.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import ChatErrorMessage, { defaultChatErrorMessageLabels } from './ChatErrorMessage.svelte';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const error = new Error('Test error message');
@@ -25,7 +24,9 @@ describe('ChatErrorMessage', () => {
 		});
 
 		test('renders the retry button', () => {
-			expect(screen.getByRole('button', { name: m.chat_error_retry() })).toBeInTheDocument();
+			expect(
+				screen.getByRole('button', { name: defaultChatErrorMessageLabels.retry })
+			).toBeInTheDocument();
 		});
 	});
 
@@ -34,7 +35,7 @@ describe('ChatErrorMessage', () => {
 		const onRetry = vi.fn();
 		renderComponent({ onRetry });
 
-		await user.click(screen.getByRole('button', { name: m.chat_error_retry() }));
+		await user.click(screen.getByRole('button', { name: defaultChatErrorMessageLabels.retry }));
 		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 });
