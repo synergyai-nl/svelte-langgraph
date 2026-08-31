@@ -110,8 +110,9 @@
 	}
 </script>
 
-<!-- `h-full min-h-0` overrides the provider's base `min-h-svh` via tailwind-merge. -->
-<Sidebar.Provider bind:open={sidebarOpen} class="h-full min-h-0">
+<!-- Provider is `h-full min-h-0` by default (SLG-133); this layout's own ancestry supplies the
+     viewport height (see the root layout's `h-svh` wrapper), so no override is needed here. -->
+<Sidebar.Provider bind:open={sidebarOpen}>
 	<ThreadList
 		list={threadList}
 		{activeThreadId}
