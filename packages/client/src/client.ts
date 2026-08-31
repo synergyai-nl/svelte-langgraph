@@ -1,18 +1,29 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
-import { env } from '$env/dynamic/public';
 import type { ThreadValues } from './types';
 
-export function createClient(accessToken: string): Client {
-	const langchainUrl = env.PUBLIC_LANGGRAPH_API_URL;
-	if (!langchainUrl) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
+/**
+ * @param url - LangGraph server API URL. Callers own resolving this (e.g. from
+ * `PUBLIC_LANGGRAPH_API_URL` in the SvelteKit app) — this package has no SvelteKit dependency.
+ * @param token - Bearer token sent as the `Authorization` header, when provided.
+ * @param headers - Additional default headers, merged in under `Authorization`.
+ */
+export function createClient(
+	url: string,
+	token?: string | null,
+	headers?: Record<string, string>
+): Client {
+	if (!url) throw Error('Required LangGraph API URL is undefined');
 
-	console.assert(!!accessToken, 'No access token specified.');
+	console.assert(!!token, 'No access token specified.');
+
+	const defaultHeaders: Record<string, string> = { ...headers };
+	if (token) {
+		defaultHeaders.Authorization = `Bearer ${token}`;
+	}
 
 	return new Client({
-		defaultHeaders: {
-			Authorization: `Bearer ${accessToken}`
-		},
-		apiUrl: langchainUrl,
+		defaultHeaders,
+		apiUrl: url,
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
 }

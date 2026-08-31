@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
+	import { threadLabel, type ThreadSummary } from '@svelte-langgraph/client';
 
 	interface Props {
 		thread: ThreadSummary;
