@@ -196,7 +196,9 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		mockModule.setIsLoading(false);
 		await tick();
 
-		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
+		// `waitFor`, not a bare assertion: every write now resolves title authority first, so an
+		// awaited `threads.get` precedes the PATCH.
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
 		expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
 			metadata: { title: 'Trip to Kyoto' }
 		});
@@ -404,6 +406,89 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		});
 	});
 
+	test('an external title set before the graph has one is never overwritten', async () => {
+		// The thread is renamed elsewhere while its graph state has no title yet. A mount-time
+		// authority check completes permanently here without ever calling `threads.get` (there is
+		// nothing to compare against), so the first generated title later PATCHed over the rename.
+		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		// Hydration completes with no graph title at all.
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// The first exchange now generates one.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
+		await tick();
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
+	test('a failed authority lookup blocks the write, and is retried on the next settle', async () => {
+		// A transient `threads.get` failure must not be treated as "no stored title" — that would
+		// let the generated title overwrite a rename. It must also not block forever.
+		threadsGetMock
+			.mockRejectedValueOnce(new Error('network blip'))
+			.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		await tick();
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// A later settle retries the lookup, learns of the rename, and still declines to write.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(2));
+		await tick();
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
+	test('a settle before hydration completes cannot clobber a rename', async () => {
+		// This ordering is reachable: `ChatInput` renders outside the `isThreadLoading` branch and
+		// disables only on `isStreaming`, and `submitInput` guards on `stream.isLoading` alone —
+		// so a run can settle before the mount backfill has run at all.
+		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		// Settle while history is still loading.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Generated title' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
+		await tick();
+		await tick();
+
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time
@@ -569,7 +654,8 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		await tick();
 
 		// The PATCH has been issued but is still pending — refresh must not have fired yet.
-		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
+		// `waitFor` for the issue itself, since the authority `threads.get` is awaited first.
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
 		expect(refresh).not.toHaveBeenCalled();
 
 		resolveUpdate();

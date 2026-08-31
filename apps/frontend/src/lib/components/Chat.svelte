@@ -189,43 +189,68 @@
 	// act as the safety net here, and the thread would stay untitled until the next page load.
 	let mirroredTitle: string | undefined;
 
-	// Every metadata write *and* the mount-time decision that gates them run through this one
-	// chain, rather than being fired off independently.
+	// All metadata writes go through one serialized chain, and each resolves the thread's "title
+	// authority" before writing.
 	//
-	// Serializing the writes alone is not enough. Two settles can leave two PATCHes in flight —
+	// Serializing matters because two settles can otherwise leave two PATCHes in flight —
 	// reachable via regenerate, which branches from the pre-answer checkpoint and so generates a
 	// *different* title (see `test_regenerate_reexecutes_model`) — and Aegra's metadata write is
-	// last-write-wins, so a slower first PATCH landing second persists the stale title. But the
-	// mount-time `threads.get` that decides whether a stored title is authoritative is *also*
-	// async: a run settling while that GET was still open found `suppressedGraphTitle` unset and
-	// wrote the generated title straight over a rename. Putting the decision on the same chain is
-	// what fixes that — later writes queue behind it and observe its result.
-	//
-	// (A settle enqueued *before* hydration completes still runs first, since the decision has
-	// not been queued yet. That needs a run to settle before its own thread's history finishes
-	// loading, which the UI does not offer a way to do.)
+	// last-write-wins, so a slower first PATCH landing second persists the stale title.
 	let mirrorQueue: Promise<void> = Promise.resolve();
 
 	function enqueue(task: () => Promise<void>): Promise<void> {
 		// A rejected link must not poison the chain for later work. (Nothing queued here actually
-		// rejects — the write swallows its own errors — but this keeps that a local property
-		// rather than an invariant every caller has to preserve.)
+		// rejects — the write swallows its own errors — but this keeps that a local property rather
+		// than an invariant every caller has to preserve.)
 		mirrorQueue = mirrorQueue.catch(() => {}).then(task);
 		return mirrorQueue;
 	}
 
-	// The one graph title we have deliberately declined to mirror, because the thread already
-	// carried a different stored title (see the mount backfill below). Without this, recording
-	// the stored title in `mirroredTitle` is not enough on its own: the very next settle would
-	// see `stream.values.title !== mirroredTitle` and PATCH the generated title straight back
-	// over the rename, so merely reopening a renamed thread and sending a follow-up message
-	// would undo it.
+	// Authority: whether `thread.metadata.title` holds a title this component must not overwrite,
+	// because something other than this mount put it there. `client.threads.update` is public SDK
+	// surface, so another tab or client can rename a thread today, and the rename UI listed as a
+	// follow-up would rest on the same guarantee.
 	//
-	// Keyed on the *value*, not a boolean, so it suppresses exactly the title we already judged
-	// non-authoritative. A genuinely regenerated title is a different string, so it still gets
-	// mirrored — suppressing by flag would have silently disabled titling for the rest of the
-	// mount instead.
+	// Resolved lazily *inside the queue, on the first write attempt* — deliberately not as a
+	// mount-time step. A mount-time check has to answer three awkward questions that this does
+	// not: what if the graph has no title yet at mount, so there is nothing to compare the stored
+	// value against; what if the lookup fails, where a one-shot flag would let every later write
+	// through; and what if a run settles before hydration finishes, which *is* reachable — the
+	// composer stays live during history loading (`ChatInput` renders outside the
+	// `isThreadLoading` branch and disables only on `isStreaming`, and `submitInput` guards on
+	// `stream.isLoading` alone). Resolving on the write path means no write can precede the answer,
+	// so none of those orderings matter.
+	let authorityResolved = false;
+
+	// The graph title judged non-authoritative, because the thread already carried a *different*
+	// stored title. Keyed on the value rather than a flag, so a genuinely regenerated title (a
+	// different string) can still be mirrored instead of titling being dead for the rest of the
+	// mount.
 	let suppressedGraphTitle: string | undefined;
+
+	/**
+	 * Resolve title authority if not already known. Returns false when it could not be determined,
+	 * in which case the caller must not write — a transient `threads.get` failure on a renamed
+	 * thread would otherwise let the generated title overwrite the rename. `authorityResolved`
+	 * stays false so the next settle retries rather than being blocked forever.
+	 */
+	async function ensureAuthority(graphTitle: string): Promise<boolean> {
+		if (authorityResolved) return true;
+		try {
+			const thread = await langGraphClient.threads.get(threadId);
+			const storedTitle = thread.metadata?.title;
+			if (typeof storedTitle === 'string' && storedTitle.length > 0) {
+				mirroredTitle = storedTitle;
+				// Only a *different* stored title belongs to someone else; an identical one is just
+				// this feature's own earlier write, observed on a later mount.
+				if (storedTitle !== graphTitle) suppressedGraphTitle = graphTitle;
+			}
+			authorityResolved = true;
+			return true;
+		} catch {
+			return false;
+		}
+	}
 
 	/** The actual PATCH. Only ever called from inside a queued task. */
 	async function writeTitle(title: string): Promise<void> {
@@ -236,10 +261,24 @@
 			await langGraphClient.threads.update(threadId, { metadata: { title } });
 			mirroredTitle = title;
 		} catch {
-			// Best-effort — see comment above. Leaving `mirroredTitle` unset is deliberate: it
-			// lets the next settle retry, and the mount-time check below covers a tab closed
-			// mid-run.
+			// Best-effort: a missing or stale title is cosmetic and must never surface as a chat
+			// error. Leaving `mirroredTitle` unset lets the next settle retry.
 		}
+	}
+
+	/** Queue a mirror of `title`, resolving authority first. Resolves true if it actually wrote. */
+	function mirrorTitle(title: string): Promise<boolean> {
+		let wrote = false;
+		return enqueue(async () => {
+			if (!(await ensureAuthority(title))) return;
+			if (title === suppressedGraphTitle) return;
+			// Re-read: the graph's title can move on while the awaited work above is in flight, and
+			// writing this captured value would then overwrite the newer one.
+			if (stream.values.title !== title) return;
+			const before = mirroredTitle;
+			await writeTitle(title);
+			wrote = mirroredTitle !== before;
+		}).then(() => wrote);
 	}
 
 	$effect(() => {
@@ -250,79 +289,30 @@
 		untrack(() => {
 			const title = stream.values.title;
 			void (async () => {
-				// No title to mirror — refresh straight away rather than queueing a no-op behind
-				// whatever else is in flight. This is the overwhelmingly common settle.
-				if (typeof title === 'string' && title.length > 0) {
-					// Await the write before refreshing — that's what makes the sidebar pick up the
-					// new title on this refresh instead of the next one.
-					await enqueue(async () => {
-						// Checked *inside* the queue so it observes the mount-time decision rather
-						// than a snapshot taken before that decision had resolved.
-						if (title === suppressedGraphTitle) return;
-						await writeTitle(title);
-					});
-				}
+				// Await the write before refreshing — that is what makes the sidebar pick up the new
+				// title on this refresh rather than the next one. With no title there is nothing to
+				// queue, which is the overwhelmingly common settle.
+				if (typeof title === 'string' && title.length > 0) await mirrorTitle(title);
 				threadListRefresh?.refresh();
 			})();
 		});
 	});
 
-	// One-time backfill, checked once history hydration finishes (`isThreadLoading` true→false).
-	// This is the *only* safety net for a settle-time PATCH above that itself failed (network
-	// blip, Aegra briefly down) — that path only ever tries once per settle — and it's also what
-	// makes a tab closed mid-run (before any settle fires) self-heal its title on next open.
-	//
-	// Deliberately checks the thread's *stored* metadata via `threads.get` first rather than
-	// blind-PATCHing: `stream.values.title` alone can't tell us whether the mirror already
-	// happened (e.g. on a previous mount), and blind-PATCHing on every mount of an already-titled
-	// thread would mean a write on every thread open — the overwhelmingly common case.
-	let checkedInitialTitle = false;
+	// Backfill on open: if the graph carries a title that never reached the thread's metadata — a
+	// settle-time PATCH that failed, or a tab closed mid-run — mirror it without waiting for the
+	// user to send another message. It runs through `mirrorTitle` like every other write, so it
+	// resolves authority first and cannot overwrite a title set elsewhere.
+	let backfillAttempted = false;
 
 	$effect(() => {
 		const threadLoading = stream.isThreadLoading;
-		if (threadLoading || checkedInitialTitle) return;
-		checkedInitialTitle = true;
+		if (threadLoading || backfillAttempted) return;
+		backfillAttempted = true;
 		untrack(() => {
 			const title = stream.values.title;
-			if (typeof title !== 'string' || title.length === 0 || title === mirroredTitle) return;
-			let backfilled = false;
+			if (typeof title !== 'string' || title.length === 0) return;
 			void (async () => {
-				// Enqueued, not detached: settle-time writes must queue behind this decision, or a
-				// run settling while the GET below is still open would write the generated title
-				// over a rename before we had established that one exists.
-				await enqueue(async () => {
-					try {
-						// Any stored metadata title is authoritative, not just one matching ours. This
-						// backfill exists to fill an *absence* (a PATCH that failed, or a tab closed
-						// mid-run), so a thread that already carries a title is simply done. Comparing
-						// for equality instead would overwrite a title set deliberately elsewhere —
-						// `client.threads.update` is public SDK surface, so another client or tab can
-						// rename a thread today, and the rename UI noted as a follow-up would be
-						// silently undone every time the thread was reopened.
-						const thread = await langGraphClient.threads.get(threadId);
-						const storedTitle = thread.metadata?.title;
-						if (typeof storedTitle === 'string' && storedTitle.length > 0) {
-							mirroredTitle = storedTitle;
-							// Also suppress this graph title on later settles — see
-							// `suppressedGraphTitle`.
-							suppressedGraphTitle = title;
-							return;
-						}
-					} catch {
-						// Can't tell whether a mirror is needed — skip rather than risk a redundant
-						// PATCH. The next mount gets another chance.
-						return;
-					}
-					// `title` was captured before the awaited GET, and the graph's title can move on
-					// while that GET is open — a regenerate branches from the pre-answer checkpoint
-					// and produces a *different* title, which a settle will have written. The GET
-					// returns a snapshot predating that, so writing the captured title here would
-					// overwrite the newer one. Re-read instead and drop the backfill if it is stale.
-					if (stream.values.title !== title) return;
-					await writeTitle(title);
-					backfilled = true;
-				});
-				if (backfilled) threadListRefresh?.refresh();
+				if (await mirrorTitle(title)) threadListRefresh?.refresh();
 			})();
 		});
 	});
