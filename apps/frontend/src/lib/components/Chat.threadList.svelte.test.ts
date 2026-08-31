@@ -522,6 +522,52 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		expect(threadsUpdateMock).toHaveBeenCalledTimes(1);
 	});
 
+	test('retries a regenerated title whose write failed, rather than treating it as a rename', async () => {
+		// A is mirrored, a regeneration produces B, and B's PATCH fails. That failure clears the
+		// cached authority, so the retry re-reads metadata and finds A. Comparing against the
+		// graph title alone would read "stored A != graph B" as an external rename and suppress B
+		// forever, leaving the sidebar stale with the write never retried. A is our own earlier
+		// write, so B must still go through.
+		// Metadata starts empty, so A is genuinely written; later lookups then see A stored.
+		threadsGetMock
+			.mockResolvedValueOnce({ metadata: {} })
+			.mockResolvedValue({ metadata: { title: 'Title A' } });
+		threadsUpdateMock
+			.mockResolvedValueOnce({}) // A succeeds
+			.mockRejectedValueOnce(new Error('network blip')) // B fails
+			.mockResolvedValue({}); // B retried
+
+		renderChatWithRefresh();
+		await tick();
+
+		// First settle mirrors A.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title A' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+
+		// Regeneration yields B; its write fails.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title B' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
+
+		// The next settle must retry B, not suppress it.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(3));
+		expect(threadsUpdateMock).toHaveBeenLastCalledWith('test-123', {
+			metadata: { title: 'Title B' }
+		});
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time

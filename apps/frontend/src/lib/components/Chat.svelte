@@ -228,6 +228,18 @@
 	// mount.
 	let suppressedGraphTitle: string | undefined;
 
+	// Titles this mount successfully wrote itself. Distinct from `mirroredTitle`, which also
+	// records titles merely *observed* in metadata — only provenance can tell our own earlier
+	// write apart from someone else's rename when re-resolving authority (see `ensureAuthority`).
+	//
+	// Known limitation: this is per-mount, so the ambiguity returns on reopen. If a regenerated
+	// title's write failed and the thread is then reopened, the fresh mount sees a stored title
+	// differing from the graph's with no provenance to appeal to, and suppresses — leaving the
+	// sidebar stale rather than risking a rename. That trade-off is deliberate: the two cases are
+	// genuinely indistinguishable from a cold start, and silently overwriting a rename is the
+	// worse failure.
+	let lastWriteByThisMount: string | undefined;
+
 	/**
 	 * Resolve title authority if not already known. Returns false when it could not be determined,
 	 * in which case the caller must not write — a transient `threads.get` failure on a renamed
@@ -241,9 +253,18 @@
 			const storedTitle = thread.metadata?.title;
 			if (typeof storedTitle === 'string' && storedTitle.length > 0) {
 				mirroredTitle = storedTitle;
-				// Only a *different* stored title belongs to someone else; an identical one is just
-				// this feature's own earlier write, observed on a later mount.
-				if (storedTitle !== graphTitle) suppressedGraphTitle = graphTitle;
+				// A stored title is someone else's only if it is neither the title we are about to
+				// write nor one this mount wrote itself.
+				//
+				// The provenance half matters after a failed write. Say we mirrored A, a
+				// regeneration produced B, and B's PATCH failed — that failure clears
+				// `authorityResolved`, so the retry lands here and re-reads A. Comparing against
+				// `graphTitle` alone would read "stored A ≠ graph B" as an external rename and
+				// suppress B permanently, leaving the sidebar stale with the write never retried.
+				// `lastWriteByThisMount` records that A was our own, so B is recognised as a
+				// legitimate update.
+				const storedIsOurs = storedTitle === graphTitle || storedTitle === lastWriteByThisMount;
+				if (!storedIsOurs) suppressedGraphTitle = graphTitle;
 			}
 			authorityResolved = true;
 			return true;
@@ -260,6 +281,7 @@
 		try {
 			await langGraphClient.threads.update(threadId, { metadata: { title } });
 			mirroredTitle = title;
+			lastWriteByThisMount = title;
 		} catch {
 			// Best-effort: a missing or stale title is cosmetic and must never surface as a chat
 			// error. Leaving `mirroredTitle` unset lets the next settle retry.
