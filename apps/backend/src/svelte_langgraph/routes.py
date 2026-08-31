@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from .tracing import record_score
+from .tracing import is_configured, record_score
 
 app = FastAPI()
 
@@ -13,7 +13,18 @@ class FeedbackPayload(BaseModel):
 
 @app.post("/feedback")
 async def feedback(payload: FeedbackPayload) -> dict:
-    if record_score(payload.run_id, payload.score):
-        return {"ok": True}
-    else:
-        raise HTTPException(status_code=500, detail="Failed to record feedback score")
+    """Attach a rating to the run's trace.
+
+    Awaited rather than detached: the trace id is derived from the run id, so
+    this is one fast POST with no lookup and no wait for ingestion. That makes
+    a failure something the caller can actually be told about.
+    """
+    if not is_configured():
+        # Langfuse is optional, and its absence is a deployment choice — not
+        # something to report as a failed click.
+        return {"ok": True, "recorded": False}
+
+    if not await record_score(payload.run_id, payload.score):
+        raise HTTPException(status_code=502, detail="Failed to record feedback score")
+
+    return {"ok": True, "recorded": True}
