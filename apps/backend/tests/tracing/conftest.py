@@ -36,10 +36,10 @@ def no_langfuse_env(monkeypatch):
         monkeypatch.delenv(key, raising=False)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def instant_retries(monkeypatch):
-    """Keep the retry *count* but drop the waits, so a test can exercise the
-    ingestion-lag path without spending two real minutes on it."""
+    """Keep the retry *count* but drop the waits, so the suite doesn't spend
+    real seconds sleeping through the backoff."""
     from svelte_langgraph import tracing
 
     monkeypatch.setattr(tracing, "_RETRY_DELAYS", (0.0,) * len(tracing._RETRY_DELAYS))

@@ -44,6 +44,8 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 
 	await expect(up).toBeVisible();
 	await expect(down).toBeVisible();
+	// Enabled only once the thread's stored ratings have loaded, so this also
+	// covers that the load actually completes against a real backend.
 	await expect(up).toBeEnabled();
 	await expect(down).toBeEnabled();
 });

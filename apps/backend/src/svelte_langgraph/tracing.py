@@ -1,44 +1,49 @@
-"""User-feedback scoring against the traces Aegra exports.
+"""Trace identity and user-feedback scoring.
 
-Tracing itself is not implemented here. Aegra owns it: setting
-``OTEL_TARGETS=LANGFUSE`` makes it export every run to Langfuse over OTLP and
-stamp each span with ``langfuse.trace.metadata.run_id`` (see
-``aegra_api.observability.span_enrichment``). This module only does the one
-thing Aegra has no endpoint for — attaching a score to the trace a run
-produced.
+Aegra owns tracing itself: `OTEL_TARGETS=LANGFUSE` makes it export every run
+over OTLP and stamp each span with `langfuse.trace.metadata.run_id` (see
+`aegra_api.observability.span_enrichment`). This module adds the two things it
+has no opinion about — which id that trace gets, and how a rating is attached
+to it.
 
-Because the trace id is now a random OTEL id rather than the run id, scoring
-is a two-step operation: look the trace up by its ``run_id`` metadata, then
-post the score. The lookup is the awkward part — Langfuse takes roughly ten
-seconds to make a freshly exported trace queryable, and people rate a reply
-within a second or two of reading it. So :func:`record_score` retries the
-lookup on a backoff and is meant to be awaited in the background rather than
-inside the request/response cycle.
+Those two are the same problem. Left alone, OpenTelemetry mints a random trace
+id, so scoring a run would mean searching Langfuse for the trace carrying its
+`run_id` — a search that returns nothing for the first ~10s while the trace is
+being ingested, which is exactly when people rate an answer. Choosing the trace
+id up front removes the search: `pin_trace_to_run` makes it equal to the run id,
+and `record_score` can then post straight to it.
 """
 
 import asyncio
-import json
 import logging
 import os
+from uuid import UUID
 
 import httpx
+from langchain_core.runnables import RunnableConfig
+from opentelemetry import context as otel_context
+from opentelemetry.trace import (
+    NonRecordingSpan,
+    SpanContext,
+    TraceFlags,
+    set_span_in_context,
+)
 
 logger = logging.getLogger(__name__)
 
-# Same variables Aegra's LangfuseTarget reads, so tracing and scoring are
+# Same variable Aegra's LangfuseTarget reads, so tracing and scoring are
 # configured once rather than twice.
 _DEFAULT_BASE_URL = "http://localhost:3000"
 
-# Langfuse only makes an exported trace queryable after it has been ingested,
-# which took ~10s when measured against cloud.langfuse.com. These delays give
-# the lookup a little over two minutes to find it, front-loaded so the common
-# case (a rating on an older message, already ingested) still resolves on the
-# first attempt.
-_RETRY_DELAYS = (0.0, 2.0, 4.0, 8.0, 15.0, 30.0, 60.0)
-
-# Langfuse's own list latency is several seconds under normal conditions, so
-# the client default is too tight to be reliable here.
+# Langfuse's own latency runs to several seconds under normal load, so httpx's
+# default would give up well before it.
 _TIMEOUT = httpx.Timeout(30.0)
+
+# Pinning removed the *ingestion* race, not ordinary flakiness: a 5xx, a DNS
+# blip or a restarting self-hosted instance would otherwise lose the rating
+# outright, since the caller has nowhere to put it. Short and bounded, because
+# /feedback is awaited and a click must not hang.
+_RETRY_DELAYS = (0.5, 2.0)
 
 
 def is_configured() -> bool:
@@ -60,76 +65,109 @@ def _auth() -> tuple[str, str]:
     )
 
 
-async def _find_trace_id(client: httpx.AsyncClient, run_id: str) -> str | None:
-    """Return the id of the trace Aegra exported for `run_id`, if it has landed.
+def trace_id_for_run(run_id: str) -> str | None:
+    """The trace id `pin_trace_to_run` gives a run, or None if it can't have one.
 
-    `run_id` is matched against the trace metadata Aegra stamps on every span.
-    A `stringObject` filter targets a single key inside the metadata blob,
-    which is what makes this an indexed lookup rather than a scan.
+    A run id is a UUID and an OTEL trace id is 16 bytes, so one is just the
+    other's hex. Both sides compute this independently — nothing is stored.
     """
-    filter_spec = json.dumps(
-        [
-            {
-                "type": "stringObject",
-                "column": "metadata",
-                "key": "run_id",
-                "operator": "=",
-                "value": run_id,
-            }
-        ]
-    )
-    response = await client.get(
-        f"{_base_url()}/api/public/traces",
-        params={"filter": filter_spec, "limit": 1},
-        auth=_auth(),
-    )
-    response.raise_for_status()
-    data = response.json().get("data") or []
-    return data[0]["id"] if data else None
+    try:
+        return UUID(str(run_id)).hex
+    except (ValueError, AttributeError, TypeError):
+        return None
 
 
-async def _post_score(
-    client: httpx.AsyncClient, trace_id: str, score: float, name: str
-) -> None:
-    response = await client.post(
-        f"{_base_url()}/api/public/scores",
-        json={"traceId": trace_id, "name": name, "value": score},
-        auth=_auth(),
+def pin_trace_to_run(config: RunnableConfig) -> None:
+    """Make the run's exported trace id equal to its run id.
+
+    Attaches a non-recording parent span carrying the wanted id. Everything the
+    run then traces inherits it, because OpenInference's LangChain tracer starts
+    its root span from the ambient context (it leaves
+    `separate_trace_from_runtime_context` off, so the parent context is `None`,
+    meaning "use whatever is current").
+
+    The timing is what makes this work, and it is Aegra's doing: a graph factory
+    taking `config` is invoked per run, inside the run's own task, with
+    `configurable.run_id` already set and before `astream` opens any span.
+
+    Nothing detaches this. It doesn't leak, because every run gets its own
+    `contextvars.Context` — explicitly in `LocalExecutor.submit`, and via
+    `asyncio.create_task` in the worker — which dies with the run.
+    """
+    run_id = (config.get("configurable") or {}).get("run_id")
+    if not run_id:
+        # Aegra also calls the factory with defaults to extract the state schema
+        # at startup, and main.py's CLI loop has no server-issued run id.
+        return
+
+    trace_id = trace_id_for_run(run_id)
+    if trace_id is None:
+        logger.warning("run_id %r is not a UUID; leaving the trace id random", run_id)
+        return
+
+    uid = UUID(str(run_id))
+    span_context = SpanContext(
+        trace_id=uid.int,
+        # Any non-zero span id works — this parent is never exported, it only
+        # carries the trace id. Deriving it from the run keeps it deterministic.
+        span_id=(uid.int >> 64) or 1,
+        is_remote=True,
+        trace_flags=TraceFlags(TraceFlags.SAMPLED),
     )
-    response.raise_for_status()
+    otel_context.attach(set_span_in_context(NonRecordingSpan(span_context)))
 
 
 async def record_score(run_id: str, score: float, name: str = "user_feedback") -> bool:
     """Attach `score` to the Langfuse trace produced by `run_id`.
 
-    Returns True once the score is accepted. Returns False if Langfuse is not
-    configured, or if the trace never became queryable within the retry window
-    — a rating that arrives before its trace has been ingested is retried, not
-    dropped, but a run that was never exported at all cannot be scored.
-
-    Intended to be awaited outside the request/response cycle: a single call
-    can spend the whole retry window waiting on ingestion.
+    No lookup and no waiting for ingestion: the trace id is derived from the run
+    id, and Langfuse keeps a score whose trace hasn't landed yet, joining the two
+    on `traceId` once it does (verified against cloud.langfuse.com). So this is a
+    single POST, briefly retried on transport or 5xx failures, that can be
+    awaited inside the request that triggered it.
     """
     if not run_id or not is_configured():
         return False
 
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            for delay in _RETRY_DELAYS:
-                if delay:
-                    await asyncio.sleep(delay)
-                trace_id = await _find_trace_id(client, run_id)
-                if trace_id is None:
-                    continue
-                await _post_score(client, trace_id, score, name)
-                return True
-    except Exception:
-        logger.exception("Failed to record score for run %s", run_id)
+    trace_id = trace_id_for_run(run_id)
+    if trace_id is None:
+        logger.warning("run_id %r is not a UUID; cannot score its trace", run_id)
         return False
 
-    logger.warning(
-        "No Langfuse trace found for run %s after %.0fs; score dropped",
-        run_id,
-        sum(_RETRY_DELAYS),
-    )
+    payload = {"traceId": trace_id, "name": name, "value": score}
+    url = f"{_base_url()}/api/public/scores"
+    last_error: Exception | None = None
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+        for attempt, delay in enumerate((0.0, *_RETRY_DELAYS)):
+            if delay:
+                await asyncio.sleep(delay)
+            try:
+                response = await client.post(url, json=payload, auth=_auth())
+                response.raise_for_status()
+                return True
+            except httpx.HTTPStatusError as exc:
+                # 4xx means this request is wrong and will stay wrong; only a
+                # server-side or transport failure is worth repeating.
+                if exc.response.status_code < 500:
+                    logger.error(
+                        "Langfuse rejected the score for run %s: %s %s",
+                        run_id,
+                        exc.response.status_code,
+                        exc.response.text[:200],
+                    )
+                    return False
+                last_error = exc
+            except Exception as exc:  # noqa: BLE001 - retried below, logged at the end
+                last_error = exc
+
+            logger.warning(
+                "Scoring run %s failed (attempt %d/%d): %s",
+                run_id,
+                attempt + 1,
+                len(_RETRY_DELAYS) + 1,
+                last_error,
+            )
+
+    logger.error("Giving up on the score for run %s: %s", run_id, last_error)
     return False
