@@ -568,6 +568,50 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		});
 	});
 
+	test('a successful replacement clears the old suppression', async () => {
+		// Reopen with an external title X while the graph holds A, so A is suppressed. A
+		// regeneration to B is then written deliberately (a different graph title still
+		// overrides). That write replaces X, so the suppression of A is obsolete — and
+		// regenerating back to A is likely, not exotic, since the title model runs at
+		// temperature 0 over a bounded opening exchange.
+		threadsGetMock.mockResolvedValue({ metadata: { title: 'External X' } });
+
+		mockModule.setIsThreadLoading(true);
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setValues({ title: 'Title A' });
+		mockModule.setIsThreadLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
+		await tick();
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+
+		// Regeneration to B is written.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title B' });
+		mockModule.setIsLoading(false);
+		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		expect(threadsUpdateMock).toHaveBeenLastCalledWith('test-123', {
+			metadata: { title: 'Title B' }
+		});
+
+		// Regenerating back to A must now be written, not silently discarded.
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setValues({ title: 'Title A' });
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
+		expect(threadsUpdateMock).toHaveBeenLastCalledWith('test-123', {
+			metadata: { title: 'Title A' }
+		});
+	});
+
 	test('retries the mirror on the next settle when the PATCH failed', async () => {
 		// The title is recorded as mirrored only once the PATCH resolves. Recording it up front
 		// would make a transient failure a silent one-shot: on a fresh thread the mount-time

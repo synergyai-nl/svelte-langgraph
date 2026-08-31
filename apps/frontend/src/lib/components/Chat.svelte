@@ -282,6 +282,12 @@
 			await langGraphClient.threads.update(threadId, { metadata: { title } });
 			mirroredTitle = title;
 			lastWriteByThisMount = title;
+			// Any standing suppression is now obsolete. It protected a stored title that this
+			// write has just deliberately replaced, so continuing to block the graph title it was
+			// keyed to would discard a legitimate later regeneration back to that value — which
+			// `get_title_model`'s `temperature=0` makes likely rather than exotic, since
+			// regenerating over the same opening exchange tends to produce the same title.
+			suppressedGraphTitle = undefined;
 		} catch {
 			// Best-effort: a missing or stale title is cosmetic and must never surface as a chat
 			// error. Leaving `mirroredTitle` unset lets the next settle retry.
