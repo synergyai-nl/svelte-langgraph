@@ -69,7 +69,16 @@ export function resolveLabels<T extends object>(
 	// `Object.assign` + an explicit cast, rather than an object-spread literal, sidesteps a
 	// TypeScript inference trap: spreading `Partial<T> | undefined` after a required `T` would
 	// otherwise widen already-required property types to include `undefined`, even though every
-	// property this actually returns is fully populated (each optional source only ever
-	// contributes keys it truly has — `Object.assign` skips `undefined` sources entirely).
-	return Object.assign({}, defaults, context, prop) as T;
+	// property this actually returns is fully populated.
+	return Object.assign({}, defaults, definedEntries(context), definedEntries(prop)) as T;
+}
+
+// A caller building a partial from conditional values (e.g. `{ copy: maybeString }`) can end up
+// with keys explicitly set to `undefined`; copying those over the defaults would blank the label
+// instead of falling back, so drop them before merging.
+function definedEntries<T extends object>(partial: T | undefined): Partial<T> | undefined {
+	if (!partial) return partial;
+	return Object.fromEntries(
+		Object.entries(partial).filter(([, value]) => value !== undefined)
+	) as Partial<T>;
 }

@@ -14,7 +14,7 @@
 </script>
 
 <!--
-	Minimal host mirroring how ChatMessages.svelte attaches `scrollToMe(message)`
+	Minimal host mirroring how MessagesList.svelte attaches `scrollToMe(message)`
 	to a message row, so tests can exercise the real attachment wiring end to end.
 -->
 <ScrollableContainer>

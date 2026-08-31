@@ -6,7 +6,7 @@ import type { Message } from '@svelte-langgraph/client';
 
 /**
  * Renders message rows through ScrollableContainer's `scrollToMe` attachment,
- * mirroring how ChatMessages.svelte wires `{@attach scrollToMe(message)}`.
+ * mirroring how MessagesList.svelte wires `{@attach scrollToMe(message)}`.
  *
  * The mount target is given the `overflow-y-auto` class that `findScrollContainer`
  * looks for, matching the real scroll container in Chat.svelte.
