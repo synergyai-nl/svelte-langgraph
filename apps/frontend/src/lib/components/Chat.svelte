@@ -226,6 +226,20 @@
 	// stored title. Keyed on the value rather than a flag, so a genuinely regenerated title (a
 	// different string) can still be mirrored instead of titling being dead for the rest of the
 	// mount.
+	//
+	// That choice is the deliberate limit of what this can do, and it is worth being explicit
+	// about why. `metadata.title` is a bare string with no record of *who* set it, so "the user
+	// renamed this thread" and "an earlier run generated this title" are the same value to us.
+	// Every heuristic here — comparing against the graph title, against what this mount wrote —
+	// is an attempt to infer that missing provenance, and each can be wrong at the edges: a
+	// rename that lands after we have already mirrored a title can still be overwritten by a
+	// later regeneration, because nothing distinguishes it from our own stale write.
+	//
+	// The real fix is to record the distinction in metadata (an auto-generated vs user-set
+	// marker) and let a user-set title win outright. That belongs with user-editable titles,
+	// which are out of scope here — see the PR's follow-ups. Until then this deliberately errs
+	// toward preserving a stored title, and the residual window above is accepted rather than
+	// papered over with more inference.
 	let suppressedGraphTitle: string | undefined;
 
 	// Titles this mount successfully wrote itself. Distinct from `mirroredTitle`, which also
