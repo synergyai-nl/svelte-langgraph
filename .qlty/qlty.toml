@@ -116,10 +116,11 @@ set.ignored = true
 # it began appearing only after a Qlty Cloud-side plugin update, on a file that
 # had not changed.
 #
-# Scoped to the backend test tree rather than the plugin as a whole, so a real
-# Lob key committed anywhere else still fails the build. See PR #288.
+# Scoped to the single offending file rather than the plugin, or even the backend
+# test tree, so a real Lob key committed anywhere else -- including in another
+# backend test -- still fails the build. See PR #288.
 [[triage]]
 match.plugins = ["trufflehog"]
 match.rules = ["Lob"]
-match.file_patterns = ["apps/backend/tests/**"]
+match.file_patterns = ["apps/backend/tests/test_models.py"]
 set.ignored = true

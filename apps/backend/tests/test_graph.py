@@ -1048,8 +1048,6 @@ async def test_title_not_generated_when_the_run_did_no_model_work(
     finished exchange from the persisted messages alone would bill a title
     call for a run that deliberately did no model work at all.
     """
-    import svelte_langgraph.graph as g
-
     from tests.conftest import CompletionMeta, make_completion_response
 
     mock_completion.mock(
@@ -1067,7 +1065,9 @@ async def test_title_not_generated_when_the_run_did_no_model_work(
 
     # First run: a real exchange whose titling fails, so `title` stays unset
     # and the checkpoint ends on a completed AIMessage.
-    monkeypatch.setattr(g, "get_title_model", lambda: _FailingTitleModel())
+    monkeypatch.setattr(
+        "svelte_langgraph.graph.get_title_model", lambda: _FailingTitleModel()
+    )
     first = await agent.ainvoke(
         {"messages": [HumanMessage(content="Plan a trip")]}, thread_config
     )
@@ -1084,7 +1084,9 @@ async def test_title_not_generated_when_the_run_did_no_model_work(
             title_calls["n"] += 1
             return AIMessage(content="Some Title")
 
-    monkeypatch.setattr(g, "get_title_model", lambda: _CountingTitleModel())
+    monkeypatch.setattr(
+        "svelte_langgraph.graph.get_title_model", lambda: _CountingTitleModel()
+    )
 
     # Second run: no new input, and no state-only marker. `phase_gate` ends it
     # because the last message is not a HumanMessage.
