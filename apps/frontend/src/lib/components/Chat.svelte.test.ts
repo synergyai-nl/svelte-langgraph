@@ -483,13 +483,15 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(mockThreads.update).toHaveBeenCalledWith('test-123', {
-					metadata: { ratings: { 'run-abc': 'up' } }
+					// One flat key, not a nested map: Aegra merges metadata per
+					// top-level key, so this write can't disturb another rating.
+					metadata: { 'rating:run-abc': 'up' }
 				});
 			});
 		});
 
 		test('restores a stored rating on mount', async () => {
-			mockThreads.get.mockResolvedValue({ metadata: { ratings: { 'run-abc': 'down' } } });
+			mockThreads.get.mockResolvedValue({ metadata: { 'rating:run-abc': 'down' } });
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
 				firstSeenState: { metadata: { run_id: 'run-abc' } }
 			});
@@ -533,6 +535,124 @@ describe('Chat', () => {
 				expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
 			});
 			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('disables rating when the stored ratings could not be loaded', async () => {
+			// Rating against an unknown baseline would show a rated message as
+			// unrated, so the click is refused rather than allowed to drift.
+			mockThreads.get.mockRejectedValue(new Error('offline'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+			});
+			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('rating stays disabled until the stored ratings arrive', async () => {
+			// Otherwise an already-rated message would render as unrated and the
+			// first click would look like a change the user didn't make.
+			let release!: (v: { metadata: unknown }) => void;
+			mockThreads.get.mockReturnValue(
+				new Promise((resolve) => {
+					release = resolve;
+				})
+			);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+
+			release({ metadata: { 'rating:run-abc': 'up' } });
+
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+			});
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('keeps the rating when only the metadata write fails', async () => {
+			// The score is already recorded, so rolling back would claim the click
+			// was lost when it wasn't — and re-arm the button to post a duplicate.
+			mockThreads.update.mockRejectedValue(new Error('patch failed'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('marks a rating as failed without discarding the attempt', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async (input: unknown) =>
+					String(input) === '/api/feedback/token'
+						? new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
+								status: 200,
+								headers: { 'Content-Type': 'application/json' }
+							})
+						: new Response('nope', { status: 502 })
+				)
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			// The marker is what tells the user it didn't land; the thumb itself
+			// reverts so the button stays honest and retryable.
+			await waitFor(() => {
+				expect(within(group).getByTestId('feedback-failed')).toBeInTheDocument();
+			});
+			expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+			expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+		});
+
+		test('shows no failure marker once a rating lands', async () => {
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			expect(within(group).queryByTestId('feedback-failed')).not.toBeInTheDocument();
+			expect(within(group).queryByTestId('feedback-pending')).not.toBeInTheDocument();
 		});
 
 		test('scores a message restored from history, with no live run', async () => {

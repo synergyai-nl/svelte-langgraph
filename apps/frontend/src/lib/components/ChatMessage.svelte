@@ -17,6 +17,12 @@
 		/** Resolves the rating already recorded for a message. Passed as a function
 		 *  rather than a value because only Chat can map a message to its run. */
 		getRating?: (message: Message) => 'up' | 'down' | null;
+		/** Resolves whether this message's rating is in flight or last failed. */
+		getFeedbackStatus?: (message: Message) => 'pending' | 'failed' | null;
+		/** False until stored ratings are known; disables rating. */
+		feedbackReady?: boolean;
+		/** Stored ratings could not be loaded at all. */
+		ratingsError?: boolean;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
 	}
@@ -27,12 +33,16 @@
 		onRegenerate,
 		onFeedback,
 		getRating,
+		getFeedbackStatus,
+		feedbackReady = true,
+		ratingsError = false,
 		isThinkingActive = false
 	}: Props = $props();
 
 	// Reads Chat's ratings state through the closure, so it re-runs when a
 	// rating is added or rolled back.
 	let rating = $derived(getRating?.(message) ?? null);
+	let feedbackStatus = $derived(getFeedbackStatus?.(message) ?? null);
 
 	const plugins = [gfmPlugin()];
 
@@ -94,7 +104,16 @@
 									<Markdown md={message.text} {plugins} />
 								</Card.Content>
 							</Card.Root>
-							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} {rating} />
+							<AIMessageActions
+								{message}
+								{isHovered}
+								{onRegenerate}
+								{onFeedback}
+								{rating}
+								{feedbackStatus}
+								{feedbackReady}
+								feedbackUnavailable={ratingsError}
+							/>
 						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">

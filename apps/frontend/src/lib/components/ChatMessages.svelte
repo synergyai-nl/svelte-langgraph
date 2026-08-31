@@ -18,6 +18,9 @@
 		onRegenerate: (message: Message) => void;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
 		getRating?: (message: Message) => 'up' | 'down' | null;
+		getFeedbackStatus?: (message: Message) => 'pending' | 'failed' | null;
+		feedbackReady?: boolean;
+		ratingsError?: boolean;
 	}
 
 	let {
@@ -29,7 +32,10 @@
 		onEdit,
 		onRegenerate,
 		onFeedback,
-		getRating
+		getRating,
+		getFeedbackStatus,
+		feedbackReady = true,
+		ratingsError = false
 	}: Props = $props();
 
 	// The message currently being generated is always the last one in the list — while a
@@ -88,6 +94,9 @@
 						{onRegenerate}
 						{onFeedback}
 						{getRating}
+						{getFeedbackStatus}
+						{feedbackReady}
+						{ratingsError}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
 					/>
 				{/if}

@@ -38,6 +38,12 @@
 	// run id is what the score is ultimately attributed to.
 	const feedbackUrls = new SvelteMap<string, string>();
 
+	// Rating is disabled until the stored ratings are known: without them the UI
+	// would show an old rating as unrated, and re-rating would look like a change
+	// the user didn't make.
+	let ratingsLoaded = $state(false);
+	let ratingsError = $state(false);
+
 	// runId → the rating the user gave. Mirrored into thread metadata so it
 	// survives a reload, because Langfuse can't serve this back: its scores API
 	// has no batch-by-session query, so rebuilding a thread would cost a lookup
@@ -200,27 +206,68 @@
 		return url;
 	}
 
-	/** Ratings live in thread *metadata* (PATCH /threads/{id}, a shallow merge, so
-	 *  the whole map goes each time) rather than thread state. State would mean a
-	 *  checkpoint write, which forks history on the next submit and 409s during an
-	 *  active run — see the escape-hatch note in stateSync.svelte.ts. */
+	/** Ratings live in thread metadata (PATCH /threads/{id}) rather than thread
+	 *  state. State would mean a checkpoint write, which forks history on the next
+	 *  submit and 409s during an active run — see the escape-hatch note in
+	 *  stateSync.svelte.ts.
+	 *
+	 *  One flat `rating:<runId>` key per rating, not a nested map. Aegra merges
+	 *  metadata by top-level key (`current_metadata.update(...)`), so a nested
+	 *  `ratings` object would be replaced wholesale — every write would have to
+	 *  resend the entire map, and any write built on a stale or failed read would
+	 *  erase the rest. Flat keys make each write touch exactly one rating, so
+	 *  there is nothing to lose and concurrent tabs can't clobber each other. */
+	const RATING_PREFIX = 'rating:';
+
+	function ratingsFromMetadata(metadata: unknown): Record<string, 'up' | 'down'> {
+		const entries = Object.entries((metadata as Record<string, unknown>) ?? {});
+		const found: Record<string, 'up' | 'down'> = {};
+		for (const [key, value] of entries) {
+			if (!key.startsWith(RATING_PREFIX)) continue;
+			if (value === 'up' || value === 'down') found[key.slice(RATING_PREFIX.length)] = value;
+		}
+		return found;
+	}
+
 	async function loadRatings() {
 		try {
 			const thread = await langGraphClient.threads.get(threadId);
-			const stored = (thread.metadata as { ratings?: Record<string, 'up' | 'down'> } | undefined)
-				?.ratings;
-			if (stored) ratings = { ...stored };
+			// Merge under, never over: a rating given while this was in flight is
+			// newer than the server's copy.
+			ratings = { ...ratingsFromMetadata(thread.metadata), ...ratings };
 		} catch (err) {
-			// Losing this costs the highlights and nothing else, so it must never
-			// block the thread from rendering.
+			// The buttons stay disabled, so a rating can't be given against an
+			// unknown baseline and then appear to vanish on reload.
 			console.error('Failed to load feedback ratings', err);
+			ratingsError = true;
+			return;
 		}
+		ratingsLoaded = true;
 	}
 	loadRatings();
 
 	function getRating(message: Message): 'up' | 'down' | null {
 		const runId = getRunId(message);
 		return runId ? (ratings[runId] ?? null) : null;
+	}
+
+	/** Which runs have a rating in flight or just failed, so the buttons can show
+	 *  it. Keyed by run for the same reason `ratings` is. */
+	let pendingRuns = $state<Record<string, true>>({});
+	let failedRuns = $state<Record<string, true>>({});
+
+	function getFeedbackStatus(message: Message): 'pending' | 'failed' | null {
+		const runId = getRunId(message);
+		if (!runId) return null;
+		if (pendingRuns[runId]) return 'pending';
+		return failedRuns[runId] ? 'failed' : null;
+	}
+
+	function setFlag(flags: Record<string, true>, runId: string, on: boolean): Record<string, true> {
+		const next = { ...flags };
+		if (on) next[runId] = true;
+		else delete next[runId];
+		return next;
 	}
 
 	async function handleFeedback(message: Message, type: 'up' | 'down') {
@@ -231,8 +278,10 @@
 		}
 
 		const previous = ratings[runId];
-		// Optimistic: the highlight belongs on the click, not two round trips later.
+		// Optimistic: the highlight belongs on the click, not a round trip later.
 		ratings = { ...ratings, [runId]: type };
+		pendingRuns = setFlag(pendingRuns, runId, true);
+		failedRuns = setFlag(failedRuns, runId, false);
 
 		try {
 			// Minted on demand rather than eagerly for every message: most messages
@@ -245,16 +294,31 @@
 				body: JSON.stringify({ score: type === 'up' ? 1 : 0 })
 			});
 			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
-			// Sends the current map, not a snapshot — a rating given while this was
-			// in flight belongs in the write too.
-			await langGraphClient.threads.update(threadId, { metadata: { ratings } });
 		} catch (err) {
-			// Roll back only this message's rating; others may have landed since.
+			// The score is what the rating is *for*, so this is the failure worth
+			// showing. Roll back only this message; others may have landed since.
 			const rolledBack = { ...ratings };
 			if (previous === undefined) delete rolledBack[runId];
 			else rolledBack[runId] = previous;
 			ratings = rolledBack;
+			failedRuns = setFlag(failedRuns, runId, true);
 			console.error('Failed to submit feedback', err);
+			return;
+		} finally {
+			pendingRuns = setFlag(pendingRuns, runId, false);
+		}
+
+		// Deliberately after the block above, and not surfaced to the user: the
+		// score is already recorded, so this failing costs the highlight on the
+		// next load, not the rating. Reporting it would claim the click was lost
+		// when it wasn't, and re-arm the button to post a duplicate score.
+		try {
+			// Only this run's key — see RATING_PREFIX above.
+			await langGraphClient.threads.update(threadId, {
+				metadata: { [`${RATING_PREFIX}${runId}`]: type }
+			});
+		} catch (err) {
+			console.error('Failed to persist feedback rating', err);
 		}
 	}
 
@@ -322,6 +386,9 @@
 				onRegenerate={handleRegenerate}
 				onFeedback={handleFeedback}
 				{getRating}
+				{getFeedbackStatus}
+				feedbackReady={ratingsLoaded}
+				{ratingsError}
 			/>
 		{/if}
 	</div>
