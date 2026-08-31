@@ -169,6 +169,35 @@ describe('LangGraphContext', () => {
 			expect(ctx.creatingThread).toBe(false);
 		});
 
+		test('startedFrom race guard: a late success after the active thread changed does not steal navigation', async () => {
+			// Regression test: the success path used to select the new thread unconditionally, with
+			// no equivalent to the failure path's `startedFrom` guard — so a creation that resolved
+			// after the user had already navigated elsewhere (e.g. clicked an existing thread row
+			// while this was in flight) would yank them back to the thread they no longer asked for.
+			let resolveCreate!: (thread: { thread_id: string }) => void;
+			const client = makeMockClient({
+				threads: {
+					create: vi.fn(() => new Promise((resolve) => (resolveCreate = resolve)))
+				}
+			});
+			const ctx = makeContext({ client });
+			ctx.setActiveThreadIdProp(undefined, undefined);
+			const refreshSpy = vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
+
+			const pending = ctx.createThread();
+			// The user navigates to a different thread while the creation is still in flight.
+			ctx.selectThread('thread-navigated-to');
+
+			resolveCreate({ thread_id: 'new-thread-1' });
+			const result = await pending;
+
+			expect(result).toBe(true);
+			// The list is still refreshed — the new thread must show up in it — but the user must
+			// not be navigated away from wherever they already went.
+			expect(refreshSpy).toHaveBeenCalledTimes(1);
+			expect(ctx.activeThreadId).toBe('thread-navigated-to');
+		});
+
 		test('startedFrom race guard: a late failure after the active thread changed does not clobber state', async () => {
 			let rejectCreate!: (err: Error) => void;
 			const client = makeMockClient({

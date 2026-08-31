@@ -154,6 +154,12 @@ export class LangGraphContext {
 	 * navigation would otherwise render a stale error over the newly opened thread — and
 	 * `setActiveThreadIdProp`'s clear-on-navigate can't catch it, since `activeThreadId` won't
 	 * change again after that — so `startedFrom` drops it instead of showing it.
+	 *
+	 * The same race applies to a late *success*: without the `startedFrom` check below, a creation
+	 * that resolves after the user has already navigated elsewhere (e.g. clicked an existing
+	 * thread row while this was in flight) would yank them back to the brand-new thread they no
+	 * longer asked for. The thread list is still refreshed unconditionally either way, so the new
+	 * thread shows up in it — only the navigation is skipped.
 	 */
 	async createThread(): Promise<boolean> {
 		const client = this.#client;
@@ -165,7 +171,9 @@ export class LangGraphContext {
 		try {
 			const thread = await createThreadRemote(client);
 			this.threadList.refresh();
-			this.selectThread(thread.thread_id);
+			if (this.activeThreadId === startedFrom) {
+				this.selectThread(thread.thread_id);
+			}
 			return true;
 		} catch (err) {
 			if (this.activeThreadId === startedFrom) {
