@@ -64,7 +64,11 @@
 {#if sidebar}
 	<ThreadList />
 {/if}
-<div class="bg-background relative flex w-full min-w-0 flex-1 flex-col">
+<!-- `h-full min-h-0` in addition to `flex-1`: as a flex child (the `sidebar` case, beside
+     `ThreadList` under `Sidebar.Provider`'s flex row) `flex-1` sizes the pane, but embedded in a
+     plain block container (e.g. the chat layout's `min-h-0 flex-1` content div) `flex-1` is inert
+     and only `h-full` bounds the pane — without it the message list grows instead of scrolling. -->
+<div class="bg-background relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
 	{#if resolvedThreadId}
 		{#key resolvedThreadId}
 			<Conversation threadId={resolvedThreadId} {labels}>
