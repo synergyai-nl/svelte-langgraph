@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import ChatErrorMessage from './ChatErrorMessage.svelte';
 import * as m from '$lib/paraglide/messages.js';
 

@@ -467,7 +467,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 	});
 
 	test('a settle before hydration completes cannot clobber a rename', async () => {
-		// This ordering is reachable: `ChatInput` renders outside the `isThreadLoading` branch and
+		// This ordering is reachable: `Composer` renders outside the `isThreadLoading` branch and
 		// disables only on `isStreaming`, and `submitInput` guards on `stream.isLoading` alone —
 		// so a run can settle before the mount backfill has run at all.
 		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });

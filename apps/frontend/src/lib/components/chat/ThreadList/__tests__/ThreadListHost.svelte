@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import ChatThreads from '../ChatThreads.svelte';
+	import ThreadList from '../ThreadList.svelte';
 	import SidebarNotifier from './SidebarNotifier.svelte';
 	import type { ComponentProps } from 'svelte';
 
@@ -9,16 +9,16 @@
 		onSidebar?: (s: ReturnType<typeof Sidebar.useSidebar>) => void;
 	}
 
-	let { onSidebar, ...props }: ComponentProps<typeof ChatThreads> & HostProps = $props();
+	let { onSidebar, ...props }: ComponentProps<typeof ThreadList> & HostProps = $props();
 </script>
 
 <!--
-	Sidebar.MenuButton (used by ChatThreadItem) requires useSidebar() context, which only
+	Sidebar.MenuButton (used by ThreadListItem) requires useSidebar() context, which only
 	Sidebar.Provider sets up. TestProviders only supplies Tooltip context, so this host wraps
-	ChatThreads in a real Sidebar.Provider instead.
+	ThreadList in a real Sidebar.Provider instead.
 -->
 <Sidebar.Provider>
-	<ChatThreads {...props} />
+	<ThreadList {...props} />
 	{#if onSidebar}
 		<SidebarNotifier {onSidebar} />
 	{/if}

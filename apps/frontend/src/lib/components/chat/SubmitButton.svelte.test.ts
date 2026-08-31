@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import SubmitButton from './SubmitButton.svelte';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {

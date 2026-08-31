@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	export interface ChatThreadsLabels {
+	export interface ThreadListLabels {
 		newChat: string;
 		threadsLabel: string;
 		empty: string;
@@ -13,7 +13,7 @@
 		mobileDescription: string;
 	}
 
-	export const defaultChatThreadsLabels: ChatThreadsLabels = {
+	export const defaultThreadListLabels: ThreadListLabels = {
 		newChat: 'New chat',
 		threadsLabel: 'Conversations',
 		empty: 'No conversations yet',
@@ -33,7 +33,7 @@
 	import { Plus } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import ChatThreadItem from './ChatThreadItem.svelte';
+	import ThreadListItem from './ThreadListItem.svelte';
 	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
 
@@ -61,7 +61,7 @@
 		item?: Snippet<[ThreadSummary]>;
 		/** Caller-supplied failure (e.g. thread creation), rendered as an inline alert near "New chat". */
 		error?: string | null;
-		labels?: Partial<ChatThreadsLabels>;
+		labels?: Partial<ThreadListLabels>;
 	}
 
 	let {
@@ -78,7 +78,7 @@
 		labels
 	}: Props = $props();
 
-	const l = $derived({ ...defaultChatThreadsLabels, ...labels });
+	const l = $derived({ ...defaultThreadListLabels, ...labels });
 
 	const sidebar = Sidebar.useSidebar();
 
@@ -148,7 +148,7 @@
 						{#if item}
 							{@render item(t)}
 						{:else}
-							<ChatThreadItem
+							<ThreadListItem
 								thread={t}
 								isActive={t.id === activeThreadId}
 								isPending={t.id === pendingThreadId}

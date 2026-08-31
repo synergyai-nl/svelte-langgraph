@@ -2,10 +2,10 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { fly } from 'svelte/transition';
-import { renderWithProviders } from './__tests__/render';
-import ChatMessagesHost from './__tests__/ChatMessagesHost.svelte';
-import ChatMessages from './ChatMessages.svelte';
-import { aUserMessage } from './__tests__/fixtures';
+import { renderWithProviders } from '../__tests__/render';
+import ChatMessagesHost from '../__tests__/ChatMessagesHost.svelte';
+import MessagesList from './MessagesList.svelte';
+import { aUserMessage } from '../__tests__/fixtures';
 
 vi.mock('svelte/transition', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('svelte/transition')>();
@@ -31,13 +31,13 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 function renderMessages(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(ChatMessages, baseProps(overrides));
+	return renderWithProviders(MessagesList, baseProps(overrides));
 }
 
 // renderWithProviders' TestProviders wraps components as `{ component, props }`, which trips
 // testing-library's rerender() — it treats any argument with a `props` key as its deprecated
 // `rerender({ props: {...} })` form and silently unwraps it, discarding the update. Tests that
-// need to update props after mount use ChatMessagesHost instead, which spreads ChatMessages'
+// need to update props after mount use ChatMessagesHost instead, which spreads MessagesList's
 // props directly so rerender() sees them as top-level props.
 function renderMessagesForRerender(overrides: Record<string, unknown> = {}) {
 	return render(ChatMessagesHost, baseProps(overrides));
@@ -59,7 +59,7 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-describe('ChatMessages chunked hydration', () => {
+describe('MessagesList chunked hydration', () => {
 	// Rendering 130 markdown-parsed messages is genuinely slow in jsdom; a generous timeout
 	// keeps this stable when the suite runs alongside builds (moon check).
 	test(
@@ -126,7 +126,7 @@ describe('ChatMessages chunked hydration', () => {
 	});
 });
 
-describe('ChatMessages transition gating', () => {
+describe('MessagesList transition gating', () => {
 	test('backlog rows mount with no intro animation; a later appended row animates in', async () => {
 		const flyMock = vi.mocked(fly);
 		// One more than the chunk size so revealFrom starts > 0 — this keeps the trailing

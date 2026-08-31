@@ -1,8 +1,8 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { createRawSnippet, tick } from 'svelte';
-import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
-import { aThread } from '../__tests__/fixtures';
+import ThreadListHost from './__tests__/ThreadListHost.svelte';
+import { aThread } from '../../__tests__/fixtures';
 import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from '$lib/components/ui/sidebar';
 
@@ -31,7 +31,7 @@ function makeListStub(overrides: ListStubOverrides = {}): ThreadListState {
 }
 
 function renderComponent(props: Record<string, unknown> = {}) {
-	return render(ChatThreadsHost, {
+	return render(ThreadListHost, {
 		props: {
 			list: makeListStub(),
 			onNewThread: vi.fn(),
@@ -40,7 +40,7 @@ function renderComponent(props: Record<string, unknown> = {}) {
 	});
 }
 
-describe('ChatThreads', () => {
+describe('ThreadList', () => {
 	describe('rows', () => {
 		test('renders a link per thread with hrefFor and threadLabel as accessible name', () => {
 			const t1 = aThread({ id: 'thread-00000000-0000-0000-0000-000000000001', title: null });

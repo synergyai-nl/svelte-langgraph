@@ -1,9 +1,9 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import ChatToolMessage from './ChatToolMessage.svelte';
-import { aToolMessage } from './__tests__/fixtures';
+import { aToolMessage } from '../__tests__/fixtures';
 import * as m from '$lib/paraglide/messages.js';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {

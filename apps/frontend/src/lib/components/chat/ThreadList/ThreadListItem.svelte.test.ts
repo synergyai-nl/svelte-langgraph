@@ -1,13 +1,13 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
-import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
-import { aThread } from '../__tests__/fixtures';
+import ThreadListHost from './__tests__/ThreadListHost.svelte';
+import { aThread } from '../../__tests__/fixtures';
 import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from '$lib/components/ui/sidebar';
 
-// Covers ChatThreadItem.svelte:18-21 (handleClick): a row click closes the mobile drawer and
+// Covers ThreadListItem.svelte:18-21 (handleClick): a row click closes the mobile drawer and
 // forwards the id via onSelect, mirroring the header "New chat" button's behaviour.
-describe('ChatThreadItem', () => {
+describe('ThreadListItem', () => {
 	test('clicking a row closes the mobile drawer and calls onSelect with the thread id', async () => {
 		const t1 = aThread();
 		const onSelect = vi.fn();
@@ -24,7 +24,7 @@ describe('ChatThreadItem', () => {
 			setActiveThreadId: vi.fn()
 		} as unknown as ThreadListState;
 
-		render(ChatThreadsHost, {
+		render(ThreadListHost, {
 			props: {
 				list,
 				onNewThread: vi.fn(),
@@ -60,7 +60,7 @@ describe('ChatThreadItem', () => {
 				setActiveThreadId: vi.fn()
 			} as unknown as ThreadListState;
 
-			return render(ChatThreadsHost, {
+			return render(ThreadListHost, {
 				props: {
 					list,
 					onNewThread: vi.fn(),

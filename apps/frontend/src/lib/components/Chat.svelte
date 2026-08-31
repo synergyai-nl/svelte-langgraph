@@ -10,12 +10,12 @@
 		type Message,
 		type ToolMessage
 	} from '@svelte-langgraph/client';
-	import ChatInput from './ChatInput.svelte';
-	import ChatMessages from './ChatMessages.svelte';
-	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
+	import Composer from './chat/Composer.svelte';
+	import MessagesList from './chat/MessagesList.svelte';
+	import Suggestions, { type ChatSuggestion } from './chat/Suggestions.svelte';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack } from 'svelte';
-	import StateField from './StateField.svelte';
+	import StateField from './chat/StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -219,7 +219,7 @@
 	// not: what if the graph has no title yet at mount, so there is nothing to compare the stored
 	// value against; what if the lookup fails, where a one-shot flag would let every later write
 	// through; and what if a run settles before hydration finishes, which *is* reachable — the
-	// composer stays live during history loading (`ChatInput` renders outside the
+	// composer stays live during history loading (`Composer` renders outside the
 	// `isThreadLoading` branch and disables only on `isStreaming`, and `submitInput` guards on
 	// `stream.isLoading` alone). Resolving on the write path means no write can precede the answer,
 	// so none of those orderings matter.
@@ -393,14 +393,14 @@
 				<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
 			</div>
 		{:else if !chat_started}
-			<ChatSuggestions
+			<Suggestions
 				{suggestions}
 				{introTitle}
 				{intro}
 				onSuggestionClick={(suggestedText) => submitInput(suggestedText)}
 			/>
 		{:else}
-			<ChatMessages
+			<MessagesList
 				{messages}
 				finalAnswerStarted={final_answer_started}
 				isStreaming={stream.isLoading}
@@ -411,7 +411,7 @@
 			/>
 		{/if}
 	</div>
-	<ChatInput
+	<Composer
 		bind:value={current_input}
 		isStreaming={stream.isLoading}
 		onSubmit={() => submitInput(current_input)}

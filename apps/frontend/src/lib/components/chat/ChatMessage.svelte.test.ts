@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import ChatMessage from './ChatMessage.svelte';
-import { anAIMessage, aUserMessage } from './__tests__/fixtures';
+import { anAIMessage, aUserMessage } from '../__tests__/fixtures';
 
 function renderAIComponent(overrides: Record<string, unknown> = {}) {
 	const message = anAIMessage(overrides as Parameters<typeof anAIMessage>[0]);

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import UserMessageActions from './UserMessageActions.svelte';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {

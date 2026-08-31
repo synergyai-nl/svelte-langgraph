@@ -1,9 +1,9 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from './__tests__/render';
-import ChatSuggestions from './ChatSuggestions.svelte';
-import type { ChatSuggestion } from './ChatSuggestions.svelte';
+import { renderWithProviders } from '../__tests__/render';
+import Suggestions from './Suggestions.svelte';
+import type { ChatSuggestion } from './Suggestions.svelte';
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'First Title', description: 'First description', suggestedText: 'first suggestion' },
@@ -11,7 +11,7 @@ const suggestions: ChatSuggestion[] = [
 ];
 
 function renderSuggestions(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(ChatSuggestions, {
+	return renderWithProviders(Suggestions, {
 		suggestions,
 		introTitle: 'Welcome',
 		intro: 'How can I help?',
@@ -20,7 +20,7 @@ function renderSuggestions(overrides: Record<string, unknown> = {}) {
 	});
 }
 
-describe('ChatSuggestions', () => {
+describe('Suggestions', () => {
 	describe('when rendered with suggestions', () => {
 		beforeEach(() => {
 			renderSuggestions();

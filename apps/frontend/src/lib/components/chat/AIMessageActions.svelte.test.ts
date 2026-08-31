@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import AIMessageActions from './AIMessageActions.svelte';
-import { anAIMessage } from './__tests__/fixtures';
+import { anAIMessage } from '../__tests__/fixtures';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const message = anAIMessage();

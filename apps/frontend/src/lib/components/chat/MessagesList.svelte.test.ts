@@ -1,11 +1,11 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { renderWithProviders } from './__tests__/render';
-import ChatMessages from './ChatMessages.svelte';
-import { anAIMessage, aUserMessage, aToolMessage } from './__tests__/fixtures';
+import { renderWithProviders } from '../__tests__/render';
+import MessagesList from './MessagesList.svelte';
+import { anAIMessage, aUserMessage, aToolMessage } from '../__tests__/fixtures';
 
 function renderMessages(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(ChatMessages, {
+	return renderWithProviders(MessagesList, {
 		messages: [],
 		finalAnswerStarted: true,
 		onEdit: vi.fn(),
@@ -14,7 +14,7 @@ function renderMessages(overrides: Record<string, unknown> = {}) {
 	});
 }
 
-describe('ChatMessages', () => {
+describe('MessagesList', () => {
 	describe('when rendered with messages', () => {
 		test('renders AI messages with their text', () => {
 			renderMessages({ messages: [anAIMessage()] });

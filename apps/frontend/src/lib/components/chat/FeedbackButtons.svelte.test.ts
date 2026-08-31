@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
-import { renderWithProviders } from './__tests__/render';
+import { renderWithProviders } from '../__tests__/render';
 import FeedbackButtons from './FeedbackButtons.svelte';
-import { aUserMessage } from './__tests__/fixtures';
+import { aUserMessage } from '../__tests__/fixtures';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const message = aUserMessage();
