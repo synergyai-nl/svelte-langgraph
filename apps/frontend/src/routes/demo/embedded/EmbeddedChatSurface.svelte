@@ -28,9 +28,16 @@
 </script>
 
 {#if ctx?.error}
-	<p class="text-destructive p-4 text-sm" role="alert">
-		Something went wrong: {ctx.error instanceof Error ? ctx.error.message : String(ctx.error)}
-	</p>
+	<!-- A failed assistant resolution only auto-retries on thread navigation, which this
+	     router-free embed never performs — without the explicit retryResolution() lever a
+	     transient failure here would strand the embed until a full page reload. -->
+	<div class="flex h-full flex-col items-center justify-center gap-2 p-4 text-sm">
+		<p class="text-destructive" role="alert">
+			Something went wrong: {ctx.error instanceof Error ? ctx.error.message : String(ctx.error)}
+		</p>
+		<button type="button" class="underline" onclick={() => ctx?.retryResolution()}>Try again</button
+		>
+	</div>
 {:else if ctx?.createThreadError}
 	<div class="flex h-full flex-col items-center justify-center gap-2 p-4 text-sm">
 		<p class="text-destructive" role="alert">Couldn't start a new chat.</p>
