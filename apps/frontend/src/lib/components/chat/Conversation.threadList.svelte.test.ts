@@ -1,43 +1,39 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { Client } from '@langchain/langgraph-sdk';
-import * as mockModule from './__tests__/mockUseStream.svelte';
+import LangGraphHost from './__tests__/LangGraphHost.svelte';
+import Conversation from './Conversation.svelte';
+import { makeContext, makeMockClient } from './__tests__/testContext.js';
+import * as mockModule from '../__tests__/mockUseStream.svelte';
+
+/**
+ * Ported from the deleted `Chat.threadList.svelte.test.ts` (git history at `906acf6`) onto
+ * `Conversation` + a real `LangGraphContext`. The old suite spied on a lightweight
+ * `setThreadListRefresh`/`setThreadLoadingReporter` context; `Conversation` instead calls
+ * `ctx?.threadList.refresh()` directly, so here `ctx.threadList.refresh` is spied on the real
+ * `LangGraphContext` built for each test — assertions are otherwise unchanged.
+ */
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
-	const mod = await import('./__tests__/mockUseStream.svelte');
+	const mod = await import('../__tests__/mockUseStream.svelte');
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
 // Backing mocks for `client.threads.get`/`.update` — the SLG-117 title-mirroring effects under
-// test below. Kept as standalone consts (rather than reached through `mockClient.threads.*`)
-// so `.mockResolvedValueOnce(...)` etc. aren't type-checked against the real `Thread` return
-// type, which `as unknown as Client` below deliberately opts out of for the whole mock object.
+// test below. Kept as standalone consts (rather than reached through `mockClient.threads.*`) so
+// `.mockResolvedValueOnce(...)` etc. aren't type-checked against the real `Thread` return type.
 const threadsGetMock = vi.fn().mockResolvedValue({ metadata: {} });
 const threadsUpdateMock = vi.fn().mockResolvedValue({});
 
-// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
-const mockClient = {
-	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
-	threads: {
-		get: threadsGetMock,
-		update: threadsUpdateMock
-	}
-} as unknown as Client;
-
-function renderChatWithRefresh() {
-	const refresh = vi.fn();
-	render(ChatWithThreadListHost, {
-		props: {
-			refresh,
-			chatProps: {
-				langGraphClient: mockClient,
-				assistantId: 'assistant-1',
-				threadId: 'test-123'
-			}
-		}
+function renderConversationWithRefresh() {
+	const client = makeMockClient({
+		threads: { get: threadsGetMock, update: threadsUpdateMock }
+	});
+	const ctx = makeContext({ client, assistantId: 'assistant-1' });
+	const refresh = vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
+	render(LangGraphHost, {
+		props: { ctx, component: Conversation, threadId: 'test-123' }
 	});
 	return refresh;
 }
@@ -48,9 +44,9 @@ beforeEach(() => {
 	threadsUpdateMock.mockReset().mockResolvedValue({});
 });
 
-describe('Chat thread-list refresh notification', () => {
+describe('Conversation thread-list refresh notification', () => {
 	test('does not refresh on an empty settled mount', async () => {
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 
 		await tick();
 
@@ -61,7 +57,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 
 		await tick();
 
@@ -72,7 +68,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -90,7 +86,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setMessages([
@@ -114,7 +110,7 @@ describe('Chat thread-list refresh notification', () => {
 	test('does not refresh when history hydrates after mount without a run ever loading', async () => {
 		// isLoading stays false throughout — this simulates an existing thread's history fetch
 		// resolving asynchronously after mount, not a run settling.
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -138,7 +134,7 @@ describe('Chat thread-list refresh notification', () => {
 		]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -157,7 +153,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setMessages([
@@ -185,9 +181,9 @@ describe('Chat thread-list refresh notification', () => {
 	});
 });
 
-describe('Chat thread-title mirroring (SLG-117)', () => {
+describe('Conversation thread-title mirroring (SLG-117)', () => {
 	test('mirrors a new title on settle, and refreshes only after the PATCH resolves', async () => {
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -219,7 +215,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 			})
 			.mockImplementationOnce(async () => ({}));
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -260,7 +256,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockImplementationOnce(() => new Promise((resolve) => (resolveGet = resolve)));
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		// History resolves carrying title A, with metadata still untitled -> backfill starts.
@@ -304,7 +300,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Generated title' });
@@ -323,7 +319,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Generated title' });
@@ -352,7 +348,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockImplementationOnce(() => new Promise((resolve) => (resolveGet = resolve)));
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Generated title' });
@@ -383,7 +379,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Generated title' });
@@ -413,7 +409,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		// Hydration completes with no graph title at all.
@@ -443,7 +439,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 			.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Generated title' });
@@ -473,7 +469,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		// Settle while history is still loading.
@@ -498,7 +494,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 			.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
 		threadsUpdateMock.mockRejectedValueOnce(new Error('network blip'));
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -537,7 +533,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 			.mockRejectedValueOnce(new Error('network blip')) // B fails
 			.mockResolvedValue({}); // B retried
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		// First settle mirrors A.
@@ -577,7 +573,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		threadsGetMock.mockResolvedValue({ metadata: { title: 'External X' } });
 
 		mockModule.setIsThreadLoading(true);
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setValues({ title: 'Title A' });
@@ -620,7 +616,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		// rest of the mount.
 		threadsUpdateMock.mockRejectedValueOnce(new Error('network blip'));
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -645,7 +641,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 	});
 
 	test('does not re-issue an identical PATCH on a later settle with the same title', async () => {
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -673,7 +669,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		mockModule.setValues({ title: 'Already titled' });
 		threadsGetMock.mockResolvedValueOnce({ metadata: { title: 'Already titled' } });
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
 
@@ -686,7 +682,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		mockModule.setValues({ title: 'Rescued title' });
 		threadsGetMock.mockResolvedValueOnce({ metadata: {} });
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		await waitFor(() =>
@@ -705,7 +701,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		// would let the mount-check effect run (and pass) for the wrong reason.
 		mockModule.setIsThreadLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		// Still hydrating — nothing to check yet.
@@ -732,7 +728,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 		// (a brand-new thread the graph hasn't titled yet) — the mount-check must stay a no-op.
 		mockModule.setIsThreadLoading(true);
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsThreadLoading(false);
@@ -745,7 +741,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 	test('a rejected settle-time PATCH does not throw and does not block the refresh', async () => {
 		threadsUpdateMock.mockRejectedValueOnce(new Error('network blip'));
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -767,7 +763,7 @@ describe('Chat thread-title mirroring (SLG-117)', () => {
 				})
 		);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);

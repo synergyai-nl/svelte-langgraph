@@ -16,6 +16,7 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		value: string;
@@ -26,7 +27,8 @@
 
 	let { value = $bindable(), onConfirm, onCancel, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultUserMessageEditLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultUserMessageEditLabels, ctx?.labels?.userEdit, labels));
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {

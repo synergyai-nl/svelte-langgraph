@@ -12,6 +12,7 @@
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import SubmitButton from './SubmitButton.svelte';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		value: string;
@@ -31,7 +32,8 @@
 		labels
 	}: Props = $props();
 
-	const l = $derived(resolveLabels(defaultComposerLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultComposerLabels, ctx?.labels?.composer, labels));
 	const resolvedPlaceholder = $derived(placeholder ?? l.placeholder);
 
 	let isEmpty = $derived(!(value ?? '').trim());
