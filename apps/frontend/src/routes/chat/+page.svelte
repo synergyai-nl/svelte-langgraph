@@ -18,15 +18,23 @@
 	// the new thread stays invisible in the sidebar until the user sends a message or reloads.
 	const ctx = useLangGraphOptional();
 
-	async function redirectToThread() {
+	async function redirectToThread(isCancelled: () => boolean) {
 		const client = ctx?.client;
 		if (!client) return;
 
 		try {
 			const thread = await getOrCreateThread(client);
+			// A navigation away from this page (e.g. the user clicking an existing thread in the
+			// sidebar) while the fetch above was in flight must win — otherwise this stale
+			// resolution would yank them back to the reused/created thread they no longer asked
+			// for. Mirrors the `startedFrom` guard in `LangGraphContext#createThread`; `isCancelled`
+			// flips true from the effect's cleanup below, which runs on unmount (this component is
+			// swapped out entirely once `goto` lands on `/chat/[threadID]`).
+			if (isCancelled()) return;
 			await goto(`/chat/${thread.thread_id}`);
 			ctx?.threadList.refresh();
 		} catch (err) {
+			if (isCancelled()) return;
 			if (err instanceof Error) redirect_error = err;
 			console.error('Error creating or fetching thread:', err);
 		}
@@ -35,7 +43,11 @@
 	// Trigger redirect when client is ready
 	$effect(() => {
 		if (ctx?.client && !redirect_error) {
-			redirectToThread();
+			let cancelled = false;
+			redirectToThread(() => cancelled);
+			return () => {
+				cancelled = true;
+			};
 		}
 	});
 
