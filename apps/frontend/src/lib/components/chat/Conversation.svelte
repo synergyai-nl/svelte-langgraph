@@ -54,6 +54,12 @@
 		regenerate: (message: Message) => void;
 		/** State-sync bindings (`sync.field(name)`) for this thread — see `createStateSync`. */
 		sync: { readonly schema: SchemaStatus; field(name: string): FieldBinding };
+		/**
+		 * Fully-resolved labels (defaults ← context ← prop) — the same value the default
+		 * composition renders with. Custom `children` (e.g. `ChatSurface`) read this instead of
+		 * re-running `resolveLabels` themselves, keeping precedence logic in one place.
+		 */
+		labels: ConversationLabels;
 	}
 
 	const CONVERSATION_KEY = Symbol.for('slg-conversation');
@@ -500,7 +506,10 @@
 		stop: stopGeneration,
 		edit: handleEdit,
 		regenerate: handleRegenerate,
-		sync
+		sync,
+		get labels() {
+			return l;
+		}
 	};
 
 	setContext(CONVERSATION_KEY, api);

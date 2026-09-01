@@ -19,16 +19,13 @@
 	 * need more nesting should assemble `ThreadList`/`Conversation` by hand instead.
 	 */
 	import ChatLoader from '../ChatLoader.svelte';
-	import Conversation, {
-		defaultConversationLabels,
-		type ConversationLabels
-	} from './Conversation.svelte';
+	import Conversation, { type ConversationLabels } from './Conversation.svelte';
 	import { ThreadList } from './ThreadList';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import MessagesList from './MessagesList.svelte';
 	import Composer from './Composer.svelte';
 	import StateField from './StateField.svelte';
-	import { resolveLabels, type DeepPartial } from './labels.js';
+	import { type DeepPartial } from './labels.js';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -55,10 +52,12 @@
 
 	let resolvedThreadId = $derived(threadId ?? ctx?.activeThreadId ?? null);
 
-	// Same computation `Conversation` performs internally on the same `labels` prop and the same
-	// `ctx` — deterministically equal — needed here too because the empty-state `Suggestions`
-	// branch below replaces `Conversation`'s own default composition via `children`.
-	const l = $derived(resolveLabels(defaultConversationLabels, ctx?.labels, labels));
+	// `Conversation` resolves its client/assistant at init and throws when neither its props nor
+	// the context can supply them (see its header comment: readiness gating is the caller's
+	// job). ChatSurface is the ready-to-drop-in caller, so it holds `Conversation` back behind
+	// the loader until the ambient provider has both. Without a provider at all this stays
+	// `false` forever — ChatSurface is only usable inside `<LangGraph>`.
+	const ready = $derived(Boolean(ctx?.client && ctx?.assistantId));
 </script>
 
 {#if sidebar}
@@ -69,7 +68,7 @@
      plain block container (e.g. the chat layout's `min-h-0 flex-1` content div) `flex-1` is inert
      and only `h-full` bounds the pane — without it the message list grows instead of scrolling. -->
 <div class="bg-background relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
-	{#if resolvedThreadId}
+	{#if resolvedThreadId && ready}
 		{#key resolvedThreadId}
 			<Conversation threadId={resolvedThreadId} {labels}>
 				{#snippet children(api)}
@@ -84,7 +83,9 @@
 									data-testid="chat-history-loading"
 									class="mx-auto w-full max-w-4xl space-y-4 p-4"
 								>
-									<p class="sr-only" role="status" aria-live="polite">{l.historyLoading}</p>
+									<p class="sr-only" role="status" aria-live="polite">
+										{api.labels.historyLoading}
+									</p>
 									<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
 									<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
 									<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
@@ -105,7 +106,7 @@
 									onRetryError={api.retry}
 									onEdit={api.edit}
 									onRegenerate={api.regenerate}
-									labels={l.messagesList}
+									labels={api.labels.messagesList}
 								/>
 							{/if}
 						</div>
@@ -114,7 +115,7 @@
 							isStreaming={api.isLoading}
 							onSubmit={() => api.submit(api.input)}
 							onStop={api.stop}
-							labels={l.composer}
+							labels={api.labels.composer}
 						/>
 					</div>
 				{/snippet}

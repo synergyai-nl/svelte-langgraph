@@ -115,6 +115,7 @@ export class LangGraphContext {
 		this.#controlledActiveThreadId = value;
 		this.#onThreadChange = onThreadChange;
 		if (this.activeThreadId !== previousActive) {
+			this.#selectionEpoch++;
 			this.#createThreadError = null;
 		}
 	}
@@ -126,11 +127,21 @@ export class LangGraphContext {
 	 * `onThreadChange` always fires when given.
 	 */
 	selectThread(id: string | null): void {
+		this.#selectionEpoch++;
 		if (this.#controlledActiveThreadId === undefined) {
 			this.#internalActiveThreadId = id;
 		}
 		this.#onThreadChange?.(id);
 	}
+
+	/**
+	 * Bumped on every selection event (`selectThread`, and effective controlled-prop changes).
+	 * `createThread()` compares epochs rather than `activeThreadId` values so that navigating
+	 * away and back to the SAME thread while a creation is in flight still counts as
+	 * superseding it — a value comparison would read A → B → A as "nothing happened".
+	 * Imperative event-time bookkeeping only, so a plain field, not `$state`.
+	 */
+	#selectionEpoch = 0;
 
 	// --- thread creation ---------------------------------------------------------------------
 
@@ -153,9 +164,9 @@ export class LangGraphContext {
 	 * so the user can navigate away while this is still in flight. A failure landing after such a
 	 * navigation would otherwise render a stale error over the newly opened thread — and
 	 * `setActiveThreadIdProp`'s clear-on-navigate can't catch it, since `activeThreadId` won't
-	 * change again after that — so `startedFrom` drops it instead of showing it.
+	 * change again after that — so the selection-epoch check drops it instead of showing it.
 	 *
-	 * The same race applies to a late *success*: without the `startedFrom` check below, a creation
+	 * The same race applies to a late *success*: without the epoch check below, a creation
 	 * that resolves after the user has already navigated elsewhere (e.g. clicked an existing
 	 * thread row while this was in flight) would yank them back to the brand-new thread they no
 	 * longer asked for. The thread list is still refreshed unconditionally either way, so the new
@@ -165,18 +176,19 @@ export class LangGraphContext {
 		const client = this.#client;
 		if (!client) return false;
 
-		const startedFrom = this.activeThreadId;
+		const startedEpoch = this.#selectionEpoch;
 		this.#creatingThread = true;
 		this.#createThreadError = null;
 		try {
 			const thread = await createThreadRemote(client);
 			this.threadList.refresh();
-			if (this.activeThreadId === startedFrom) {
+			if (this.#selectionEpoch === startedEpoch) {
 				this.selectThread(thread.thread_id);
 			}
 			return true;
 		} catch (err) {
-			if (this.activeThreadId === startedFrom) {
+			console.error('Failed to create a new thread', err);
+			if (this.#selectionEpoch === startedEpoch) {
 				this.#createThreadError = err instanceof Error ? err : new Error(String(err));
 			}
 			return false;

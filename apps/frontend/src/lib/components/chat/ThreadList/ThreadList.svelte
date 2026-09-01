@@ -90,7 +90,7 @@
 		pendingThreadId: pendingThreadIdProp,
 		onNewThread: onNewThreadProp,
 		busy: busyProp,
-		disabled = false,
+		disabled: disabledProp,
 		hrefFor: hrefForProp,
 		onSelect,
 		item,
@@ -123,6 +123,10 @@
 		onNewThreadProp ?? (() => ctx?.createThread() ?? Promise.resolve(false))
 	);
 	const busy = $derived(busyProp ?? ctx?.creatingThread ?? false);
+	// Under a provider, "no client yet" (signed out / still resolving) disables "New chat" —
+	// the default `onNewThread` (`ctx.createThread()`) would silently no-op without one. This
+	// mirrors the old layout's explicit `disabled={!client}` wiring.
+	const disabled = $derived(disabledProp ?? (ctx ? !ctx.client : false));
 	const hrefFor = $derived(hrefForProp ?? ctx?.hrefFor);
 
 	const l = $derived(resolveLabels(defaultThreadListLabels, ctx?.labels?.threadList, labels));

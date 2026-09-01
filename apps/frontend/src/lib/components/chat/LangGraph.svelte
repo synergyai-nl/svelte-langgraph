@@ -98,11 +98,12 @@
 	});
 
 	// Assistant resolution — children never do this themselves. Re-resolves whenever the
-	// *effective* client changes (e.g. a fresh token); the `assistantId` prop always wins and
+	// *effective* client or the `graph` prop changes; the `assistantId` prop always wins and
 	// skips resolution entirely. `resolvedFor` is a plain (non-reactive) tracking variable, same
 	// pattern as `Chat.svelte`'s `wasLoading` — it only needs to be read/written imperatively
 	// inside this effect, never as a template/derived dependency.
-	let resolvedFor: Client | undefined;
+	let resolvedFor: { client: Client; graph: string } | undefined;
+	let resolutionCounter = 0;
 	$effect(() => {
 		if (assistantIdProp !== undefined) {
 			resolvedFor = undefined;
@@ -111,28 +112,41 @@
 			return;
 		}
 
+		// Tracked so a thread navigation re-runs this effect: a FAILED resolution clears
+		// `resolvedFor` below, and this dependency is what gives it a retry opportunity —
+		// mirroring the old per-page resolution, which re-ran on every thread click. While a
+		// resolution is in place the guard below short-circuits, so the extra runs are free.
+		void ctx.activeThreadId;
+
 		const client = derivedClient;
 		if (!client) {
 			resolvedFor = undefined;
 			ctx.setAssistantId(undefined);
+			// A signed-out/clientless provider shows the loader/login path, not a stale
+			// resolution error from the previous client.
+			ctx.setError(undefined);
 			return;
 		}
-		if (resolvedFor === client) return;
-		resolvedFor = client;
+		if (resolvedFor?.client === client && resolvedFor.graph === graph) return;
+		resolvedFor = { client, graph };
 
 		ctx.setAssistantId(undefined);
 		ctx.setError(undefined);
-		let cancelled = false;
+		// Supersession token, NOT an effect-cleanup flag: the `activeThreadId` dependency above
+		// re-runs this effect on every navigation, and a cleanup-based cancel would abort an
+		// in-flight resolution on runs that then short-circuit at the guard. A result only
+		// applies while it is still the latest started resolution.
+		const started = ++resolutionCounter;
 		getOrCreateAssistant(client, graph)
 			.then((id) => {
-				if (!cancelled) ctx.setAssistantId(id);
+				if (started === resolutionCounter) ctx.setAssistantId(id);
 			})
 			.catch((err) => {
-				if (!cancelled) ctx.setError(err instanceof Error ? err : new Error(String(err)));
+				if (started === resolutionCounter) {
+					resolvedFor = undefined;
+					ctx.setError(err instanceof Error ? err : new Error(String(err)));
+				}
 			});
-		return () => {
-			cancelled = true;
-		};
 	});
 
 	onDestroy(() => ctx.dispose());
