@@ -7,10 +7,15 @@ this suite at one run per test instead of sixteen.
 """
 
 import pytest
+from sqlalchemy import Select
 
 from tests.conftest import PROVIDER_CASES
 
 BASE_URL = "https://langfuse.test"
+
+# The run the /feedback tests post about. Lives here rather than in a test
+# module because the fixtures below answer ownership questions in terms of it.
+RUN_ID = "2762a745-00bb-4933-a51a-eddd65679b75"
 
 
 @pytest.fixture(scope="module")
@@ -45,25 +50,72 @@ def instant_retries(monkeypatch):
     monkeypatch.setattr(tracing, "_RETRY_DELAYS", (0.0,) * len(tracing._RETRY_DELAYS))
 
 
-@pytest.fixture
-def client():
-    """A TestClient whose requests are already authenticated.
+USER_ID = "test-user"
 
-    /feedback declares `Depends(require_auth)`, which would otherwise reach the
-    real OIDC backend. Overriding the dependency stands in for a valid token
-    without pretending to validate one -- see test_routes.py for the case that
-    exercises the unauthenticated path.
+
+class _StubSession:
+    """Stands in for the AsyncSession the ownership check queries.
+
+    `owned` is what `session.scalar()` returns: the run id when the run exists
+    and belongs to the caller, None when it does not. The route only asks that
+    one question, so distinguishing "no such run" from "someone else's run" is
+    the database's job, not this stub's -- both arrive here as None, which is
+    also why the route answers 404 to both.
     """
-    from fastapi.testclient import TestClient
 
+    def __init__(self, owned: str | None):
+        self._owned = owned
+        self.statement: Select | None = None
+
+    async def scalar(self, statement):
+        # Kept so a test can assert what was actually asked. Returning the right
+        # answer to the wrong question is the failure mode here: a query filtered
+        # on run id alone would satisfy every other test in the file while
+        # letting anyone score anyone's run.
+        self.statement = statement
+        return self._owned
+
+    def compiled_sql(self) -> str:
+        assert self.statement is not None, "nothing was queried"
+        return str(self.statement.compile(compile_kwargs={"literal_binds": True}))
+
+
+@pytest.fixture
+def run_owner(request):
+    """What the ownership query finds: RUN_ID when the caller owns the run.
+
+    Override with `@pytest.mark.parametrize("run_owner", [None], indirect=True)`
+    for the run that is missing or belongs to someone else.
+    """
+    return getattr(request, "param", RUN_ID)
+
+
+@pytest.fixture
+def session(run_owner):
+    return _StubSession(run_owner)
+
+
+@pytest.fixture
+def client(session):
+    """A TestClient that is authenticated and owns the run it rates.
+
+    /feedback depends on `require_auth` and `get_session`, which would otherwise
+    reach the real OIDC issuer and a real Postgres. Overriding both stands in for
+    a valid token and an owned run without pretending to validate either -- the
+    cases that exercise the genuine unauthenticated and unowned paths live in
+    test_routes.py.
+    """
     from aegra_api.core.auth_deps import require_auth
-    from aegra_api.models.auth import User
+    from aegra_api.core.orm import get_session
+    from aegra_api.models import User
+    from fastapi.testclient import TestClient
 
     from svelte_langgraph.routes import app
 
     app.dependency_overrides[require_auth] = lambda: User(
-        identity="test-user", display_name="test-user", is_authenticated=True
+        identity=USER_ID, display_name=USER_ID, is_authenticated=True
     )
+    app.dependency_overrides[get_session] = lambda: session
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
