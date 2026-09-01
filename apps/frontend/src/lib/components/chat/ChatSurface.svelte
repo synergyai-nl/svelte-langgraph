@@ -69,57 +69,65 @@
      and only `h-full` bounds the pane — without it the message list grows instead of scrolling. -->
 <div class="bg-background relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
 	{#if resolvedThreadId && ready}
+		<!-- The remount boundary covers everything `Conversation` captures at init: the thread,
+		     the client identity, and the assistant id. A provider whose explicit `assistantId`
+		     or client changes mid-thread must remount the conversation, or it keeps streaming
+		     through the stale configuration. -->
 		{#key resolvedThreadId}
-			<Conversation threadId={resolvedThreadId} {labels}>
-				{#snippet children(api)}
-					<div class="flex h-full min-h-0 flex-col">
-						<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
-						<div class="flex justify-end px-4 py-1">
-							<StateField name="phase" field={api.sync.field('phase')} />
-						</div>
-						<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={api.isThreadLoading}>
-							{#if api.isThreadLoading}
-								<div
-									data-testid="chat-history-loading"
-									class="mx-auto w-full max-w-4xl space-y-4 p-4"
-								>
-									<p class="sr-only" role="status" aria-live="polite">
-										{api.labels.historyLoading}
-									</p>
-									<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
-									<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
-									<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
+			{#key ctx?.client}
+				{#key ctx?.assistantId}
+					<Conversation threadId={resolvedThreadId} {labels}>
+						{#snippet children(api)}
+							<div class="flex h-full min-h-0 flex-col">
+								<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
+								<div class="flex justify-end px-4 py-1">
+									<StateField name="phase" field={api.sync.field('phase')} />
 								</div>
-							{:else if !api.chatStarted}
-								<Suggestions
-									{suggestions}
-									{introTitle}
-									{intro}
-									onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
-								/>
-							{:else}
-								<MessagesList
-									messages={api.messages}
-									finalAnswerStarted={api.finalAnswerStarted}
+								<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={api.isThreadLoading}>
+									{#if api.isThreadLoading}
+										<div
+											data-testid="chat-history-loading"
+											class="mx-auto w-full max-w-4xl space-y-4 p-4"
+										>
+											<p class="sr-only" role="status" aria-live="polite">
+												{api.labels.historyLoading}
+											</p>
+											<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
+											<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
+											<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
+										</div>
+									{:else if !api.chatStarted}
+										<Suggestions
+											{suggestions}
+											{introTitle}
+											{intro}
+											onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+										/>
+									{:else}
+										<MessagesList
+											messages={api.messages}
+											finalAnswerStarted={api.finalAnswerStarted}
+											isStreaming={api.isLoading}
+											generationError={api.error}
+											onRetryError={api.retry}
+											onEdit={api.edit}
+											onRegenerate={api.regenerate}
+											labels={api.labels.messagesList}
+										/>
+									{/if}
+								</div>
+								<Composer
+									bind:value={() => api.input, (v) => api.setInput(v)}
 									isStreaming={api.isLoading}
-									generationError={api.error}
-									onRetryError={api.retry}
-									onEdit={api.edit}
-									onRegenerate={api.regenerate}
-									labels={api.labels.messagesList}
+									onSubmit={() => api.submit(api.input)}
+									onStop={api.stop}
+									labels={api.labels.composer}
 								/>
-							{/if}
-						</div>
-						<Composer
-							bind:value={() => api.input, (v) => api.setInput(v)}
-							isStreaming={api.isLoading}
-							onSubmit={() => api.submit(api.input)}
-							onStop={api.stop}
-							labels={api.labels.composer}
-						/>
-					</div>
-				{/snippet}
-			</Conversation>
+							</div>
+						{/snippet}
+					</Conversation>
+				{/key}
+			{/key}
 		{/key}
 	{:else}
 		<ChatLoader />

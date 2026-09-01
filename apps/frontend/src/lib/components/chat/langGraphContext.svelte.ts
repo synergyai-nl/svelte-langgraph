@@ -86,6 +86,22 @@ export class LangGraphContext {
 		this.#error = err;
 	}
 
+	#resolutionNonce = $state(0);
+
+	/** Read (reactively) by `LangGraph.svelte`'s resolution effect. */
+	get resolutionNonce(): number {
+		return this.#resolutionNonce;
+	}
+
+	/**
+	 * Ask the provider to retry a failed assistant resolution. Failed resolutions also retry on
+	 * thread navigation, but a router-free embed with a single thread has no navigation to lean
+	 * on — this is its explicit lever (e.g. a "Try again" button on the error surface).
+	 */
+	retryResolution(): void {
+		this.#resolutionNonce++;
+	}
+
 	// --- active thread (controlled/uncontrolled) ----------------------------------------------
 
 	get activeThreadId(): string | null {

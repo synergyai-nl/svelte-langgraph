@@ -107,6 +107,10 @@
 	$effect(() => {
 		if (assistantIdProp !== undefined) {
 			resolvedFor = undefined;
+			// Invalidate any in-flight resolution: without this, a pending getOrCreateAssistant
+			// from before the explicit prop arrived would still pass the token check below and
+			// overwrite the explicit id (or surface its stale error).
+			resolutionCounter++;
 			ctx.setAssistantId(assistantIdProp);
 			ctx.setError(undefined);
 			return;
@@ -116,11 +120,17 @@
 		// `resolvedFor` below, and this dependency is what gives it a retry opportunity —
 		// mirroring the old per-page resolution, which re-ran on every thread click. While a
 		// resolution is in place the guard below short-circuits, so the extra runs are free.
+		// `resolutionNonce` is the explicit retry lever (`ctx.retryResolution()`) for consumers
+		// with no navigation to lean on.
 		void ctx.activeThreadId;
+		void ctx.resolutionNonce;
 
 		const client = derivedClient;
 		if (!client) {
 			resolvedFor = undefined;
+			// Invalidate any in-flight resolution from the departed client (see the prop branch
+			// above for why).
+			resolutionCounter++;
 			ctx.setAssistantId(undefined);
 			// A signed-out/clientless provider shows the loader/login path, not a stale
 			// resolution error from the previous client.

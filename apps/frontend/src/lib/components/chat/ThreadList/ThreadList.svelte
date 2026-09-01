@@ -92,7 +92,7 @@
 		busy: busyProp,
 		disabled: disabledProp,
 		hrefFor: hrefForProp,
-		onSelect,
+		onSelect: onSelectProp,
 		item,
 		error: errorProp,
 		labels
@@ -117,8 +117,15 @@
 	};
 
 	const list = $derived(listProp ?? ctx?.threadList ?? emptyList);
-	const activeThreadId = $derived(activeThreadIdProp ?? ctx?.activeThreadId ?? null);
-	const pendingThreadId = $derived(pendingThreadIdProp ?? ctx?.pendingThreadId ?? null);
+	// Explicit-`undefined` checks, not `??`: these props deliberately accept `null` as an
+	// explicit "no selection"/"no pending row" override, which `??` would misread as omission
+	// and fall through to the context value.
+	const activeThreadId = $derived(
+		activeThreadIdProp !== undefined ? activeThreadIdProp : (ctx?.activeThreadId ?? null)
+	);
+	const pendingThreadId = $derived(
+		pendingThreadIdProp !== undefined ? pendingThreadIdProp : (ctx?.pendingThreadId ?? null)
+	);
 	const onNewThread = $derived(
 		onNewThreadProp ?? (() => ctx?.createThread() ?? Promise.resolve(false))
 	);
@@ -133,8 +140,19 @@
 
 	// The context records the raw `Error` (useful to programmatic consumers), but the alert shows
 	// the localizable label — surfacing `error.message` would leak transport noise like
-	// `HTTP 400: {...}` into the sidebar.
-	const error = $derived(errorProp ?? (ctx?.createThreadError ? l.newChatError : null));
+	// `HTTP 400: {...}` into the sidebar. Explicit-`undefined` check so `error={null}` can
+	// deliberately suppress the context-defaulted alert (same rationale as `activeThreadId`).
+	const error = $derived(
+		errorProp !== undefined ? errorProp : ctx?.createThreadError ? l.newChatError : null
+	);
+
+	// Button rows (no `hrefFor`) must still open the clicked conversation: under a provider with
+	// no explicit selection wiring — the uncontrolled embed case — default the click through
+	// `ctx.selectThread`. Anchor rows navigate through their own `href`, so they get no default
+	// (`onSelect` there is a side-effect hook, and defaulting it would double-fire selection).
+	const onSelect = $derived(
+		onSelectProp ?? (hrefFor || !ctx ? undefined : (id: string) => ctx.selectThread(id))
+	);
 
 	const sidebar = Sidebar.useSidebar();
 

@@ -17,7 +17,7 @@
 	export const defaultConversationLabels: ConversationLabels = {
 		composer: defaultComposerLabels,
 		messagesList: defaultMessagesListLabels,
-		historyLoading: 'Loading conversation history…'
+		historyLoading: 'Loading conversation…'
 	};
 
 	/**

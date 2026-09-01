@@ -36,6 +36,8 @@ export type DeepPartial<T> = {
 export interface LangGraphLabels {
 	threadList?: DeepPartial<ThreadListLabels>;
 	composer?: DeepPartial<ComposerLabels>;
+	/** `Conversation`'s sr-only status while a thread's history loads (see `ConversationLabels`). */
+	historyLoading?: string;
 	messagesList?: DeepPartial<MessagesListLabels>;
 	message?: DeepPartial<ChatMessageLabels>;
 	toolMessage?: DeepPartial<ChatToolMessageLabels>;

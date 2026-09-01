@@ -39,6 +39,7 @@
 			mobileTitle: m.sidebar_mobile_title(),
 			mobileDescription: m.sidebar_mobile_description()
 		},
+		historyLoading: m.chat_history_loading(),
 		composer: {
 			placeholder: m.chat_input_placeholder()
 		},
