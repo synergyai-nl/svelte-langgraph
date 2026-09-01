@@ -1,0 +1,100 @@
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { screen } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
+import { renderWithProviders } from '../__tests__/render';
+import Composer from './Composer.svelte';
+
+function renderComposer(overrides: Record<string, unknown> = {}) {
+	return renderWithProviders(Composer, {
+		value: '',
+		onSubmit: vi.fn(),
+		...overrides
+	});
+}
+
+describe('Composer', () => {
+	describe('when rendered', () => {
+		beforeEach(() => {
+			renderComposer();
+		});
+
+		test('displays a textbox', () => {
+			expect(screen.getByRole('textbox')).toBeInTheDocument();
+		});
+
+		test('displays submit button', () => {
+			expect(screen.getByRole('button')).toBeInTheDocument();
+		});
+	});
+
+	test('displays custom placeholder', () => {
+		renderComposer({ placeholder: 'Type something...' });
+
+		expect(screen.getByPlaceholderText('Type something...')).toBeInTheDocument();
+	});
+
+	test('calls onSubmit on Enter', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderComposer({ value: 'Hello', onSubmit });
+
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Enter}');
+
+		expect(onSubmit).toHaveBeenCalled();
+	});
+
+	test('does not call onSubmit on Shift+Enter', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderComposer({ value: 'Hello', onSubmit });
+
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Shift>}{Enter}{/Shift}');
+
+		expect(onSubmit).not.toHaveBeenCalled();
+	});
+
+	describe('when isStreaming is true', () => {
+		test('disables the textarea', () => {
+			renderComposer({ value: 'Hello', isStreaming: true });
+			expect(screen.getByRole('textbox')).toBeDisabled();
+		});
+
+		test('shows enabled stop button', () => {
+			renderComposer({ value: 'Hello', isStreaming: true });
+			expect(screen.getByRole('button')).not.toBeDisabled();
+		});
+
+		test('calls onStop when stop button is clicked', async () => {
+			const user = userEvent.setup();
+			const onStop = vi.fn();
+			renderComposer({ value: 'Hello', isStreaming: true, onStop });
+
+			const button = screen.getByRole('button');
+			await user.click(button);
+
+			expect(onStop).toHaveBeenCalled();
+		});
+	});
+
+	test('disables submit button when input is empty', () => {
+		renderComposer({ value: '' });
+
+		expect(screen.getByRole('button')).toBeDisabled();
+	});
+
+	test('does not call onSubmit when pressing Enter with empty input', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderComposer({ value: '', onSubmit });
+
+		const textbox = screen.getByRole('textbox');
+		await user.click(textbox);
+		await user.keyboard('{Enter}');
+
+		expect(onSubmit).not.toHaveBeenCalled();
+	});
+});

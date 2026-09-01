@@ -10,13 +10,55 @@
 		type Message,
 		type ToolMessage
 	} from '@svelte-langgraph/client';
-	import ChatInput from './ChatInput.svelte';
-	import ChatMessages from './ChatMessages.svelte';
-	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
+	import Composer, { type ComposerLabels } from './chat/Composer.svelte';
+	import MessagesList, { type MessagesListLabels } from './chat/MessagesList.svelte';
+	import Suggestions, { type ChatSuggestion } from './chat/Suggestions.svelte';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack } from 'svelte';
-	import StateField from './StateField.svelte';
+	import StateField from './chat/StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
+
+	// Localized labels for the de-paraglided chat components (SLG-133). `Chat.svelte` stays
+	// app-level — and so keeps its paraglide import — until the embeddable `<LangGraph>` provider
+	// (PR 3) takes over supplying these.
+	const composerLabels: ComposerLabels = {
+		placeholder: m.chat_input_placeholder()
+	};
+	const messagesListLabels: MessagesListLabels = {
+		message: {
+			aiActions: {
+				copy: m.message_copy(),
+				copied: m.message_copied(),
+				regenerate: m.message_regenerate(),
+				feedback: {
+					good: m.message_feedback_good(),
+					bad: m.message_feedback_bad(),
+					comingSoon: m.coming_soon()
+				}
+			},
+			userActions: {
+				edit: m.message_edit()
+			},
+			userEdit: {
+				edit: m.message_edit(),
+				cancel: m.cancel(),
+				saveAndSend: m.save_and_send()
+			},
+			thinking: {
+				thinking: m.thinking()
+			}
+		},
+		toolMessage: {
+			usingTools: m.tools_using(),
+			toolLabel: m.tool_label(),
+			parameters: m.tool_parameters(),
+			noParameters: m.tool_no_parameters(),
+			result: m.tool_result()
+		},
+		errorMessage: {
+			retry: m.chat_error_retry()
+		}
+	};
 
 	interface Props {
 		langGraphClient: Client;
@@ -219,7 +261,7 @@
 	// not: what if the graph has no title yet at mount, so there is nothing to compare the stored
 	// value against; what if the lookup fails, where a one-shot flag would let every later write
 	// through; and what if a run settles before hydration finishes, which *is* reachable — the
-	// composer stays live during history loading (`ChatInput` renders outside the
+	// composer stays live during history loading (`Composer` renders outside the
 	// `isThreadLoading` branch and disables only on `isStreaming`, and `submitInput` guards on
 	// `stream.isLoading` alone). Resolving on the write path means no write can precede the answer,
 	// so none of those orderings matter.
@@ -393,14 +435,14 @@
 				<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
 			</div>
 		{:else if !chat_started}
-			<ChatSuggestions
+			<Suggestions
 				{suggestions}
 				{introTitle}
 				{intro}
 				onSuggestionClick={(suggestedText) => submitInput(suggestedText)}
 			/>
 		{:else}
-			<ChatMessages
+			<MessagesList
 				{messages}
 				finalAnswerStarted={final_answer_started}
 				isStreaming={stream.isLoading}
@@ -408,13 +450,15 @@
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
+				labels={messagesListLabels}
 			/>
 		{/if}
 	</div>
-	<ChatInput
+	<Composer
 		bind:value={current_input}
 		isStreaming={stream.isLoading}
 		onSubmit={() => submitInput(current_input)}
 		onStop={() => stopGeneration()}
+		labels={composerLabels}
 	/>
 </div>

@@ -3,7 +3,7 @@
 	 * Chat shell adapter (SLG-104).
 	 *
 	 * This is the seam between SvelteKit-specific concerns (`$app/state`, `$app/navigation`,
-	 * paraglide) and the container-agnostic `ChatThreads` / `ThreadListState` pieces, which know
+	 * paraglide) and the container-agnostic `ThreadList` / `ThreadListState` pieces, which know
 	 * nothing about routing or i18n.
 	 */
 	import { onDestroy } from 'svelte';
@@ -13,7 +13,7 @@
 	import { env } from '$env/dynamic/public';
 
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import { ChatThreads } from '$lib/components/ChatThreads';
+	import { ThreadList } from '$lib/components/chat/ThreadList';
 	import {
 		createClient,
 		createThread,
@@ -84,7 +84,7 @@
 		createError = null;
 	});
 
-	/** Returns false on failure so `ChatThreads` keeps the mobile drawer open over `createError`. */
+	/** Returns false on failure so `ThreadList` keeps the mobile drawer open over `createError`. */
 	async function handleNewThread(): Promise<boolean> {
 		if (creating || !client) return false;
 		creating = true;
@@ -110,9 +110,10 @@
 	}
 </script>
 
-<!-- `h-full min-h-0` overrides the provider's base `min-h-svh` via tailwind-merge. -->
-<Sidebar.Provider bind:open={sidebarOpen} class="h-full min-h-0">
-	<ChatThreads
+<!-- Provider is `h-full min-h-0` by default (SLG-133); this layout's own ancestry supplies the
+     viewport height (see the root layout's `h-svh` wrapper), so no override is needed here. -->
+<Sidebar.Provider bind:open={sidebarOpen}>
+	<ThreadList
 		list={threadList}
 		{activeThreadId}
 		{pendingThreadId}
