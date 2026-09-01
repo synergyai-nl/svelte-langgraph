@@ -84,12 +84,21 @@ tasks:
     options:
       mergeArgs: 'replace'
 
+  # Both test tasks depend on `build` for ordering, not artifacts: `clean` is uncached and wipes
+  # .svelte-kit/ + src/lib/paraglide on every `moon ci`, and without a declared ordering it can
+  # delete those generated dirs out from under a running test task (#290 — intermittent
+  # module-resolution failures that look like regressions). `build`'s own dep chain runs `clean`
+  # first and regenerates everything — same pattern as `check` above.
   test:
+    deps:
+      - build
     args:
       - '--silent'
       - 'passed-only'
 
   test-cov:
+    deps:
+      - build
     args:
       - '--coverage.reporter text'
       - '--coverage.reporter lcov'
