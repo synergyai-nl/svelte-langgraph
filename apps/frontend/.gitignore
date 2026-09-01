@@ -9,7 +9,10 @@ coverage
 .vercel
 .netlify
 .wrangler
-/.svelte-kit
+# Unanchored: `svelte-kit sync` writes its output relative to the cwd it is run
+# from, so a stray run inside src/ leaves a nested .svelte-kit that an anchored
+# `/.svelte-kit` would not catch. One was committed this way.
+.svelte-kit/
 /build
 
 # OS
