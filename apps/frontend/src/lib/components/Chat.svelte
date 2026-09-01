@@ -13,6 +13,7 @@
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
+	import FeedbackDialog from './FeedbackDialog.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -270,18 +271,54 @@
 		return next;
 	}
 
-	async function handleFeedback(message: Message, type: 'up' | 'down') {
+	/** The rating whose comment box is open, held until the box resolves.
+	 *
+	 *  Nothing is sent on the click itself. Every way out of the box — submit,
+	 *  cancel, escape, click-away — resolves it, so the rating and its optional
+	 *  comment go out together as one request rather than a write followed by an
+	 *  edit. The thumb still fills in immediately, because that is local state.
+	 *
+	 *  `previous` rides along because the rollback on failure happens after the
+	 *  box has closed, by which point the pre-click value is otherwise gone. */
+	let commentFor = $state<{
+		runId: string;
+		type: 'up' | 'down';
+		previous: 'up' | 'down' | undefined;
+	} | null>(null);
+
+	function handleFeedback(message: Message, type: 'up' | 'down') {
 		const runId = getRunId(message);
 		if (!runId) {
 			console.error('No run id for message, cannot submit feedback', message.id);
 			return;
 		}
 
+		// One box at a time. Replacing `commentFor` while a box is open would
+		// leave the dialog's `open` prop true, so `onOpenChange` would never fire
+		// and the rating it was holding would be dropped without a trace. The
+		// modal's overlay and focus trap make that unreachable today; this makes
+		// it not depend on them.
+		if (commentFor) return;
+
 		const previous = ratings[runId];
 		// Optimistic: the highlight belongs on the click, not a round trip later.
 		ratings = { ...ratings, [runId]: type };
-		pendingRuns = setFlag(pendingRuns, runId, true);
 		failedRuns = setFlag(failedRuns, runId, false);
+		commentFor = { runId, type, previous };
+	}
+
+	function resolveComment(comment?: string) {
+		const target = commentFor;
+		commentFor = null;
+		if (target) sendFeedback(target, comment);
+	}
+
+	async function sendFeedback(
+		target: { runId: string; type: 'up' | 'down'; previous: 'up' | 'down' | undefined },
+		comment?: string
+	) {
+		const { runId, type, previous } = target;
+		pendingRuns = setFlag(pendingRuns, runId, true);
 
 		try {
 			// Minted on demand rather than eagerly for every message: most messages
@@ -291,7 +328,9 @@
 			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ score: type })
+				// Omitted rather than sent as null when absent, so the request for
+				// a bare rating is byte-identical to what it was before comments.
+				body: JSON.stringify(comment ? { score: type, comment } : { score: type })
 			});
 			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
 		} catch (err) {
@@ -398,4 +437,5 @@
 		onSubmit={() => submitInput(current_input)}
 		onStop={() => stopGeneration()}
 	/>
+	<FeedbackDialog rating={commentFor?.type ?? null} onResolve={resolveComment} />
 </div>

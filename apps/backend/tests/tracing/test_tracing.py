@@ -156,10 +156,12 @@ class TestScoring:
 
         assert len(respx.calls) == 1
         assert json.loads(score.calls.last.request.content) == {
+            "id": f"{TRACE_ID}-user_feedback",
             "traceId": TRACE_ID,
             "name": "user_feedback",
             "value": "up",
             "dataType": "CATEGORICAL",
+            "comment": "",
         }
 
     @respx.mock
@@ -205,6 +207,52 @@ class TestScoring:
         assert await record_score(RUN_ID, "up") is False
         assert score.call_count == 3
         assert "Giving up" in caplog.text
+
+    @respx.mock
+    async def test_a_comment_rides_along_with_the_rating(self, langfuse_env):
+        """One request, not a write followed by an edit — the frontend holds the
+        rating until its comment box resolves."""
+        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+        assert await record_score(RUN_ID, "down", comment="too vague") is True
+
+        assert len(respx.calls) == 1
+        body = json.loads(score.calls.last.request.content)
+        assert body["comment"] == "too vague"
+        assert body["value"] == "down"
+
+    @respx.mock
+    async def test_a_changed_rating_clears_the_earlier_comment(self, langfuse_env):
+        """The score id is stable, so the second write edits the first. Leaving
+        the key out would strand the old comment on the new rating -- the box
+        only opens on a *changed* rating, so there is never a comment worth
+        keeping across one."""
+        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+        assert await record_score(RUN_ID, "down", comment="wrong and confident") is True
+        assert await record_score(RUN_ID, "up") is True
+
+        assert json.loads(score.calls.last.request.content)["comment"] == ""
+
+    @respx.mock
+    async def test_a_whitespace_comment_is_not_a_comment(self, langfuse_env):
+        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+        assert await record_score(RUN_ID, "up", comment="   \n  ") is True
+
+        assert json.loads(score.calls.last.request.content)["comment"] == ""
+
+    @respx.mock
+    async def test_the_score_id_is_stable_across_a_changed_mind(self, langfuse_env):
+        """Langfuse upserts on id, so rating up then down leaves one score
+        rather than two that contradict each other."""
+        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+        assert await record_score(RUN_ID, "up") is True
+        assert await record_score(RUN_ID, "down") is True
+
+        ids = {json.loads(call.request.content)["id"] for call in score.calls}
+        assert len(ids) == 1
 
     @respx.mock
     async def test_a_missing_run_id_is_not_an_error(self, langfuse_env):

@@ -120,7 +120,12 @@ def pin_trace_to_run(config: RunnableConfig) -> None:
     otel_context.attach(set_span_in_context(NonRecordingSpan(span_context)))
 
 
-async def record_score(run_id: str, score: Rating, name: str = "user_feedback") -> bool:
+async def record_score(
+    run_id: str,
+    score: Rating,
+    name: str = "user_feedback",
+    comment: str | None = None,
+) -> bool:
     """Attach `score` to the Langfuse trace produced by `run_id`.
 
     No lookup and no waiting for ingestion: the trace id is derived from the run
@@ -137,7 +142,13 @@ async def record_score(run_id: str, score: Rating, name: str = "user_feedback") 
         logger.warning("run_id %r is not a UUID; cannot score its trace", run_id)
         return False
 
-    payload = {
+    payload: dict[str, object] = {
+        # Deterministic, so this is an upsert: Langfuse updates a score when the
+        # id already exists. That is what lets the rating be written the instant
+        # it is clicked and the comment arrive as a later edit of the same score
+        # rather than a second one -- and it collapses a changed mind (up then
+        # down) onto one row instead of two contradictory ones.
+        "id": f"{trace_id}-{name}",
         "traceId": trace_id,
         "name": name,
         # Categorical values travel in `value`; there is no `stringValue` on
@@ -146,6 +157,13 @@ async def record_score(run_id: str, score: Rating, name: str = "user_feedback") 
         # which is what dashboards need to show a rate rather than counts.
         "value": score,
         "dataType": "CATEGORICAL",
+        # Always sent, blank when there is none, because the id above makes this
+        # an upsert. Omitting the key would leave the comment from a previous
+        # rating attached to the new one -- rate down with "hallucinated the
+        # API", change to up, and the positive score would still carry it. A
+        # blank string overwrites under either merge or replace semantics, where
+        # null would depend on the field accepting it.
+        "comment": (comment or "").strip(),
     }
     url = f"{_base_url()}/api/public/scores"
     last_error: Exception | None = None
