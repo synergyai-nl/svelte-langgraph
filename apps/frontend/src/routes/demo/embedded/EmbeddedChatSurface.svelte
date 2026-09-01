@@ -12,7 +12,6 @@
 	 * here.
 	 */
 	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
-	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import { useLangGraphOptional } from '$lib/components/chat/langGraphContext.svelte.js';
 
 	const ctx = useLangGraphOptional();
@@ -37,15 +36,11 @@
 		<p class="text-destructive" role="alert">Couldn't start a new chat.</p>
 		<button type="button" class="underline" onclick={() => ctx?.createThread()}>Try again</button>
 	</div>
-{:else if ctx?.assistantId && ctx?.client}
-	<!-- Same gate `routes/chat/[threadID]/+page.svelte` uses before rendering `<ChatSurface>`:
-	     `activeThreadId` above can go true (thread created) before assistant resolution — a
-	     separate, independently-async effect inside `<LangGraph>` — finishes, and `<Conversation>`
-	     throws if mounted without a resolved `assistantId`. -->
+{:else}
+	<!-- No readiness gate needed: `ChatSurface` holds `Conversation` behind its own loader until
+	     the provider's client and assistant have both resolved. -->
 	<ChatSurface
 		introTitle="Embedded chat demo"
 		intro="This <ChatSurface> is mounted with no sidebar and no router — drop it into any container."
 	/>
-{:else}
-	<ChatLoader />
 {/if}
