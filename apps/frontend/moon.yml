@@ -39,9 +39,16 @@ tasks:
       - 'build'
       - 'src/lib/paraglide'
 
+  # `check`, `test`, and `test-cov` share a mutex: the vitest tasks' paraglide plugin REGENERATES
+  # src/lib/paraglide at startup, so any of them running while another reads those files (or
+  # .svelte-kit/) sees half-written modules — the #290 flake family (svelte-check "is not a
+  # module", vitest "Cannot find module .../paraglide/messages.js"). Their `build` dep closes the
+  # same race against the uncached `clean`.
   check:
     deps:
       - build
+    options:
+      mutex: 'frontend-generated'
 
   lint:
     command: eslint .
@@ -84,14 +91,12 @@ tasks:
     options:
       mergeArgs: 'replace'
 
-  # Both test tasks depend on `build` for ordering, not artifacts: `clean` is uncached and wipes
-  # .svelte-kit/ + src/lib/paraglide on every `moon ci`, and without a declared ordering it can
-  # delete those generated dirs out from under a running test task (#290 — intermittent
-  # module-resolution failures that look like regressions). `build`'s own dep chain runs `clean`
-  # first and regenerates everything — same pattern as `check` above.
+  # `deps`/`mutex` rationale: see `check` above (#290).
   test:
     deps:
       - build
+    options:
+      mutex: 'frontend-generated'
     args:
       - '--silent'
       - 'passed-only'
@@ -99,6 +104,8 @@ tasks:
   test-cov:
     deps:
       - build
+    options:
+      mutex: 'frontend-generated'
     args:
       - '--coverage.reporter text'
       - '--coverage.reporter lcov'
