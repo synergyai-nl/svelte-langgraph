@@ -23,11 +23,11 @@ describe('FeedbackButtons', () => {
 			expect(screen.getByTitle(/bad response/i)).toBeInTheDocument();
 		});
 
-		test('both buttons are disabled (coming soon)', () => {
+		test('both buttons are enabled', () => {
 			const upButton = screen.getByTitle(/good response/i) as HTMLButtonElement;
 			const downButton = screen.getByTitle(/bad response/i) as HTMLButtonElement;
-			expect(upButton).toBeDisabled();
-			expect(downButton).toBeDisabled();
+			expect(upButton).toBeEnabled();
+			expect(downButton).toBeEnabled();
 		});
 	});
 });

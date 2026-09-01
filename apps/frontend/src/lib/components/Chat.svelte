@@ -13,6 +13,7 @@
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
+	import FeedbackDialog from './FeedbackDialog.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -32,6 +33,23 @@
 		intro = '',
 		introTitle = ''
 	}: Props = $props();
+
+	// runId → signed feedback URL returned by /api/feedback/token. Keyed by run,
+	// not by message: one token covers every message the run produced, and the
+	// run id is what the score is ultimately attributed to.
+	const feedbackUrls = new SvelteMap<string, string>();
+
+	// Rating is disabled until the stored ratings are known: without them the UI
+	// would show an old rating as unrated, and re-rating would look like a change
+	// the user didn't make.
+	let ratingsLoaded = $state(false);
+	let ratingsError = $state(false);
+
+	// runId → the rating the user gave. Mirrored into thread metadata so it
+	// survives a reload, because Langfuse can't serve this back: its scores API
+	// has no batch-by-session query, so rebuilding a thread would cost a lookup
+	// per message, and a fresh score takes ~10s to become readable anyway.
+	let ratings = $state<Record<string, 'up' | 'down'>>({});
 
 	const stream = useStream({
 		client: langGraphClient,
@@ -155,6 +173,194 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
+	/** The run that produced this message.
+	 *
+	 * Read from the message's own checkpoint metadata rather than from the live
+	 * run, so a rating always scores the trace that actually generated the text —
+	 * including for messages restored from history, where there is no live run at
+	 * all. Aegra pins `configurable.run_id` on every run and LangGraph merges
+	 * `configurable` into checkpoint metadata, so this survives a reload.
+	 */
+	function getRunId(message: Message): string | null {
+		if (!message.id) return null;
+		const rawMsg = rawMessageById.get(message.id);
+		if (!rawMsg) return null;
+		const runId = stream.getMessagesMetadata(rawMsg)?.firstSeenState?.metadata?.run_id;
+		return typeof runId === 'string' && runId ? runId : null;
+	}
+
+	/** Mint (or reuse) the signed URL that authorises scoring this run. */
+	async function getFeedbackUrl(runId: string): Promise<string | null> {
+		const cached = feedbackUrls.get(runId);
+		if (cached) return cached;
+
+		const res = await fetch('/api/feedback/token', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ run_id: runId })
+		});
+		if (!res.ok) throw new Error(`Feedback token request failed: ${res.status}`);
+
+		const { url } = await res.json();
+		if (typeof url !== 'string' || !url) throw new Error('Feedback token response had no url');
+		feedbackUrls.set(runId, url);
+		return url;
+	}
+
+	/** Ratings live in thread metadata (PATCH /threads/{id}) rather than thread
+	 *  state. State would mean a checkpoint write, which forks history on the next
+	 *  submit and 409s during an active run — see the escape-hatch note in
+	 *  stateSync.svelte.ts.
+	 *
+	 *  One flat `rating:<runId>` key per rating, not a nested map. Aegra merges
+	 *  metadata by top-level key (`current_metadata.update(...)`), so a nested
+	 *  `ratings` object would be replaced wholesale — every write would have to
+	 *  resend the entire map, and any write built on a stale or failed read would
+	 *  erase the rest. Flat keys make each write touch exactly one rating, so
+	 *  there is nothing to lose and concurrent tabs can't clobber each other. */
+	const RATING_PREFIX = 'rating:';
+
+	function ratingsFromMetadata(metadata: unknown): Record<string, 'up' | 'down'> {
+		const entries = Object.entries((metadata as Record<string, unknown>) ?? {});
+		const found: Record<string, 'up' | 'down'> = {};
+		for (const [key, value] of entries) {
+			if (!key.startsWith(RATING_PREFIX)) continue;
+			if (value === 'up' || value === 'down') found[key.slice(RATING_PREFIX.length)] = value;
+		}
+		return found;
+	}
+
+	async function loadRatings() {
+		try {
+			const thread = await langGraphClient.threads.get(threadId);
+			// Merge under, never over: a rating given while this was in flight is
+			// newer than the server's copy.
+			ratings = { ...ratingsFromMetadata(thread.metadata), ...ratings };
+		} catch (err) {
+			// The buttons stay disabled, so a rating can't be given against an
+			// unknown baseline and then appear to vanish on reload.
+			console.error('Failed to load feedback ratings', err);
+			ratingsError = true;
+			return;
+		}
+		ratingsLoaded = true;
+	}
+	loadRatings();
+
+	function getRating(message: Message): 'up' | 'down' | null {
+		const runId = getRunId(message);
+		return runId ? (ratings[runId] ?? null) : null;
+	}
+
+	/** Which runs have a rating in flight or just failed, so the buttons can show
+	 *  it. Keyed by run for the same reason `ratings` is. */
+	let pendingRuns = $state<Record<string, true>>({});
+	let failedRuns = $state<Record<string, true>>({});
+
+	function getFeedbackStatus(message: Message): 'pending' | 'failed' | null {
+		const runId = getRunId(message);
+		if (!runId) return null;
+		if (pendingRuns[runId]) return 'pending';
+		return failedRuns[runId] ? 'failed' : null;
+	}
+
+	function setFlag(flags: Record<string, true>, runId: string, on: boolean): Record<string, true> {
+		const next = { ...flags };
+		if (on) next[runId] = true;
+		else delete next[runId];
+		return next;
+	}
+
+	/** The rating whose comment box is open, held until the box resolves.
+	 *
+	 *  Nothing is sent on the click itself. Every way out of the box — submit,
+	 *  cancel, escape, click-away — resolves it, so the rating and its optional
+	 *  comment go out together as one request rather than a write followed by an
+	 *  edit. The thumb still fills in immediately, because that is local state.
+	 *
+	 *  `previous` rides along because the rollback on failure happens after the
+	 *  box has closed, by which point the pre-click value is otherwise gone. */
+	let commentFor = $state<{
+		runId: string;
+		type: 'up' | 'down';
+		previous: 'up' | 'down' | undefined;
+	} | null>(null);
+
+	function handleFeedback(message: Message, type: 'up' | 'down') {
+		const runId = getRunId(message);
+		if (!runId) {
+			console.error('No run id for message, cannot submit feedback', message.id);
+			return;
+		}
+
+		// One box at a time. Replacing `commentFor` while a box is open would
+		// leave the dialog's `open` prop true, so `onOpenChange` would never fire
+		// and the rating it was holding would be dropped without a trace. The
+		// modal's overlay and focus trap make that unreachable today; this makes
+		// it not depend on them.
+		if (commentFor) return;
+
+		const previous = ratings[runId];
+		// Optimistic: the highlight belongs on the click, not a round trip later.
+		ratings = { ...ratings, [runId]: type };
+		failedRuns = setFlag(failedRuns, runId, false);
+		commentFor = { runId, type, previous };
+	}
+
+	function resolveComment(comment?: string) {
+		const target = commentFor;
+		commentFor = null;
+		if (target) sendFeedback(target, comment);
+	}
+
+	async function sendFeedback(
+		target: { runId: string; type: 'up' | 'down'; previous: 'up' | 'down' | undefined },
+		comment?: string
+	) {
+		const { runId, type, previous } = target;
+		pendingRuns = setFlag(pendingRuns, runId, true);
+
+		try {
+			// Minted on demand rather than eagerly for every message: most messages
+			// are never rated, and a token has a TTL it would otherwise burn idle.
+			const url = await getFeedbackUrl(runId);
+			if (!url) return;
+			const res = await fetch(url, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				// Omitted rather than sent as null when absent, so the request for
+				// a bare rating is byte-identical to what it was before comments.
+				body: JSON.stringify(comment ? { score: type, comment } : { score: type })
+			});
+			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
+		} catch (err) {
+			// The score is what the rating is *for*, so this is the failure worth
+			// showing. Roll back only this message; others may have landed since.
+			const rolledBack = { ...ratings };
+			if (previous === undefined) delete rolledBack[runId];
+			else rolledBack[runId] = previous;
+			ratings = rolledBack;
+			failedRuns = setFlag(failedRuns, runId, true);
+			console.error('Failed to submit feedback', err);
+			return;
+		} finally {
+			pendingRuns = setFlag(pendingRuns, runId, false);
+		}
+
+		// Deliberately after the block above, and not surfaced to the user: the
+		// score is already recorded, so this failing costs the highlight on the
+		// next load, not the rating. Reporting it would claim the click was lost
+		// when it wasn't, and re-arm the button to post a duplicate score.
+		try {
+			// Only this run's key — see RATING_PREFIX above.
+			await langGraphClient.threads.update(threadId, {
+				metadata: { [`${RATING_PREFIX}${runId}`]: type }
+			});
+		} catch (err) {
+			console.error('Failed to persist feedback rating', err);
+		}
+	}
+
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
 	// thread moves to the top. Fires on the isLoading true→false edge — not on message-count
 	// changes — so a same-length regenerate still refreshes. Safe against the initial history
@@ -217,6 +423,11 @@
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
+				onFeedback={handleFeedback}
+				{getRating}
+				{getFeedbackStatus}
+				feedbackReady={ratingsLoaded}
+				{ratingsError}
 			/>
 		{/if}
 	</div>
@@ -226,4 +437,5 @@
 		onSubmit={() => submitInput(current_input)}
 		onStop={() => stopGeneration()}
 	/>
+	<FeedbackDialog rating={commentFor?.type ?? null} onResolve={resolveComment} />
 </div>

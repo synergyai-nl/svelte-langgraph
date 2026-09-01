@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 // required for svelte5 + jsdom as jsdom does not support matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -51,5 +51,13 @@ if (typeof Element.prototype.animate === 'undefined') {
 // jsdom does not support scrollTo
 Element.prototype.scrollTo = function () {};
 window.scrollTo = function () {} as typeof window.scrollTo;
+
+// A modal dialog blocks pointer events on <body> while open and restores them
+// from a cleanup that jsdom never runs, so the block outlives the test that
+// opened the dialog. <body> is shared across a file's tests, which would leave
+// every later click and hover refused with "pointer-events: none".
+afterEach(() => {
+	document.body.style.pointerEvents = '';
+});
 
 // add more mocks here if you need them
