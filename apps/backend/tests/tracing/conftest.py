@@ -43,3 +43,27 @@ def instant_retries(monkeypatch):
     from svelte_langgraph import tracing
 
     monkeypatch.setattr(tracing, "_RETRY_DELAYS", (0.0,) * len(tracing._RETRY_DELAYS))
+
+
+@pytest.fixture
+def client():
+    """A TestClient whose requests are already authenticated.
+
+    /feedback declares `Depends(require_auth)`, which would otherwise reach the
+    real OIDC backend. Overriding the dependency stands in for a valid token
+    without pretending to validate one -- see test_routes.py for the case that
+    exercises the unauthenticated path.
+    """
+    from fastapi.testclient import TestClient
+
+    from aegra_api.core.auth_deps import require_auth
+    from aegra_api.models.auth import User
+
+    from svelte_langgraph.routes import app
+
+    app.dependency_overrides[require_auth] = lambda: User(
+        identity="test-user", display_name="test-user", is_authenticated=True
+    )
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()

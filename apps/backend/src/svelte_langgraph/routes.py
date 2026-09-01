@@ -1,6 +1,7 @@
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from aegra_api.core.auth_deps import require_auth
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, StringConstraints
 
 from .tracing import Rating, is_configured, record_score
@@ -30,7 +31,13 @@ class FeedbackPayload(BaseModel):
     comment: Comment | None = None
 
 
-@app.post("/feedback")
+# Auth is declared here rather than left to `enable_custom_route_auth` in
+# aegra.json. That flag sets `route.dependencies` after FastAPI has already built
+# `route.dependant` from it, so the dependency is stored and never executed --
+# the switch reports success and enforces nothing (aegra_api 0.10.3,
+# aegra_api/main.py:217). Declaring it in the decorator happens at construction
+# time, which is what the dependant is built from.
+@app.post("/feedback", dependencies=[Depends(require_auth)])
 async def feedback(payload: FeedbackPayload) -> dict:
     """Attach a rating to the run's trace.
 
