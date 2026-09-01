@@ -144,10 +144,9 @@ async def record_score(
 
     payload: dict[str, object] = {
         # Deterministic, so this is an upsert: Langfuse updates a score when the
-        # id already exists. That is what lets the rating be written the instant
-        # it is clicked and the comment arrive as a later edit of the same score
-        # rather than a second one -- and it collapses a changed mind (up then
-        # down) onto one row instead of two contradictory ones.
+        # id already exists. Without it a changed mind (rate up, then down)
+        # leaves two scores on the same trace, contradicting each other and both
+        # counted. This is also why the comment below is always sent.
         "id": f"{trace_id}-{name}",
         "traceId": trace_id,
         "name": name,
