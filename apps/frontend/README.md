@@ -93,7 +93,7 @@ This triggers a _state-only run_ through the graph: the backend's `phase_gate`
 middleware (a `@before_agent` hook in `graph.py`) applies the new field value and
 jumps to `end` without invoking the LLM. `useStream` refetches server
 truth once the run completes (this refetch requires `fetchStateHistory: true` — or a
-number — in the `useStream` options, as used in `Chat.svelte`). The `optimisticValues`
+number — in the `useStream` options, as used in `Conversation.svelte`). The `optimisticValues`
 callback gives an immediate UI update while the round-trip is in flight.
 
 Submitting while `stream.isLoading` is true enqueues the call via useStream's built-in
