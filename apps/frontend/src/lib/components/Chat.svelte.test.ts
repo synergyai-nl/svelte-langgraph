@@ -437,13 +437,47 @@ describe('Chat', () => {
 		}
 
 		/** Hover the message with `text` and click one of ITS rating buttons.
-		 *  Scoped with `within` because every AI message renders its own pair. */
-		async function rate(title: RegExp, text = 'AI response') {
+		 *  Scoped with `within` because every AI message renders its own pair.
+		 *  Stops at the click, which only opens the comment box — see `rate`. */
+		async function clickRating(title: RegExp, text = 'AI response') {
 			const user = userEvent.setup();
 			const aiMessage = await screen.findByText(text);
 			await user.hover(aiMessage);
 			const group = aiMessage.closest('[role="group"]') as HTMLElement;
 			await user.click(await within(group).findByTitle(title));
+			return user;
+		}
+
+		/** Click a rating and then resolve the comment box it opens.
+		 *
+		 *  Nothing is sent until the box resolves, so every rating goes through it.
+		 *  Cancelling is the no-comment path, which is what most of these assert. */
+		async function rate(title: RegExp, text = 'AI response', comment?: string) {
+			const user = await clickRating(title, text);
+
+			const dialog = await screen.findByTestId('feedback-dialog');
+			if (comment === undefined) {
+				await user.click(within(dialog).getByTestId('feedback-cancel'));
+			} else {
+				// Pasted rather than typed because bits-ui's dialog focus scope pulls
+				// focus off the field after the first state-driven update under
+				// jsdom, so `user.type` lands only the first character or two. This
+				// afflicts any dialog, not this one — a bare <textarea bind:value>
+				// in a plain Dialog.Root truncates identically. Pasting sidesteps
+				// focus entirely, which means the only proof a user can actually
+				// type a comment is the `pressSequentially` case in
+				// e2e/src/feedback.spec.ts. Do not weaken that one.
+				const box = within(dialog).getByTestId('feedback-comment');
+				await user.click(box);
+				await user.paste(comment);
+				await waitFor(() => expect(box).toHaveValue(comment));
+				await user.click(within(dialog).getByTestId('feedback-submit'));
+			}
+
+			// The open box blocks pointer events on <body> and only releases them
+			// once it has actually left the DOM. Without this wait the next hover —
+			// here or in the following test — is refused.
+			await waitFor(() => expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument());
 		}
 
 		test('mints a token for the run that produced the message, then posts the score', async () => {
@@ -709,6 +743,57 @@ describe('Chat', () => {
 			);
 		});
 
+		test('sends the comment together with the rating, as one request', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i, 'AI response', 'genuinely helpful');
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback?token=signed-token',
+					expect.objectContaining({
+						body: JSON.stringify({ score: 'up', comment: 'genuinely helpful' })
+					})
+				);
+			});
+			// Holding the rating until the box resolves is what buys this: a score
+			// written on the click would have needed a second call to add the
+			// comment afterwards.
+			const scored = fetchMock.mock.calls.filter(([url]) =>
+				String(url).startsWith('/api/feedback?')
+			);
+			expect(scored).toHaveLength(1);
+		});
+
+		test('sends the rating without a comment when the box is dismissed', async () => {
+			// The rating is the feedback; the comment is optional. Escaping out of
+			// the box must not throw the thumb away with it.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			const user = await clickRating(/bad response/i);
+			await screen.findByTestId('feedback-dialog');
+			await user.keyboard('{Escape}');
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					'/api/feedback?token=signed-token',
+					expect.objectContaining({ body: JSON.stringify({ score: 'down' }) })
+				);
+			});
+		});
+
 		test('does not post when the message has no resolvable run id', async () => {
 			const fetchMock = mockFeedbackFetch();
 			vi.stubGlobal('fetch', fetchMock);
@@ -716,8 +801,10 @@ describe('Chat', () => {
 			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
 
 			renderChat();
-			await rate(/good response/i);
+			await clickRating(/good response/i);
 
+			// Not even the box opens: there is nothing to attach a comment to.
+			expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument();
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 	});

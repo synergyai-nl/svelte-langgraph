@@ -3,6 +3,17 @@ import { env } from '$env/dynamic/private';
 import { env as pubEnv } from '$env/dynamic/public';
 import type { RequestHandler } from './$types';
 
+// Kept in step with COMMENT_MAX_LENGTH in
+// apps/backend/src/svelte_langgraph/routes.py. Both must mean the same thing,
+// so this counts code points rather than using `.length`, which counts UTF-16
+// units and would reject a comment of emoji at half the stated limit while
+// Pydantic still accepted it.
+const COMMENT_MAX_LENGTH = 2000;
+
+function codePointLength(value: string): number {
+	return [...value].length;
+}
+
 function base64urlToBytes(b64url: string): Uint8Array {
 	const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
 	const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
@@ -32,8 +43,17 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 	const token = url.searchParams.get('token');
 	if (!token) error(400, 'token query param is required');
 
-	const { score } = await request.json();
+	const { score, comment } = await request.json();
 	if (score !== 'up' && score !== 'down') error(400, "score must be 'up' or 'down'");
+	if (comment !== undefined && comment !== null && typeof comment !== 'string')
+		error(400, 'comment must be a string');
+
+	// Trimmed here and not only in the dialog: this is the boundary a direct
+	// caller reaches, and whitespace is not a comment. Refusing the oversized
+	// case here also saves the round trip the backend would spend rejecting it.
+	const trimmed = typeof comment === 'string' ? comment.trim() : '';
+	if (codePointLength(trimmed) > COMMENT_MAX_LENGTH)
+		error(400, `comment must be at most ${COMMENT_MAX_LENGTH} characters`);
 
 	const secret = env.AUTH_SECRET;
 	if (!secret) error(500, 'Server misconfigured');
@@ -65,7 +85,11 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${session.accessToken}`
 		},
-		body: JSON.stringify({ run_id: parsed.run_id, score })
+		body: JSON.stringify(
+			trimmed
+				? { run_id: parsed.run_id, score, comment: trimmed }
+				: { run_id: parsed.run_id, score }
+		)
 	});
 
 	if (!response.ok) {

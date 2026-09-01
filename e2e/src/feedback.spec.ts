@@ -1,4 +1,4 @@
-import type { Page, Request } from '@playwright/test';
+import type { Locator, Page, Request } from '@playwright/test';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
 import { gotoFreshThread } from './fixtures/backend';
@@ -26,6 +26,28 @@ async function sendAndAwaitReply(chat: ChatPage, text: string, expectedCount: nu
 	await chat.textInput.press('Enter');
 	await expect(chat.aiMessages).toHaveCount(expectedCount, { timeout: 30_000 });
 	await expect(chat.aiMessages.nth(expectedCount - 1)).not.toBeEmpty();
+}
+
+/** Click a rating and resolve the comment box it opens.
+ *
+ *  Nothing reaches the network until the box resolves. Cancelling is the
+ *  no-comment path, which is what most of these assert; passing `comment` types
+ *  it in and submits, so the rating and the comment go as one request. */
+async function rate(chat: ChatPage, aiMessage: Locator, which: 'up' | 'down', comment?: string) {
+	await chat.feedbackButtons(aiMessage)[which].click();
+	await expect(chat.feedbackDialog).toBeVisible();
+
+	if (comment === undefined) {
+		await chat.feedbackCancel.click();
+	} else {
+		// Typed a key at a time rather than filled: this is the only place real
+		// keystrokes hit the bound textarea, since jsdom drops them under the
+		// surrounding re-renders.
+		await chat.feedbackComment.pressSequentially(comment);
+		await chat.feedbackSubmit.click();
+	}
+
+	await expect(chat.feedbackDialog).toBeHidden();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -60,7 +82,7 @@ test('rating a reply mints a token for its run and posts the score', async ({ pa
 	const scorePost = page.waitForRequest(
 		(req) => req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())
 	);
-	await chat.feedbackButtons(aiMessage).up.click();
+	await rate(chat, aiMessage, 'up');
 
 	const req = await scorePost;
 	expect(req.postDataJSON()).toEqual({ score: 'up' });
@@ -77,13 +99,13 @@ test('rating an earlier reply scores that run, not the most recent one', async (
 
 	const older = chat.aiMessages.first();
 	await older.hover();
-	await chat.feedbackButtons(older).up.click();
+	await rate(chat, older, 'up');
 	await expect.poll(() => runIds).toHaveLength(1);
 	const olderRunId = runIds[0];
 
 	const newer = chat.aiMessages.nth(1);
 	await newer.hover();
-	await chat.feedbackButtons(newer).up.click();
+	await rate(chat, newer, 'up');
 	await expect.poll(() => runIds).toHaveLength(2);
 
 	expect(runIds[1]).not.toEqual(olderRunId);
@@ -104,7 +126,7 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	const scorePost = page.waitForRequest(
 		(req) => req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())
 	);
-	await chat.feedbackButtons(aiMessage).down.click();
+	await rate(chat, aiMessage, 'down');
 
 	const req = await scorePost;
 	expect(req.postDataJSON()).toEqual({ score: 'down' });
@@ -123,7 +145,7 @@ test('a rating is still shown after a reload', async ({ page, chat }) => {
 	const persisted = page.waitForRequest(
 		(req) => req.method() === 'PATCH' && /\/threads\//.test(req.url())
 	);
-	await chat.feedbackButtons(aiMessage).up.click();
+	await rate(chat, aiMessage, 'up');
 	await persisted;
 
 	await page.reload();
@@ -137,4 +159,52 @@ test('a rating is still shown after a reload', async ({ page, chat }) => {
 	const restored = chat.aiMessages.first();
 	await expect(chat.feedbackButtons(restored).up).toHaveClass(/bg-muted/);
 	await expect(chat.feedbackButtons(restored).down).not.toHaveClass(/bg-muted/);
+});
+
+test('a comment is sent with its rating, in the same request', async ({ page, chat }) => {
+	await sendAndAwaitReply(chat, 'Hello', 1);
+
+	const scored: unknown[] = [];
+	page.on('request', (req: Request) => {
+		if (req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())) {
+			scored.push(req.postDataJSON());
+		}
+	});
+
+	const aiMessage = chat.aiMessages.first();
+	await aiMessage.hover();
+	await rate(chat, aiMessage, 'down', 'lost the thread halfway');
+
+	// One request carrying both, not a rating followed by an edit.
+	await expect.poll(() => scored).toEqual([{ score: 'down', comment: 'lost the thread halfway' }]);
+});
+
+test('cancelling the comment box still records the rating', async ({ page, chat }) => {
+	// The rating is the feedback; the comment is optional. Backing out of the box
+	// must not discard the thumb that opened it.
+	await sendAndAwaitReply(chat, 'Hello', 1);
+
+	// Awaited as a *response*, not a request. `waitForRequest` only proves the
+	// browser sent something, and the filled-in thumb it would then assert on is
+	// the optimistic write from the click — both are already true when the server
+	// rejects the score, so that pairing stays green against a backend that
+	// records nothing.
+	const scored = page.waitForResponse(
+		(res) => res.request().method() === 'POST' && /\/api\/feedback\?token=/.test(res.url())
+	);
+
+	const aiMessage = chat.aiMessages.first();
+	await aiMessage.hover();
+	await chat.feedbackButtons(aiMessage).up.click();
+	await expect(chat.feedbackDialog).toBeVisible();
+	await chat.feedbackCancel.click();
+
+	const res = await scored;
+	expect(res.request().postDataJSON()).toEqual({ score: 'up' });
+	expect(res.ok()).toBe(true);
+
+	// Survives the round trip: the rollback runs on failure, so a thumb still
+	// filled after the response — and no failure marker — is the real evidence.
+	await expect(chat.feedbackButtons(aiMessage).up).toHaveClass(/bg-muted/);
+	await expect(aiMessage.getByTestId('feedback-failed')).toHaveCount(0);
 });
