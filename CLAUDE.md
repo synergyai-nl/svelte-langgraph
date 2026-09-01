@@ -50,6 +50,29 @@ moon :lint-fix       # Fix linting issues
 moon :format-write   # Fix formatting issues
 ```
 
+#### Run one moon task at a time
+
+**Never run two moon tasks concurrently, and never start one while another is
+still running or was just interrupted.** `moon check frontend` alone spawns 9
+vitest worker processes. Overlapping or interrupted runs orphan those workers —
+they reparent to PID 1 and keep spinning at ~30% CPU each, which has taken a
+dev machine down.
+
+When iterating on a single test file, skip the full check and target the file:
+
+```bash
+cd apps/frontend && npx vitest run --project client src/lib/components/Chat.svelte.test.ts
+```
+
+After interrupting any moon or vitest run, check for orphans before continuing:
+
+```bash
+ps -eo pid,ppid,pcpu,command | grep -Ei "vitest|moon" | grep -v grep
+```
+
+Kill only PIDs whose parent is 1 (`ppid=1`). Leave editor language servers and
+any long-running `moon backend:ai-mock-e2e` alone.
+
 ### Building
 ```bash
 # Build entire workspace
