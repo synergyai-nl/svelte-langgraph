@@ -39,7 +39,7 @@
 	{:else}
 		<div class="max-w-md rounded-xl border p-8 text-center text-sm">
 			<p>Sign in to try the embedded chat demo.</p>
-			<a href="/" class="underline">Go to sign in</a>
+			<a href="/chat" class="underline">Go to sign in</a>
 		</div>
 	{/if}
 </div>

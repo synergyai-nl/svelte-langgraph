@@ -34,7 +34,12 @@
 {:else if ctx?.createThreadError}
 	<div class="flex h-full flex-col items-center justify-center gap-2 p-4 text-sm">
 		<p class="text-destructive" role="alert">Couldn't start a new chat.</p>
-		<button type="button" class="underline" onclick={() => ctx?.createThread()}>Try again</button>
+		<button
+			type="button"
+			class="underline"
+			disabled={ctx?.creatingThread}
+			onclick={() => ctx?.createThread()}>Try again</button
+		>
 	</div>
 {:else}
 	<!-- No readiness gate needed: `ChatSurface` holds `Conversation` behind its own loader until
