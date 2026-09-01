@@ -291,7 +291,7 @@
 			const res = await fetch(url, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ score: type === 'up' ? 1 : 0 })
+				body: JSON.stringify({ score: type })
 			});
 			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
 		} catch (err) {

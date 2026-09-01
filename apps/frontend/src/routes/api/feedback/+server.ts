@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request, url, locals }) => {
 	if (!token) error(400, 'token query param is required');
 
 	const { score } = await request.json();
-	if (!Number.isFinite(score) || (score !== 0 && score !== 1)) error(400, 'score must be 0 or 1');
+	if (score !== 'up' && score !== 'down') error(400, "score must be 'up' or 'down'");
 
 	const secret = env.AUTH_SECRET;
 	if (!secret) error(500, 'Server misconfigured');

@@ -14,7 +14,7 @@ def test_scores_the_run_and_reports_success(langfuse_env):
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
     with TestClient(app) as client:
-        response = client.post("/feedback", json={"run_id": RUN_ID, "score": 1.0})
+        response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "recorded": True}
@@ -29,7 +29,7 @@ def test_a_failed_score_reaches_the_caller(langfuse_env):
     respx.post(SCORE_URL).mock(side_effect=httpx.ConnectError("unreachable"))
 
     with TestClient(app) as client:
-        response = client.post("/feedback", json={"run_id": RUN_ID, "score": 0.0})
+        response = client.post("/feedback", json={"run_id": RUN_ID, "score": "down"})
 
     assert response.status_code == 502
 
@@ -38,7 +38,7 @@ def test_a_failed_score_reaches_the_caller(langfuse_env):
 def test_an_unconfigured_deployment_accepts_the_rating(no_langfuse_env):
     """Running without Langfuse is a deployment choice, not a failed click."""
     with TestClient(app) as client:
-        response = client.post("/feedback", json={"run_id": RUN_ID, "score": 1.0})
+        response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "recorded": False}
@@ -47,4 +47,10 @@ def test_an_unconfigured_deployment_accepts_the_rating(no_langfuse_env):
 
 def test_feedback_rejects_a_malformed_payload(langfuse_env):
     with TestClient(app) as client:
-        assert client.post("/feedback", json={"score": 1.0}).status_code == 422
+        assert client.post("/feedback", json={"score": "up"}).status_code == 422
+        assert (
+            client.post(
+                "/feedback", json={"run_id": RUN_ID, "score": "sideways"}
+            ).status_code
+            == 422
+        )
