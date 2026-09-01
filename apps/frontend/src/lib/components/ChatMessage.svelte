@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { Message } from '@svelte-langgraph/client';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';

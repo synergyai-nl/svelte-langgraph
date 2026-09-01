@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-	shortenThreadId,
-	threadLabel,
-	toThreadSummary,
-	type SearchedThread
-} from './threadList.js';
+import { shortenThreadId, threadLabel, toThreadSummary, type SearchedThread } from './threads.js';
 
 function makeSearchedThread(overrides: Partial<SearchedThread> = {}): SearchedThread {
 	return {

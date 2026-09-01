@@ -3,8 +3,7 @@ import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { createRawSnippet, tick } from 'svelte';
 import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
 import { aThread } from '../__tests__/fixtures';
-import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
-import type { ThreadList } from '$lib/langgraph/threadList.svelte';
+import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from '$lib/components/ui/sidebar';
 
 interface ListStubOverrides {
@@ -17,7 +16,7 @@ interface ListStubOverrides {
 	retry?: () => void;
 }
 
-function makeListStub(overrides: ListStubOverrides = {}): ThreadList {
+function makeListStub(overrides: ListStubOverrides = {}): ThreadListState {
 	return {
 		threads: overrides.threads ?? [],
 		loading: overrides.loading ?? false,
@@ -28,7 +27,7 @@ function makeListStub(overrides: ListStubOverrides = {}): ThreadList {
 		retry: overrides.retry ?? vi.fn(),
 		setClient: vi.fn(),
 		setActiveThreadId: vi.fn()
-	} as unknown as ThreadList;
+	} as unknown as ThreadListState;
 }
 
 function renderComponent(props: Record<string, unknown> = {}) {
