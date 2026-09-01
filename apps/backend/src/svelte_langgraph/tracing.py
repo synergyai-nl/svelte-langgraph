@@ -17,6 +17,7 @@ and `record_score` can then post straight to it.
 import asyncio
 import logging
 import os
+from typing import Literal
 from uuid import UUID
 
 import httpx
@@ -30,6 +31,8 @@ from opentelemetry.trace import (
 )
 
 logger = logging.getLogger(__name__)
+
+Rating = Literal["up", "down"]
 
 # Same variable Aegra's LangfuseTarget reads, so tracing and scoring are
 # configured once rather than twice.
@@ -117,7 +120,7 @@ def pin_trace_to_run(config: RunnableConfig) -> None:
     otel_context.attach(set_span_in_context(NonRecordingSpan(span_context)))
 
 
-async def record_score(run_id: str, score: float, name: str = "user_feedback") -> bool:
+async def record_score(run_id: str, score: Rating, name: str = "user_feedback") -> bool:
     """Attach `score` to the Langfuse trace produced by `run_id`.
 
     No lookup and no waiting for ingestion: the trace id is derived from the run
@@ -134,7 +137,16 @@ async def record_score(run_id: str, score: float, name: str = "user_feedback") -
         logger.warning("run_id %r is not a UUID; cannot score its trace", run_id)
         return False
 
-    payload = {"traceId": trace_id, "name": name, "value": score}
+    payload = {
+        "traceId": trace_id,
+        "name": name,
+        # Categorical values travel in `value`; there is no `stringValue` on
+        # the request, and without `dataType` the label is read as a numeric.
+        # Adding a `configId` here would also map the categories to numbers,
+        # which is what dashboards need to show a rate rather than counts.
+        "value": score,
+        "dataType": "CATEGORICAL",
+    }
     url = f"{_base_url()}/api/public/scores"
     last_error: Exception | None = None
 

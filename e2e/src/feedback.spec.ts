@@ -63,7 +63,7 @@ test('rating a reply mints a token for its run and posts the score', async ({ pa
 	await chat.feedbackButtons(aiMessage).up.click();
 
 	const req = await scorePost;
-	expect(req.postDataJSON()).toEqual({ score: 1 });
+	expect(req.postDataJSON()).toEqual({ score: 'up' });
 	expect(runIds).toHaveLength(1);
 });
 
@@ -107,7 +107,7 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	await chat.feedbackButtons(aiMessage).down.click();
 
 	const req = await scorePost;
-	expect(req.postDataJSON()).toEqual({ score: 0 });
+	expect(req.postDataJSON()).toEqual({ score: 'down' });
 	expect(runIds).toHaveLength(1);
 });
 

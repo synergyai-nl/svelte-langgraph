@@ -1,14 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from .tracing import is_configured, record_score
+from .tracing import Rating, is_configured, record_score
 
 app = FastAPI()
 
 
 class FeedbackPayload(BaseModel):
     run_id: str
-    score: float
+    score: Rating
 
 
 @app.post("/feedback")

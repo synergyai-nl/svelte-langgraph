@@ -464,7 +464,7 @@ describe('Chat', () => {
 				);
 				expect(fetchMock).toHaveBeenCalledWith(
 					'/api/feedback?token=signed-token',
-					expect.objectContaining({ body: JSON.stringify({ score: 1 }) })
+					expect.objectContaining({ body: JSON.stringify({ score: 'up' }) })
 				);
 			});
 		});
@@ -675,7 +675,7 @@ describe('Chat', () => {
 				);
 				expect(fetchMock).toHaveBeenCalledWith(
 					'/api/feedback?token=signed-token',
-					expect.objectContaining({ body: JSON.stringify({ score: 0 }) })
+					expect.objectContaining({ body: JSON.stringify({ score: 'down' }) })
 				);
 			});
 		});

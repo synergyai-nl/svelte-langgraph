@@ -144,7 +144,7 @@ class TestScoring:
     async def test_no_score_without_credentials(self, no_langfuse_env):
         """Langfuse is optional, so an unconfigured deployment must no-op rather
         than raise — and must not reach out to the default localhost host."""
-        assert await record_score(RUN_ID, 1.0) is False
+        assert await record_score(RUN_ID, "up") is False
         assert not respx.calls
 
     @respx.mock
@@ -152,25 +152,26 @@ class TestScoring:
         """The point of pinning: no lookup call, just the score."""
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, 1.0) is True
+        assert await record_score(RUN_ID, "up") is True
 
         assert len(respx.calls) == 1
         assert json.loads(score.calls.last.request.content) == {
             "traceId": TRACE_ID,
             "name": "user_feedback",
-            "value": 1.0,
+            "value": "up",
+            "dataType": "CATEGORICAL",
         }
 
     @respx.mock
     async def test_score_name_is_overridable(self, langfuse_env):
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, 0.0, name="thumbs") is True
+        assert await record_score(RUN_ID, "down", name="thumbs") is True
         assert json.loads(score.calls.last.request.content)["name"] == "thumbs"
 
     @respx.mock
     async def test_a_non_uuid_run_is_not_scored(self, langfuse_env, caplog):
-        assert await record_score("cli", 1.0) is False
+        assert await record_score("cli", "up") is False
         assert not respx.calls
         assert "not a UUID" in caplog.text
 
@@ -181,7 +182,7 @@ class TestScoring:
         a 500 and lose the distinction."""
         score = respx.post(SCORE_URL).mock(return_value=httpx.Response(401))
 
-        assert await record_score(RUN_ID, 1.0) is False
+        assert await record_score(RUN_ID, "up") is False
         assert score.call_count == 1
         assert "Langfuse rejected" in caplog.text
 
@@ -193,7 +194,7 @@ class TestScoring:
             side_effect=[httpx.Response(503), httpx.ConnectError("blip"), ACCEPTED]
         )
 
-        assert await record_score(RUN_ID, 1.0) is True
+        assert await record_score(RUN_ID, "up") is True
         assert score.call_count == 3
 
     @respx.mock
@@ -201,11 +202,11 @@ class TestScoring:
         """/feedback awaits this, so it must fail rather than hang."""
         score = respx.post(SCORE_URL).mock(return_value=httpx.Response(503))
 
-        assert await record_score(RUN_ID, 1.0) is False
+        assert await record_score(RUN_ID, "up") is False
         assert score.call_count == 3
         assert "Giving up" in caplog.text
 
     @respx.mock
     async def test_a_missing_run_id_is_not_an_error(self, langfuse_env):
-        assert await record_score("", 1.0) is False
+        assert await record_score("", "up") is False
         assert not respx.calls
