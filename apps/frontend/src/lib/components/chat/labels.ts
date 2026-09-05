@@ -25,9 +25,10 @@ export type DeepPartial<T> = {
 /**
  * Aggregates every chat component's labels under one type, keyed by component name. Every
  * component resolves its own scope independently (see `resolveLabels`); this type exists so a
- * single object — today assembled from localized message strings at the route/`Chat.svelte`
- * level, eventually a `<LangGraph>` context value (PR 3) — can describe overrides for the whole
- * tree at once, regardless of how deeply a component is nested inside another.
+ * single object — passed as the `<LangGraph>` provider's `labels` prop, typically assembled from
+ * localized message strings at the route level (see `routes/chat/+layout.svelte`) — can describe
+ * overrides for the whole tree at once, regardless of how deeply a component is nested inside
+ * another.
  *
  * Only components that actually render label strings (directly or by aggregating their
  * children's) get an entry — e.g. `Suggestions`, `SubmitButton`, `StateField`, and `ChatWaiting`
@@ -60,8 +61,8 @@ export interface LangGraphLabels {
  * it again against its own defaults there. Re-merging at each level makes a deep merge here
  * redundant.
  *
- * `context` is always `undefined` until the `<LangGraph>` provider lands (PR 3); the parameter
- * exists now so components don't need to change shape when it arrives.
+ * `context` is `undefined` for a component rendered outside a `<LangGraph>` provider, or when the
+ * provider was given no `labels` prop — in both cases the merge just falls through to `defaults`.
  */
 export function resolveLabels<T extends object>(
 	defaults: T,
