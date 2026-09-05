@@ -23,9 +23,8 @@ from svelte_langgraph.graph import make_graph
 from svelte_langgraph.tracing import record_score, trace_id_for_run
 from tests.conftest import make_completion_response
 
-from .conftest import BASE_URL
+from .conftest import BASE_URL, RUN_ID
 
-RUN_ID = "2762a745-00bb-4933-a51a-eddd65679b75"
 TRACE_ID = "2762a74500bb4933a51aeddd65679b75"
 
 SCORE_URL = f"{BASE_URL}/api/public/scores"

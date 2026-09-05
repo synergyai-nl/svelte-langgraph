@@ -3,6 +3,10 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import * as m from '$lib/paraglide/messages.js';
+	// Capped here so the backend's 422 is unreachable from the UI. `maxlength`
+	// counts UTF-16 units against a backend limit in code points, so it can only
+	// ever stop short of it -- never over.
+	import { COMMENT_MAX_LENGTH } from '$lib/langgraph/feedback';
 
 	interface Props {
 		/** The rating being commented on, or null when the box is closed. */
@@ -56,6 +60,7 @@
 			bind:value={comment}
 			data-testid="feedback-comment"
 			rows={4}
+			maxlength={COMMENT_MAX_LENGTH}
 			placeholder={rating === 'down'
 				? m.message_feedback_dialog_placeholder_negative()
 				: m.message_feedback_dialog_placeholder_positive()}

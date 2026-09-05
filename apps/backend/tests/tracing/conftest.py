@@ -6,11 +6,22 @@ here touches a chat model, so pinning both parameters to a single value keeps
 this suite at one run per test instead of sixteen.
 """
 
+from types import SimpleNamespace
+
 import pytest
+from aegra_api.core.auth_middleware import LangGraphAuthBackend
+from langgraph_sdk import Auth
+from sqlalchemy import Select
+
+from svelte_langgraph import routes
 
 from tests.conftest import PROVIDER_CASES
 
 BASE_URL = "https://langfuse.test"
+
+# The run the /feedback tests post about. Lives here rather than in a test
+# module because the fixtures below answer ownership questions in terms of it.
+RUN_ID = "2762a745-00bb-4933-a51a-eddd65679b75"
 
 
 @pytest.fixture(scope="module")
@@ -43,3 +54,117 @@ def instant_retries(monkeypatch):
     from svelte_langgraph import tracing
 
     monkeypatch.setattr(tracing, "_RETRY_DELAYS", (0.0,) * len(tracing._RETRY_DELAYS))
+
+
+# Deliberately unlike the display name and unlike anything a stray literal in
+# the route would plausibly be: an ownership check that hardcoded an identity,
+# or read one off the wrong User field, has to miss this.
+USER_ID = "oidc|3f2a91c4-owner"
+DISPLAY_NAME = "Some Owner"
+
+# A second caller for the tests that vary who is asking. One hardcoded identity
+# cannot satisfy an assertion made against both.
+OTHER_USER_ID = "oidc|8b7d05e6-other"
+
+
+class _StubSession:
+    """Stands in for the AsyncSession the ownership check queries.
+
+    `owned` is what `session.scalar()` returns: the run id when the run exists
+    and belongs to the caller, None when it does not. The route only asks that
+    one question, so distinguishing "no such run" from "someone else's run" is
+    the database's job, not this stub's -- both arrive here as None, which is
+    also why the route answers 404 to both.
+    """
+
+    def __init__(self, owned: str | None):
+        self._owned = owned
+        self.statement: Select | None = None
+
+    async def scalar(self, statement):
+        # Kept so a test can assert what was actually asked. Returning the right
+        # answer to the wrong question is the failure mode here: a query filtered
+        # on run id alone would satisfy every other test in the file while
+        # letting anyone score anyone's run.
+        self.statement = statement
+        return self._owned
+
+    def compiled_sql(self) -> str:
+        assert self.statement is not None, "nothing was queried"
+        return str(self.statement.compile(compile_kwargs={"literal_binds": True}))
+
+
+@pytest.fixture
+def run_owner(request):
+    """What the ownership query finds: RUN_ID when the caller owns the run.
+
+    Override with `@pytest.mark.parametrize("run_owner", [None], indirect=True)`
+    for the run that is missing or belongs to someone else.
+    """
+    return getattr(request, "param", RUN_ID)
+
+
+@pytest.fixture
+def session(run_owner):
+    return _StubSession(run_owner)
+
+
+@pytest.fixture
+def caller_id(request):
+    """Who is asking. Override with
+    `@pytest.mark.parametrize("caller_id", [OTHER_USER_ID], indirect=True)`
+    to check the query follows the caller rather than a fixed value."""
+    return getattr(request, "param", USER_ID)
+
+
+@pytest.fixture
+def auth_installed(request, monkeypatch):
+    """Whether Aegra managed to load our auth module.
+
+    Pinned rather than inherited from the ambient config: every other test here
+    would otherwise pass or fail on whether aegra.json happened to resolve.
+    Override with
+    `@pytest.mark.parametrize("auth_installed", [False], indirect=True)`, or
+    with "unrecognised" for a backend this code does not know how to inspect.
+    """
+    installed = getattr(request, "param", True)
+    if installed == "unrecognised":
+        # Something that is not Aegra's backend at all, and so cannot be shown
+        # to have auth installed however healthy its attributes look.
+        backend = SimpleNamespace(auth_instance=Auth())
+    else:
+        # A real backend built without __init__, which would go and load auth
+        # for real. The route narrows on this type, so a stand-in would be
+        # refused and every other test here would 503.
+        backend = object.__new__(LangGraphAuthBackend)
+        backend.auth_instance = Auth() if installed else None
+    monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
+    return installed
+
+
+@pytest.fixture
+def client(session, caller_id, auth_installed):
+    """A TestClient that is authenticated and owns the run it rates.
+
+    /feedback depends on `require_auth` and `get_session`, which would otherwise
+    reach the real OIDC issuer and a real Postgres. Overriding both stands in for
+    a valid token and an owned run without pretending to validate either -- the
+    cases that exercise the genuine unauthenticated and unowned paths live in
+    test_routes.py.
+    """
+    from aegra_api.core.auth_deps import require_auth
+    from aegra_api.core.orm import get_session
+    from aegra_api.models import User
+    from fastapi.testclient import TestClient
+
+    from svelte_langgraph.routes import app
+
+    app.dependency_overrides[require_auth] = lambda: User(
+        identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=True
+    )
+    app.dependency_overrides[get_session] = lambda: session
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
