@@ -1,0 +1,95 @@
+/**
+ * Frontend-driven thread titling (SLG-117 WP1). The chat graph no longer emits a `title` in
+ * state — this module triggers a separate, stateless run of the `"title"` graph and writes the
+ * result into thread metadata itself, once, the first time a thread has a complete opening
+ * exchange and no title yet.
+ */
+import type { Client } from '@langchain/langgraph-sdk';
+import { extractTextFromContent } from './utils';
+
+type RawMessage = Record<string, unknown>;
+
+/**
+ * First human message + first non-empty AI message, in that order — the opening exchange a
+ * thread's topic is derived from (mirrors `TITLE_CONVERSATION_MAX_TURNS` in the backend's
+ * title.py, which caps again regardless). Returns fewer than 2 entries while the exchange is
+ * still incomplete (e.g. no AI reply yet).
+ *
+ * `messages` is typed loosely (`unknown[]`, cast internally): callers pass `stream.messages`,
+ * whose real SDK type has no index signature, the same reason `Chat.svelte`'s own `mapMessages`
+ * casts each item before reading `.type`/`.content`.
+ */
+export function selectOpeningExchange(messages: readonly unknown[]): RawMessage[] {
+	const items = messages as readonly RawMessage[];
+	const human = items.find((m) => m.type === 'human');
+	const ai = items.find((m) => m.type === 'ai' && extractTextFromContent(m.content).length > 0);
+	return [human, ai].filter((m): m is RawMessage => m != null);
+}
+
+export interface ThreadTitlerOptions {
+	client: Client;
+	threadId: string;
+	/** Lazily resolves the "title" graph's assistant id; caching is the caller's job. */
+	resolveTitleAssistantId: () => Promise<string>;
+	/** Called once, right after a title is freshly written to thread metadata. */
+	onTitled?: () => void;
+}
+
+export interface ThreadTitler {
+	/**
+	 * Trigger titling from `messages` (raw SDK message objects — see WP1 notes on why these must
+	 * be `stream.messages`, not the UI-mapped array). Safe to call on every settle/backfill: it
+	 * no-ops unless there's a complete opening exchange, and single-flights per mount.
+	 */
+	ensureThreadTitle(messages: readonly unknown[]): Promise<void>;
+}
+
+/**
+ * Two accepted residual races, left as-is rather than engineered away: (a) the GET->PATCH
+ * window vs. a concurrent rename by another client/tab, and (b) two tabs both generating for
+ * the same untitled thread — harmless, since temperature=0 makes the titles near-identical and
+ * the second PATCH just a same-value write.
+ */
+export function createThreadTitler({
+	client,
+	threadId,
+	resolveTitleAssistantId,
+	onTitled
+}: ThreadTitlerOptions): ThreadTitler {
+	let running = false;
+	let knownTitled = false;
+
+	async function ensureThreadTitle(messages: readonly unknown[]): Promise<void> {
+		if (running || knownTitled) return;
+		const exchange = selectOpeningExchange(messages);
+		if (exchange.length < 2) return;
+
+		running = true;
+		try {
+			// Write-only-when-absent: user renames and other clients always win.
+			const thread = await client.threads.get(threadId);
+			const storedTitle = thread.metadata?.title;
+			if (typeof storedTitle === 'string' && storedTitle.length > 0) {
+				knownTitled = true;
+				return;
+			}
+
+			const assistantId = await resolveTitleAssistantId();
+			const result = await client.runs.wait(null, assistantId, { input: { messages: exchange } });
+			const title = (result as { title?: unknown } | null)?.title;
+			if (typeof title === 'string' && title.length > 0) {
+				await client.threads.update(threadId, { metadata: { title } });
+				knownTitled = true;
+				onTitled?.();
+			}
+			// Empty/null title: fall through to `finally`, which resets `running` so the next
+			// trigger (e.g. a later settle) retries.
+		} catch {
+			// Cosmetic feature — never surface as a chat error. `running` reset below lets retry.
+		} finally {
+			running = false;
+		}
+	}
+
+	return { ensureThreadTitle };
+}
