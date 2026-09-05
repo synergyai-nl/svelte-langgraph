@@ -4,7 +4,7 @@ import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
 import type { Client } from '@langchain/langgraph-sdk';
-import type { ChatSuggestion } from './ChatSuggestions.svelte';
+import type { ChatSuggestion } from './chat/Suggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
 

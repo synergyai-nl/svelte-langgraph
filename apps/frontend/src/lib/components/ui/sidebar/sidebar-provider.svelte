@@ -29,6 +29,10 @@
 			open = value;
 			onOpenChange(value);
 
+			// No mounted `Sidebar.Root` means no chrome is reflecting this state, so there is
+			// nothing for a persisted cookie to restore on reload (SLG-133).
+			if (!sidebar.hasRegisteredRoot) return;
+
 			// This sets the cookie to keep the sidebar state.
 			// PATCHED vs upstream registry: upstream omits SameSite, leaving it to the browser
 			// default. Setting it explicitly keeps behaviour consistent across browsers and stops
@@ -45,7 +49,7 @@
 		data-slot="sidebar-wrapper"
 		style="--sidebar-width: {SIDEBAR_WIDTH}; --sidebar-width-icon: {SIDEBAR_WIDTH_ICON}; {style}"
 		class={cn(
-			'group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex min-h-svh w-full',
+			'group/sidebar-wrapper has-data-[variant=inset]:bg-sidebar flex h-full min-h-0 w-full',
 			className
 		)}
 		bind:this={ref}

@@ -32,6 +32,14 @@
 	} = $props();
 
 	const sidebar = useSidebar();
+
+	// Registers this mounted instance against the shared `SidebarState` so the provider's global
+	// side effects (keyboard shortcut, persisted-state cookie) know at least one `Sidebar.Root` is
+	// actually rendering chrome for them to affect (SLG-133). Unregisters on destroy so a later
+	// `Provider` with no `Root` correctly sees none registered.
+	$effect(() => {
+		return sidebar.registerRoot();
+	});
 </script>
 
 {#if collapsible === 'none'}
