@@ -348,4 +348,3 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
 	});
 });
-
