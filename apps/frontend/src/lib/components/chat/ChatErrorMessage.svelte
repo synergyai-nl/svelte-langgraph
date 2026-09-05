@@ -13,6 +13,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { CircleAlert, RefreshCw } from '@lucide/svelte';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		error: Error;
@@ -22,7 +23,10 @@
 
 	let { error, onRetry, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultChatErrorMessageLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(
+		resolveLabels(defaultChatErrorMessageLabels, ctx?.labels?.errorMessage, labels)
+	);
 </script>
 
 <div class="mb-6 flex w-full justify-start">

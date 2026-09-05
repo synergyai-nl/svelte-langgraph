@@ -13,6 +13,7 @@
 	import { Pencil } from '@lucide/svelte';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		isHovered: boolean;
@@ -22,7 +23,10 @@
 
 	let { isHovered, onEdit, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultUserMessageActionsLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(
+		resolveLabels(defaultUserMessageActionsLabels, ctx?.labels?.userActions, labels)
+	);
 </script>
 
 <div

@@ -21,6 +21,7 @@
 	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		message: ToolMessage;
@@ -29,7 +30,8 @@
 
 	let { message, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultChatToolMessageLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultChatToolMessageLabels, ctx?.labels?.toolMessage, labels));
 
 	let collapsed = $state(true);
 </script>

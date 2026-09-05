@@ -12,6 +12,7 @@
 	import { Brain, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		thinking: string;
@@ -22,7 +23,8 @@
 
 	let { thinking, active = false, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultThinkingBlockLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultThinkingBlockLabels, ctx?.labels?.thinking, labels));
 
 	let collapsed = $state(true);
 	const uid = $props.id();
