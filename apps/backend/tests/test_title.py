@@ -2,7 +2,6 @@
 
 Covers:
 - End-to-end graph invocation producing a sanitized title
-- Inline `<think>`/`<thinking>` stripping (thinking-token leak defense)
 - Unicode format-control stripping in sanitize_title (bidi spoofing, etc.)
 - Prompt-injection resilience
 - Model failure -> {"title": None}, with a warning logged
@@ -19,7 +18,6 @@ from svelte_langgraph.title import (
     TITLE_CONVERSATION_MAX_TURNS,
     TITLE_MAX_CHARS,
     _render_conversation_for_title,
-    _strip_thinking,
     make_title_graph,
     sanitize_title,
 )
@@ -151,80 +149,23 @@ async def test_graph_invoke_survives_prompt_injection_attempt(graph, monkeypatch
     assert not title.endswith("*")
 
 
-# --- Inline reasoning ("thinking") leak defense ---------------------------
+# --- Reasoning tokens: the LangChain way only ------------------------------
 
 
-@pytest.mark.asyncio
-async def test_graph_strips_think_tags_from_model_response(graph, monkeypatch):
-    monkeypatch.setattr(
-        "svelte_langgraph.title.get_title_model",
-        lambda: _StubTitleModel("<think>deciding on a title</think>Trip to Paris"),
-    )
-
-    result = await graph.ainvoke(
-        {"messages": [HumanMessage(content="Help me plan a trip to Paris")]}
-    )
-
-    assert result == {"title": "Trip to Paris"}
-
-
-@pytest.mark.asyncio
-async def test_graph_strips_unclosed_leading_think_tag(graph, monkeypatch):
-    """A response truncated mid-thought never reaches a closing tag."""
-    monkeypatch.setattr(
-        "svelte_langgraph.title.get_title_model",
-        lambda: _StubTitleModel("<think>deciding on a title and never closing"),
-    )
-
-    result = await graph.ainvoke(
-        {"messages": [HumanMessage(content="Help me plan a trip to Paris")]}
-    )
-
-    assert result == {"title": None}
-
-
-def test_strip_thinking_handles_nested_blocks():
-    stripped = _strip_thinking(
-        "<think>outer <think>inner</think> outer</think>Trip to Paris"
-    )
-    assert stripped == "Trip to Paris"
-
-
-def test_strip_thinking_drops_unclosed_tag_mid_string():
-    stripped = _strip_thinking("Sure thing. <think>deciding and never closing")
-    assert stripped == "Sure thing. "
-
-
-def test_strip_thinking_ignores_orphan_closing_tag():
-    assert _strip_thinking("Trip to </think>Paris") == "Trip to Paris"
-
-
-@pytest.mark.asyncio
-async def test_graph_think_only_response_yields_none(graph, monkeypatch):
-    monkeypatch.setattr(
-        "svelte_langgraph.title.get_title_model",
-        lambda: _StubTitleModel("<thinking>just thinking, no title</thinking>"),
-    )
-
-    result = await graph.ainvoke(
-        {"messages": [HumanMessage(content="Help me plan a trip to Paris")]}
-    )
-
-    assert result == {"title": None}
-
-
-def test_render_conversation_strips_think_tags_from_ai_message_only():
-    """AIMessage think tags are stripped; the same literal text in a HumanMessage survives --
-    a user pasting `<think>` text must not have it eaten."""
+def test_render_conversation_passes_literal_think_tags_through():
+    """Reasoning separation is the provider/wrapper's job: `.text` excludes
+    structured reasoning, and literal tags in string content are content --
+    no tag scraping here, for either role."""
     rendered = _render_conversation_for_title(
         [
-            HumanMessage(content="<think>not thinking, just pasted text</think>"),
-            AIMessage(content="<think>internal reasoning</think>Sure, noted."),
+            HumanMessage(content="<think>pasted text</think>"),
+            AIMessage(content="<think>inline tags</think>Sure, noted."),
         ]
     )
 
     assert rendered == (
-        "User: <think>not thinking, just pasted text</think>\nAssistant: Sure, noted."
+        "User: <think>pasted text</think>\n"
+        "Assistant: <think>inline tags</think>Sure, noted."
     )
 
 

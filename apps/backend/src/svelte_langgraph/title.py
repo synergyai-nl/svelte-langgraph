@@ -71,30 +71,6 @@ def _strip_format_chars(text: str) -> str:
     return "".join(c for c in text if unicodedata.category(c) not in _CF_CATEGORIES)
 
 
-_THINK_TAG_RE = re.compile(r"(</?think(?:ing)?>)", re.IGNORECASE)
-
-
-def _strip_thinking(text: str) -> str:
-    """Strip inline `<think>`/`<thinking>` blocks from a title-model response.
-
-    Defensive backstop: some OpenAI-compatible servers only split reasoning
-    into a separate field on the streaming path, and inline it as literal
-    tags on the non-streaming path this graph uses. Depth-tracked so nested
-    blocks and unclosed tags (truncation mid-thought) drop cleanly.
-    """
-    out: list[str] = []
-    depth = 0
-    for token in _THINK_TAG_RE.split(text):
-        if _THINK_TAG_RE.fullmatch(token):
-            if token[1] != "/":
-                depth += 1
-            elif depth:
-                depth -= 1
-        elif depth == 0:
-            out.append(token)
-    return "".join(out)
-
-
 def sanitize_title(raw: str) -> str | None:
     """Turn a model's raw title completion into a safe, display-ready title.
 
@@ -124,9 +100,7 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
     `TITLE_CONVERSATION_MAX_CHARS_PER_TURN` characters each.
 
     Only `HumanMessage`/`AIMessage` text is included (tool calls/results are
-    noise for a topic summary). `AIMessage` text runs through
-    `_strip_thinking`; `HumanMessage` text never does, so a user pasting a
-    literal `<think>` tag isn't eaten.
+    noise for a topic summary).
     """
     lines: list[str] = []
     for message in messages:
@@ -140,8 +114,10 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
             role = "Assistant"
             # `.text`, not `str(message.content)`: content is block-form for
             # some providers, whose `str()` would dump reasoning/signature
-            # metadata into the prompt. `.text` yields just the text blocks.
-            text = _strip_thinking(message.text).strip()
+            # metadata into the prompt. `.text` yields just the text blocks --
+            # reasoning separation is the provider/wrapper's job, nothing here
+            # second-guesses it.
+            text = message.text.strip()
         else:
             continue
 
@@ -180,7 +156,7 @@ async def generate_title(state: TitleInputState) -> TitleOutputState:
         response = await asyncio.wait_for(
             model.ainvoke(prompt), timeout=TITLE_TIMEOUT_SECONDS
         )
-        title = sanitize_title(_strip_thinking(response.text))
+        title = sanitize_title(response.text)
     except Exception:
         logger.warning("Title generation failed", exc_info=True)
         return {"title": None}
