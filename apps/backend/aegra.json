@@ -1,6 +1,7 @@
 {
 	"graphs": {
-		"chat": "./src/svelte_langgraph/graph.py:make_graph"
+		"chat": "./src/svelte_langgraph/graph.py:make_graph",
+		"title": "./src/svelte_langgraph/title.py:make_title_graph"
 	},
 	"auth": {
 		"path": "svelte_langgraph.auth:auth"

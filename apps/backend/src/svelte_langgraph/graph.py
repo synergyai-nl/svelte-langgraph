@@ -2,7 +2,11 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Annotated, Any, cast
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import AgentMiddleware, AgentState, before_agent
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    AgentState,
+    before_agent,
+)
 from langchain.agents.middleware.types import (
     ModelCallResult,
     ModelRequest,

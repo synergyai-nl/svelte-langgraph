@@ -19,7 +19,15 @@ import json
 import pytest
 import respx
 
-from svelte_langgraph.models import _has_known_provider_prefix, get_chat_model
+from svelte_langgraph.models import (
+    TITLE_MAX_OUTPUT_TOKENS,
+    _REASONING_KWARGS,
+    _STRUCTURED_OUTPUT_KWARGS,
+    _TOKEN_LIMIT_KWARGS,
+    _has_known_provider_prefix,
+    get_chat_model,
+    get_title_model,
+)
 
 from .conftest import (
     DEFAULT_BASE_URL,
@@ -218,3 +226,162 @@ def test_non_object_chat_model_kwargs_json_raises(
         match=f"CHAT_MODEL_KWARGS must be a JSON object, got {expected_type_name}",
     ):
         get_chat_model()
+
+
+def _effective_reasoning_config(model) -> dict:
+    """Reasoning settings actually in effect on a built model.
+
+    Substring-matching the model dump doesn't work: `reasoning`/`reasoning_effort`
+    are always-present native fields on ChatOpenAI regardless of configuration, so
+    what matters is their values, plus any dialect in `model_kwargs` passthrough.
+    """
+    passthrough = getattr(model, "model_kwargs", {}) or {}
+    return {
+        "reasoning": getattr(model, "reasoning", None),
+        "reasoning_effort": getattr(model, "reasoning_effort", None),
+        "passthrough": {k: v for k, v in passthrough.items() if k in _REASONING_KWARGS},
+    }
+
+
+def _has_reasoning(model) -> bool:
+    config = _effective_reasoning_config(model)
+    return bool(
+        config["reasoning"] or config["reasoning_effort"] or config["passthrough"]
+    )
+
+
+def test_title_model_strips_reasoning_configuration(monkeypatch) -> None:
+    """Asserted on the built model, not over the wire, so the guarantee holds
+    regardless of how a provider serializes the parameter."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({"reasoning": {"effort": "low"}})
+    )
+
+    # Non-vacuous: the chat model really does keep it.
+    assert _has_reasoning(get_chat_model())
+
+    assert not _has_reasoning(get_title_model())
+
+
+@pytest.mark.parametrize(
+    ("reasoning_key", "reasoning_value"),
+    [
+        # Each dialect's real shape: ChatOpenAI validates `reasoning_effort` as a
+        # string, so a uniform dict would fail construction rather than test stripping.
+        ("reasoning", {"effort": "low"}),
+        ("reasoning_effort", "low"),
+        ("thinking", {"type": "enabled", "budget_tokens": 1024}),
+    ],
+)
+def test_title_model_strips_every_reasoning_dialect(
+    monkeypatch, reasoning_key: str, reasoning_value
+) -> None:
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({reasoning_key: reasoning_value})
+    )
+
+    assert _has_reasoning(get_chat_model())
+    assert not _has_reasoning(get_title_model())
+
+
+def test_title_model_bounds_output_tokens_and_pins_temperature(monkeypatch) -> None:
+    from svelte_langgraph.title import TITLE_MAX_CHARS
+
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.delenv("CHAT_MODEL_KWARGS", raising=False)
+
+    model = get_title_model()
+
+    # `getattr`: these are provider-specific fields, not on `BaseChatModel`.
+    assert getattr(model, "max_tokens", None) == TITLE_MAX_OUTPUT_TOKENS
+    assert TITLE_MAX_OUTPUT_TOKENS > TITLE_MAX_CHARS
+    assert getattr(model, "temperature", None) == 0
+    assert model.disable_streaming is True
+
+
+def test_title_model_still_honours_non_reasoning_kwargs(monkeypatch) -> None:
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS",
+        json.dumps({"reasoning": {"effort": "low"}, "timeout": 42}),
+    )
+
+    assert getattr(get_title_model(), "request_timeout", None) == 42
+
+
+def test_title_model_name_env_overrides_chat_model_name(monkeypatch) -> None:
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+    assert getattr(get_title_model(), "model_name", None) == "gpt-4o"
+    assert getattr(get_chat_model(), "model_name", None) == "gpt-4o-mini"
+
+
+def test_title_model_name_env_ignores_chat_model_kwargs(monkeypatch) -> None:
+    """CHAT_MODEL_KWARGS is provider-specific to the chat model, so it's not applied
+    when TITLE_MODEL_NAME selects a different model/provider."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"timeout": 42}))
+
+    assert getattr(get_title_model(), "request_timeout", None) != 42
+    # Non-vacuous: the chat model really does carry it.
+    assert getattr(get_chat_model(), "request_timeout", None) == 42
+
+
+def test_title_model_rejects_reserved_kwargs(monkeypatch) -> None:
+    """The reserved-key validation is shared, so it guards both entry points."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"model": "x"}))
+
+    with pytest.raises(ValueError, match="CHAT_MODEL_KWARGS must not include"):
+        get_title_model()
+
+
+@pytest.mark.parametrize("limit_key", _TOKEN_LIMIT_KWARGS)
+def test_title_ceiling_survives_provider_native_token_limit_aliases(
+    monkeypatch, limit_key: str
+) -> None:
+    """`ChatOpenAI.max_tokens` declares `max_completion_tokens` as its pydantic alias,
+    and with `populate_by_name=True` the alias wins when both are supplied -- so a chat
+    kwarg using that spelling would silently defeat the title ceiling if left in place."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({limit_key: 4096}))
+
+    assert getattr(get_title_model(), "max_tokens", None) == TITLE_MAX_OUTPUT_TOKENS
+
+
+def test_chat_model_keeps_its_configured_token_limit(monkeypatch) -> None:
+    """Guards the test above from going vacuous."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"max_completion_tokens": 4096}))
+
+    assert getattr(get_chat_model(), "max_tokens", None) == 4096
+
+
+@pytest.mark.parametrize("structured_key", _STRUCTURED_OUTPUT_KWARGS)
+def test_title_model_strips_structured_output_constraints(
+    monkeypatch, structured_key: str
+) -> None:
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv(
+        "CHAT_MODEL_KWARGS", json.dumps({structured_key: {"type": "json_object"}})
+    )
+
+    title_dump = str(get_title_model().model_dump())
+    assert f"'{structured_key}'" not in title_dump
+
+    # Non-vacuous: the chat model really does carry it.
+    assert f"'{structured_key}'" in str(get_chat_model().model_dump())
