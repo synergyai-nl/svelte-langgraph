@@ -95,47 +95,57 @@ _STRUCTURED_OUTPUT_KWARGS = (
 )
 
 # Output-token ceiling for a generated title. This must comfortably exceed
-# `graph.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
+# `title.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
 # token is roughly one character, so a limit set at the character cap would
 # truncate legitimate non-Latin titles mid-generation. It is a cost/abuse
 # bound, not the length rule -- `sanitize_title` still enforces the real cap.
 TITLE_MAX_OUTPUT_TOKENS = 128
 
 
+def _get_title_model_name() -> str:
+    """`TITLE_MODEL_NAME`, falling back to `CHAT_MODEL_NAME` when unset."""
+    return os.getenv("TITLE_MODEL_NAME") or _get_model_name()
+
+
 def get_title_model() -> BaseChatModel:
-    """Chat model used to generate thread titles.
+    """Chat model used to generate thread titles: a one-shot, throwaway,
+    3-6 word completion rather than a conversation.
 
-    Deliberately the *same* model as `get_chat_model()` (no second env var to
-    keep in sync), but configured for a one-shot, throwaway, 3-6 word
-    completion rather than a conversation:
+    When `TITLE_MODEL_NAME` is set, that model is built with *only* the title
+    kwargs below -- `CHAT_MODEL_KWARGS` is provider-specific to the chat model
+    and may not even be valid for a different provider/model. When unset, this
+    falls back to `CHAT_MODEL_NAME` and derives from `CHAT_MODEL_KWARGS`,
+    stripped of:
 
-    - Reasoning is stripped. `CHAT_MODEL_KWARGS` is documented in
-      `.env.example` as the place to opt into reasoning tokens, and inheriting
-      it here would make every thread's first exchange pay for -- and wait on
-      -- a reasoning completion just to produce a short label.
-    - `max_tokens` bounds the completion. `sanitize_title` only truncates
-      *after* the model has generated (and billed for) its output, so without
-      this a model that follows an injected instruction could emit thousands
-      of tokens while the user's chat run sits there still loading. Every
-      other spelling of the limit is cleared first, or a provider-native
-      alias would win over it -- see `_TOKEN_LIMIT_KWARGS`.
-    - `temperature=0` keeps titles stable across retries, unlike chat's 0.9.
-    - `disable_streaming=True` because the tokens are discarded either way:
-      `graph.title_gate` tags the call `nostream` so LangGraph won't forward
-      them, but that tag alone does not stop the model streaming them over
-      HTTP (`BaseChatModel._should_stream` returns True purely because a
-      streaming callback handler is attached).
+    - Reasoning kwargs. `CHAT_MODEL_KWARGS` is documented in `.env.example` as
+      the place to opt into reasoning tokens, and inheriting it here would
+      make every title call pay for -- and wait on -- a reasoning completion
+      just to produce a short label.
+    - Every spelling of the output-token limit, before applying the title
+      ceiling -- otherwise a provider-native alias would win over it, see
+      `_TOKEN_LIMIT_KWARGS`.
+    - Structured-output kwargs, which would fight the plain-prose title
+      prompt.
+
+    Both paths always set: `temperature=0` (stable titles, unlike chat's
+    0.9), `max_tokens=TITLE_MAX_OUTPUT_TOKENS` (a cost/abuse bound --
+    `sanitize_title` still enforces the real length rule), and
+    `disable_streaming=True` (the title call is a single throwaway
+    completion; nothing consumes partial tokens).
     """
-    kwargs = _get_chat_model_kwargs()
-    for key in (
-        *_REASONING_KWARGS,
-        *_TOKEN_LIMIT_KWARGS,
-        *_STRUCTURED_OUTPUT_KWARGS,
-    ):
-        kwargs.pop(key, None)
+    if os.getenv("TITLE_MODEL_NAME"):
+        kwargs: dict[str, Any] = {}
+    else:
+        kwargs = _get_chat_model_kwargs()
+        for key in (
+            *_REASONING_KWARGS,
+            *_TOKEN_LIMIT_KWARGS,
+            *_STRUCTURED_OUTPUT_KWARGS,
+        ):
+            kwargs.pop(key, None)
 
     kwargs["temperature"] = 0
     kwargs["max_tokens"] = TITLE_MAX_OUTPUT_TOKENS
     kwargs["disable_streaming"] = True
 
-    return _build_chat_model(_get_model_name(), **kwargs)
+    return _build_chat_model(_get_title_model_name(), **kwargs)

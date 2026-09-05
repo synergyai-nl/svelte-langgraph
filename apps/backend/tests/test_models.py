@@ -308,11 +308,11 @@ def test_title_model_bounds_output_tokens_and_pins_temperature(monkeypatch) -> N
     ceiling. Temperature is pinned to 0 for stability across retries, and
     streaming is disabled because the tokens are discarded either way.
 
-    The ceiling must comfortably exceed `graph.TITLE_MAX_CHARS`: for CJK a
+    The ceiling must comfortably exceed `title.TITLE_MAX_CHARS`: for CJK a
     token is roughly one character, so a limit set at the character cap would
     truncate legitimate non-Latin titles mid-generation.
     """
-    from svelte_langgraph.graph import TITLE_MAX_CHARS
+    from svelte_langgraph.title import TITLE_MAX_CHARS
 
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -339,6 +339,31 @@ def test_title_model_still_honours_non_reasoning_kwargs(monkeypatch) -> None:
     )
 
     assert getattr(get_title_model(), "request_timeout", None) == 42
+
+
+def test_title_model_name_env_overrides_chat_model_name(monkeypatch) -> None:
+    """TITLE_MODEL_NAME, when set, selects the title model independently of
+    CHAT_MODEL_NAME."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+    assert getattr(get_title_model(), "model_name", None) == "gpt-4o"
+    assert getattr(get_chat_model(), "model_name", None) == "gpt-4o-mini"
+
+
+def test_title_model_name_env_ignores_chat_model_kwargs(monkeypatch) -> None:
+    """CHAT_MODEL_KWARGS is provider-specific to the chat model, so it must
+    not be applied when TITLE_MODEL_NAME selects a (possibly different)
+    model/provider -- only the fixed title kwargs apply."""
+    monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
+    monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+    monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"timeout": 42}))
+
+    assert getattr(get_title_model(), "request_timeout", None) != 42
+    # Non-vacuous: the chat model really does carry it.
+    assert getattr(get_chat_model(), "request_timeout", None) == 42
 
 
 def test_title_model_rejects_reserved_kwargs(monkeypatch) -> None:
