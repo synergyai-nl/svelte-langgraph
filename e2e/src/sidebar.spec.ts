@@ -243,27 +243,15 @@ test.describe('Sidebar - real backend', () => {
 	});
 
 	/**
-	 * Automatic thread titles (SLG-117). Titling is now frontend-driven: once the chat run
-	 * settles, `ensureThreadTitle` (apps/frontend/src/lib/langgraph/threadTitle.ts) sends the
-	 * opening exchange (first human + first AI message from `stream.messages`) as a separate,
-	 * stateless run of the `"title"` graph (apps/backend/src/svelte_langgraph/title.py) via
-	 * `client.runs.wait`, then PATCHes the result into thread metadata and refreshes the sidebar.
+	 * Automatic thread titles (SLG-117): once the chat run settles, `ensureThreadTitle`
+	 * (threadTitle.ts) sends the opening exchange as a separate, stateless run of the `"title"`
+	 * graph (title.py), then PATCHes the result into thread metadata.
 	 *
-	 * `TITLE_TRIGGER_MESSAGE` matches a bare-string fixture entry in
-	 * apps/backend/e2e_responses.json keyed to the *exact* title prompt `title.py` sends for this
-	 * conversation. mockai matches fixtures by exact string equality, not substring, so the
-	 * fixture's `input` had to be derived programmatically (via `TITLE_PROMPT.format` +
-	 * `_render_conversation_for_title` over `[HumanMessage(msg), AIMessage(msg)]`, `msg` being
-	 * this constant) rather than hand-typed. Without that fixture entry, mockai's
-	 * unmatched-input fallback would echo the *prompt itself* back as the "title" (then
-	 * truncated to 60 chars by `sanitize_title`) — a broken-looking but still non-empty string
-	 * that would make a weaker assertion (e.g. merely "not the shortened id") pass on a
-	 * completely broken pipeline. These tests assert the exact fixture title instead.
-	 *
-	 * The chat reply itself also has no fixture entry, so it's mockai's plain echo of
-	 * `TITLE_TRIGGER_MESSAGE` — which is why the derivation above renders the conversation as
-	 * that same string for both the `User:` and `Assistant:` lines, and why the frontend's
-	 * opening-exchange slice must send exactly that pair for the fixture to match.
+	 * `TITLE_TRIGGER_MESSAGE` must match its fixture entry in e2e_responses.json exactly (mockai
+	 * matches by exact string, not substring) — see that file's `_comment` for how the fixture's
+	 * `input` was derived. Without a match, mockai's fallback would echo the prompt itself back
+	 * as the title, which these tests would wrongly accept if they asserted anything weaker than
+	 * the exact expected title.
 	 */
 	const TITLE_TRIGGER_MESSAGE = 'Testing automatic thread titles for SLG-117';
 	const EXPECTED_TITLE = 'SLG-117 Sidebar Title Test';
@@ -277,14 +265,10 @@ test.describe('Sidebar - real backend', () => {
 
 		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
 		await chat.textInput.press('Enter');
-		// Input re-enabled is the "run finished" signal (house style — no fixed sleeps). See the
-		// "sending a message" test above for why the timeout is generous.
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
 
-		// The row label only updates once `ensureThreadTitle` has awaited its own separate title
-		// run, PATCHed the result into thread metadata, and refreshed the sidebar list — all of
-		// that happens *after* the input re-enables (which only reflects the chat run settling),
-		// so this needs its own generous timeout on top of the run-settle wait above.
+		// Titling runs after the chat run settles, so the row updates later still — its own
+		// generous timeout on top of the wait above.
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
 	});
@@ -299,9 +283,7 @@ test.describe('Sidebar - real backend', () => {
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
 
-		// The load-bearing assertion: surviving a reload proves the title reached persisted
-		// `thread.metadata` (re-fetched fresh via `threads.search` on this reload) rather than
-		// merely living in this page's client-side state.
+		// Surviving a reload proves the title reached persisted metadata, not just client state.
 		await page.reload();
 
 		await expect(row).toHaveText(EXPECTED_TITLE);
@@ -321,9 +303,7 @@ test.describe('Sidebar - real backend', () => {
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
 
-		// No fixture entry for this second message — its chat reply is mockai's plain echo, which
-		// is irrelevant here. What matters is `ensureThreadTitle` finding `metadata.title` already
-		// set on the GET and stopping there, so no second title run is even attempted.
+		// `ensureThreadTitle` finds `metadata.title` already set and stops there — no second run.
 		await chat.textInput.fill('a second, unrelated message');
 		await chat.textInput.press('Enter');
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });

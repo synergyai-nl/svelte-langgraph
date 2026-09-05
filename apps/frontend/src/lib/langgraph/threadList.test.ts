@@ -76,9 +76,8 @@ describe('threadLabel', () => {
 		expect(threadLabel(summary, 'nl')).toBe(formatFallback(createdAt, 'nl'));
 	});
 
-	// Pinning test: two untitled threads created in the same minute get the same label. A
-	// conscious humane-over-unique trade-off (unlike the old hex-tail fallback, which was
-	// collision-proof) — do not "fix" this by appending seconds or a hex suffix.
+	// Pinning test: two untitled threads created in the same minute get the same label —
+	// a deliberate trade-off, not a bug to "fix" with a seconds/hex suffix.
 	it('gives two same-minute untitled threads an identical label', () => {
 		const a = toThreadSummary(
 			makeSearchedThread({ thread_id: 'thread-a', created_at: '2026-01-01T14:32:00.000Z' })

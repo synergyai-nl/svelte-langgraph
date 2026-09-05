@@ -106,19 +106,9 @@ match.plugins = ["bandit"]
 match.rules = ["B101"]
 set.ignored = true
 
-# trufflehog's "Lob" detector fires on apps/backend/tests/test_models.py, which
-# contains no credential: its only key-shaped literal is the placeholder
-# "test-api-key" that the whole backend suite uses, and a scan of the branch
-# for credential-shaped strings (`(test|live|sk|pk)_...`, long base64/hex runs)
-# turns up nothing. The finding is also not reproducible with the CLI's own
-# trufflehog build -- `qlty check --filter=trufflehog` over these files reports
-# no issues locally -- so the exact trigger string could not be pinned down;
-# it began appearing only after a Qlty Cloud-side plugin update, on a file that
-# had not changed.
-#
-# Scoped to the single offending file rather than the plugin, or even the backend
-# test tree, so a real Lob key committed anywhere else -- including in another
-# backend test -- still fails the build. See PR #288.
+# False positive: test_models.py has no credential, just the placeholder "test-api-key", and
+# doesn't reproduce locally with the CLI's own trufflehog build. Scoped to this one file, not
+# the plugin/tree, so a real Lob key elsewhere still fails the build. See PR #288.
 [[triage]]
 match.plugins = ["trufflehog"]
 match.rules = ["Lob"]

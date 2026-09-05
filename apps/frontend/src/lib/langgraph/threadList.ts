@@ -62,12 +62,11 @@ const FALLBACK_LABEL_FORMAT: Intl.DateTimeFormatOptions = {
 };
 
 /**
- * Display label for a thread: its title when known, else its created-at date/time (also the
- * "while generating" placeholder). `locale` defaults to 'en' so callers that don't care about
- * i18n (most tests) can omit it; the component layer passes paraglide's `getLocale()`.
+ * Display label for a thread: its title when known, else a formatted created-at date/time.
+ * `locale` defaults to 'en' (most tests); the component layer passes paraglide's `getLocale()`.
  *
- * Two threads created in the same minute get an identical fallback label — accepted, a
- * deliberately humane-over-unique trade-off (see the pinning test in threadList.test.ts).
+ * Two threads created in the same minute get an identical fallback label — a deliberate
+ * humane-over-unique trade-off (see the pinning test in threadList.test.ts).
  */
 export function threadLabel(t: ThreadSummary, locale = 'en'): string {
 	return (

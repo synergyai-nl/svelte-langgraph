@@ -15,15 +15,13 @@ vi.mock('@langchain/svelte', async () => {
 // reads `$env/dynamic/public` at module scope — a SvelteKit global that only exists at runtime.
 vi.mock('$env/dynamic/public', () => ({ env: {} }));
 
-// Backing mocks for the SLG-117 frontend-driven titling flow under test below. Kept as
-// standalone consts (rather than reached through `mockClient.threads.*`) so
-// `.mockResolvedValueOnce(...)` etc. aren't type-checked against the real SDK return types,
-// which `as unknown as Client` below deliberately opts out of for the whole mock object.
+// Standalone consts, not reached through `mockClient.threads.*`, so `.mockResolvedValueOnce(...)`
+// isn't type-checked against the real SDK types (`mockClient` is cast `as unknown as Client`).
 const threadsGetMock = vi.fn().mockResolvedValue({ metadata: {} });
 const threadsUpdateMock = vi.fn().mockResolvedValue({});
 const runsWaitMock = vi.fn().mockResolvedValue({ title: 'Generated Title' });
-// Backs `getOrCreateAssistant(client, 'title')` — one existing assistant, so it resolves without
-// also needing `assistants.create`.
+// One existing assistant, so `getOrCreateAssistant(client, 'title')` resolves without needing
+// `assistants.create`.
 const assistantsSearchMock = vi.fn().mockResolvedValue([{ assistant_id: 'title-assistant-1' }]);
 
 const mockClient = {
@@ -57,9 +55,8 @@ function renderChatWithRefresh() {
 
 beforeEach(() => {
 	mockModule.resetMock();
-	// Default to an already-titled thread — the "thread-list refresh" suite below sends complete
-	// human+AI exchanges but doesn't care about titling, so this keeps `ensureThreadTitle` a no-op
-	// (and its refresh silent) unless a test opts into an untitled thread explicitly.
+	// Default to an already-titled thread, so `ensureThreadTitle` is a no-op unless a test opts
+	// into an untitled thread explicitly.
 	threadsGetMock.mockReset().mockResolvedValue({ metadata: { title: 'Existing Title' } });
 	threadsUpdateMock.mockReset().mockResolvedValue({});
 	runsWaitMock.mockReset().mockResolvedValue({ title: 'Generated Title' });

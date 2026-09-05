@@ -1,8 +1,7 @@
 /**
- * Frontend-driven thread titling (SLG-117 WP1). The chat graph no longer emits a `title` in
- * state — this module triggers a separate, stateless run of the `"title"` graph and writes the
- * result into thread metadata itself, once, the first time a thread has a complete opening
- * exchange and no title yet.
+ * Frontend-driven thread titling (SLG-117): triggers a separate, stateless run of the `"title"`
+ * graph and writes the result into thread metadata, once, the first time a thread has a
+ * complete opening exchange and no title yet.
  */
 import type { Client } from '@langchain/langgraph-sdk';
 import { extractTextFromContent } from './utils';
@@ -11,13 +10,9 @@ type RawMessage = Record<string, unknown>;
 
 /**
  * First human message + first non-empty AI message, in that order — the opening exchange a
- * thread's topic is derived from (mirrors `TITLE_CONVERSATION_MAX_TURNS` in the backend's
- * title.py, which caps again regardless). Returns fewer than 2 entries while the exchange is
- * still incomplete (e.g. no AI reply yet).
- *
- * `messages` is typed loosely (`unknown[]`, cast internally): callers pass `stream.messages`,
- * whose real SDK type has no index signature, the same reason `Chat.svelte`'s own `mapMessages`
- * casts each item before reading `.type`/`.content`.
+ * thread's topic is derived from. Returns fewer than 2 entries while incomplete (e.g. no AI
+ * reply yet). `messages` is `unknown[]` and cast internally since `stream.messages`'s real SDK
+ * type has no index signature.
  */
 export function selectOpeningExchange(messages: readonly unknown[]): RawMessage[] {
 	const items = messages as readonly RawMessage[];
@@ -37,18 +32,17 @@ export interface ThreadTitlerOptions {
 
 export interface ThreadTitler {
 	/**
-	 * Trigger titling from `messages` (raw SDK message objects — see WP1 notes on why these must
-	 * be `stream.messages`, not the UI-mapped array). Safe to call on every settle/backfill: it
-	 * no-ops unless there's a complete opening exchange, and single-flights per mount.
+	 * Trigger titling from `messages` (raw SDK message objects, i.e. `stream.messages`). Safe to
+	 * call on every settle/backfill: no-ops unless there's a complete opening exchange, and
+	 * single-flights per mount.
 	 */
 	ensureThreadTitle(messages: readonly unknown[]): Promise<void>;
 }
 
 /**
- * Two accepted residual races, left as-is rather than engineered away: (a) the GET->PATCH
- * window vs. a concurrent rename by another client/tab, and (b) two tabs both generating for
- * the same untitled thread — harmless, since temperature=0 makes the titles near-identical and
- * the second PATCH just a same-value write.
+ * Two accepted residual races, left as-is: (a) the GET->PATCH window vs. a concurrent rename by
+ * another client/tab, and (b) two tabs both generating for the same untitled thread — harmless,
+ * since temperature=0 makes the titles near-identical and the second PATCH a same-value write.
  */
 export function createThreadTitler({
 	client,

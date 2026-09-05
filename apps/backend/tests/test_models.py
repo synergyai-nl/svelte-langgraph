@@ -231,11 +231,9 @@ def test_non_object_chat_model_kwargs_json_raises(
 def _effective_reasoning_config(model) -> dict:
     """Reasoning settings actually in effect on a built model.
 
-    Substring-matching the model dump does not work: ChatOpenAI declares
-    `reasoning` and `reasoning_effort` as native fields, so those names are
-    always present in the dump regardless of whether they are configured.
-    What matters is their *values*, plus any dialect that fell through to
-    `model_kwargs` passthrough (e.g. Anthropic's `thinking`).
+    Substring-matching the model dump doesn't work: `reasoning`/`reasoning_effort`
+    are always-present native fields on ChatOpenAI regardless of configuration, so
+    what matters is their values, plus any dialect in `model_kwargs` passthrough.
     """
     passthrough = getattr(model, "model_kwargs", {}) or {}
     return {
@@ -253,22 +251,15 @@ def _has_reasoning(model) -> bool:
 
 
 def test_title_model_strips_reasoning_configuration(monkeypatch) -> None:
-    """`.env.example` documents CHAT_MODEL_KWARGS as the place to opt into
-    reasoning tokens. Inheriting that for the title call would make every
-    thread's first exchange pay for -- and wait on -- a reasoning completion
-    just to produce a 3-6 word label, so `get_title_model` strips it.
-
-    Asserted on the built model rather than over the wire, so the guarantee
-    holds regardless of how a given provider serializes the parameter.
-    """
+    """Asserted on the built model, not over the wire, so the guarantee holds
+    regardless of how a provider serializes the parameter."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv(
         "CHAT_MODEL_KWARGS", json.dumps({"reasoning": {"effort": "low"}})
     )
 
-    # The chat model keeps it -- this is what makes the title-model assertion
-    # below meaningful rather than vacuous.
+    # Non-vacuous: the chat model really does keep it.
     assert _has_reasoning(get_chat_model())
 
     assert not _has_reasoning(get_title_model())
@@ -277,9 +268,8 @@ def test_title_model_strips_reasoning_configuration(monkeypatch) -> None:
 @pytest.mark.parametrize(
     ("reasoning_key", "reasoning_value"),
     [
-        # Each dialect's real shape -- ChatOpenAI validates `reasoning_effort`
-        # as a string, so a uniform dict would fail construction rather than
-        # exercise the stripping.
+        # Each dialect's real shape: ChatOpenAI validates `reasoning_effort` as a
+        # string, so a uniform dict would fail construction rather than test stripping.
         ("reasoning", {"effort": "low"}),
         ("reasoning_effort", "low"),
         ("thinking", {"type": "enabled", "budget_tokens": 1024}),
@@ -288,10 +278,6 @@ def test_title_model_strips_reasoning_configuration(monkeypatch) -> None:
 def test_title_model_strips_every_reasoning_dialect(
     monkeypatch, reasoning_key: str, reasoning_value
 ) -> None:
-    """Each provider spells reasoning configuration differently (nested
-    `reasoning` for OpenRouter, flat `reasoning_effort` for OpenAI, `thinking`
-    for Anthropic). All are stripped, so the title call stays cheap whichever
-    provider `CHAT_MODEL_NAME` selects."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv(
@@ -303,15 +289,6 @@ def test_title_model_strips_every_reasoning_dialect(
 
 
 def test_title_model_bounds_output_tokens_and_pins_temperature(monkeypatch) -> None:
-    """`sanitize_title` only truncates *after* the model has generated (and
-    billed for) its output, so the title call carries its own completion-token
-    ceiling. Temperature is pinned to 0 for stability across retries, and
-    streaming is disabled because the tokens are discarded either way.
-
-    The ceiling must comfortably exceed `title.TITLE_MAX_CHARS`: for CJK a
-    token is roughly one character, so a limit set at the character cap would
-    truncate legitimate non-Latin titles mid-generation.
-    """
     from svelte_langgraph.title import TITLE_MAX_CHARS
 
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
@@ -328,9 +305,6 @@ def test_title_model_bounds_output_tokens_and_pins_temperature(monkeypatch) -> N
 
 
 def test_title_model_still_honours_non_reasoning_kwargs(monkeypatch) -> None:
-    """Stripping reasoning must not throw away unrelated CHAT_MODEL_KWARGS --
-    the title model is deliberately the *same* model as the chat model, just
-    configured for a one-shot completion."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv(
@@ -342,8 +316,6 @@ def test_title_model_still_honours_non_reasoning_kwargs(monkeypatch) -> None:
 
 
 def test_title_model_name_env_overrides_chat_model_name(monkeypatch) -> None:
-    """TITLE_MODEL_NAME, when set, selects the title model independently of
-    CHAT_MODEL_NAME."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -353,9 +325,8 @@ def test_title_model_name_env_overrides_chat_model_name(monkeypatch) -> None:
 
 
 def test_title_model_name_env_ignores_chat_model_kwargs(monkeypatch) -> None:
-    """CHAT_MODEL_KWARGS is provider-specific to the chat model, so it must
-    not be applied when TITLE_MODEL_NAME selects a (possibly different)
-    model/provider -- only the fixed title kwargs apply."""
+    """CHAT_MODEL_KWARGS is provider-specific to the chat model, so it's not applied
+    when TITLE_MODEL_NAME selects a different model/provider."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("TITLE_MODEL_NAME", "gpt-4o")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -380,17 +351,9 @@ def test_title_model_rejects_reserved_kwargs(monkeypatch) -> None:
 def test_title_ceiling_survives_provider_native_token_limit_aliases(
     monkeypatch, limit_key: str
 ) -> None:
-    """A token limit configured for *chat* must not leak into the title call
-    and defeat its ceiling.
-
-    This is not merely cosmetic de-duplication: `ChatOpenAI.max_tokens`
-    declares `max_completion_tokens` as its pydantic alias and the model is
-    built with `populate_by_name=True`, so when both the field name and the
-    alias are supplied the *alias* wins. A deployment using the standard
-    OpenAI spelling `{"max_completion_tokens": 4096}` would therefore silently
-    override the title-specific ceiling unless every spelling is cleared
-    first.
-    """
+    """`ChatOpenAI.max_tokens` declares `max_completion_tokens` as its pydantic alias,
+    and with `populate_by_name=True` the alias wins when both are supplied -- so a chat
+    kwarg using that spelling would silently defeat the title ceiling if left in place."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({limit_key: 4096}))
@@ -399,9 +362,7 @@ def test_title_ceiling_survives_provider_native_token_limit_aliases(
 
 
 def test_chat_model_keeps_its_configured_token_limit(monkeypatch) -> None:
-    """Guards the test above from going vacuous: the limit really is applied
-    to the chat model, so the title model dropping it is a genuine
-    difference rather than the value never having taken effect."""
+    """Guards the test above from going vacuous."""
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv("CHAT_MODEL_KWARGS", json.dumps({"max_completion_tokens": 4096}))
@@ -413,13 +374,6 @@ def test_chat_model_keeps_its_configured_token_limit(monkeypatch) -> None:
 def test_title_model_strips_structured_output_constraints(
     monkeypatch, structured_key: str
 ) -> None:
-    """The title call asks for plain prose, so chat-side structured-output
-    settings must not leak into it.
-
-    With OpenAI JSON mode the provider rejects a prompt that never mentions
-    JSON; with schema mode it returns a JSON document that `sanitize_title`
-    would dutifully persist as the sidebar label.
-    """
     monkeypatch.setenv("CHAT_MODEL_NAME", "gpt-4o-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
     monkeypatch.setenv(
