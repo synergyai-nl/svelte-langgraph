@@ -7,14 +7,10 @@ from langchain.chat_models.base import _BUILTIN_PROVIDERS
 
 
 def _has_known_provider_prefix(model_name: str) -> bool:
-    """Check whether `model_name` has a `{provider}:` prefix that langchain's
-    `init_chat_model` would itself recognize and strip.
-
-    This mirrors the exact condition used in langchain's own
-    `langchain.chat_models.base._parse_model`: a prefix (the substring before
-    the first colon) is only treated as a provider if it is a key in
-    `_BUILTIN_PROVIDERS`. This intentionally excludes things like Ollama-style
-    tags (e.g. `llama3:8b`), since `llama3` is not a known provider key.
+    """Whether `model_name` has a `{provider}:` prefix `init_chat_model` would
+    itself recognize (mirrors `langchain.chat_models.base._parse_model`).
+    Excludes Ollama-style tags like `llama3:8b` -- `llama3` isn't a provider
+    key.
     """
     if ":" not in model_name:
         return False
@@ -65,77 +61,65 @@ def get_chat_model() -> BaseChatModel:
     return _build_chat_model(_get_model_name(), **kwargs)
 
 
-# Reasoning-configuration keys stripped for the title model. `reasoning` is the
-# nested OpenRouter form that `.env.example` documents
-# (`{"reasoning":{"effort":"low"}}`); `reasoning_effort` is the flat OpenAI
-# form; `thinking` is the Anthropic form. Popping all three keeps the title
-# call cheap regardless of which provider CHAT_MODEL_NAME selects.
+# Reasoning-config keys stripped for the title model: OpenRouter's nested
+# `reasoning`, OpenAI's flat `reasoning_effort`, Anthropic's `thinking`.
+# Popping all three keeps the title call cheap regardless of provider.
 _REASONING_KWARGS = ("reasoning", "reasoning_effort", "thinking")
 
-# Output-token spellings cleared before the title ceiling is applied. These are
-# not merely "other names we also set" -- leaving one in place actively defeats
-# the ceiling: `ChatOpenAI.max_tokens` declares `max_completion_tokens` as its
-# pydantic alias, and with `populate_by_name=True` the *alias* wins when both
-# are supplied. So `CHAT_MODEL_KWARGS={"max_completion_tokens": 4096}` would
-# silently override the 128 set below. Popping every spelling first guarantees
-# the title ceiling is the only one in play.
+# Output-token spellings cleared before the title ceiling is applied.
+# `ChatOpenAI.max_tokens` declares `max_completion_tokens` as its pydantic
+# alias, and with `populate_by_name=True` the *alias* wins when both are
+# supplied -- so a stray `max_completion_tokens` in CHAT_MODEL_KWARGS would
+# silently override the ceiling below unless every spelling is popped first.
 _TOKEN_LIMIT_KWARGS = ("max_tokens", "max_completion_tokens", "max_output_tokens")
 
 # Structured-output constraints stripped for the title call, which asks for
-# plain prose. Inheriting a chat-side `response_format` would either make the
-# provider reject this prompt (OpenAI JSON mode requires the word "JSON" in
-# the messages) or, in schema mode, return a JSON document that
-# `sanitize_title` would dutifully persist as the sidebar label. The Google
-# spellings are included for the same reason as the reasoning dialects: which
-# one applies depends on the provider `CHAT_MODEL_NAME` selects.
+# plain prose: inheriting chat's `response_format` would either make the
+# provider reject the prompt (OpenAI JSON mode) or return JSON that
+# `sanitize_title` would persist as the sidebar label.
 _STRUCTURED_OUTPUT_KWARGS = (
     "response_format",
     "response_schema",
     "response_mime_type",
 )
 
-# Output-token ceiling for a generated title. This must comfortably exceed
-# `graph.TITLE_MAX_CHARS` (60) rather than merely match it: for CJK text a
-# token is roughly one character, so a limit set at the character cap would
-# truncate legitimate non-Latin titles mid-generation. It is a cost/abuse
-# bound, not the length rule -- `sanitize_title` still enforces the real cap.
+# Must comfortably exceed `title.TITLE_MAX_CHARS` (60): for CJK text a token
+# is roughly one character, so a limit at the character cap would truncate
+# mid-generation. A cost/abuse bound -- `sanitize_title` enforces the real cap.
 TITLE_MAX_OUTPUT_TOKENS = 128
 
 
+def _get_title_model_name() -> str:
+    """`TITLE_MODEL_NAME`, falling back to `CHAT_MODEL_NAME` when unset."""
+    return os.getenv("TITLE_MODEL_NAME") or _get_model_name()
+
+
 def get_title_model() -> BaseChatModel:
-    """Chat model used to generate thread titles.
+    """Chat model used to generate thread titles: a one-shot, 3-6 word
+    completion, not a conversation.
 
-    Deliberately the *same* model as `get_chat_model()` (no second env var to
-    keep in sync), but configured for a one-shot, throwaway, 3-6 word
-    completion rather than a conversation:
+    When `TITLE_MODEL_NAME` is set, CHAT_MODEL_KWARGS is skipped entirely --
+    it's provider-specific to the chat model and may not even be valid for a
+    different provider. Otherwise this falls back to CHAT_MODEL_NAME and
+    reuses CHAT_MODEL_KWARGS, stripped of reasoning, token-limit, and
+    structured-output keys (see the constants above).
 
-    - Reasoning is stripped. `CHAT_MODEL_KWARGS` is documented in
-      `.env.example` as the place to opt into reasoning tokens, and inheriting
-      it here would make every thread's first exchange pay for -- and wait on
-      -- a reasoning completion just to produce a short label.
-    - `max_tokens` bounds the completion. `sanitize_title` only truncates
-      *after* the model has generated (and billed for) its output, so without
-      this a model that follows an injected instruction could emit thousands
-      of tokens while the user's chat run sits there still loading. Every
-      other spelling of the limit is cleared first, or a provider-native
-      alias would win over it -- see `_TOKEN_LIMIT_KWARGS`.
-    - `temperature=0` keeps titles stable across retries, unlike chat's 0.9.
-    - `disable_streaming=True` because the tokens are discarded either way:
-      `graph.title_gate` tags the call `nostream` so LangGraph won't forward
-      them, but that tag alone does not stop the model streaming them over
-      HTTP (`BaseChatModel._should_stream` returns True purely because a
-      streaming callback handler is attached).
+    Both paths pin `temperature=0`, `max_tokens=TITLE_MAX_OUTPUT_TOKENS`, and
+    `disable_streaming=True`.
     """
-    kwargs = _get_chat_model_kwargs()
-    for key in (
-        *_REASONING_KWARGS,
-        *_TOKEN_LIMIT_KWARGS,
-        *_STRUCTURED_OUTPUT_KWARGS,
-    ):
-        kwargs.pop(key, None)
+    if os.getenv("TITLE_MODEL_NAME"):
+        kwargs: dict[str, Any] = {}
+    else:
+        kwargs = _get_chat_model_kwargs()
+        for key in (
+            *_REASONING_KWARGS,
+            *_TOKEN_LIMIT_KWARGS,
+            *_STRUCTURED_OUTPUT_KWARGS,
+        ):
+            kwargs.pop(key, None)
 
     kwargs["temperature"] = 0
     kwargs["max_tokens"] = TITLE_MAX_OUTPUT_TOKENS
     kwargs["disable_streaming"] = True
 
-    return _build_chat_model(_get_model_name(), **kwargs)
+    return _build_chat_model(_get_title_model_name(), **kwargs)
