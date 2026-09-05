@@ -106,11 +106,14 @@ match.plugins = ["bandit"]
 match.rules = ["B101"]
 set.ignored = true
 
-# False positive: test_models.py has no credential, just the placeholder "test-api-key", and
-# doesn't reproduce locally with the CLI's own trufflehog build. Scoped to this one file, not
-# the plugin/tree, so a real Lob key elsewhere still fails the build. See PR #288.
+# False positive: neither test file holds a credential (placeholder keys / title fixtures),
+# and it doesn't reproduce locally with the CLI's own trufflehog build. Scoped to these files,
+# not the plugin/tree, so a real Lob key elsewhere still fails the build. See PR #288.
 [[triage]]
 match.plugins = ["trufflehog"]
 match.rules = ["Lob"]
-match.file_patterns = ["apps/backend/tests/test_models.py"]
+match.file_patterns = [
+  "apps/backend/tests/test_models.py",
+  "apps/backend/tests/test_title.py",
+]
 set.ignored = true

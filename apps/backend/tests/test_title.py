@@ -233,17 +233,17 @@ def test_render_conversation_strips_think_tags_from_ai_message_only():
 
 def test_sanitize_title_strips_bidi_override():
     """Bidi override characters can reorder or hide characters when the title renders."""
-    raw = "Trip‮to‬Paris"
+    raw = "Trip\u202eto\u202cParis"
     assert sanitize_title(raw) == "TriptoParis"
 
 
 def test_sanitize_title_strips_zero_width_joiner():
-    raw = "Trip‍to​Paris"
+    raw = "Trip\u200dto\u200bParis"
     assert sanitize_title(raw) == "TriptoParis"
 
 
 def test_sanitize_title_strips_bom():
-    raw = "﻿Trip to Paris"
+    raw = "\ufeffTrip to Paris"
     assert sanitize_title(raw) == "Trip to Paris"
 
 
