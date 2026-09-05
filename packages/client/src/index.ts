@@ -6,3 +6,4 @@ export * from './threads.js';
 export * from './threadListState.svelte.js';
 export * from './stateSync.svelte.js';
 export * from './client.js';
+export * from './threadTitle.js';
