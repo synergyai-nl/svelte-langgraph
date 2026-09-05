@@ -54,16 +54,23 @@ export function toThreadSummary(t: SearchedThread): ThreadSummary {
 	};
 }
 
-/**
- * Short, human-scannable stand-in for a thread's id: the LAST 8 chars.
- * Not the first 8 — thread ids are UUIDv7, whose leading hex digits are the high timestamp
- * bits, so every thread created on the same day would render an identical label.
- */
-export function shortenThreadId(id: string): string {
-	return id.slice(-8);
-}
+const FALLBACK_LABEL_FORMAT: Intl.DateTimeFormatOptions = {
+	month: 'short',
+	day: 'numeric',
+	hour: '2-digit',
+	minute: '2-digit'
+};
 
-/** Display label for a thread: its title when known, else a shortened id. */
-export function threadLabel(t: ThreadSummary): string {
-	return t.title ?? shortenThreadId(t.id);
+/**
+ * Display label for a thread: its title when known, else its created-at date/time (also the
+ * "while generating" placeholder). `locale` defaults to 'en' so callers that don't care about
+ * i18n (most tests) can omit it; the component layer passes paraglide's `getLocale()`.
+ *
+ * Two threads created in the same minute get an identical fallback label — accepted, a
+ * deliberately humane-over-unique trade-off (see the pinning test in threadList.test.ts).
+ */
+export function threadLabel(t: ThreadSummary, locale = 'en'): string {
+	return (
+		t.title ?? new Intl.DateTimeFormat(locale, FALLBACK_LABEL_FORMAT).format(new Date(t.createdAt))
+	);
 }

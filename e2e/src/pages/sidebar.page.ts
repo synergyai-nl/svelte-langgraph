@@ -63,11 +63,9 @@ export class SidebarPage {
 	/**
 	 * Row link for the thread whose id is `id`.
 	 *
-	 * Scoped by `href`, not by accessible name: thread labels are only the last 8 hex chars
-	 * of the (UUIDv7) thread id (`threadLabel`/`shortenThreadId` in threadList.ts), which is
-	 * enough entropy to tell same-run threads apart in practice, but nothing here guarantees
-	 * uniqueness — a fake thread id crafted for a test (e.g. `fakeThread()` in sidebar.spec.ts)
-	 * could still collide with another row's label. The href is exact regardless.
+	 * Scoped by `href`, not by accessible name: an untitled thread's label is a formatted
+	 * created-at date/time (`threadLabel` in threadList.ts), so two threads created in the
+	 * same minute render identical labels by design — the href is what disambiguates them.
 	 */
 	threadLink(id: string): Locator {
 		return this.root.locator(`a[href="/chat/${id}"]`);
