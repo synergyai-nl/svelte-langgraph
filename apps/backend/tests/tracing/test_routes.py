@@ -133,6 +133,38 @@ def test_the_ownership_query_is_scoped_to_the_caller(
 
 
 @respx.mock
+@pytest.mark.parametrize("auth_installed", [False], indirect=True)
+def test_nothing_is_served_when_auth_failed_to_load(client, langfuse_env):
+    """Aegra answers an unloadable auth module by calling everyone "anonymous",
+    which passes require_auth and makes every run look owned. Refusing the
+    request is the only safe reading of that state."""
+    score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+
+    assert response.status_code == 503
+    assert not score.calls
+
+
+@pytest.mark.parametrize("auth_installed", [False], indirect=True)
+def test_the_refusal_happens_before_routing(client):
+    """/threads is not registered on this app -- unguarded it would 404. Getting
+    503 shows the refusal precedes routing, which is what puts the routers Aegra
+    adds to this same app, holding the actual user data, behind it too."""
+    assert client.get("/threads").status_code == 503
+
+
+@pytest.mark.parametrize("auth_installed", ["unrecognised"], indirect=True)
+def test_an_unrecognisable_auth_backend_is_also_refused(client):
+    """The guard reads an Aegra-specific attribute. Swapped for a backend it
+    cannot inspect, "I see no problem" is not the same as "auth is installed",
+    and guessing in that direction is what leaves the app open."""
+    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+
+    assert response.status_code == 503
+
+
+@respx.mock
 def test_a_run_id_that_is_not_a_uuid_is_rejected(client, langfuse_env):
     """422 naming run_id, not a 404 that would read as a missing run."""
     response = client.post("/feedback", json={"run_id": "not-a-uuid", "score": "up"})

@@ -2,10 +2,12 @@ from typing import Annotated
 from uuid import UUID
 
 from aegra_api.core.auth_deps import require_auth
+from aegra_api.core.auth_middleware import LangGraphAuthBackend, get_auth_backend
 from aegra_api.core.orm import Run as RunORM
 from aegra_api.core.orm import get_session
 from aegra_api.models import User
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +15,35 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .tracing import Rating, is_configured, record_score
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def refuse_to_serve_without_auth(request: Request, call_next):
+    """Answer nothing at all rather than answer everyone as the same user.
+
+    Aegra swallows any exception raised while importing our auth module
+    (auth_middleware.py:104), then authenticates every caller as "anonymous"
+    with is_authenticated=True. That passes require_auth, and because runs
+    created in that state are also owned by "anonymous", the ownership check
+    below matches for everybody. A broken deployment is much better than an
+    open one, so refuse the request instead.
+
+    Aegra applies its own routers to this app, so this covers threads, runs and
+    the store too -- not just /feedback.
+
+    Remove once aegra/aegra#459 ships: it makes the anonymous user
+    is_authenticated=False, which is the same fix a layer down.
+    """
+    # Narrowed rather than duck-typed: get_auth_backend is annotated as the
+    # Starlette base class, and a backend we do not recognise is not one we can
+    # claim has auth installed -- so that refuses too.
+    backend = get_auth_backend()
+    if not isinstance(backend, LangGraphAuthBackend) or backend.auth_instance is None:
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Authentication is not installed; refusing to serve"},
+        )
+    return await call_next(request)
 
 
 # Kept in step with COMMENT_MAX_LENGTH in

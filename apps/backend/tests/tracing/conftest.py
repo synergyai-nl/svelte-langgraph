@@ -6,8 +6,14 @@ here touches a chat model, so pinning both parameters to a single value keeps
 this suite at one run per test instead of sixteen.
 """
 
+from types import SimpleNamespace
+
 import pytest
+from aegra_api.core.auth_middleware import LangGraphAuthBackend
+from langgraph_sdk import Auth
 from sqlalchemy import Select
+
+from svelte_langgraph import routes
 
 from tests.conftest import PROVIDER_CASES
 
@@ -112,7 +118,32 @@ def caller_id(request):
 
 
 @pytest.fixture
-def client(session, caller_id):
+def auth_installed(request, monkeypatch):
+    """Whether Aegra managed to load our auth module.
+
+    Pinned rather than inherited from the ambient config: every other test here
+    would otherwise pass or fail on whether aegra.json happened to resolve.
+    Override with
+    `@pytest.mark.parametrize("auth_installed", [False], indirect=True)`, or
+    with "unrecognised" for a backend this code does not know how to inspect.
+    """
+    installed = getattr(request, "param", True)
+    if installed == "unrecognised":
+        # Something that is not Aegra's backend at all, and so cannot be shown
+        # to have auth installed however healthy its attributes look.
+        backend = SimpleNamespace(auth_instance=Auth())
+    else:
+        # A real backend built without __init__, which would go and load auth
+        # for real. The route narrows on this type, so a stand-in would be
+        # refused and every other test here would 503.
+        backend = object.__new__(LangGraphAuthBackend)
+        backend.auth_instance = Auth() if installed else None
+    monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
+    return installed
+
+
+@pytest.fixture
+def client(session, caller_id, auth_installed):
     """A TestClient that is authenticated and owns the run it rates.
 
     /feedback depends on `require_auth` and `get_session`, which would otherwise
