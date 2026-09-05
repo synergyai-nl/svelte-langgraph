@@ -14,6 +14,10 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
+// Chat.svelte imports `$lib/langgraph/client` (for the SLG-117 title assistant lookup), which
+// reads `$env/dynamic/public` at module scope — a SvelteKit global that only exists at runtime.
+vi.mock('$env/dynamic/public', () => ({ env: {} }));
+
 // Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
 const mockClient = {
 	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
