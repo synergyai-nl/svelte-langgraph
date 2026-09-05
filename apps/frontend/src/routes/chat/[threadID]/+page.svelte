@@ -74,6 +74,7 @@
 	{#key threadId}
 		<Chat
 			langGraphClient={client}
+			accessToken={page.data.session!.accessToken}
 			{assistantId}
 			{threadId}
 			introTitle={greeting}

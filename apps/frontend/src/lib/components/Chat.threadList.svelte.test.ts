@@ -5,6 +5,12 @@ import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
 import type { Client } from '@langchain/langgraph-sdk';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 
+// Chat's feedback path posts straight to Aegra, reading the backend URL from
+// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
+vi.mock('$env/dynamic/public', () => ({
+	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
+}));
+
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('./__tests__/mockUseStream.svelte');
@@ -23,6 +29,7 @@ function renderChatWithRefresh() {
 			refresh,
 			chatProps: {
 				langGraphClient: mockClient,
+				accessToken: 'test-token',
 				assistantId: 'assistant-1',
 				threadId: 'test-123'
 			}

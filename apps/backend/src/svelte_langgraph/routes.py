@@ -16,8 +16,8 @@ app = FastAPI()
 
 
 # Kept in step with COMMENT_MAX_LENGTH in
-# apps/frontend/src/routes/api/feedback/+server.ts, which applies the same limit
-# a hop earlier. Both count code points so the number means one thing.
+# apps/frontend/src/lib/langgraph/feedback.ts, which applies the same limit
+# before posting. Both count code points so the number means one thing.
 COMMENT_MAX_LENGTH = 2000
 
 # Stripped before the length check, so trailing newlines don't eat the budget and
