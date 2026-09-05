@@ -50,7 +50,15 @@ def instant_retries(monkeypatch):
     monkeypatch.setattr(tracing, "_RETRY_DELAYS", (0.0,) * len(tracing._RETRY_DELAYS))
 
 
-USER_ID = "test-user"
+# Deliberately unlike the display name and unlike anything a stray literal in
+# the route would plausibly be: an ownership check that hardcoded an identity,
+# or read one off the wrong User field, has to miss this.
+USER_ID = "oidc|3f2a91c4-owner"
+DISPLAY_NAME = "Some Owner"
+
+# A second caller for the tests that vary who is asking. One hardcoded identity
+# cannot satisfy an assertion made against both.
+OTHER_USER_ID = "oidc|8b7d05e6-other"
 
 
 class _StubSession:
@@ -96,7 +104,15 @@ def session(run_owner):
 
 
 @pytest.fixture
-def client(session):
+def caller_id(request):
+    """Who is asking. Override with
+    `@pytest.mark.parametrize("caller_id", [OTHER_USER_ID], indirect=True)`
+    to check the query follows the caller rather than a fixed value."""
+    return getattr(request, "param", USER_ID)
+
+
+@pytest.fixture
+def client(session, caller_id):
     """A TestClient that is authenticated and owns the run it rates.
 
     /feedback depends on `require_auth` and `get_session`, which would otherwise
@@ -113,9 +129,11 @@ def client(session):
     from svelte_langgraph.routes import app
 
     app.dependency_overrides[require_auth] = lambda: User(
-        identity=USER_ID, display_name=USER_ID, is_authenticated=True
+        identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=True
     )
     app.dependency_overrides[get_session] = lambda: session
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()

@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/public';
 
 /** Same limit as COMMENT_MAX_LENGTH in apps/backend/src/svelte_langgraph/routes.py. */
-const COMMENT_MAX_LENGTH = 2000;
+export const COMMENT_MAX_LENGTH = 2000;
 
 /** Code points, not `.length`: UTF-16 units would reject a comment of emoji at
  *  half the stated limit while the backend still accepted it. */

@@ -8,7 +8,7 @@ from svelte_langgraph.routes import app
 
 import pytest
 
-from .conftest import RUN_ID, USER_ID
+from .conftest import OTHER_USER_ID, RUN_ID, USER_ID
 from .test_tracing import ACCEPTED, SCORE_URL, TRACE_ID
 
 
@@ -107,19 +107,28 @@ def test_ownership_is_checked_even_without_langfuse(client, no_langfuse_env):
 
 
 @respx.mock
-def test_the_ownership_query_is_scoped_to_the_caller(client, session, langfuse_env):
+@pytest.mark.parametrize(
+    "caller_id", [USER_ID, OTHER_USER_ID], indirect=True, ids=["owner", "other"]
+)
+def test_the_ownership_query_is_scoped_to_the_caller(
+    client, session, caller_id, langfuse_env
+):
     """Asserts the SQL, not just that a query happened.
 
     The stub answers whatever it is asked, so a lookup by run id alone would
     return the run and satisfy every other test here -- while letting any
     signed-in user score any run. Only the WHERE clause distinguishes them.
+
+    Run for two callers because one caller proves too little: a route that
+    filtered on a hardcoded identity, or on the wrong User field, would satisfy
+    a single-identity assertion. The clause has to follow whoever is asking.
     """
     respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
     client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
 
     sql = session.compiled_sql()
-    assert f"runs.user_id = '{USER_ID}'" in sql
+    assert f"runs.user_id = '{caller_id}'" in sql
     assert f"runs.run_id = '{RUN_ID}'" in sql
 
 
