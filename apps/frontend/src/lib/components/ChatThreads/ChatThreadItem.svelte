@@ -2,6 +2,8 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
+	// Plain read, not reactive: LanguageSwitcher's setLocale() reloads the page on change.
+	import { getLocale } from '$lib/paraglide/runtime.js';
 
 	interface Props {
 		thread: ThreadSummary;
@@ -29,7 +31,7 @@
 		<Sidebar.MenuButton {isActive} {isPending} aria-current={isActive ? 'page' : undefined}>
 			{#snippet child({ props })}
 				<a {href} {...props} onclick={handleClick}>
-					<span class="truncate">{threadLabel(thread)}</span>
+					<span class="truncate">{threadLabel(thread, getLocale())}</span>
 					{#if isPending}
 						<Spinner size="sm" aria-hidden="true" class="ml-auto shrink-0" />
 					{/if}
@@ -44,7 +46,7 @@
 			aria-current={isActive ? 'page' : undefined}
 			onclick={handleClick}
 		>
-			<span class="truncate">{threadLabel(thread)}</span>
+			<span class="truncate">{threadLabel(thread, getLocale())}</span>
 			{#if isPending}
 				<Spinner size="sm" aria-hidden="true" class="ml-auto shrink-0" />
 			{/if}

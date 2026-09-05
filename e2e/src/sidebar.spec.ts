@@ -241,6 +241,75 @@ test.describe('Sidebar - real backend', () => {
 
 		await expect(sidebar.threadLink(threadId)).toBeVisible();
 	});
+
+	/**
+	 * Automatic thread titles (SLG-117): once the chat run settles, `ensureThreadTitle`
+	 * (threadTitle.ts) sends the opening exchange as a separate, stateless run of the `"title"`
+	 * graph (title.py), then PATCHes the result into thread metadata.
+	 *
+	 * `TITLE_TRIGGER_MESSAGE` must match its fixture entry in e2e_responses.json exactly (mockai
+	 * matches by exact string, not substring) — see that file's `_comment` for how the fixture's
+	 * `input` was derived. Without a match, mockai's fallback would echo the prompt itself back
+	 * as the title, which these tests would wrongly accept if they asserted anything weaker than
+	 * the exact expected title.
+	 */
+	const TITLE_TRIGGER_MESSAGE = 'Testing automatic thread titles for SLG-117';
+	const EXPECTED_TITLE = 'SLG-117 Sidebar Title Test';
+
+	test('a generated title appears in the sidebar row for the thread', async ({
+		page,
+		chat,
+		sidebar
+	}) => {
+		const threadId = await gotoFreshThread(page);
+
+		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
+		await chat.textInput.press('Enter');
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		// Titling runs after the chat run settles, so the row updates later still — its own
+		// generous timeout on top of the wait above.
+		const row = sidebar.threadLink(threadId);
+		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
+	});
+
+	test('the generated title persists across a reload', async ({ page, chat, sidebar }) => {
+		const threadId = await gotoFreshThread(page);
+
+		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
+		await chat.textInput.press('Enter');
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		const row = sidebar.threadLink(threadId);
+		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
+
+		// Surviving a reload proves the title reached persisted metadata, not just client state.
+		await page.reload();
+
+		await expect(row).toHaveText(EXPECTED_TITLE);
+	});
+
+	test('a second message in the same thread does not change the title', async ({
+		page,
+		chat,
+		sidebar
+	}) => {
+		const threadId = await gotoFreshThread(page);
+
+		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
+		await chat.textInput.press('Enter');
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		const row = sidebar.threadLink(threadId);
+		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
+
+		// `ensureThreadTitle` finds `metadata.title` already set and stops there — no second run.
+		await chat.textInput.fill('a second, unrelated message');
+		await chat.textInput.press('Enter');
+		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+
+		await expect(row).toHaveText(EXPECTED_TITLE);
+	});
 });
 
 test.describe('Sidebar - mobile viewport', () => {

@@ -11,6 +11,8 @@
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
+	import { getOrCreateAssistant } from '$lib/langgraph/client';
+	import { createThreadTitler } from '$lib/langgraph/threadTitle';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
@@ -169,12 +171,51 @@
 	const threadListRefresh = getThreadListRefresh();
 	let wasLoading = false;
 
+	// Thread titling (SLG-117): the "title" graph runs statelessly, triggered by the frontend, not
+	// by the chat graph — see threadTitle.ts for the single-flight/write-only-when-absent logic.
+	let titleAssistantIdPromise: Promise<string> | undefined;
+
+	function resolveTitleAssistantId(): Promise<string> {
+		if (!titleAssistantIdPromise) {
+			// Cache only the success — a transient failure must not permanently wedge retries
+			// behind a rejected promise.
+			titleAssistantIdPromise = getOrCreateAssistant(langGraphClient, 'title').catch((err) => {
+				titleAssistantIdPromise = undefined;
+				throw err;
+			});
+		}
+		return titleAssistantIdPromise;
+	}
+
+	const titler = createThreadTitler({
+		client: langGraphClient,
+		threadId,
+		resolveTitleAssistantId,
+		onTitled: () => threadListRefresh?.refresh()
+	});
+
 	$effect(() => {
-		if (!threadListRefresh) return;
 		const loading = stream.isLoading;
 		const settled = wasLoading && !loading;
 		wasLoading = loading;
-		if (settled) untrack(() => threadListRefresh.refresh());
+		if (!settled) return;
+		untrack(() => {
+			threadListRefresh?.refresh();
+			// Fire-and-forget: titling is a separate, awaited network round-trip and must not
+			// delay the refresh above. `ensureThreadTitle` no-ops once titled, so a regenerate
+			// (which re-settles without changing that) never re-titles.
+			void titler.ensureThreadTitle(stream.messages);
+		});
+	});
+
+	// Backfill on open: a pre-existing untitled thread with a complete opening exchange gets a
+	// title without waiting for the next message (e.g. a tab closed before the first settle ran).
+	let backfillAttempted = false;
+
+	$effect(() => {
+		if (stream.isThreadLoading || backfillAttempted) return;
+		backfillAttempted = true;
+		untrack(() => void titler.ensureThreadTitle(stream.messages));
 	});
 
 	// Report history-loading state up so the sidebar can mark this thread's row as pending.
