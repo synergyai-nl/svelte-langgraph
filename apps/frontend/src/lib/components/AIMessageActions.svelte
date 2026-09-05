@@ -2,7 +2,7 @@
 	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
 	import { RefreshCw } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { Message } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';

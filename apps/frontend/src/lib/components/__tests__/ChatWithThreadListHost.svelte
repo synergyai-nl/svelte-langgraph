@@ -1,10 +1,10 @@
 <script lang="ts">
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { setThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import {
+		setThreadListRefresh,
 		setThreadLoadingReporter,
 		type ThreadLoadingReporter
-	} from '$lib/langgraph/threadLoadingContext';
+	} from '@svelte-langgraph/client';
 	import Chat from '../Chat.svelte';
 	import type { ComponentProps } from 'svelte';
 

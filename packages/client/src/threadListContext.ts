@@ -1,7 +1,7 @@
 /**
  * Svelte context for triggering a thread-list refresh from anywhere below the provider (e.g.
  * after creating a new thread). Kept as a minimal interface rather than exposing the full
- * `ThreadList` instance, so callers can't reach in and mutate list state directly.
+ * `ThreadListState` instance, so callers can't reach in and mutate list state directly.
  */
 import { getContext, setContext } from 'svelte';
 

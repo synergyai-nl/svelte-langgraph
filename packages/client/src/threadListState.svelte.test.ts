@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Client } from '@langchain/langgraph-sdk';
-import { ThreadList } from './threadList.svelte.js';
-import { THREAD_SELECT } from './threadList.js';
+import { ThreadListState } from './threadListState.svelte.js';
+import { THREAD_SELECT } from './threads.js';
 
-// Flush all pending microtasks and a macrotask so async chains inside ThreadList resolve.
+// Flush all pending microtasks and a macrotask so async chains inside ThreadListState resolve.
 const flushPromises = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 function deferred<T>() {
@@ -41,9 +41,9 @@ beforeEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe('ThreadList', () => {
+describe('ThreadListState', () => {
 	it('starts empty, not loading, no error, no hasMore', () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		expect(list.threads).toEqual([]);
 		expect(list.loading).toBe(false);
 		expect(list.error).toBeNull();
@@ -51,7 +51,7 @@ describe('ThreadList', () => {
 	});
 
 	it('setClient triggers a load', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		const { promise, resolve } = deferred<unknown[]>();
 		mock.threads.search.mockReturnValue(promise);
@@ -69,7 +69,7 @@ describe('ThreadList', () => {
 	});
 
 	it('calls search with the exact expected query, no metadata/status filter', async () => {
-		const list = new ThreadList({ pageSize: 20 });
+		const list = new ThreadListState({ pageSize: 20 });
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([]);
 
@@ -92,7 +92,7 @@ describe('ThreadList', () => {
 	});
 
 	it('renders threads in exactly the order the server returned them, without re-sorting', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		// Deliberately neither id-alphabetical nor insertion-chronological — the server's
 		// updated_at desc ordering is trusted verbatim, nothing client-side reorders it.
@@ -109,7 +109,7 @@ describe('ThreadList', () => {
 	});
 
 	it('sets error and clears loading when search rejects', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		mock.threads.search.mockRejectedValue(new Error('boom'));
 
@@ -122,7 +122,7 @@ describe('ThreadList', () => {
 
 	describe('select-rejection latch', () => {
 		it('latches select off on a 422 rejection, then skips select on later requests', async () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -152,7 +152,7 @@ describe('ThreadList', () => {
 		it.each([400, 408, 429])(
 			'does not latch on a %i rejection — select is probed again on the next request',
 			async (status) => {
-				const list = new ThreadList();
+				const list = new ThreadListState();
 				const mock = makeMockClient();
 				const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -179,7 +179,7 @@ describe('ThreadList', () => {
 		);
 
 		it('does not latch when the plain retry also fails — surfaces the error and tries select again next time', async () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -209,7 +209,7 @@ describe('ThreadList', () => {
 		});
 
 		it('does not latch on a 5xx even when the plain retry succeeds — a later refresh still sends select', async () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -239,7 +239,7 @@ describe('ThreadList', () => {
 		});
 
 		it('does not latch on an unclassified rejection (plain Error)', async () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -266,7 +266,7 @@ describe('ThreadList', () => {
 	});
 
 	it('discards results from a superseded client after an abort, without surfacing an error', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mockA = makeMockClient();
 		const mockB = makeMockClient();
 		const { promise: promiseA, resolve: resolveA } = deferred<unknown[]>();
@@ -291,7 +291,7 @@ describe('ThreadList', () => {
 	});
 
 	it('setClient with the same client is a no-op', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([]);
 		const client = asClient(mock);
@@ -306,7 +306,7 @@ describe('ThreadList', () => {
 	});
 
 	it('setClient(null) clears state without issuing a request', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([makeRawThread('thread-1')]);
 
@@ -324,14 +324,14 @@ describe('ThreadList', () => {
 	});
 
 	it('sets hasMore true on a full page and false on a short page', async () => {
-		const fullPage = new ThreadList({ pageSize: 2 });
+		const fullPage = new ThreadListState({ pageSize: 2 });
 		const mockFull = makeMockClient();
 		mockFull.threads.search.mockResolvedValue([makeRawThread('a'), makeRawThread('b')]);
 		fullPage.setClient(asClient(mockFull));
 		await flushPromises();
 		expect(fullPage.hasMore).toBe(true);
 
-		const shortPage = new ThreadList({ pageSize: 2 });
+		const shortPage = new ThreadListState({ pageSize: 2 });
 		const mockShort = makeMockClient();
 		mockShort.threads.search.mockResolvedValue([makeRawThread('a')]);
 		shortPage.setClient(asClient(mockShort));
@@ -341,7 +341,7 @@ describe('ThreadList', () => {
 
 	describe('loadMore', () => {
 		it('fetches the next page at the correct offset, appends, and de-dupes by id', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
 			list.setClient(asClient(mock));
@@ -358,7 +358,7 @@ describe('ThreadList', () => {
 		});
 
 		it('is a no-op while a load is already in flight', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
 			list.setClient(asClient(mock));
@@ -374,7 +374,7 @@ describe('ThreadList', () => {
 		});
 
 		it('is a no-op when there is no more to fetch', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
 			list.setClient(asClient(mock));
@@ -388,7 +388,7 @@ describe('ThreadList', () => {
 	});
 
 	it('refresh replaces the list rather than appending', async () => {
-		const list = new ThreadList({ pageSize: 2 });
+		const list = new ThreadListState({ pageSize: 2 });
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
 		list.setClient(asClient(mock));
@@ -404,7 +404,7 @@ describe('ThreadList', () => {
 
 	describe('retry', () => {
 		it('replays a failed refresh, which loadMore cannot recover', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			// A single short page: hasMore stays false, which is exactly what made the old
 			// loadMore()-based retry a silent no-op.
@@ -434,7 +434,7 @@ describe('ThreadList', () => {
 		});
 
 		it('replays a failed loadMore at its own offset, appending rather than replacing', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
 			list.setClient(asClient(mock));
@@ -457,7 +457,7 @@ describe('ThreadList', () => {
 		});
 
 		it('falls back to a refresh when nothing has failed', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
 			list.setClient(asClient(mock));
@@ -472,7 +472,7 @@ describe('ThreadList', () => {
 	});
 
 	it('dispose aborts an in-flight request, so its late resolution is ignored', async () => {
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		const mock = makeMockClient();
 		const { promise, resolve } = deferred<unknown[]>();
 		mock.threads.search.mockReturnValue(promise);
@@ -493,7 +493,7 @@ describe('ThreadList', () => {
 
 	describe('pinning the active thread', () => {
 		it('fetches the pin by ids when the active thread is absent from the loaded pages', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
 				if (query.ids) return [makeRawThread('target')];
@@ -513,7 +513,7 @@ describe('ThreadList', () => {
 		});
 
 		it('does not fetch a pin when the active thread is already in a loaded page', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValue([makeRawThread('a'), makeRawThread('target')]);
 
@@ -529,7 +529,7 @@ describe('ThreadList', () => {
 		});
 
 		it('drops the pin once the real row surfaces via loadMore, without duplicating it', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
@@ -552,7 +552,7 @@ describe('ThreadList', () => {
 		});
 
 		it('drops the pin once refresh surfaces the real row, without duplicating it', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
@@ -578,7 +578,7 @@ describe('ThreadList', () => {
 		});
 
 		it('refresh does not re-fetch an already-successful pin', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
@@ -608,7 +608,7 @@ describe('ThreadList', () => {
 		});
 
 		it('a failed pin fetch leaves error null and the list usable', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -627,7 +627,7 @@ describe('ThreadList', () => {
 		});
 
 		it('an empty pin result (foreign or deleted id) leaves the list usable with no pinned row', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 
 			mock.threads.search.mockImplementation(async (query: Record<string, unknown>) => {
@@ -644,7 +644,7 @@ describe('ThreadList', () => {
 		});
 
 		it('dispose aborts an in-flight pin fetch', async () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			const mock = makeMockClient();
 			const { promise: pagePromise } = deferred<unknown[]>();
 			const { promise: pinPromise } = deferred<unknown[]>();
@@ -668,7 +668,7 @@ describe('ThreadList', () => {
 		});
 
 		it('the pin fetch honours the select latch', async () => {
-			const list = new ThreadList({ pageSize: 2 });
+			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -698,7 +698,7 @@ describe('ThreadList', () => {
 
 	describe('initialLoading', () => {
 		it('reports loading true before any client arrives, cleared by setClient(null)', () => {
-			const list = new ThreadList({ initialLoading: true });
+			const list = new ThreadListState({ initialLoading: true });
 
 			expect(list.loading).toBe(true);
 			expect(list.threads).toEqual([]);
@@ -710,7 +710,7 @@ describe('ThreadList', () => {
 		});
 
 		it('defaults to not loading when the option is omitted', () => {
-			const list = new ThreadList();
+			const list = new ThreadListState();
 			expect(list.loading).toBe(false);
 		});
 	});

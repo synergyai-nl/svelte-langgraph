@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FieldBinding } from '$lib/langgraph/stateSync.svelte.js';
+	import type { FieldBinding } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

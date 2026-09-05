@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { Message } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 
