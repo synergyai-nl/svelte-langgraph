@@ -19,6 +19,7 @@ from svelte_langgraph.title import (
     TITLE_CONVERSATION_MAX_TURNS,
     TITLE_MAX_CHARS,
     _render_conversation_for_title,
+    _strip_thinking,
     make_title_graph,
     sanitize_title,
 )
@@ -180,6 +181,22 @@ async def test_graph_strips_unclosed_leading_think_tag(graph, monkeypatch):
     )
 
     assert result == {"title": None}
+
+
+def test_strip_thinking_handles_nested_blocks():
+    stripped = _strip_thinking(
+        "<think>outer <think>inner</think> outer</think>Trip to Paris"
+    )
+    assert stripped == "Trip to Paris"
+
+
+def test_strip_thinking_drops_unclosed_tag_mid_string():
+    stripped = _strip_thinking("Sure thing. <think>deciding and never closing")
+    assert stripped == "Sure thing. "
+
+
+def test_strip_thinking_ignores_orphan_closing_tag():
+    assert _strip_thinking("Trip to </think>Paris") == "Trip to Paris"
 
 
 @pytest.mark.asyncio

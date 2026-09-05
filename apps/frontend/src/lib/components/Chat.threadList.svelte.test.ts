@@ -254,6 +254,27 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		expect(refresh).toHaveBeenCalledTimes(1);
 	});
 
+	test('a rename landing while the title run is in flight is not overwritten', async () => {
+		// Untitled at the pre-run check; renamed by the time the pre-PATCH re-check runs.
+		threadsGetMock
+			.mockResolvedValueOnce({ metadata: {} })
+			.mockResolvedValue({ metadata: { title: 'Renamed mid-run' } });
+
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(runsWaitMock).toHaveBeenCalledTimes(1));
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(2));
+		await tick();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
 	test('a failed title run is retried on the next settle', async () => {
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 		runsWaitMock.mockRejectedValueOnce(new Error('model blip'));

@@ -40,9 +40,10 @@ export interface ThreadTitler {
 }
 
 /**
- * Two accepted residual races, left as-is: (a) the GET->PATCH window vs. a concurrent rename by
- * another client/tab, and (b) two tabs both generating for the same untitled thread — harmless,
- * since temperature=0 makes the titles near-identical and the second PATCH a same-value write.
+ * Two accepted residual races, left as-is: (a) a concurrent rename landing in the brief
+ * re-check->PATCH window (the title run itself is bracketed by a fresh `threads.get`), and
+ * (b) two tabs both generating for the same untitled thread — harmless, since temperature=0
+ * makes the titles near-identical and the second PATCH a same-value write.
  */
 export function createThreadTitler({
 	client,
@@ -53,6 +54,12 @@ export function createThreadTitler({
 	let running = false;
 	let knownTitled = false;
 
+	async function hasStoredTitle(): Promise<boolean> {
+		const thread = await client.threads.get(threadId);
+		const storedTitle = thread.metadata?.title;
+		return typeof storedTitle === 'string' && storedTitle.length > 0;
+	}
+
 	async function ensureThreadTitle(messages: readonly unknown[]): Promise<void> {
 		if (running || knownTitled) return;
 		const exchange = selectOpeningExchange(messages);
@@ -61,9 +68,7 @@ export function createThreadTitler({
 		running = true;
 		try {
 			// Write-only-when-absent: user renames and other clients always win.
-			const thread = await client.threads.get(threadId);
-			const storedTitle = thread.metadata?.title;
-			if (typeof storedTitle === 'string' && storedTitle.length > 0) {
+			if (await hasStoredTitle()) {
 				knownTitled = true;
 				return;
 			}
@@ -72,6 +77,11 @@ export function createThreadTitler({
 			const result = await client.runs.wait(null, assistantId, { input: { messages: exchange } });
 			const title = (result as { title?: unknown } | null)?.title;
 			if (typeof title === 'string' && title.length > 0) {
+				// Re-check: the title run takes seconds, plenty of time for a rename to land.
+				if (await hasStoredTitle()) {
+					knownTitled = true;
+					return;
+				}
 				await client.threads.update(threadId, { metadata: { title } });
 				knownTitled = true;
 				onTitled?.();

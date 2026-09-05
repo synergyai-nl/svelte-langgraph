@@ -71,15 +71,7 @@ def _strip_format_chars(text: str) -> str:
     return "".join(c for c in text if unicodedata.category(c) not in _CF_CATEGORIES)
 
 
-# Matches a closed <think>/<thinking> block, or an unclosed leading tag
-# through to end of string (some providers truncate mid-thought when
-# `max_tokens` cuts in).
-_THINK_BLOCK_RE = re.compile(
-    r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE
-)
-_THINK_UNCLOSED_LEADING_RE = re.compile(
-    r"^\s*<think(?:ing)?>.*", re.DOTALL | re.IGNORECASE
-)
+_THINK_TAG_RE = re.compile(r"(</?think(?:ing)?>)", re.IGNORECASE)
 
 
 def _strip_thinking(text: str) -> str:
@@ -87,11 +79,20 @@ def _strip_thinking(text: str) -> str:
 
     Defensive backstop: some OpenAI-compatible servers only split reasoning
     into a separate field on the streaming path, and inline it as literal
-    tags on the non-streaming path this graph uses.
+    tags on the non-streaming path this graph uses. Depth-tracked so nested
+    blocks and unclosed tags (truncation mid-thought) drop cleanly.
     """
-    text = _THINK_BLOCK_RE.sub("", text)
-    text = _THINK_UNCLOSED_LEADING_RE.sub("", text)
-    return text
+    out: list[str] = []
+    depth = 0
+    for token in _THINK_TAG_RE.split(text):
+        if _THINK_TAG_RE.fullmatch(token):
+            if token[1] != "/":
+                depth += 1
+            elif depth:
+                depth -= 1
+        elif depth == 0:
+            out.append(token)
+    return "".join(out)
 
 
 def sanitize_title(raw: str) -> str | None:
