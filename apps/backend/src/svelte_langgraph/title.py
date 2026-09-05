@@ -10,10 +10,11 @@ import logging
 import re
 import unicodedata
 from collections.abc import Sequence
-from typing import TypedDict
+from typing import Annotated, TypedDict
 
 from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import add_messages
 from langgraph.graph.state import CompiledStateGraph
 
 # Absolute import required: Aegra loads this file by path (outside the
@@ -152,7 +153,9 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
 
 
 class TitleInputState(TypedDict):
-    messages: list[AnyMessage]
+    # `add_messages` coerces the JSON dicts an HTTP invocation sends into
+    # message objects; without it every isinstance check below misses.
+    messages: Annotated[list[AnyMessage], add_messages]
 
 
 class TitleOutputState(TypedDict):

@@ -79,6 +79,35 @@ async def test_graph_invoke_returns_sanitized_title(graph, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_graph_invoke_coerces_dict_messages(graph, monkeypatch):
+    """An HTTP invocation sends messages as JSON dicts, not message objects;
+    without `add_messages` coercion they'd all be skipped as unknown types."""
+    model = _StubTitleModel("Paris Trip")
+    prompts: list[str] = []
+    original = model.ainvoke
+
+    async def recording_ainvoke(prompt: str) -> AIMessage:
+        prompts.append(prompt)
+        return await original(prompt)
+
+    model.ainvoke = recording_ainvoke  # type: ignore[method-assign]
+    monkeypatch.setattr("svelte_langgraph.title.get_title_model", lambda: model)
+
+    result = await graph.ainvoke(
+        {
+            "messages": [
+                {"type": "human", "content": "Help me plan a trip to Paris"},
+                {"type": "ai", "content": "Sure - when are you going?"},
+            ]
+        }
+    )
+
+    assert result == {"title": "Paris Trip"}
+    assert "User: Help me plan a trip to Paris" in prompts[0]
+    assert "Assistant: Sure - when are you going?" in prompts[0]
+
+
+@pytest.mark.asyncio
 async def test_graph_invoke_model_failure_returns_none_and_logs_warning(
     graph, monkeypatch, caplog
 ):
