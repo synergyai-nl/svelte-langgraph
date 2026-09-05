@@ -41,6 +41,11 @@ class FeedbackPayload(BaseModel):
 # require_auth is declared here and not left to `enable_custom_route_auth` in
 # aegra.json: that flag assigns to route.dependencies after FastAPI has built
 # route.dependant from it, so it enforces nothing (aegra_api 0.10.3, main.py:217).
+#
+# It also fails open. Aegra swallows any exception from loading our auth module
+# (auth_middleware.py:104) and then authenticates everyone as "anonymous", which
+# passes require_auth and makes the ownership check below compare "anonymous" to
+# itself. A warning in the log is the only sign. See #302.
 @app.post("/feedback")
 async def feedback(
     payload: FeedbackPayload,
