@@ -77,7 +77,7 @@ def test_an_unauthenticated_rating_is_rejected(langfuse_env):
 
 
 @respx.mock
-@pytest.mark.parametrize("run_owner", [None], indirect=True)
+@pytest.mark.parametrize("runs", ["foreign"], indirect=True)
 def test_a_run_the_caller_does_not_own_is_not_scorable(client, langfuse_env):
     """Authentication alone was never enough: every signed-in user could score
     every run, since a run id is the only thing identifying what is being rated
@@ -95,7 +95,7 @@ def test_a_run_the_caller_does_not_own_is_not_scorable(client, langfuse_env):
 
 
 @respx.mock
-@pytest.mark.parametrize("run_owner", [None], indirect=True)
+@pytest.mark.parametrize("runs", ["foreign"], indirect=True)
 def test_ownership_is_checked_even_without_langfuse(client, no_langfuse_env):
     """The unconfigured path returns ok early. If that early return came first,
     the ownership check would hold only where Langfuse happens to be set up --
@@ -152,6 +152,35 @@ def test_the_refusal_happens_before_routing(client):
     503 shows the refusal precedes routing, which is what puts the routers Aegra
     adds to this same app, holding the actual user data, behind it too."""
     assert client.get("/threads").status_code == 503
+
+
+@respx.mock
+@pytest.mark.parametrize("caller_id", [""], indirect=True)
+def test_a_caller_without_an_identity_is_rejected(client, langfuse_env):
+    """An identity is what the run is checked against, so an empty one has
+    nothing to compare and must not be treated as a caller. Only "" is testable
+    here: User.identity is typed str, so None is rejected by the model itself."""
+    score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+
+    assert response.status_code == 401
+    assert not score.calls
+
+
+@respx.mock
+@pytest.mark.parametrize("authenticated", [False], indirect=True)
+def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
+    """require_auth admits whatever its backend returns without reading
+    is_authenticated -- only get_current_user does, which this route does not
+    use. aegra/aegra#459 sets that flag on the anonymous user, so relying on
+    Aegra to act on it would leave the endpoint open once #459 ships."""
+    score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+
+    assert response.status_code == 401
+    assert not score.calls
 
 
 @pytest.mark.parametrize("auth_installed", ["unrecognised"], indirect=True)

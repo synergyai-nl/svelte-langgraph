@@ -31,8 +31,10 @@ async def refuse_to_serve_without_auth(request: Request, call_next):
     Aegra applies its own routers to this app, so this covers threads, runs and
     the store too -- not just /feedback.
 
-    Remove once aegra/aegra#459 ships: it makes the anonymous user
-    is_authenticated=False, which is the same fix a layer down.
+    aegra/aegra#459 does NOT retire this: it sets is_authenticated=False on the
+    anonymous user, and require_auth never reads that field -- only
+    get_current_user does (auth_deps.py:135), which this route does not use.
+    The handler below rejects that user itself for the same reason.
     """
     # Narrowed rather than duck-typed: get_auth_backend is annotated as the
     # Starlette base class, and a backend we do not recognise is not one we can
@@ -89,6 +91,12 @@ async def feedback(
     this is one fast POST with no lookup and no wait for ingestion. That makes
     a failure something the caller can actually be told about.
     """
+    # require_auth admits any result its backend returns without looking at
+    # is_authenticated (auth_deps.py:58-96), so an explicitly unauthenticated
+    # user reaches here as a normal caller. Checked here rather than trusted.
+    if not user.is_authenticated or not user.identity:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     # Before the is_configured early return, so it holds without Langfuse too.
     owned = await session.scalar(
         select(RunORM.run_id).where(

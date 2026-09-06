@@ -12,6 +12,8 @@ import pytest
 from aegra_api.core.auth_middleware import LangGraphAuthBackend
 from langgraph_sdk import Auth
 from sqlalchemy import Select
+from sqlalchemy.sql import operators
+from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
 
 from svelte_langgraph import routes
 
@@ -67,27 +69,42 @@ DISPLAY_NAME = "Some Owner"
 OTHER_USER_ID = "oidc|8b7d05e6-other"
 
 
-class _StubSession:
-    """Stands in for the AsyncSession the ownership check queries.
+def _matches(clause, row: dict[str, str]) -> bool:
+    """Evaluate the route's WHERE clause against one row.
 
-    `owned` is what `session.scalar()` returns: the run id when the run exists
-    and belongs to the caller, None when it does not. The route only asks that
-    one question, so distinguishing "no such run" from "someone else's run" is
-    the database's job, not this stub's -- both arrive here as None, which is
-    also why the route answers 404 to both.
+    Semantic rather than textual on purpose. Asserting the compiled SQL only
+    proves both column names appear in it, which and_ and or_ do equally --
+    and or_ hands every run to every caller.
+    """
+    if isinstance(clause, BooleanClauseList):
+        results = [_matches(c, row) for c in clause.clauses]
+        if clause.operator is operators.and_:
+            return all(results)
+        if clause.operator is operators.or_:
+            return any(results)
+        raise AssertionError(f"unsupported operator: {clause.operator}")
+    if isinstance(clause, BinaryExpression) and clause.operator is operators.eq:
+        return row.get(clause.left.name) == clause.right.value
+    raise AssertionError(f"unsupported clause: {clause!r}")
+
+
+class _StubSession:
+    """Stands in for the AsyncSession, holding the rows of the runs table.
+
+    Answers the route's query by actually applying its WHERE clause, so a
+    predicate that admits the wrong caller returns the wrong row here too.
     """
 
-    def __init__(self, owned: str | None):
-        self._owned = owned
+    def __init__(self, rows: list[dict[str, str]]):
+        self._rows = rows
         self.statement: Select | None = None
 
     async def scalar(self, statement):
-        # Kept so a test can assert what was actually asked. Returning the right
-        # answer to the wrong question is the failure mode here: a query filtered
-        # on run id alone would satisfy every other test in the file while
-        # letting anyone score anyone's run.
         self.statement = statement
-        return self._owned
+        for row in self._rows:
+            if _matches(statement.whereclause, row):
+                return row["run_id"]
+        return None
 
     def compiled_sql(self) -> str:
         assert self.statement is not None, "nothing was queried"
@@ -95,18 +112,23 @@ class _StubSession:
 
 
 @pytest.fixture
-def run_owner(request):
-    """What the ownership query finds: RUN_ID when the caller owns the run.
+def runs(request):
+    """The rows of the runs table. By default the one run the caller owns.
 
-    Override with `@pytest.mark.parametrize("run_owner", [None], indirect=True)`
-    for the run that is missing or belongs to someone else.
+    Override with `@pytest.mark.parametrize("runs", ["foreign"], indirect=True)`
+    for a run that exists but belongs to someone else, or `["none"]` for a run
+    that is not there at all. The route must answer 404 to both.
     """
-    return getattr(request, "param", RUN_ID)
+    case = getattr(request, "param", "own")
+    if case == "none":
+        return []
+    owner = OTHER_USER_ID if case == "foreign" else USER_ID
+    return [{"run_id": RUN_ID, "user_id": owner}]
 
 
 @pytest.fixture
-def session(run_owner):
-    return _StubSession(run_owner)
+def session(runs):
+    return _StubSession(runs)
 
 
 @pytest.fixture
@@ -115,6 +137,12 @@ def caller_id(request):
     `@pytest.mark.parametrize("caller_id", [OTHER_USER_ID], indirect=True)`
     to check the query follows the caller rather than a fixed value."""
     return getattr(request, "param", USER_ID)
+
+
+@pytest.fixture
+def authenticated(request):
+    """Whether the backend claims the caller is authenticated at all."""
+    return getattr(request, "param", True)
 
 
 @pytest.fixture
@@ -143,7 +171,7 @@ def auth_installed(request, monkeypatch):
 
 
 @pytest.fixture
-def client(session, caller_id, auth_installed):
+def client(session, caller_id, authenticated, auth_installed):
     """A TestClient that is authenticated and owns the run it rates.
 
     /feedback depends on `require_auth` and `get_session`, which would otherwise
@@ -160,7 +188,7 @@ def client(session, caller_id, auth_installed):
     from svelte_langgraph.routes import app
 
     app.dependency_overrides[require_auth] = lambda: User(
-        identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=True
+        identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=authenticated
     )
     app.dependency_overrides[get_session] = lambda: session
     try:
