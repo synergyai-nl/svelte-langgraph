@@ -9,7 +9,11 @@ this suite at one run per test instead of sixteen.
 from types import SimpleNamespace
 
 import pytest
+from aegra_api.core.auth_deps import require_auth
 from aegra_api.core.auth_middleware import LangGraphAuthBackend
+from aegra_api.core.orm import get_session
+from aegra_api.models import User
+from fastapi.testclient import TestClient
 from langgraph_sdk import Auth
 from sqlalchemy import Select
 from sqlalchemy.sql import operators
@@ -180,13 +184,7 @@ def client(session, caller_id, authenticated, auth_installed):
     cases that exercise the genuine unauthenticated and unowned paths live in
     test_routes.py.
     """
-    from aegra_api.core.auth_deps import require_auth
-    from aegra_api.core.orm import get_session
-    from aegra_api.models import User
-    from fastapi.testclient import TestClient
-
-    from svelte_langgraph.routes import app
-
+    app = routes.app
     app.dependency_overrides[require_auth] = lambda: User(
         identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=authenticated
     )
