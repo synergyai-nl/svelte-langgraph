@@ -54,8 +54,9 @@ async def refuse_to_serve_without_auth(request: Request, call_next):
 COMMENT_MAX_LENGTH = 2000
 
 # Stripped before the length check, so trailing newlines don't eat the budget and
-# a whitespace-only box arrives as "" -- falsy, so record_score omits the key
-# rather than attaching a blank comment to the score.
+# a whitespace-only box arrives as "". record_score sends the comment either way:
+# the score id makes it an upsert, so a blank has to overwrite whatever a
+# previous rating left there.
 Comment = Annotated[
     str,
     StringConstraints(strip_whitespace=True, max_length=COMMENT_MAX_LENGTH),

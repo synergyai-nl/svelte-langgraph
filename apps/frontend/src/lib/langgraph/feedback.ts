@@ -1,4 +1,4 @@
-import { env } from '$env/dynamic/public';
+import { apiUrl } from './apiUrl';
 
 /** Same limit as COMMENT_MAX_LENGTH in apps/backend/src/svelte_langgraph/routes.py. */
 export const COMMENT_MAX_LENGTH = 2000;
@@ -24,14 +24,11 @@ export async function submitFeedback(
 	score: 'up' | 'down',
 	comment?: string
 ): Promise<void> {
-	const apiUrl = env.PUBLIC_LANGGRAPH_API_URL;
-	if (!apiUrl) throw new Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
-
 	const trimmed = comment?.trim();
 	if (trimmed && codePointLength(trimmed) > COMMENT_MAX_LENGTH)
 		throw new Error(`comment must be at most ${COMMENT_MAX_LENGTH} characters`);
 
-	const res = await fetch(`${apiUrl}/feedback`, {
+	const res = await fetch(`${apiUrl()}/feedback`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

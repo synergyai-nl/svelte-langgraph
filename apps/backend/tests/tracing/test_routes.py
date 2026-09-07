@@ -56,9 +56,14 @@ def test_feedback_rejects_a_malformed_payload(client, langfuse_env):
 
 
 @respx.mock
-def test_an_unauthenticated_rating_is_rejected(langfuse_env):
+def test_an_unauthenticated_rating_is_rejected(real_auth, langfuse_env):
     """Deliberately not using the `client` fixture: this is the one case that
     must reach the real dependency.
+
+    It takes `real_auth` all the same, which pins this project's own auth module
+    in place of whatever Aegra resolves from the process CWD. Without it, running
+    pytest from the repo root found no auth, and the route answered from the
+    anonymous fallback instead of rejecting -- the very hole this guards.
 
     Guards a silent failure mode. `enable_custom_route_auth` in aegra.json looks
     like it protects this route and does not -- it assigns to `route.dependencies`

@@ -9,6 +9,7 @@ this suite at one run per test instead of sixteen.
 from types import SimpleNamespace
 
 import pytest
+from aegra_api.core import auth_deps
 from aegra_api.core.auth_deps import require_auth
 from aegra_api.core.auth_middleware import LangGraphAuthBackend
 from aegra_api.core.orm import get_session
@@ -172,6 +173,25 @@ def auth_installed(request, monkeypatch):
         backend.auth_instance = Auth() if installed else None
     monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
     return installed
+
+
+@pytest.fixture
+def real_auth(monkeypatch):
+    """Wire the project's own auth module in, wherever pytest was started from.
+
+    Aegra finds auth by resolving aegra.json relative to the process CWD and
+    caches the result for the session (lru_cache on get_auth_backend). Run from
+    the repo root it finds nothing, falls back to the anonymous user, and the
+    one test that exercises the real require_auth stops testing it. Patched in
+    both modules because require_auth reads its own import, not the route's.
+    """
+    from svelte_langgraph.auth import auth
+
+    backend = object.__new__(LangGraphAuthBackend)
+    backend.auth_instance = auth
+    monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
+    monkeypatch.setattr(auth_deps, "get_auth_backend", lambda: backend)
+    return backend
 
 
 @pytest.fixture
