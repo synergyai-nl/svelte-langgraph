@@ -1,8 +1,9 @@
 import type { Locator, Page, Request } from '@playwright/test';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
+import { OIDC_CONFIG } from './pages';
 import { gotoFreshThread } from './fixtures/backend';
-import type { ChatPage } from './pages';
+import { AppPage, ChatPage } from './pages';
 
 // Shares the single test-user thread pool like chat.spec — these tests submit runs
 // and assert on message counts, so keep them off the fullyParallel path.
@@ -97,40 +98,63 @@ test('rating a reply posts the score for its run, authenticated', async ({ page,
 	expect(await res.request().headerValue('authorization')).toMatch(/^Bearer .+/);
 });
 
-test('the backend refuses an unauthenticated score, and a run the caller does not own', async ({
-	page,
-	chat
-}) => {
-	// The unit tests stub the session, so this is the only place the ownership
-	// query runs against a real Postgres row written by a real run.
+/** Rate a reply on an already signed-in page, and report the run that was
+ *  scored plus the credentials it was scored with. */
+async function scoreOwnReply(page: Page, chat: ChatPage) {
+	await gotoFreshThread(page);
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
-
 	const scored = page.waitForResponse((res) => isScorePost(res.request()));
 	await rate(chat, aiMessage, 'up');
-	const accepted = (await scored).request();
+	const request = (await scored).request();
 
-	const url = accepted.url();
-	const authorization = (await accepted.headerValue('authorization'))!;
-	const ownRunId = (accepted.postDataJSON() as { run_id: string }).run_id;
+	return {
+		url: request.url(),
+		authorization: (await request.headerValue('authorization'))!,
+		runId: (request.postDataJSON() as { run_id: string }).run_id
+	};
+}
 
-	// Same token, same endpoint, a run this user never created. 404 rather than
-	// 403 on purpose: the answer must not confirm that someone else's run exists.
-	const foreign = await page.request.post(url, {
-		headers: { Authorization: authorization },
-		data: { run_id: crypto.randomUUID(), score: 'up' }
-	});
-	expect(foreign.status()).toBe(404);
+test('the backend refuses an unauthenticated score, and a run belonging to someone else', async ({
+	page,
+	chat,
+	browser
+}) => {
+	// The unit tests stub the session, so this is the only place the ownership
+	// query runs against real rows in Postgres, written by real runs.
+	// Already signed in as the default subject by the beforeEach hook.
+	const owner = await scoreOwnReply(page, chat);
 
 	// The run it does own, minus the credentials. Aegra's own
 	// `enable_custom_route_auth` leaves this at 200 — the route's own
 	// `Depends(require_auth)` is what makes it 401.
-	const anonymous = await page.request.post(url, {
-		data: { run_id: ownRunId, score: 'up' }
+	const anonymous = await page.request.post(owner.url, {
+		data: { run_id: owner.runId, score: 'up' }
 	});
 	expect(anonymous.status()).toBe(401);
+
+	// A second signed-in user, with a valid token of their own, aiming at a run
+	// that exists and belongs to the first. A random run id would not test this:
+	// a row that is not there is refused by a query filtered on run id alone,
+	// so it passes with no ownership predicate at all.
+	const otherContext = await browser.newContext();
+	try {
+		const otherPage = await otherContext.newPage();
+		await authenticateUser(otherPage, OIDC_CONFIG.otherUsername);
+		const other = await scoreOwnReply(otherPage, new ChatPage(new AppPage(otherPage)));
+		expect(other.runId).not.toEqual(owner.runId);
+
+		const foreign = await otherPage.request.post(owner.url, {
+			headers: { Authorization: other.authorization },
+			data: { run_id: owner.runId, score: 'up' }
+		});
+		// 404 rather than 403: the answer must not confirm the run exists.
+		expect(foreign.status()).toBe(404);
+	} finally {
+		await otherContext.close();
+	}
 });
 
 test('rating an earlier reply scores that run, not the most recent one', async ({ page, chat }) => {
