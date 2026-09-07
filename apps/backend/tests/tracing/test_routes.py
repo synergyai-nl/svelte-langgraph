@@ -2,6 +2,7 @@
 
 import httpx
 import respx
+from aegra_api.core.auth_registry import EXEMPT_PATHS
 from fastapi.testclient import TestClient
 
 from svelte_langgraph.routes import app
@@ -68,7 +69,7 @@ def test_an_unauthenticated_rating_is_rejected(real_auth, langfuse_env):
     Guards a silent failure mode. `enable_custom_route_auth` in aegra.json looks
     like it protects this route and does not -- it assigns to `route.dependencies`
     after FastAPI has built `route.dependant` from it (aegra_api 0.10.3,
-    aegra_api/main.py:217), so the dependency is stored and never run. Nothing
+    aegra_api/main.py:223), so the dependency is stored and never run. Nothing
     else here would notice: every other test authenticates, and the route would
     answer 200 to an anonymous caller exactly as it does to a signed-in one.
     """
@@ -186,6 +187,19 @@ def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
 
     assert response.status_code == 401
     assert not score.calls
+
+
+@pytest.mark.parametrize("path", sorted(EXEMPT_PATHS))
+@pytest.mark.parametrize("auth_installed", [False], indirect=True)
+def test_the_paths_aegra_serves_anonymously_are_still_answered(client, path):
+    """Broken auth must not read as a dead process. A probe carries no user
+    data, and a restart loop tells an operator far less than a 503 does.
+
+    Every path in the set, not just /health: the point of borrowing Aegra's
+    list is that it stays theirs, and a hardcoded one of our own would pass a
+    test that only ever asks about the one path we happened to think of.
+    """
+    assert client.get(path).status_code != 503
 
 
 @pytest.mark.parametrize("auth_installed", ["unrecognised"], indirect=True)
