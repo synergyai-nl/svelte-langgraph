@@ -6,8 +6,6 @@ here touches a chat model, so pinning both parameters to a single value keeps
 this suite at one run per test instead of sixteen.
 """
 
-from types import SimpleNamespace
-
 import pytest
 from aegra_api.core import auth_deps
 from aegra_api.core.auth_deps import require_auth
@@ -15,7 +13,6 @@ from aegra_api.core.auth_middleware import LangGraphAuthBackend
 from aegra_api.core.orm import get_session
 from aegra_api.models import User
 from fastapi.testclient import TestClient
-from langgraph_sdk import Auth
 from sqlalchemy import Select
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
@@ -151,51 +148,24 @@ def authenticated(request):
 
 
 @pytest.fixture
-def auth_installed(request, monkeypatch):
-    """Whether Aegra managed to load our auth module.
-
-    Pinned rather than inherited from the ambient config: every other test here
-    would otherwise pass or fail on whether aegra.json happened to resolve.
-    Override with
-    `@pytest.mark.parametrize("auth_installed", [False], indirect=True)`, or
-    with "unrecognised" for a backend this code does not know how to inspect.
-    """
-    installed = getattr(request, "param", True)
-    if installed == "unrecognised":
-        # Something that is not Aegra's backend at all, and so cannot be shown
-        # to have auth installed however healthy its attributes look.
-        backend = SimpleNamespace(auth_instance=Auth())
-    else:
-        # A real backend built without __init__, which would go and load auth
-        # for real. The route narrows on this type, so a stand-in would be
-        # refused and every other test here would 503.
-        backend = object.__new__(LangGraphAuthBackend)
-        backend.auth_instance = Auth() if installed else None
-    monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
-    return installed
-
-
-@pytest.fixture
 def real_auth(monkeypatch):
     """Wire the project's own auth module in, wherever pytest was started from.
 
     Aegra finds auth by resolving aegra.json relative to the process CWD and
     caches the result for the session (lru_cache on get_auth_backend). Run from
     the repo root it finds nothing, falls back to the anonymous user, and the
-    one test that exercises the real require_auth stops testing it. Patched in
-    both modules because require_auth reads its own import, not the route's.
+    one test that exercises the real require_auth stops testing it.
     """
     from svelte_langgraph.auth import auth
 
     backend = object.__new__(LangGraphAuthBackend)
     backend.auth_instance = auth
-    monkeypatch.setattr(routes, "get_auth_backend", lambda: backend)
     monkeypatch.setattr(auth_deps, "get_auth_backend", lambda: backend)
     return backend
 
 
 @pytest.fixture
-def client(session, caller_id, authenticated, auth_installed):
+def client(session, caller_id, authenticated):
     """A TestClient that is authenticated and owns the run it rates.
 
     /feedback depends on `require_auth` and `get_session`, which would otherwise

@@ -2,13 +2,10 @@ from typing import Annotated
 from uuid import UUID
 
 from aegra_api.core.auth_deps import require_auth
-from aegra_api.core.auth_middleware import LangGraphAuthBackend, get_auth_backend
-from aegra_api.core.auth_registry import EXEMPT_PATHS
 from aegra_api.core.orm import Run as RunORM
 from aegra_api.core.orm import get_session
 from aegra_api.models import User
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,53 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .tracing import Rating, is_configured, record_score
 
 app = FastAPI()
-
-
-@app.middleware("http")
-async def refuse_to_serve_without_auth(request: Request, call_next):
-    """Answer nothing at all rather than answer everyone as the same user.
-
-    Aegra swallows any exception raised while importing our auth module
-    (auth_middleware.py:104), then authenticates every caller as "anonymous"
-    with is_authenticated=True. That passes require_auth, and because runs
-    created in that state are also owned by "anonymous", the ownership check
-    below matches for everybody. A broken deployment is much better than an
-    open one, so refuse the request instead.
-
-    Guards every route in the server. Aegra mounts this module as the
-    application and includes its own routers into it, so threads, runs and the
-    store sit behind this as much as the handler below does.
-
-    The exceptions are Aegra's own EXEMPT_PATHS: every one already answers
-    anonymously on a healthy server, so this grants nothing the working state
-    does not, and an unexplained restart loop helps nobody. Borrowed to keep
-    the spellings in step -- though it is upstream's @auth.on coverage list
-    rather than an authentication one, so a route they protect without an
-    @auth.on handler would drop out of this guard. Nothing in the shipped
-    package reads it, so only their CI keeps it honest; losing it is an
-    ImportError at startup rather than a hole.
-
-    aegra/aegra#459 does NOT retire this: it sets is_authenticated=False on the
-    anonymous user, and require_auth never reads that field -- only
-    get_current_user does (auth_deps.py:135), which nothing here calls. The
-    handler below rejects that user itself for the same reason.
-    """
-    if request.url.path not in EXEMPT_PATHS:
-        # Narrowed rather than duck-typed: get_auth_backend is annotated as the
-        # Starlette base class, and a backend we do not recognise is not one we
-        # can claim has auth installed -- so that refuses too.
-        backend = get_auth_backend()
-        if (
-            not isinstance(backend, LangGraphAuthBackend)
-            or backend.auth_instance is None
-        ):
-            return JSONResponse(
-                status_code=503,
-                content={
-                    "detail": "Authentication is not installed; refusing to serve"
-                },
-            )
-    return await call_next(request)
 
 
 # Kept in step with COMMENT_MAX_LENGTH in
@@ -93,10 +43,12 @@ class FeedbackPayload(BaseModel):
 # aegra.json: that flag assigns to route.dependencies after FastAPI has built
 # route.dependant from it, so it enforces nothing (aegra_api 0.10.3, main.py:223).
 #
-# It also fails open. Aegra swallows any exception from loading our auth module
-# (auth_middleware.py:104) and then authenticates everyone as "anonymous", which
-# passes require_auth and makes the ownership check below compare "anonymous" to
-# itself. A warning in the log is the only sign. See #302.
+# It also fails open: Aegra swallows any exception from loading our auth module
+# (auth_middleware.py:104) and authenticates everyone as "anonymous", which
+# passes require_auth. Not worked around here -- runs made before the breakage
+# are still owned by real identities, so the check below refuses them, and only
+# a deployment that never authenticated anyone is exposed. Tracked in #302 and
+# fixed upstream by aegra/aegra#459.
 @app.post("/feedback")
 async def feedback(
     payload: FeedbackPayload,

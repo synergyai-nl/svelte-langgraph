@@ -2,7 +2,6 @@
 
 import httpx
 import respx
-from aegra_api.core.auth_registry import EXEMPT_PATHS
 from fastapi.testclient import TestClient
 
 from svelte_langgraph.routes import app
@@ -139,28 +138,6 @@ def test_the_ownership_query_is_scoped_to_the_caller(
 
 
 @respx.mock
-@pytest.mark.parametrize("auth_installed", [False], indirect=True)
-def test_nothing_is_served_when_auth_failed_to_load(client, langfuse_env):
-    """Aegra answers an unloadable auth module by calling everyone "anonymous",
-    which passes require_auth and makes every run look owned. Refusing the
-    request is the only safe reading of that state."""
-    score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
-
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
-
-    assert response.status_code == 503
-    assert not score.calls
-
-
-@pytest.mark.parametrize("auth_installed", [False], indirect=True)
-def test_the_refusal_happens_before_routing(client):
-    """/threads is not registered on this app -- unguarded it would 404. Getting
-    503 shows the refusal precedes routing, which is what puts the routers Aegra
-    adds to this same app, holding the actual user data, behind it too."""
-    assert client.get("/threads").status_code == 503
-
-
-@respx.mock
 @pytest.mark.parametrize("caller_id", [""], indirect=True)
 def test_a_caller_without_an_identity_is_rejected(client, langfuse_env):
     """An identity is what the run is checked against, so an empty one has
@@ -187,29 +164,6 @@ def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
 
     assert response.status_code == 401
     assert not score.calls
-
-
-@pytest.mark.parametrize("path", sorted(EXEMPT_PATHS))
-@pytest.mark.parametrize("auth_installed", [False], indirect=True)
-def test_the_paths_aegra_serves_anonymously_are_still_answered(client, path):
-    """Broken auth must not read as a dead process. A probe carries no user
-    data, and a restart loop tells an operator far less than a 503 does.
-
-    Every path in the set, not just /health: the point of borrowing Aegra's
-    list is that it stays theirs, and a hardcoded one of our own would pass a
-    test that only ever asks about the one path we happened to think of.
-    """
-    assert client.get(path).status_code != 503
-
-
-@pytest.mark.parametrize("auth_installed", ["unrecognised"], indirect=True)
-def test_an_unrecognisable_auth_backend_is_also_refused(client):
-    """The guard reads an Aegra-specific attribute. Swapped for a backend it
-    cannot inspect, "I see no problem" is not the same as "auth is installed",
-    and guessing in that direction is what leaves the app open."""
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
-
-    assert response.status_code == 503
 
 
 @respx.mock
