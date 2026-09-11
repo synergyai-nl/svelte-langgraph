@@ -14,10 +14,14 @@
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
 	import FeedbackDialog from './FeedbackDialog.svelte';
+	import { submitFeedback } from '$lib/langgraph/feedback';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
 		langGraphClient: Client;
+		/** Bearer token for the backend, the same one `langGraphClient` sends.
+		 *  Feedback posts to Aegra directly, so it needs the token itself. */
+		accessToken: string;
 		assistantId: string;
 		threadId: string;
 		suggestions?: ChatSuggestion[];
@@ -27,17 +31,13 @@
 
 	let {
 		langGraphClient,
+		accessToken,
 		assistantId,
 		threadId,
 		suggestions = [],
 		intro = '',
 		introTitle = ''
 	}: Props = $props();
-
-	// runId → signed feedback URL returned by /api/feedback/token. Keyed by run,
-	// not by message: one token covers every message the run produced, and the
-	// run id is what the score is ultimately attributed to.
-	const feedbackUrls = new SvelteMap<string, string>();
 
 	// Rating is disabled until the stored ratings are known: without them the UI
 	// would show an old rating as unrated, and re-rating would look like a change
@@ -189,24 +189,6 @@
 		return typeof runId === 'string' && runId ? runId : null;
 	}
 
-	/** Mint (or reuse) the signed URL that authorises scoring this run. */
-	async function getFeedbackUrl(runId: string): Promise<string | null> {
-		const cached = feedbackUrls.get(runId);
-		if (cached) return cached;
-
-		const res = await fetch('/api/feedback/token', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ run_id: runId })
-		});
-		if (!res.ok) throw new Error(`Feedback token request failed: ${res.status}`);
-
-		const { url } = await res.json();
-		if (typeof url !== 'string' || !url) throw new Error('Feedback token response had no url');
-		feedbackUrls.set(runId, url);
-		return url;
-	}
-
 	/** Ratings live in thread metadata (PATCH /threads/{id}) rather than thread
 	 *  state. State would mean a checkpoint write, which forks history on the next
 	 *  submit and 409s during an active run — see the escape-hatch note in
@@ -321,18 +303,7 @@
 		pendingRuns = setFlag(pendingRuns, runId, true);
 
 		try {
-			// Minted on demand rather than eagerly for every message: most messages
-			// are never rated, and a token has a TTL it would otherwise burn idle.
-			const url = await getFeedbackUrl(runId);
-			if (!url) return;
-			const res = await fetch(url, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				// Omitted rather than sent as null when absent, so the request for
-				// a bare rating is byte-identical to what it was before comments.
-				body: JSON.stringify(comment ? { score: type, comment } : { score: type })
-			});
-			if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`);
+			await submitFeedback(accessToken, runId, type, comment);
 		} catch (err) {
 			// The score is what the rating is *for*, so this is the failure worth
 			// showing. Roll back only this message; others may have landed since.

@@ -7,6 +7,7 @@
 	},
 	"http": {
 		"app": "svelte_langgraph.routes:app",
+		"_enable_custom_route_auth": "Inert in aegra_api 0.10.3: set after FastAPI reads it. /feedback declares Depends(require_auth) itself.",
 		"enable_custom_route_auth": true,
 		"cors": {
 			"allow_origins": ["*"]
