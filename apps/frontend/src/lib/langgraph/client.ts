@@ -1,11 +1,10 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
-import { env } from '$env/dynamic/public';
+import { apiUrl } from './apiUrl';
 import type { ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
 
 export function createClient(accessToken: string): TitleClient {
-	const langchainUrl = env.PUBLIC_LANGGRAPH_API_URL;
-	if (!langchainUrl) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
+	const langchainUrl = apiUrl();
 
 	console.assert(!!accessToken, 'No access token specified.');
 

@@ -8,6 +8,12 @@ import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
+// Feedback posts straight to Aegra, so the module reads the backend URL from
+// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
+vi.mock('$env/dynamic/public', () => ({
+	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
+}));
+
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('./__tests__/mockUseStream.svelte');
@@ -36,6 +42,7 @@ const suggestions: ChatSuggestion[] = [
 function renderChat(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(Chat, {
 		langGraphClient: mockClient,
+		accessToken: 'test-token',
 		assistantId: 'assistant-1',
 		threadId: 'test-123',
 		suggestions,
@@ -420,20 +427,16 @@ describe('Chat', () => {
 	});
 
 	describe('when an AI message is rated', () => {
+		const FEEDBACK_URL = 'https://backend.test/feedback';
+
 		function mockFeedbackFetch() {
-			return vi.fn(async (input: unknown) => {
-				const url = String(input);
-				if (url === '/api/feedback/token') {
-					return new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
+			return vi.fn(
+				async () =>
+					new Response(JSON.stringify({ ok: true }), {
 						status: 200,
 						headers: { 'Content-Type': 'application/json' }
-					});
-				}
-				return new Response(JSON.stringify({ ok: true }), {
-					status: 200,
-					headers: { 'Content-Type': 'application/json' }
-				});
-			});
+					})
+			);
 		}
 
 		/** Hover the message with `text` and click one of ITS rating buttons.
@@ -467,10 +470,16 @@ describe('Chat', () => {
 				// focus entirely, which means the only proof a user can actually
 				// type a comment is the `pressSequentially` case in
 				// e2e/src/feedback.spec.ts. Do not weaken that one.
+				// Retried because that same focus scope can steal focus before the
+				// paste lands at all when the suite runs under load.
 				const box = within(dialog).getByTestId('feedback-comment');
-				await user.click(box);
-				await user.paste(comment);
-				await waitFor(() => expect(box).toHaveValue(comment));
+				await waitFor(async () => {
+					if ((box as HTMLTextAreaElement).value !== comment) {
+						await user.click(box);
+						await user.paste(comment);
+					}
+					expect(box).toHaveValue(comment);
+				});
 				await user.click(within(dialog).getByTestId('feedback-submit'));
 			}
 
@@ -480,7 +489,7 @@ describe('Chat', () => {
 			await waitFor(() => expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument());
 		}
 
-		test('mints a token for the run that produced the message, then posts the score', async () => {
+		test('posts the score to the backend for the run that produced the message', async () => {
 			const fetchMock = mockFeedbackFetch();
 			vi.stubGlobal('fetch', fetchMock);
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
@@ -493,14 +502,17 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback/token',
-					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-abc' }) })
-				);
-				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback?token=signed-token',
-					expect.objectContaining({ body: JSON.stringify({ score: 'up' }) })
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'run-abc', score: 'up' }),
+						// The user's own token, not a signed URL: the backend checks
+						// that the run belongs to whoever this identifies.
+						headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+					})
 				);
 			});
+			// One request, where the signed-URL design needed two.
+			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 
 		test('persists the rating into thread metadata', async () => {
@@ -545,14 +557,7 @@ describe('Chat', () => {
 			// The highlight must reflect what was stored, not merely what was clicked.
 			vi.stubGlobal(
 				'fetch',
-				vi.fn(async (input: unknown) =>
-					String(input) === '/api/feedback/token'
-						? new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
-								status: 200,
-								headers: { 'Content-Type': 'application/json' }
-							})
-						: new Response('nope', { status: 502 })
-				)
+				vi.fn(async () => new Response('nope', { status: 502 }))
 			);
 			vi.spyOn(console, 'error').mockImplementation(() => {});
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
@@ -643,14 +648,7 @@ describe('Chat', () => {
 		test('marks a rating as failed without discarding the attempt', async () => {
 			vi.stubGlobal(
 				'fetch',
-				vi.fn(async (input: unknown) =>
-					String(input) === '/api/feedback/token'
-						? new Response(JSON.stringify({ url: '/api/feedback?token=signed-token' }), {
-								status: 200,
-								headers: { 'Content-Type': 'application/json' }
-							})
-						: new Response('nope', { status: 502 })
-				)
+				vi.fn(async () => new Response('nope', { status: 502 }))
 			);
 			vi.spyOn(console, 'error').mockImplementation(() => {});
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
@@ -691,7 +689,7 @@ describe('Chat', () => {
 
 		test('scores a message restored from history, with no live run', async () => {
 			// Regression: feedback used to be minted only in onFinish, so a message
-			// loaded from history had no URL and the click silently did nothing.
+			// loaded from history had nothing to post to and the click did nothing.
 			const fetchMock = mockFeedbackFetch();
 			vi.stubGlobal('fetch', fetchMock);
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
@@ -704,12 +702,10 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback/token',
-					expect.objectContaining({ body: JSON.stringify({ run_id: 'historical-run' }) })
-				);
-				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback?token=signed-token',
-					expect.objectContaining({ body: JSON.stringify({ score: 'down' }) })
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'historical-run', score: 'down' })
+					})
 				);
 			});
 		});
@@ -733,13 +729,17 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback/token',
-					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-for-ai-old' }) })
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'run-for-ai-old', score: 'up' })
+					})
 				);
 			});
 			expect(fetchMock).not.toHaveBeenCalledWith(
-				'/api/feedback/token',
-				expect.objectContaining({ body: JSON.stringify({ run_id: 'run-for-ai-new' }) })
+				FEEDBACK_URL,
+				expect.objectContaining({
+					body: JSON.stringify({ run_id: 'run-for-ai-new', score: 'up' })
+				})
 			);
 		});
 
@@ -756,19 +756,16 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback?token=signed-token',
+					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ score: 'up', comment: 'genuinely helpful' })
+						body: JSON.stringify({ run_id: 'run-abc', score: 'up', comment: 'genuinely helpful' })
 					})
 				);
 			});
 			// Holding the rating until the box resolves is what buys this: a score
 			// written on the click would have needed a second call to add the
 			// comment afterwards.
-			const scored = fetchMock.mock.calls.filter(([url]) =>
-				String(url).startsWith('/api/feedback?')
-			);
-			expect(scored).toHaveLength(1);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
 		});
 
 		test('sends the rating without a comment when the box is dismissed', async () => {
@@ -788,8 +785,8 @@ describe('Chat', () => {
 
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
-					'/api/feedback?token=signed-token',
-					expect.objectContaining({ body: JSON.stringify({ score: 'down' }) })
+					FEEDBACK_URL,
+					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-abc', score: 'down' }) })
 				);
 			});
 		});

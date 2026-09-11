@@ -1,19 +1,24 @@
 import type { Locator, Page, Request } from '@playwright/test';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
+import { OIDC_CONFIG } from './pages';
 import { gotoFreshThread } from './fixtures/backend';
-import type { ChatPage } from './pages';
+import { AppPage, ChatPage } from './pages';
 
 // Shares the single test-user thread pool like chat.spec — these tests submit runs
 // and assert on message counts, so keep them off the fullyParallel path.
 test.describe.configure({ mode: 'default' });
 
-/** Record the run_id of every /api/feedback/token request the page makes. */
-function captureTokenRequests(page: Page): string[] {
+/** Matches the score POST, which goes straight to the backend — there is no
+ *  SvelteKit hop and no signed URL to key off any more. */
+const isScorePost = (req: Request) =>
+	req.method() === 'POST' && /\/feedback$/.test(new URL(req.url()).pathname);
+
+/** Record the run_id carried by every score the page posts. */
+function captureScoredRuns(page: Page): string[] {
 	const runIds: string[] = [];
 	page.on('request', (req: Request) => {
-		if (req.method() !== 'POST') return;
-		if (!req.url().includes('/api/feedback/token')) return;
+		if (!isScorePost(req)) return;
 		const body = req.postDataJSON() as { run_id?: string } | null;
 		if (body?.run_id) runIds.push(body.run_id);
 	});
@@ -72,27 +77,90 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 	await expect(down).toBeEnabled();
 });
 
-test('rating a reply mints a token for its run and posts the score', async ({ page, chat }) => {
-	const runIds = captureTokenRequests(page);
+test('rating a reply posts the score for its run, authenticated', async ({ page, chat }) => {
+	const runIds = captureScoredRuns(page);
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
 
-	const scorePost = page.waitForRequest(
-		(req) => req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())
-	);
+	// Awaited as a *response*: waitForRequest only proves the browser sent
+	// something, so it stays green against a backend that rejects every score.
+	const scored = page.waitForResponse((res) => isScorePost(res.request()));
 	await rate(chat, aiMessage, 'up');
 
-	const req = await scorePost;
-	expect(req.postDataJSON()).toEqual({ score: 'up' });
+	const res = await scored;
+	expect(res.ok()).toBe(true);
 	expect(runIds).toHaveLength(1);
+	expect(res.request().postDataJSON()).toEqual({ run_id: runIds[0], score: 'up' });
+	// The endpoint is unauthenticated without this, and the ownership check has
+	// no identity to compare against.
+	expect(await res.request().headerValue('authorization')).toMatch(/^Bearer .+/);
+});
+
+/** Rate a reply on an already signed-in page, and report the run that was
+ *  scored plus the credentials it was scored with. */
+async function scoreOwnReply(page: Page, chat: ChatPage) {
+	await gotoFreshThread(page);
+	await sendAndAwaitReply(chat, 'Hello', 1);
+
+	const aiMessage = chat.aiMessages.first();
+	await aiMessage.hover();
+	const scored = page.waitForResponse((res) => isScorePost(res.request()));
+	await rate(chat, aiMessage, 'up');
+	const request = (await scored).request();
+
+	return {
+		url: request.url(),
+		authorization: (await request.headerValue('authorization'))!,
+		runId: (request.postDataJSON() as { run_id: string }).run_id
+	};
+}
+
+test('the backend refuses an unauthenticated score, and a run belonging to someone else', async ({
+	page,
+	chat,
+	browser
+}) => {
+	// The unit tests stub the session, so this is the only place the ownership
+	// query runs against real rows in Postgres, written by real runs.
+	// Already signed in as the default subject by the beforeEach hook.
+	const owner = await scoreOwnReply(page, chat);
+
+	// The run it does own, minus the credentials. Aegra's own
+	// `enable_custom_route_auth` leaves this at 200 — the route's own
+	// `Depends(require_auth)` is what makes it 401.
+	const anonymous = await page.request.post(owner.url, {
+		data: { run_id: owner.runId, score: 'up' }
+	});
+	expect(anonymous.status()).toBe(401);
+
+	// A second signed-in user, with a valid token of their own, aiming at a run
+	// that exists and belongs to the first. A random run id would not test this:
+	// a row that is not there is refused by a query filtered on run id alone,
+	// so it passes with no ownership predicate at all.
+	const otherContext = await browser.newContext();
+	try {
+		const otherPage = await otherContext.newPage();
+		await authenticateUser(otherPage, OIDC_CONFIG.otherUsername);
+		const other = await scoreOwnReply(otherPage, new ChatPage(new AppPage(otherPage)));
+		expect(other.runId).not.toEqual(owner.runId);
+
+		const foreign = await otherPage.request.post(owner.url, {
+			headers: { Authorization: other.authorization },
+			data: { run_id: owner.runId, score: 'up' }
+		});
+		// 404 rather than 403: the answer must not confirm the run exists.
+		expect(foreign.status()).toBe(404);
+	} finally {
+		await otherContext.close();
+	}
 });
 
 test('rating an earlier reply scores that run, not the most recent one', async ({ page, chat }) => {
-	// Regression: the token used to be minted per-run in onFinish and stamped onto
+	// Regression: a per-run URL used to be minted in onFinish and stamped onto
 	// every AI message that lacked one, so rating an older answer scored the newest run.
-	const runIds = captureTokenRequests(page);
+	const runIds = captureScoredRuns(page);
 
 	await sendAndAwaitReply(chat, 'First question', 1);
 	await sendAndAwaitReply(chat, 'Second question', 2);
@@ -117,20 +185,19 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	await page.reload();
-	const runIds = captureTokenRequests(page);
+	const runIds = captureScoredRuns(page);
 	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
 
-	const scorePost = page.waitForRequest(
-		(req) => req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())
-	);
+	const scored = page.waitForResponse((res) => isScorePost(res.request()));
 	await rate(chat, aiMessage, 'down');
 
-	const req = await scorePost;
-	expect(req.postDataJSON()).toEqual({ score: 'down' });
+	const res = await scored;
+	expect(res.ok()).toBe(true);
 	expect(runIds).toHaveLength(1);
+	expect(res.request().postDataJSON()).toEqual({ run_id: runIds[0], score: 'down' });
 });
 
 test('a rating is still shown after a reload', async ({ page, chat }) => {
@@ -164,11 +231,9 @@ test('a rating is still shown after a reload', async ({ page, chat }) => {
 test('a comment is sent with its rating, in the same request', async ({ page, chat }) => {
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
-	const scored: unknown[] = [];
+	const scored: { score?: string; comment?: string }[] = [];
 	page.on('request', (req: Request) => {
-		if (req.method() === 'POST' && /\/api\/feedback\?token=/.test(req.url())) {
-			scored.push(req.postDataJSON());
-		}
+		if (isScorePost(req)) scored.push(req.postDataJSON());
 	});
 
 	const aiMessage = chat.aiMessages.first();
@@ -176,7 +241,9 @@ test('a comment is sent with its rating, in the same request', async ({ page, ch
 	await rate(chat, aiMessage, 'down', 'lost the thread halfway');
 
 	// One request carrying both, not a rating followed by an edit.
-	await expect.poll(() => scored).toEqual([{ score: 'down', comment: 'lost the thread halfway' }]);
+	await expect
+		.poll(() => scored.map(({ score, comment }) => ({ score, comment })))
+		.toEqual([{ score: 'down', comment: 'lost the thread halfway' }]);
 });
 
 test('cancelling the comment box still records the rating', async ({ page, chat }) => {
@@ -189,9 +256,7 @@ test('cancelling the comment box still records the rating', async ({ page, chat 
 	// the optimistic write from the click — both are already true when the server
 	// rejects the score, so that pairing stays green against a backend that
 	// records nothing.
-	const scored = page.waitForResponse(
-		(res) => res.request().method() === 'POST' && /\/api\/feedback\?token=/.test(res.url())
-	);
+	const scored = page.waitForResponse((res) => isScorePost(res.request()));
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
@@ -200,7 +265,7 @@ test('cancelling the comment box still records the rating', async ({ page, chat 
 	await chat.feedbackCancel.click();
 
 	const res = await scored;
-	expect(res.request().postDataJSON()).toEqual({ score: 'up' });
+	expect(res.request().postDataJSON()).toMatchObject({ score: 'up' });
 	expect(res.ok()).toBe(true);
 
 	// Survives the round trip: the rollback runs on failure, so a thumb still
