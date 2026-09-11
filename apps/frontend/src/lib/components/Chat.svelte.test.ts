@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
@@ -8,16 +8,31 @@ import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
+// Feedback posts straight to Aegra, so the module reads the backend URL from
+// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
+vi.mock('$env/dynamic/public', () => ({
+	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
+}));
+
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('./__tests__/mockUseStream.svelte');
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
+// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
+// `threads` backs the rating round-trip: `get` restores previously stored ratings on
+// mount, `update` persists new ones into thread metadata.
 const mockClient = {
-	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
+	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
+	threads: {
+		get: vi.fn().mockResolvedValue({ metadata: {} }),
+		update: vi.fn().mockResolvedValue({})
+	}
 } as unknown as Client;
+
+/** The `threads` mock, typed for assertions. */
+const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
@@ -27,6 +42,7 @@ const suggestions: ChatSuggestion[] = [
 function renderChat(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(Chat, {
 		langGraphClient: mockClient,
+		accessToken: 'test-token',
 		assistantId: 'assistant-1',
 		threadId: 'test-123',
 		suggestions,
@@ -38,6 +54,8 @@ function renderChat(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	mockModule.resetMock();
+	mockThreads.get.mockReset().mockResolvedValue({ metadata: {} });
+	mockThreads.update.mockReset().mockResolvedValue({});
 });
 
 describe('Chat', () => {
@@ -405,6 +423,386 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(screen.getByRole('status')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('when an AI message is rated', () => {
+		const FEEDBACK_URL = 'https://backend.test/feedback';
+
+		function mockFeedbackFetch() {
+			return vi.fn(
+				async () =>
+					new Response(JSON.stringify({ ok: true }), {
+						status: 200,
+						headers: { 'Content-Type': 'application/json' }
+					})
+			);
+		}
+
+		/** Hover the message with `text` and click one of ITS rating buttons.
+		 *  Scoped with `within` because every AI message renders its own pair.
+		 *  Stops at the click, which only opens the comment box — see `rate`. */
+		async function clickRating(title: RegExp, text = 'AI response') {
+			const user = userEvent.setup();
+			const aiMessage = await screen.findByText(text);
+			await user.hover(aiMessage);
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await user.click(await within(group).findByTitle(title));
+			return user;
+		}
+
+		/** Click a rating and then resolve the comment box it opens.
+		 *
+		 *  Nothing is sent until the box resolves, so every rating goes through it.
+		 *  Cancelling is the no-comment path, which is what most of these assert. */
+		async function rate(title: RegExp, text = 'AI response', comment?: string) {
+			const user = await clickRating(title, text);
+
+			const dialog = await screen.findByTestId('feedback-dialog');
+			if (comment === undefined) {
+				await user.click(within(dialog).getByTestId('feedback-cancel'));
+			} else {
+				// Pasted rather than typed because bits-ui's dialog focus scope pulls
+				// focus off the field after the first state-driven update under
+				// jsdom, so `user.type` lands only the first character or two. This
+				// afflicts any dialog, not this one — a bare <textarea bind:value>
+				// in a plain Dialog.Root truncates identically. Pasting sidesteps
+				// focus entirely, which means the only proof a user can actually
+				// type a comment is the `pressSequentially` case in
+				// e2e/src/feedback.spec.ts. Do not weaken that one.
+				// Retried because that same focus scope can steal focus before the
+				// paste lands at all when the suite runs under load.
+				const box = within(dialog).getByTestId('feedback-comment');
+				await waitFor(async () => {
+					if ((box as HTMLTextAreaElement).value !== comment) {
+						await user.click(box);
+						await user.paste(comment);
+					}
+					expect(box).toHaveValue(comment);
+				});
+				await user.click(within(dialog).getByTestId('feedback-submit'));
+			}
+
+			// The open box blocks pointer events on <body> and only releases them
+			// once it has actually left the DOM. Without this wait the next hover —
+			// here or in the following test — is refused.
+			await waitFor(() => expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument());
+		}
+
+		test('posts the score to the backend for the run that produced the message', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'run-abc', score: 'up' }),
+						// The user's own token, not a signed URL: the backend checks
+						// that the run belongs to whoever this identifies.
+						headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+					})
+				);
+			});
+			// One request, where the signed-URL design needed two.
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('persists the rating into thread metadata', async () => {
+			// Thread metadata is what makes a rating survive a reload — Langfuse
+			// cannot be read back per-thread (no batch query, ~10s ingestion lag).
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(mockThreads.update).toHaveBeenCalledWith('test-123', {
+					// One flat key, not a nested map: Aegra merges metadata per
+					// top-level key, so this write can't disturb another rating.
+					metadata: { 'rating:run-abc': 'up' }
+				});
+			});
+		});
+
+		test('restores a stored rating on mount', async () => {
+			mockThreads.get.mockResolvedValue({ metadata: { 'rating:run-abc': 'down' } });
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/bad response/i)).toHaveClass('bg-muted');
+			});
+			expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+		});
+
+		test('rolls the rating back when the score fails to send', async () => {
+			// The highlight must reflect what was stored, not merely what was clicked.
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => new Response('nope', { status: 502 }))
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+			});
+			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('disables rating when the stored ratings could not be loaded', async () => {
+			// Rating against an unknown baseline would show a rated message as
+			// unrated, so the click is refused rather than allowed to drift.
+			mockThreads.get.mockRejectedValue(new Error('offline'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+			});
+			expect(mockThreads.update).not.toHaveBeenCalled();
+		});
+
+		test('rating stays disabled until the stored ratings arrive', async () => {
+			// Otherwise an already-rated message would render as unrated and the
+			// first click would look like a change the user didn't make.
+			let release!: (v: { metadata: unknown }) => void;
+			mockThreads.get.mockReturnValue(
+				new Promise((resolve) => {
+					release = resolve;
+				})
+			);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toBeDisabled();
+
+			release({ metadata: { 'rating:run-abc': 'up' } });
+
+			await waitFor(() => {
+				expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+			});
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('keeps the rating when only the metadata write fails', async () => {
+			// The score is already recorded, so rolling back would claim the click
+			// was lost when it wasn't — and re-arm the button to post a duplicate.
+			mockThreads.update.mockRejectedValue(new Error('patch failed'));
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			expect(within(group).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('marks a rating as failed without discarding the attempt', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn(async () => new Response('nope', { status: 502 }))
+			);
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			// The marker is what tells the user it didn't land; the thumb itself
+			// reverts so the button stays honest and retryable.
+			await waitFor(() => {
+				expect(within(group).getByTestId('feedback-failed')).toBeInTheDocument();
+			});
+			expect(within(group).getByTitle(/good response/i)).not.toHaveClass('bg-muted');
+			expect(within(group).getByTitle(/good response/i)).toBeEnabled();
+		});
+
+		test('shows no failure marker once a rating lands', async () => {
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			const aiMessage = await screen.findByText('AI response');
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalled());
+			expect(within(group).queryByTestId('feedback-failed')).not.toBeInTheDocument();
+			expect(within(group).queryByTestId('feedback-pending')).not.toBeInTheDocument();
+		});
+
+		test('scores a message restored from history, with no live run', async () => {
+			// Regression: feedback used to be minted only in onFinish, so a message
+			// loaded from history had nothing to post to and the click did nothing.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'historical-run' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-old' }]);
+
+			renderChat();
+			await rate(/bad response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'historical-run', score: 'down' })
+					})
+				);
+			});
+		});
+
+		test("attributes the score to the message's own run, not the newest one", async () => {
+			// Regression: onFinish stamped every unstamped AI message with the
+			// *current* run's URL, so rating an older answer scored the newest trace.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn((msg: unknown) => {
+				const id = (msg as { id?: string }).id;
+				return { firstSeenState: { metadata: { run_id: `run-for-${id}` } } };
+			});
+			mockModule.setMessages([
+				{ type: 'ai', content: 'AI response', id: 'ai-old' },
+				{ type: 'ai', content: 'Newest response', id: 'ai-new' }
+			]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'run-for-ai-old', score: 'up' })
+					})
+				);
+			});
+			expect(fetchMock).not.toHaveBeenCalledWith(
+				FEEDBACK_URL,
+				expect.objectContaining({
+					body: JSON.stringify({ run_id: 'run-for-ai-new', score: 'up' })
+				})
+			);
+		});
+
+		test('sends the comment together with the rating, as one request', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await rate(/good response/i, 'AI response', 'genuinely helpful');
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ run_id: 'run-abc', score: 'up', comment: 'genuinely helpful' })
+					})
+				);
+			});
+			// Holding the rating until the box resolves is what buys this: a score
+			// written on the click would have needed a second call to add the
+			// comment afterwards.
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		test('sends the rating without a comment when the box is dismissed', async () => {
+			// The rating is the feedback; the comment is optional. Escaping out of
+			// the box must not throw the thumb away with it.
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			const user = await clickRating(/bad response/i);
+			await screen.findByTestId('feedback-dialog');
+			await user.keyboard('{Escape}');
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-abc', score: 'down' }) })
+				);
+			});
+		});
+
+		test('does not post when the message has no resolvable run id', async () => {
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue(undefined);
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			await clickRating(/good response/i);
+
+			// Not even the box opens: there is nothing to attach a comment to.
+			expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument();
+			expect(fetchMock).not.toHaveBeenCalled();
 		});
 	});
 });

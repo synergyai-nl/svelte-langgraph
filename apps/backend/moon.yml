@@ -57,7 +57,10 @@ tasks:
       MOCK_STREAM_DELAY: "0.05"
       MOCKAI_RESPONSES: "e2e_responses.json"
   oidc-mock:
-    command: "oidc-provider-mock --port 8080 --host localhost --user test-user 2>&1"
+    # Two subjects, not one: `other-user` exists so the E2E suite can prove that
+    # one signed-in user cannot act on another's runs. Nothing signs in as it by
+    # default -- the sign-in flow picks a subject by name.
+    command: "oidc-provider-mock --port 8080 --host localhost --user test-user --user other-user 2>&1"
     preset: "server"
     env:
       NO_COLOR: "true"

@@ -7,7 +7,9 @@ export const OIDC_CONFIG = {
 	issuer: 'http://localhost:8080',
 	clientId: 'svelte-langgraph',
 	clientSecret: 'secret',
-	username: 'test-user'
+	username: 'test-user',
+	/** A second subject, used to prove one user cannot act on another's runs. */
+	otherUsername: 'other-user'
 } as const;
 
 /**
@@ -17,9 +19,11 @@ export class OidcPage {
 	readonly page: Page;
 	readonly testUserButton: Locator;
 
-	constructor(page: Page) {
+	constructor(page: Page, username: string = OIDC_CONFIG.username) {
 		this.page = page;
-		this.testUserButton = page.getByRole('button', { name: OIDC_CONFIG.username });
+		// Exact: `test-user` is a substring of no other subject today, but a
+		// loose match would silently pick the wrong button if one is added.
+		this.testUserButton = page.getByRole('button', { name: username, exact: true });
 	}
 
 	/**
