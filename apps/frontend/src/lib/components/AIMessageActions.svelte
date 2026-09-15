@@ -12,9 +12,22 @@
 		isHovered: boolean;
 		onRegenerate: (message: Message) => void;
 		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		rating?: 'up' | 'down' | null;
+		feedbackStatus?: 'pending' | 'failed' | null;
+		feedbackReady?: boolean;
+		feedbackUnavailable?: boolean;
 	}
 
-	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
+	let {
+		message,
+		isHovered,
+		onRegenerate,
+		onFeedback,
+		rating = null,
+		feedbackStatus = null,
+		feedbackReady = true,
+		feedbackUnavailable = false
+	}: Props = $props();
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 </script>
@@ -64,5 +77,12 @@
 		</TooltipContent>
 	</Tooltip>
 
-	<FeedbackButtons {message} {onFeedback} />
+	<FeedbackButtons
+		{message}
+		{onFeedback}
+		{rating}
+		status={feedbackStatus}
+		ready={feedbackReady}
+		unavailable={feedbackUnavailable}
+	/>
 </div>
