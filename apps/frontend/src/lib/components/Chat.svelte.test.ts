@@ -31,6 +31,9 @@ const mockClient = {
 	}
 } as unknown as Client;
 
+/** The body `threads.update` is called with, for the ordering test below. */
+type ThreadUpdate = { metadata: Record<string, 'up' | 'down'> };
+
 /** The `threads` mock, typed for assertions. */
 const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
 
@@ -487,6 +490,9 @@ describe('Chat', () => {
 			// once it has actually left the DOM. Without this wait the next hover —
 			// here or in the following test — is refused.
 			await waitFor(() => expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument());
+			// The style outlives the node by a tick, which only shows up when the
+			// same message is rated twice in a row.
+			await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
 		}
 
 		test('posts the score to the backend for the run that produced the message', async () => {
@@ -534,6 +540,36 @@ describe('Chat', () => {
 					metadata: { 'rating:run-abc': 'up' }
 				});
 			});
+		});
+
+		test('writes a changed rating last, even when the first write finishes last', async () => {
+			// The score POSTs cannot cross — the second is only sent once the first
+			// resolved — but the two metadata writes can. Unchained, "up" lands
+			// after "down" and a reload contradicts the recorded score.
+			vi.stubGlobal('fetch', mockFeedbackFetch());
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			// Hold the first write open so the second is issued mid-flight.
+			const settled: string[] = [];
+			let releaseFirst: () => void;
+			const firstHeld = new Promise<void>((resolve) => (releaseFirst = resolve));
+			mockThreads.update.mockImplementation(async (_id: string, body: ThreadUpdate) => {
+				const rating = body.metadata['rating:run-abc'];
+				if (rating === 'up') await firstHeld;
+				settled.push(rating);
+				return {};
+			});
+
+			renderChat();
+			await rate(/good response/i);
+			await rate(/bad response/i);
+			releaseFirst!();
+
+			await waitFor(() => expect(settled).toEqual(['up', 'down']));
+			expect(mockThreads.update).toHaveBeenCalledTimes(2);
 		});
 
 		test('restores a stored rating on mount', async () => {

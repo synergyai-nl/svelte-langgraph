@@ -7,7 +7,9 @@
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
 	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
-	import { InvalidData } from '$lib/langgraph/errors';
+	import { InvalidData, isCancellationError } from '$lib/langgraph/errors';
+	import { ratingKey, ratingsFromMetadata, setFlag } from '$lib/langgraph/ratings';
+	import { createWriteQueue } from '$lib/langgraph/writeQueue';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
@@ -98,15 +100,6 @@
 		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
 	);
 
-	function isCancellationError(err: unknown): boolean {
-		if (err instanceof Error) {
-			return err.name === 'CancelledError' || err.name === 'AbortError';
-		}
-		// Python server stores cancellation as a raw string in thread task history
-		const str = String(err);
-		return str.includes('CancelledError') || str.includes('AbortError');
-	}
-
 	let generationError = $derived(
 		!isCancellationError(stream.error) && stream.error != null
 			? stream.error instanceof Error
@@ -189,29 +182,6 @@
 		return typeof runId === 'string' && runId ? runId : null;
 	}
 
-	/** Ratings live in thread metadata (PATCH /threads/{id}) rather than thread
-	 *  state. State would mean a checkpoint write, which forks history on the next
-	 *  submit and 409s during an active run — see the escape-hatch note in
-	 *  stateSync.svelte.ts.
-	 *
-	 *  One flat `rating:<runId>` key per rating, not a nested map. Aegra merges
-	 *  metadata by top-level key (`current_metadata.update(...)`), so a nested
-	 *  `ratings` object would be replaced wholesale — every write would have to
-	 *  resend the entire map, and any write built on a stale or failed read would
-	 *  erase the rest. Flat keys make each write touch exactly one rating, so
-	 *  there is nothing to lose and concurrent tabs can't clobber each other. */
-	const RATING_PREFIX = 'rating:';
-
-	function ratingsFromMetadata(metadata: unknown): Record<string, 'up' | 'down'> {
-		const entries = Object.entries((metadata as Record<string, unknown>) ?? {});
-		const found: Record<string, 'up' | 'down'> = {};
-		for (const [key, value] of entries) {
-			if (!key.startsWith(RATING_PREFIX)) continue;
-			if (value === 'up' || value === 'down') found[key.slice(RATING_PREFIX.length)] = value;
-		}
-		return found;
-	}
-
 	async function loadRatings() {
 		try {
 			const thread = await langGraphClient.threads.get(threadId);
@@ -246,12 +216,8 @@
 		return failedRuns[runId] ? 'failed' : null;
 	}
 
-	function setFlag(flags: Record<string, true>, runId: string, on: boolean): Record<string, true> {
-		const next = { ...flags };
-		if (on) next[runId] = true;
-		else delete next[runId];
-		return next;
-	}
+	/** Keeps a run's metadata writes in the order they were issued. */
+	const queueMetadataWrite = createWriteQueue();
 
 	/** The rating whose comment box is open, held until the box resolves.
 	 *
@@ -322,14 +288,19 @@
 		// score is already recorded, so this failing costs the highlight on the
 		// next load, not the rating. Reporting it would claim the click was lost
 		// when it wasn't, and re-arm the button to post a duplicate score.
-		try {
-			// Only this run's key — see RATING_PREFIX above.
-			await langGraphClient.threads.update(threadId, {
-				metadata: { [`${RATING_PREFIX}${runId}`]: type }
-			});
-		} catch (err) {
-			console.error('Failed to persist feedback rating', err);
-		}
+		//
+		// Queued rather than fired, so a rating changed twice cannot land its two
+		// writes out of order — see queueMetadataWrite.
+		await queueMetadataWrite(runId, async () => {
+			try {
+				// Only this run's key — see ratings.ts on why they are flat.
+				await langGraphClient.threads.update(threadId, {
+					metadata: { [ratingKey(runId)]: type }
+				});
+			} catch (err) {
+				console.error('Failed to persist feedback rating', err);
+			}
+		});
 	}
 
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
