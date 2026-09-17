@@ -7,7 +7,7 @@
  * `setClient`.
  *
  * Server already scopes every `threads.search` to the caller (global `add_owner` handler), so
- * no client-side owner/metadata filter is added here. Busy/interrupted threads intentionally
+ * the metadata filter below selects chat threads only. Busy/interrupted threads intentionally
  * stay in the list — no `status` filter either.
  */
 import type { Client } from '@langchain/langgraph-sdk';
@@ -298,6 +298,7 @@ export class ThreadList {
 	 * while `select`/`signal` are managed here.
 	 */
 	async #search(client: Client, query: BaseQuery, signal: AbortSignal): Promise<SearchedThread[]> {
+		query = { ...query, metadata: { graph_id: 'chat' } };
 		if (!this.#supportsSelect) {
 			return (await client.threads.search({ ...query, signal })) as SearchedThread[];
 		}

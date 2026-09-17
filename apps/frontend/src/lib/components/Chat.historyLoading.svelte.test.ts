@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { Client } from '@langchain/langgraph-sdk';
+import type { TitleClient } from '$lib/langgraph/threadTitle';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 
 // Mock useStream — this is the key dependency
@@ -11,14 +11,10 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Chat.svelte imports `$lib/langgraph/client` (for the SLG-117 title assistant lookup), which
-// reads `$env/dynamic/public` at module scope — a SvelteKit global that only exists at runtime.
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
-
 // Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
 const mockClient = {
 	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
-} as unknown as Client;
+} as unknown as TitleClient;
 
 function renderChat({
 	loadingReporter

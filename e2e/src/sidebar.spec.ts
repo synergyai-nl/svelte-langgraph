@@ -244,8 +244,8 @@ test.describe('Sidebar - real backend', () => {
 
 	/**
 	 * Automatic thread titles (SLG-117): once the chat run settles, `ensureThreadTitle`
-	 * (threadTitle.ts) sends the opening exchange as a separate, stateless run of the `"title"`
-	 * graph (title.py), then PATCHes the result into thread metadata.
+	 * (threadTitle.ts) sends the opening exchange to the direct `/titles` endpoint,
+	 * then PATCHes the response into the originating thread metadata.
 	 *
 	 * `TITLE_TRIGGER_MESSAGE` must match its fixture entry in e2e_responses.json exactly (mockai
 	 * matches by exact string, not substring) — see that file's `_comment` for how the fixture's
@@ -263,6 +263,11 @@ test.describe('Sidebar - real backend', () => {
 	}) => {
 		const threadId = await gotoFreshThread(page);
 
+		const titleResponse = page.waitForResponse(
+			(response) =>
+				response.url() === `${LANGGRAPH_CONFIG.apiUrl}/titles` &&
+				response.request().method() === 'POST'
+		);
 		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
 		await chat.textInput.press('Enter');
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
@@ -271,6 +276,7 @@ test.describe('Sidebar - real backend', () => {
 		// generous timeout on top of the wait above.
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
+		expect((await titleResponse).ok()).toBeTruthy();
 	});
 
 	test('the generated title persists across a reload', async ({ page, chat, sidebar }) => {
