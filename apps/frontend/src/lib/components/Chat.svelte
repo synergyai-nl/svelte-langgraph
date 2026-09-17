@@ -21,9 +21,7 @@
 
 	interface Props {
 		langGraphClient: Client;
-		/** Bearer token for the backend, the same one `langGraphClient` sends.
-		 *  Feedback posts to Aegra directly, so it needs the token itself. */
-		accessToken: string;
+		backendFetch: typeof fetch;
 		assistantId: string;
 		threadId: string;
 		suggestions?: ChatSuggestion[];
@@ -33,7 +31,7 @@
 
 	let {
 		langGraphClient,
-		accessToken,
+		backendFetch,
 		assistantId,
 		threadId,
 		suggestions = [],
@@ -269,7 +267,7 @@
 		pendingRuns = setFlag(pendingRuns, runId, true);
 
 		try {
-			await submitFeedback(accessToken, runId, type, comment);
+			await submitFeedback(backendFetch, runId, type, comment);
 		} catch (err) {
 			// The score is what the rating is *for*, so this is the failure worth
 			// showing. Roll back only this message; others may have landed since.

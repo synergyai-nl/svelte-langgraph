@@ -4,6 +4,7 @@
 	"version": "0.0.1",
 	"type": "module",
 	"dependencies": {
+		"@langchain/langgraph-sdk": "^1.8.3",
 		"@playwright/test": "^1.58.1",
 		"frontend": "workspace:*",
 		"playwright": "^1.58.1"

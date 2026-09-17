@@ -43,6 +43,10 @@ tasks:
     deps:
       - build
 
+  optimize:
+    deps:
+      - build
+
   lint:
     command: eslint .
     inputs:

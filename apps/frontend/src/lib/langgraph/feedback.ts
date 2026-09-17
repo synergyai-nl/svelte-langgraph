@@ -9,17 +9,9 @@ function codePointLength(value: string): number {
 	return [...value].length;
 }
 
-/**
- * Score a run.
- *
- * Posts straight to Aegra with the caller's own bearer token, the same one
- * `createClient` sends. There is no SvelteKit hop: the browser already talks to
- * this backend for threads and runs, and the endpoint now checks that the run
- * belongs to the caller, which a signed URL minted for any requested run id
- * never did.
- */
+/** Score a run through the same authenticated transport as threads and runs. */
 export async function submitFeedback(
-	accessToken: string,
+	authenticatedFetch: typeof fetch,
 	runId: string,
 	score: 'up' | 'down',
 	comment?: string
@@ -28,11 +20,10 @@ export async function submitFeedback(
 	if (trimmed && codePointLength(trimmed) > COMMENT_MAX_LENGTH)
 		throw new Error(`comment must be at most ${COMMENT_MAX_LENGTH} characters`);
 
-	const res = await fetch(`${apiUrl()}/feedback`, {
+	const res = await authenticatedFetch(`${apiUrl()}/feedback`, {
 		method: 'POST',
 		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${accessToken}`
+			'Content-Type': 'application/json'
 		},
 		// Omitted rather than sent as null when absent, so a bare rating is the
 		// same request it was before comments existed.

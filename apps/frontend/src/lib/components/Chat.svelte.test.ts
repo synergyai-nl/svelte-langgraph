@@ -45,7 +45,7 @@ const suggestions: ChatSuggestion[] = [
 function renderChat(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(Chat, {
 		langGraphClient: mockClient,
-		accessToken: 'test-token',
+		backendFetch: (...args: Parameters<typeof fetch>) => fetch(...args),
 		assistantId: 'assistant-1',
 		threadId: 'test-123',
 		suggestions,
@@ -511,9 +511,7 @@ describe('Chat', () => {
 					FEEDBACK_URL,
 					expect.objectContaining({
 						body: JSON.stringify({ run_id: 'run-abc', score: 'up' }),
-						// The user's own token, not a signed URL: the backend checks
-						// that the run belongs to whoever this identifies.
-						headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
+						headers: expect.objectContaining({ 'Content-Type': 'application/json' })
 					})
 				);
 			});

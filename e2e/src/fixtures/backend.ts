@@ -36,11 +36,7 @@ export const LANGGRAPH_CONFIG = {
  * asserting on a specific row) don't have to re-derive it from the URL.
  */
 export async function gotoFreshThread(page: Page): Promise<string> {
-	const sessionRes = await page.request.get('/auth/session');
-	expect(sessionRes.ok()).toBeTruthy();
-	const session = await sessionRes.json();
-	const accessToken = session?.accessToken as string | undefined;
-	expect(accessToken, 'expected an accessToken on the Auth.js session').toBeTruthy();
+	const accessToken = await getAccessToken(page);
 
 	const threadRes = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads`, {
 		headers: {
@@ -58,26 +54,16 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 }
 
 /**
- * Helper to extract access token from session storage or cookies
+ * Get a current API token through the same cookie-persisting endpoint as the UI.
  */
-export async function getAccessToken(page: Page): Promise<string | null> {
-	// The access token is stored in the session by auth.ts
-	// We need to extract it from the page context
-	const token = await page.evaluate(() => {
-		// Try to get it from session storage first
-		const sessionData = sessionStorage.getItem('session');
-		if (sessionData) {
-			try {
-				const parsed = JSON.parse(sessionData);
-				return parsed.accessToken || null;
-			} catch {
-				return null;
-			}
-		}
-		return null;
+export async function getAccessToken(page: Page): Promise<string> {
+	const response = await page.request.post('/api/backend-token', {
+		headers: { Origin: new URL(page.url()).origin }
 	});
-
-	return token;
+	expect(response.ok()).toBeTruthy();
+	const { accessToken } = (await response.json()) as { accessToken: string };
+	expect(accessToken).toBeTruthy();
+	return accessToken;
 }
 
 /**
@@ -88,17 +74,7 @@ export async function makeAuthenticatedRequest(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<APIResponse> {
-	// Extract session data from the page
-	const sessionData = await page.evaluate(() => {
-		// Access the page data which should contain the session
-		// @ts-expect-error - accessing window.__sveltekit_data
-		const data = window.__sveltekit_data;
-		return data?.nodes?.[0]?.data?.[0]?.session || null;
-	});
-
-	if (!sessionData?.accessToken) {
-		throw new Error('No access token found in session');
-	}
+	const accessToken = await getAccessToken(page);
 
 	// Convert HeadersInit to a plain object
 	const baseHeaders: Record<string, string> = {};
@@ -115,7 +91,7 @@ export async function makeAuthenticatedRequest(
 		...options,
 		headers: {
 			...baseHeaders,
-			Authorization: `Bearer ${sessionData.accessToken}`,
+			Authorization: `Bearer ${accessToken}`,
 			'Content-Type': 'application/json'
 		}
 	});

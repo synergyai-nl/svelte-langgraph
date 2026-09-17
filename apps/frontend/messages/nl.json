@@ -178,5 +178,10 @@
 	"landing_table_caption": "Vergelijking van agent-UI-tools op beveiliging, LangGraph-ondersteuning, aanpasbaarheid en communityfuncties",
 	"landing_table_status_supported": "Ondersteund voor {tool}",
 	"landing_table_status_partial": "Gedeeltelijk ondersteund voor {tool}",
-	"landing_table_status_unsupported": "Niet ondersteund voor {tool}"
+	"landing_table_status_unsupported": "Niet ondersteund voor {tool}",
+	"auth_unavailable": "Authenticatie is tijdelijk niet beschikbaar. Probeer het opnieuw.",
+	"auth_refresh_failed": "We konden je toegang niet vernieuwen. Probeer het opnieuw of meld je opnieuw aan.",
+	"auth_retry": "Opnieuw proberen",
+	"auth_recovery_title": "Toegang niet bevestigd",
+	"auth_required": "We konden je authenticatie niet bevestigen. Probeer het opnieuw of meld je opnieuw aan."
 }

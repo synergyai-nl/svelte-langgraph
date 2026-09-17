@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { getBackend } from '$lib/langgraph/backendContext';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
-	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getOrCreateAssistant, createClient } from '$lib/langgraph/client';
+	import { getOrCreateAssistant } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
 
-	let show_login_dialog = $state(!page.data.session);
-
-	// Updates client whenever accessToken changes
-	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
+	const backend = getBackend();
+	let client = $derived(backend.client);
 	let assistantId = $state<string | null>(null);
 	let threadId = $derived(page.params.threadID!);
 	let initialization_error = $state<Error | null>(null);
@@ -28,10 +26,6 @@
 		if (assistantId === null && client && threadId) {
 			initAssistant(client);
 		}
-	});
-
-	$effect.pre(() => {
-		if (!page.data.session) show_login_dialog = true;
 	});
 
 	const suggestions = [
@@ -74,7 +68,7 @@
 	{#key threadId}
 		<Chat
 			langGraphClient={client}
-			accessToken={page.data.session!.accessToken}
+			backendFetch={backend.fetch}
 			{assistantId}
 			{threadId}
 			introTitle={greeting}
@@ -85,5 +79,3 @@
 {:else}
 	<ChatLoader />
 {/if}
-
-<LoginModal bind:open={show_login_dialog} />

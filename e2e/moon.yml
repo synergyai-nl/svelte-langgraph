@@ -75,6 +75,9 @@ tasks:
       - install-playwright
       - backend:setup
       - frontend:build
+      # Both suites bind the same ports/reset the same database. Keep their
+      # startup and uv synchronization strictly ordered in ci/check/run.
+      - test-runtime-contract
     inputs:
       - '@group(sources)'
       - '$CI'
@@ -84,3 +87,14 @@ tasks:
     preset: server
     args:
       - '--ui'
+
+  test-runtime-contract:
+    script: 'uv sync --project ../apps/backend --group langgraph-test && playwright test --config playwright.runtime.config.ts'
+    deps:
+      - backend:setup
+    inputs:
+      - '@group(sources)'
+      - 'contracts/**/*'
+      - '/apps/backend/pyproject.toml'
+      - '/apps/backend/uv.lock'
+      - '$CI'
