@@ -10,6 +10,72 @@ function deferred<T>() {
 }
 
 describe('title request ownership', () => {
+	it.each(['initial', 'pre-write'])(
+		'stops after disposal during the %s metadata lookup',
+		async (stage) => {
+			const metadata = deferred<{ metadata: Record<string, unknown> }>();
+			const started = deferred<void>();
+			const get = vi.fn();
+			if (stage === 'pre-write') get.mockResolvedValueOnce({ metadata: {} });
+			get.mockImplementationOnce(() => {
+				started.resolve();
+				return metadata.promise;
+			});
+			const generateTitle = vi.fn().mockResolvedValue({ title: 'Paris Trip' });
+			const update = vi.fn();
+			const onTitled = vi.fn();
+			const client = { threads: { get, update }, generateTitle } as unknown as TitleClient;
+			const titler = createThreadTitler({ client, threadId: 'old-chat', onTitled });
+			const exchange = [
+				{ type: 'human', content: 'Paris' },
+				{ type: 'ai', content: 'Museums' }
+			];
+			const request = titler.ensureThreadTitle(exchange);
+			await started.promise;
+			titler.dispose();
+			metadata.resolve({ metadata: {} });
+			await request;
+			await titler.ensureThreadTitle(exchange);
+
+			expect(get).toHaveBeenCalledTimes(stage === 'initial' ? 1 : 2);
+			expect(generateTitle).toHaveBeenCalledTimes(stage === 'initial' ? 0 : 1);
+			expect(update).not.toHaveBeenCalled();
+			expect(onTitled).not.toHaveBeenCalled();
+		}
+	);
+
+	it('does not notify after disposal while a metadata write completes', async () => {
+		const written = deferred<void>();
+		const started = deferred<void>();
+		const update = vi.fn(() => {
+			started.resolve();
+			return written.promise;
+		});
+		const generateTitle = vi.fn().mockResolvedValue({ title: 'Paris Trip' });
+		const onTitled = vi.fn();
+		const client = {
+			threads: { get: vi.fn().mockResolvedValue({ metadata: {} }), update },
+			generateTitle
+		} as unknown as TitleClient;
+		const titler = createThreadTitler({ client, threadId: 'old-chat', onTitled });
+		const exchange = [
+			{ type: 'human', content: 'Paris' },
+			{ type: 'ai', content: 'Museums' }
+		];
+		const request = titler.ensureThreadTitle(exchange);
+		await started.promise;
+		titler.dispose();
+		written.resolve();
+		await request;
+		await titler.ensureThreadTitle(exchange);
+
+		expect(update).toHaveBeenCalledExactlyOnceWith('old-chat', {
+			metadata: { title: 'Paris Trip' }
+		});
+		expect(generateTitle).toHaveBeenCalledOnce();
+		expect(onTitled).not.toHaveBeenCalled();
+	});
+
 	it('cancels an unmounted caller and ignores even a late successful response', async () => {
 		const result = deferred<{ title: string }>();
 		const started = deferred<void>();

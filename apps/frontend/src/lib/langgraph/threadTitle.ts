@@ -46,12 +46,38 @@ export interface ThreadTitler {
 	dispose(): void;
 }
 
-/**
- * Two accepted residual races, left as-is: (a) a concurrent rename landing in the brief
- * re-check->PATCH window (the title request itself is bracketed by a fresh `threads.get`), and
- * (b) two tabs both generating for the same untitled thread — harmless, since temperature=0
- * makes the titles near-identical and the second PATCH a same-value write.
- */
+async function hasStoredTitle(client: TitleClient, threadId: string): Promise<boolean> {
+	const thread = await client.threads.get(threadId);
+	const storedTitle = thread.metadata?.title;
+	return typeof storedTitle === 'string' && storedTitle.length > 0;
+}
+
+async function attemptTitle(
+	{ client, threadId }: ThreadTitlerOptions,
+	exchange: RawMessage[],
+	signal: AbortSignal
+): Promise<'stored' | 'written' | null> {
+	if (await hasStoredTitle(client, threadId)) return 'stored';
+	if (signal.aborted) return null;
+
+	const result = await client.generateTitle(
+		exchange.map((message) => ({
+			type: message.type as TitleMessage['type'],
+			content: extractTextFromContent(message.content)
+		})),
+		signal
+	);
+	const title = (result as { title?: unknown } | null)?.title;
+	if (signal.aborted || typeof title !== 'string' || title.length === 0) return null;
+
+	// Preserve renames made during generation. A rename can still race the final GET-to-PATCH
+	// window, and separate tabs can generate and write different titles concurrently.
+	if (await hasStoredTitle(client, threadId)) return 'stored';
+	if (signal.aborted) return null;
+	await client.threads.update(threadId, { metadata: { title } });
+	return 'written';
+}
+
 export function createThreadTitler({
 	client,
 	threadId,
@@ -61,12 +87,6 @@ export function createThreadTitler({
 	let knownTitled = false;
 	const controller = new AbortController();
 
-	async function hasStoredTitle(): Promise<boolean> {
-		const thread = await client.threads.get(threadId);
-		const storedTitle = thread.metadata?.title;
-		return typeof storedTitle === 'string' && storedTitle.length > 0;
-	}
-
 	async function ensureThreadTitle(messages: readonly unknown[]): Promise<void> {
 		if (controller.signal.aborted || running || knownTitled) return;
 		const exchange = selectOpeningExchange(messages);
@@ -74,35 +94,9 @@ export function createThreadTitler({
 
 		running = true;
 		try {
-			// Write-only-when-absent: user renames and other clients always win.
-			if (await hasStoredTitle()) {
-				knownTitled = true;
-				return;
-			}
-
-			if (controller.signal.aborted) return;
-			const result = await client.generateTitle(
-				exchange.map((message) => ({
-					type: message.type as TitleMessage['type'],
-					content: extractTextFromContent(message.content)
-				})),
-				controller.signal
-			);
-			if (controller.signal.aborted) return;
-			const title = (result as { title?: unknown } | null)?.title;
-			if (typeof title === 'string' && title.length > 0) {
-				// Re-check: the title request takes seconds, plenty of time for a rename to land.
-				if (await hasStoredTitle()) {
-					knownTitled = true;
-					return;
-				}
-				if (controller.signal.aborted) return;
-				await client.threads.update(threadId, { metadata: { title } });
-				knownTitled = true;
-				if (!controller.signal.aborted) onTitled?.();
-			}
-			// Empty/null title: fall through to `finally`, which resets `running` so the next
-			// trigger (e.g. a later settle) retries.
+			const outcome = await attemptTitle({ client, threadId }, exchange, controller.signal);
+			knownTitled = outcome !== null;
+			if (outcome === 'written' && !controller.signal.aborted) onTitled?.();
 		} catch {
 			// Cosmetic feature — never surface as a chat error. `running` reset below lets retry.
 		} finally {

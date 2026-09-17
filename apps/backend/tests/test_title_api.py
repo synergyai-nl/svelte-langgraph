@@ -128,5 +128,4 @@ async def test_request_owns_model_work_and_cancellation(client, model, monkeypat
     finally:
         if not task.done():
             task.cancel()
-            with pytest.raises(asyncio.CancelledError):
-                await task
+        await asyncio.gather(task, return_exceptions=True)
