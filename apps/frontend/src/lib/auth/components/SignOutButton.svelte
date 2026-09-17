@@ -1,34 +1,25 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
+	import { authClient } from '$lib/auth/client';
+	import { m } from '$lib/paraglide/messages.js';
 	import type { Snippet } from 'svelte';
-
 	interface Props {
 		children: Snippet;
 		onclick?: (event: MouseEvent) => void;
 	}
-
 	let { children, onclick }: Props = $props();
-
-	let formElement: HTMLFormElement;
-
-	function handleClick(event: MouseEvent) {
+	let failed = $state(false);
+	async function signOut(event: MouseEvent) {
 		onclick?.(event);
-		formElement?.requestSubmit();
-	}
-
-	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			formElement?.requestSubmit();
+		failed = false;
+		try {
+			const result = await authClient.signOut();
+			if (result.error) failed = true;
+			else location.assign('/');
+		} catch {
+			failed = true;
 		}
 	}
 </script>
 
-<form bind:this={formElement} method="POST" action="/signout" use:enhance style="display: none;">
-	<input type="hidden" name="redirectTo" value="/" />
-	<input type="hidden" name="redirect" value="true" />
-</form>
-
-<div role="button" tabindex="0" onclick={handleClick} onkeydown={handleKeyDown}>
-	{@render children()}
-</div>
+<button type="button" class="w-full text-left" onclick={signOut}>{@render children()}</button>
+{#if failed}<p role="alert">{m.auth_unavailable()}</p>{/if}

@@ -36,8 +36,33 @@ export class AppPage {
 		this.main = this.page.getByRole('main');
 	}
 
-	async signIn() {
-		await this.signInButton.click();
+	async signIn(button: Locator = this.signInButton) {
+		await this.waitForHydration();
+		// Fast serial tests can exceed Better Auth's production sign-in limit.
+		// Keep that protection enabled and honor one explicitly requested retry.
+		for (let attempt = 0; attempt < 2; attempt++) {
+			const [response] = await Promise.all([
+				this.page.waitForResponse(
+					(response) =>
+						new URL(response.url()).pathname === '/api/auth/sign-in/social' &&
+						response.request().method() === 'POST',
+					{ timeout: 10_000 }
+				),
+				button.click()
+			]);
+			if (response.ok()) return;
+			const retryAfter = Number(response.headers()['x-retry-after']);
+			if (
+				response.status() !== 429 ||
+				attempt > 0 ||
+				!Number.isFinite(retryAfter) ||
+				retryAfter < 0 ||
+				retryAfter > 10
+			) {
+				throw new Error(`Sign-in failed with HTTP ${response.status()}`);
+			}
+			await this.page.waitForTimeout(retryAfter * 1000 + 100);
+		}
 	}
 
 	/**
