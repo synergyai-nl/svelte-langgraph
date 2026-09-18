@@ -1,42 +1,51 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
 import { env } from '$env/dynamic/public';
 import type { ThreadValues } from './types';
+import type { TitleClient, TitleMessage } from './threadTitle';
 
-export function createClient(accessToken: string): Client {
+export function createClient(accessToken: string): TitleClient {
 	const langchainUrl = env.PUBLIC_LANGGRAPH_API_URL;
 	if (!langchainUrl) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
 
 	console.assert(!!accessToken, 'No access token specified.');
 
-	return new Client({
+	const client = new Client({
 		defaultHeaders: {
 			Authorization: `Bearer ${accessToken}`
 		},
 		apiUrl: langchainUrl,
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
+	return Object.assign(client, {
+		async generateTitle(
+			messages: TitleMessage[],
+			signal: AbortSignal
+		): Promise<{ title: string | null }> {
+			const response = await fetch(`${langchainUrl.replace(/\/$/, '')}/titles`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ messages }),
+				// Allow the backend's 10-second model timeout to return its result.
+				signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)])
+			});
+			if (!response.ok) throw new Error(`Title request failed: ${response.status}`);
+			return await response.json();
+		}
+	});
 }
 
 export async function getOrCreateThread(client: Client): Promise<Thread<ThreadValues>> {
-	// Search for existing thread first
-	const existingThreads = await client.threads.search({
+	const threads = await client.threads.search({
+		metadata: { graph_id: 'chat' },
 		status: 'idle',
 		limit: 1,
 		sortBy: 'updated_at',
 		sortOrder: 'desc'
 	});
-
-	//We will update this to make threads lazily.
-	// In our current practice, it's not an urgent task.
-	if (existingThreads.length > 0) {
-		const existingThread = existingThreads[0];
-		console.info('Using existing thread', existingThread);
-		return existingThread as Thread<ThreadValues>;
-	} else {
-		console.info('No existing thread found, creating anew');
-		const thread = await client.threads.create();
-		return thread as Thread<ThreadValues>;
-	}
+	return threads.length ? (threads[0] as Thread<ThreadValues>) : createThread(client);
 }
 
 /**
@@ -45,7 +54,7 @@ export async function getOrCreateThread(client: Client): Promise<Thread<ThreadVa
  * thread. "New chat" means new — reuse would drop the user back into the conversation they left.
  */
 export async function createThread(client: Client): Promise<Thread<ThreadValues>> {
-	return (await client.threads.create()) as Thread<ThreadValues>;
+	return (await client.threads.create({ metadata: { graph_id: 'chat' } })) as Thread<ThreadValues>;
 }
 
 export async function getOrCreateAssistant(

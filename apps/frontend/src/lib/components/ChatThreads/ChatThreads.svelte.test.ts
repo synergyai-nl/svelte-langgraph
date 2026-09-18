@@ -71,7 +71,12 @@ describe('ChatThreads', () => {
 
 		test('marks only the active row with aria-current="page"', () => {
 			const t1 = aThread({ id: 'aaaaaaaa-0000-0000-0000-000000000001' });
-			const t2 = aThread({ id: 'bbbbbbbb-0000-0000-0000-000000000002' });
+			// Distinct createdAt: untitled threads' labels are date-based, and the lookups below
+			// rely on t1/t2 having distinct accessible names.
+			const t2 = aThread({
+				id: 'bbbbbbbb-0000-0000-0000-000000000002',
+				createdAt: '2026-01-01T00:01:00.000Z'
+			});
 
 			renderComponent({
 				list: makeListStub({ threads: [t1, t2] }),
@@ -87,7 +92,12 @@ describe('ChatThreads', () => {
 
 		test('marks only the row matching pendingThreadId with data-pending="true"', () => {
 			const t1 = aThread({ id: 'aaaaaaaa-0000-0000-0000-000000000001' });
-			const t2 = aThread({ id: 'bbbbbbbb-0000-0000-0000-000000000002' });
+			// Distinct createdAt: untitled threads' labels are date-based, and the lookups below
+			// rely on t1/t2 having distinct accessible names.
+			const t2 = aThread({
+				id: 'bbbbbbbb-0000-0000-0000-000000000002',
+				createdAt: '2026-01-01T00:01:00.000Z'
+			});
 
 			renderComponent({
 				list: makeListStub({ threads: [t1, t2] }),

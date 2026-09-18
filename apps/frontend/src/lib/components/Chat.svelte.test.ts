@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
-import type { Client } from '@langchain/langgraph-sdk';
+import type { TitleClient } from '$lib/langgraph/threadTitle';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
@@ -17,7 +17,7 @@ vi.mock('@langchain/svelte', async () => {
 // Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
 const mockClient = {
 	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
-} as unknown as Client;
+} as unknown as TitleClient;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },

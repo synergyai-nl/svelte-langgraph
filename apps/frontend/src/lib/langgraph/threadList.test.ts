@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import {
-	shortenThreadId,
-	threadLabel,
-	toThreadSummary,
-	type SearchedThread
-} from './threadList.js';
+import { threadLabel, toThreadSummary, type SearchedThread } from './threadList.js';
+
+function formatFallback(createdAt: string, locale = 'en'): string {
+	return new Intl.DateTimeFormat(locale, {
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	}).format(new Date(createdAt));
+}
 
 function makeSearchedThread(overrides: Partial<SearchedThread> = {}): SearchedThread {
 	return {
@@ -54,37 +58,34 @@ describe('toThreadSummary', () => {
 	});
 });
 
-describe('shortenThreadId', () => {
-	it('returns the last 8 characters of the id', () => {
-		expect(shortenThreadId('0198c000-aaaa-7000-8000-0123456789ab')).toBe('456789ab');
-	});
-
-	it('returns the whole id when shorter than 8 characters', () => {
-		expect(shortenThreadId('abc')).toBe('abc');
-	});
-
-	it('produces different labels for two UUIDv7 ids sharing the same timestamp prefix', () => {
-		// UUIDv7's leading hex digits are the high-order timestamp bits, so threads created on
-		// the same day (as every thread in a single test run typically is) share them. The
-		// low-order bits — the tail — are random, which is why slicing from the end (not the
-		// start, the pre-SLG-104-fix behaviour) is what actually distinguishes rows in the
-		// sidebar. This is the case the first-8 bug missed entirely.
-		const sameDayPrefix = '0198c000-1a2b';
-		const a = `${sameDayPrefix}-7000-8000-aaaaaaaaaaaa`;
-		const b = `${sameDayPrefix}-7000-8000-bbbbbbbbbbbb`;
-
-		expect(shortenThreadId(a)).not.toBe(shortenThreadId(b));
-	});
-});
-
 describe('threadLabel', () => {
 	it('returns the title when present', () => {
 		const summary = toThreadSummary(makeSearchedThread({ metadata: { title: 'Planning trip' } }));
 		expect(threadLabel(summary)).toBe('Planning trip');
 	});
 
-	it('falls back to the shortened id when there is no title', () => {
-		const summary = toThreadSummary(makeSearchedThread({ thread_id: 'abcdefghijkl' }));
-		expect(threadLabel(summary)).toBe('efghijkl');
+	it('falls back to a formatted created-at date/time when there is no title', () => {
+		const createdAt = '2026-01-01T14:32:00.000Z';
+		const summary = toThreadSummary(makeSearchedThread({ created_at: createdAt }));
+		expect(threadLabel(summary)).toBe(formatFallback(createdAt));
+	});
+
+	it('formats the fallback label using the given locale', () => {
+		const createdAt = '2026-01-01T14:32:00.000Z';
+		const summary = toThreadSummary(makeSearchedThread({ created_at: createdAt }));
+		expect(threadLabel(summary, 'nl')).toBe(formatFallback(createdAt, 'nl'));
+	});
+
+	// Pinning test: two untitled threads created in the same minute get the same label —
+	// a deliberate trade-off, not a bug to "fix" with a seconds/hex suffix.
+	it('gives two same-minute untitled threads an identical label', () => {
+		const a = toThreadSummary(
+			makeSearchedThread({ thread_id: 'thread-a', created_at: '2026-01-01T14:32:00.000Z' })
+		);
+		const b = toThreadSummary(
+			makeSearchedThread({ thread_id: 'thread-b', created_at: '2026-01-01T14:32:59.000Z' })
+		);
+
+		expect(threadLabel(a)).toBe(threadLabel(b));
 	});
 });

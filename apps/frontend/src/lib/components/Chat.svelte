@@ -6,17 +6,18 @@
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
 	import type { Message, ToolMessage } from '$lib/langgraph/types';
-	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
+	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData } from '$lib/langgraph/errors';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
+	import { createThreadTitler, type TitleClient } from '$lib/langgraph/threadTitle';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
-		langGraphClient: Client;
+		langGraphClient: TitleClient;
 		assistantId: string;
 		threadId: string;
 		suggestions?: ChatSuggestion[];
@@ -169,12 +170,33 @@
 	const threadListRefresh = getThreadListRefresh();
 	let wasLoading = false;
 
+	const titler = createThreadTitler({
+		client: langGraphClient,
+		threadId,
+		onTitled: () => threadListRefresh?.refresh()
+	});
+	onDestroy(() => titler.dispose());
+
 	$effect(() => {
-		if (!threadListRefresh) return;
 		const loading = stream.isLoading;
 		const settled = wasLoading && !loading;
 		wasLoading = loading;
-		if (settled) untrack(() => threadListRefresh.refresh());
+		if (!settled) return;
+		untrack(() => {
+			threadListRefresh?.refresh();
+			// The titler awaits the response and cancels its request on unmount.
+			void titler.ensureThreadTitle(stream.messages);
+		});
+	});
+
+	// Backfill on open: a pre-existing untitled thread with a complete opening exchange gets a
+	// title without waiting for the next message (e.g. a tab closed before the first settle ran).
+	let backfillAttempted = false;
+
+	$effect(() => {
+		if (stream.isThreadLoading || backfillAttempted) return;
+		backfillAttempted = true;
+		untrack(() => void titler.ensureThreadTitle(stream.messages));
 	});
 
 	// Report history-loading state up so the sidebar can mark this thread's row as pending.
