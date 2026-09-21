@@ -68,7 +68,7 @@ describe('ThreadListState', () => {
 		expect(list.threads[0].id).toBe('thread-1');
 	});
 
-	it('calls search with the exact expected query, no metadata/status filter', async () => {
+	it('searches only chat threads, without restricting status', async () => {
 		const list = new ThreadListState({ pageSize: 20 });
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([]);
@@ -87,7 +87,7 @@ describe('ThreadListState', () => {
 			select: [...THREAD_SELECT]
 		});
 		expect(arg.signal).toBeInstanceOf(AbortSignal);
-		expect(arg).not.toHaveProperty('metadata');
+		expect(arg.metadata).toEqual({ graph_id: 'chat' });
 		expect(arg).not.toHaveProperty('status');
 	});
 
