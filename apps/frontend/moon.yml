@@ -37,11 +37,17 @@ tasks:
       - '@group(messages)'
     outputs:
       - 'build'
+      - '.svelte-kit'
       - 'src/lib/paraglide'
 
+  # These tasks all read generated SvelteKit and Paraglide files. Run them after
+  # `build` has replaced everything removed by the uncached `clean`, and keep
+  # them from reading while another task's plugin regenerates the same files.
   check:
     deps:
       - build
+    options:
+      mutex: 'frontend-generated'
 
   lint:
     command: eslint .
@@ -85,11 +91,19 @@ tasks:
       mergeArgs: 'replace'
 
   test:
+    deps:
+      - build
+    options:
+      mutex: 'frontend-generated'
     args:
       - '--silent'
       - 'passed-only'
 
   test-cov:
+    deps:
+      - build
+    options:
+      mutex: 'frontend-generated'
     args:
       - '--coverage.reporter text'
       - '--coverage.reporter lcov'
