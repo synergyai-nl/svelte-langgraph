@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Client } from '@langchain/langgraph-sdk';
+import type { TitleClient } from '@svelte-langgraph/client';
 import { LangGraphContext } from '../langGraphContext.svelte.js';
 import type { DeepPartial, LangGraphLabels } from '../labels.js';
 
@@ -9,11 +9,12 @@ import type { DeepPartial, LangGraphLabels } from '../labels.js';
  * fixtures' `mockClient`. Spread `overrides` in to add `threads.get`/`threads.update`/etc. for
  * tests that need them (see title-mirroring tests).
  */
-export function makeMockClient(overrides: Record<string, unknown> = {}): Client {
+export function makeMockClient(overrides: Record<string, unknown> = {}): TitleClient {
 	return {
 		assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
+		generateTitle: vi.fn().mockResolvedValue({ title: null }),
 		...overrides
-	} as unknown as Client;
+	} as unknown as TitleClient;
 }
 
 /**
@@ -23,7 +24,7 @@ export function makeMockClient(overrides: Record<string, unknown> = {}): Client 
  */
 export function makeContext(
 	options: {
-		client?: Client;
+		client?: TitleClient;
 		assistantId?: string;
 		labels?: DeepPartial<LangGraphLabels>;
 	} = {}

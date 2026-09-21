@@ -77,13 +77,13 @@
 		convertThreadMessage,
 		InvalidData,
 		createStateSync,
-		getOrCreateAssistant,
 		createThreadTitler,
-		type ToolMessage
+		type ToolMessage,
+		type TitleClient
 	} from '@svelte-langgraph/client';
 	import Composer from './Composer.svelte';
 	import MessagesList from './MessagesList.svelte';
-	import type { Client, Checkpoint } from '@langchain/langgraph-sdk';
+	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
 	import { resolveLabels, type DeepPartial } from './labels.js';
@@ -91,7 +91,7 @@
 
 	interface Props {
 		threadId: string;
-		client?: Client;
+		client?: TitleClient;
 		assistantId?: string;
 		labels?: DeepPartial<ConversationLabels>;
 		children?: Snippet<[ConversationApi]>;
@@ -117,7 +117,7 @@
 	// are typed as definitely-defined from declaration — TypeScript's control-flow narrowing
 	// from a later guard doesn't reach into closures declared further down this file (the
 	// title-mirroring functions), which is exactly where `langGraphClient` is used again.
-	function requireClient(client: Client | undefined): Client {
+	function requireClient(client: TitleClient | undefined): TitleClient {
 		if (!client) {
 			throw new Error(
 				'<Conversation> requires a `client` prop or a <LangGraph> provider with a resolved client.'
@@ -274,28 +274,12 @@
 	// success-only check.
 	let wasLoading = false;
 
-	// Thread titling (SLG-117): the "title" graph runs statelessly, triggered by the frontend, not
-	// by the chat graph — see threadTitle.ts for the single-flight/write-only-when-absent logic.
-	let titleAssistantIdPromise: Promise<string> | undefined;
-
-	function resolveTitleAssistantId(): Promise<string> {
-		if (!titleAssistantIdPromise) {
-			// Cache only the success — a transient failure must not permanently wedge retries
-			// behind a rejected promise.
-			titleAssistantIdPromise = getOrCreateAssistant(langGraphClient, 'title').catch((err) => {
-				titleAssistantIdPromise = undefined;
-				throw err;
-			});
-		}
-		return titleAssistantIdPromise;
-	}
-
 	const titler = createThreadTitler({
 		client: langGraphClient,
 		threadId,
-		resolveTitleAssistantId,
 		onTitled: () => ctx?.threadList.refresh()
 	});
+	onDestroy(() => titler.dispose());
 
 	$effect(() => {
 		const loading = stream.isLoading;
@@ -304,9 +288,7 @@
 		if (!settled) return;
 		untrack(() => {
 			ctx?.threadList.refresh();
-			// Fire-and-forget: titling is a separate, awaited network round-trip and must not
-			// delay the refresh above. `ensureThreadTitle` no-ops once titled, so a regenerate
-			// (which re-settles without changing that) never re-titles.
+			// The titler awaits the response and cancels its request on unmount.
 			void titler.ensureThreadTitle(stream.messages);
 		});
 	});

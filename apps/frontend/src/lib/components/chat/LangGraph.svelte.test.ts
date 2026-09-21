@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import type { Client } from '@langchain/langgraph-sdk';
+import type { TitleClient } from '@svelte-langgraph/client';
 import LangGraphProbe from './__tests__/LangGraphProbe.svelte';
 import type { LangGraphContext } from './langGraphContext.svelte.js';
 
@@ -56,7 +56,7 @@ describe('<LangGraph> client identity', () => {
 	});
 
 	test('an explicit client prop always wins over url/token', async () => {
-		const explicitClient = { assistants: {}, threads: {} } as unknown as Client;
+		const explicitClient = { assistants: {}, threads: {} } as unknown as TitleClient;
 		const { getCtx } = renderProbe({
 			url: 'http://localhost:8000',
 			token: 'tok-a',
@@ -70,7 +70,7 @@ describe('<LangGraph> client identity', () => {
 	});
 
 	test('explicit client prop wins even when the token subsequently changes', async () => {
-		const explicitClient = { assistants: {}, threads: {} } as unknown as Client;
+		const explicitClient = { assistants: {}, threads: {} } as unknown as TitleClient;
 		const { rerender, getCtx } = renderProbe({
 			url: 'http://localhost:8000',
 			token: 'tok-a',

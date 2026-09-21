@@ -12,11 +12,11 @@
  * fields do.
  */
 import { getContext, setContext } from 'svelte';
-import type { Client } from '@langchain/langgraph-sdk';
 import {
 	ThreadListState,
 	createThread as createThreadRemote,
-	type ThreadSummary
+	type ThreadSummary,
+	type TitleClient
 } from '@svelte-langgraph/client';
 import type { DeepPartial, LangGraphLabels } from './labels.js';
 
@@ -26,7 +26,7 @@ export interface LangGraphContextOptions {
 }
 
 export class LangGraphContext {
-	#client = $state<Client | undefined>(undefined);
+	#client = $state<TitleClient | undefined>(undefined);
 	#assistantId = $state<string | undefined>(undefined);
 	/** Assistant-resolution failure surface. `undefined` when nothing has gone wrong. */
 	#error = $state<unknown>(undefined);
@@ -59,12 +59,12 @@ export class LangGraphContext {
 
 	// --- client ----------------------------------------------------------------------------
 
-	get client(): Client | undefined {
+	get client(): TitleClient | undefined {
 		return this.#client;
 	}
 
 	/** Pushed by `LangGraph.svelte`'s wiring effect whenever the derived client changes. */
-	setClient(client: Client | undefined): void {
+	setClient(client: TitleClient | undefined): void {
 		this.#client = client;
 	}
 
