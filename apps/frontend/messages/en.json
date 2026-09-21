@@ -5,6 +5,8 @@
 	"nav_chat": "Chat",
 	"auth_sign_in": "Sign in",
 	"auth_sign_out": "Sign out",
+	"auth_sign_out_failed_title": "Sign out failed",
+	"auth_sign_out_failed_message": "You're still signed in. Please try again.",
 	"user_fallback": "User",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "Try your LangGraph agent, {name}",

@@ -10,6 +10,14 @@ vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => goto(...args)
 }));
 
+const signOut = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
+vi.mock('$lib/auth/client', () => ({
+	authClient: {
+		signOut,
+		signIn: { social: vi.fn().mockResolvedValue({ error: null }) }
+	}
+}));
+
 // Mocking `$app/*` above stops Vite resolving `$app` for transitive imports, and
 // SentryFeedbackButton reaches @sentry/sveltekit (which imports `$app` internally)
 // plus `$env/dynamic/public` (which reads a SvelteKit global that only exists at
@@ -33,6 +41,7 @@ const session = {
 
 beforeEach(() => {
 	pageState.data.session = null;
+	signOut.mockReset().mockResolvedValue({ error: null });
 	// bits-ui locks the body while a menu is open; a test that leaves one open would
 	// otherwise block pointer interaction in the next one.
 	document.body.style.pointerEvents = '';
@@ -169,6 +178,19 @@ describe('Header', () => {
 
 			expect(await screen.findByText(m.auth_sign_out())).toBeInTheDocument();
 			expect(screen.getAllByText(session.user.email).length).toBeGreaterThan(0);
+		});
+
+		test('keeps a failed sign-out visible after the account menu closes', async () => {
+			const user = userEvent.setup();
+			signOut.mockResolvedValueOnce({ error: { message: 'provider unavailable' } });
+			renderHeader();
+
+			await user.click(screen.getByRole('button', { name: new RegExp(session.user.name, 'i') }));
+			await user.click(await screen.findByRole('menuitem', { name: m.auth_sign_out() }));
+
+			expect(await screen.findByRole('dialog')).toHaveTextContent(m.auth_sign_out_failed_title());
+			expect(screen.getByRole('dialog')).toHaveTextContent(m.auth_sign_out_failed_message());
+			expect(screen.queryByRole('menuitem', { name: m.auth_sign_out() })).not.toBeInTheDocument();
 		});
 
 		test('falls back to placeholder identity when the session has no user details', () => {

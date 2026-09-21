@@ -1,5 +1,12 @@
 import type { Locator, Page } from '@playwright/test';
 
+function signInRetryDelay(status: number, attempt: number, retryAfter: number): number | null {
+	if (status !== 429 || attempt > 0) return null;
+	if (!Number.isFinite(retryAfter)) return null;
+	if (retryAfter < 0 || retryAfter > 10) return null;
+	return retryAfter * 1000 + 100;
+}
+
 /**
  * AppPage encapsulates common app-wide elements: navigation and user menu.
  */
@@ -52,16 +59,11 @@ export class AppPage {
 			]);
 			if (response.ok()) return;
 			const retryAfter = Number(response.headers()['x-retry-after']);
-			if (
-				response.status() !== 429 ||
-				attempt > 0 ||
-				!Number.isFinite(retryAfter) ||
-				retryAfter < 0 ||
-				retryAfter > 10
-			) {
+			const retryDelay = signInRetryDelay(response.status(), attempt, retryAfter);
+			if (retryDelay === null) {
 				throw new Error(`Sign-in failed with HTTP ${response.status()}`);
 			}
-			await this.page.waitForTimeout(retryAfter * 1000 + 100);
+			await this.page.waitForTimeout(retryDelay);
 		}
 	}
 

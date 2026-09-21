@@ -9,7 +9,7 @@ import hashlib
 import os
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any
 
@@ -48,56 +48,100 @@ class PKCEGrant(AuthorizationCodeGrant):
         )
 
 
-def create_app(*, lifetime: int = 3600, test_controls: bool = False):
-    os.environ["AUTHLIB_INSECURE_TRANSPORT"] = "1"
-    app = provider_app(
-        access_token_max_age=timedelta(seconds=lifetime),
-        require_nonce=True,
-        user_claims=[
-            User(sub=name, claims={"email": f"{name}@example.test", "name": name})
-            for name in ("test-user", "other-user")
-        ],
-    )
-    settings: dict[str, Any] = {
-        "lifetime": lifetime,
-        "rotate": True,
-        "refresh_error": None,
-        "padding": 0,
-    }
-    attempts: list[dict[str, Any]] = []
+@dataclass
+class MockState:
+    initial_lifetime: int
+    lifetime: int = field(init=False)
+    rotate: bool = True
+    refresh_error: str | None = None
+    padding: int = 0
+    attempts: list[dict[str, Any]] = field(default_factory=list)
 
-    def signed_token(claims: dict[str, Any]):
+    def __post_init__(self):
+        self.lifetime = self.initial_lifetime
+
+    def signed_token(self, claims: dict[str, Any]):
         now = int(time.time())
         payload = {
             "iss": flask.request.host_url.rstrip("/"),
             "sub": "test-user",
             "aud": os.getenv("AUTH_OIDC_AUDIENCE", "svelte-langgraph-api"),
             "iat": now,
-            "exp": now + settings["lifetime"],
+            "exp": now + self.lifetime,
             "jti": secrets.token_hex(16),
             **claims,
         }
-        if settings["padding"]:
-            payload["fixture_padding"] = "x" * settings["padding"]
+        if self.padding:
+            payload["fixture_padding"] = "x" * self.padding
         key = storage.jwk.as_dict(is_private=True)
         return jwt.encode({"alg": "RS256", "kid": key["kid"]}, payload, key).decode()
 
-    def access_token(*, user: User, scope: str, **_kwargs: Any):
-        return signed_token({"sub": user.sub, "scope": scope})
+    def access_token(self, *, user: User, scope: str, **_kwargs: Any):
+        return self.signed_token({"sub": user.sub, "scope": scope})
 
+    def record_refresh(self):
+        is_refresh = (
+            flask.request.path == "/oauth2/token"
+            and flask.request.form.get("grant_type") == "refresh_token"
+        )
+        if not is_refresh:
+            return None
+        token = flask.request.form.get("refresh_token", "")
+        self.attempts.append(
+            {
+                "credential": hashlib.sha256(token.encode()).hexdigest(),
+                "known": storage.get_refresh_token(token) is not None,
+            }
+        )
+        if not self.refresh_error:
+            return None
+        status = 503 if self.refresh_error == "temporarily_unavailable" else 400
+        return flask.jsonify(error=self.refresh_error), status
+
+    def controls(self):
+        if flask.request.method == "POST":
+            body = flask.request.get_json()
+            if body.get("reset"):
+                self.lifetime = self.initial_lifetime
+                self.rotate = True
+                self.refresh_error = None
+                self.padding = 0
+                self.attempts.clear()
+            for name in ("lifetime", "rotate", "refresh_error", "padding"):
+                if name in body:
+                    setattr(self, name, body[name])
+        return flask.jsonify(
+            settings={
+                "lifetime": self.lifetime,
+                "rotate": self.rotate,
+                "refresh_error": self.refresh_error,
+                "padding": self.padding,
+            },
+            refreshes=self.attempts,
+        )
+
+    def mint_test_token(self):
+        return flask.jsonify(accessToken=self.signed_token(flask.request.get_json()))
+
+
+def rotating_refresh_grant(state: MockState):
     class RotatingRefreshGrant(RefreshTokenGrant):
         TOKEN_ENDPOINT_AUTH_METHODS = ["client_secret_basic", "client_secret_post"]
         INCLUDE_NEW_REFRESH_TOKEN = True
 
         def issue_token(self, user: User, refresh_token: Any):
-            self.INCLUDE_NEW_REFRESH_TOKEN = settings["rotate"]
+            self.INCLUDE_NEW_REFRESH_TOKEN = state.rotate
             return super().issue_token(user, refresh_token)
 
         def revoke_old_credential(self, refresh_token: Any):
             super().revoke_old_credential(refresh_token)
-            if settings["rotate"]:
+            if state.rotate:
                 storage.remove_refresh_token(refresh_token.token)
 
+    return RotatingRefreshGrant
+
+
+def configure_authorization(app, state: MockState, lifetime: int):
     # The mock keeps its AuthorizationServer in Flask request globals. Configure
     # that existing server once, leaving every provider route and store intact.
     with app.test_request_context():
@@ -105,9 +149,9 @@ def create_app(*, lifetime: int = 3600, test_controls: bool = False):
         authorization.register_token_generator(
             "default",
             BearerTokenGenerator(
-                access_token_generator=access_token,
+                access_token_generator=state.access_token,
                 refresh_token_generator=lambda **_: secrets.token_urlsafe(32),
-                expires_generator=lambda *_: settings["lifetime"],
+                expires_generator=lambda *_: state.lifetime,
             ),
         )
         # Authlib has no unregister API; these two registries are the sole
@@ -124,44 +168,40 @@ def create_app(*, lifetime: int = 3600, test_controls: bool = False):
             ],
         )
         # No OpenIDToken extension: real providers may omit id_token on refresh.
-        authorization.register_grant(RotatingRefreshGrant)
+        authorization.register_grant(rotating_refresh_grant(state))
+
+
+def register_test_controls(app, state: MockState):
+    app.before_request(state.record_refresh)
+    app.add_url_rule(
+        "/__test__/settings",
+        endpoint="test_settings",
+        view_func=state.controls,
+        methods=["GET", "POST"],
+    )
+    app.add_url_rule(
+        "/__test__/token",
+        endpoint="test_token",
+        view_func=state.mint_test_token,
+        methods=["POST"],
+    )
+
+
+def create_app(*, lifetime: int = 3600, test_controls: bool = False):
+    os.environ["AUTHLIB_INSECURE_TRANSPORT"] = "1"
+    app = provider_app(
+        access_token_max_age=timedelta(seconds=lifetime),
+        require_nonce=True,
+        user_claims=[
+            User(sub=name, claims={"email": f"{name}@example.test", "name": name})
+            for name in ("test-user", "other-user")
+        ],
+    )
+    state = MockState(lifetime)
+    configure_authorization(app, state, lifetime)
 
     if test_controls:
-
-        @app.before_request
-        def record_refresh():
-            if (
-                flask.request.path == "/oauth2/token"
-                and flask.request.form.get("grant_type") == "refresh_token"
-            ):
-                token = flask.request.form.get("refresh_token", "")
-                attempts.append(
-                    {
-                        "credential": hashlib.sha256(token.encode()).hexdigest(),
-                        "known": storage.get_refresh_token(token) is not None,
-                    }
-                )
-                error = settings["refresh_error"]
-                if error:
-                    return flask.jsonify(error=error), (
-                        503 if error == "temporarily_unavailable" else 400
-                    )
-
-        @app.route("/__test__/settings", methods=["GET", "POST"])
-        def controls():
-            if flask.request.method == "POST":
-                body = flask.request.get_json()
-                if body.get("reset"):
-                    settings.update(
-                        lifetime=lifetime, rotate=True, refresh_error=None, padding=0
-                    )
-                    attempts.clear()
-                settings.update({k: v for k, v in body.items() if k in settings})
-            return flask.jsonify(settings=settings, refreshes=attempts)
-
-        @app.post("/__test__/token")
-        def mint_test_token():
-            return flask.jsonify(accessToken=signed_token(flask.request.get_json()))
+        register_test_controls(app, state)
 
     return app
 

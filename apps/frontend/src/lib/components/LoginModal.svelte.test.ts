@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { describe, test, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import LoginModal from './LoginModal.svelte';
 import * as m from '$lib/paraglide/messages.js';
@@ -7,6 +7,8 @@ const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => goto(...args)
 }));
+
+beforeEach(() => goto.mockReset());
 
 afterEach(async () => {
 	// The dialog's body scroll lock is restored on a 24ms timer (bits-ui
@@ -50,6 +52,20 @@ describe('LoginModal', () => {
 			expect(screen.getByText(m.auth_refresh_failed())).toBeInTheDocument();
 			await fireEvent.click(screen.getByRole('button', { name: m.auth_retry() }));
 			expect(onretry).toHaveBeenCalledOnce();
+			expect(goto).not.toHaveBeenCalled();
+		});
+
+		test('returns an anonymous visitor home when dismissed', async () => {
+			render(LoginModal, { open: true });
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+			expect(goto).toHaveBeenCalledWith('/');
+		});
+
+		test('keeps an auth-recovery failure on the current page when dismissed', async () => {
+			render(LoginModal, { open: true, failure: 'AUTH_REQUIRED' });
+
+			await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 			expect(goto).not.toHaveBeenCalled();
 		});
 	});

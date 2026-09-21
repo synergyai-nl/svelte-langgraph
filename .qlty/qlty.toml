@@ -105,3 +105,12 @@ name = "zizmor"
 match.plugins = ["bandit"]
 match.rules = ["B101"]
 set.ignored = true
+
+# This file deliberately exercises malformed authentication material. Lob-like
+# strings here are test vectors, never credentials; keep the exception scoped to
+# that detector and file so all other secret scanning remains active.
+[[triage]]
+match.plugins = ["trufflehog"]
+match.rules = ["Lob"]
+match.file_patterns = ["apps/backend/tests/test_auth.py"]
+set.ignored = true

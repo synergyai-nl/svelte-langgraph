@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import type { AuthFailure } from '$lib/langgraph/authenticatedFetch';
 	import { Button } from '$lib/components/ui/button';
 	import { CircleAlert } from '@lucide/svelte';
@@ -19,6 +20,7 @@
 	function handleOpenChange(open_state: boolean) {
 		if (!open_state) {
 			onclose?.();
+			if (!failure) goto('/');
 		}
 	}
 </script>

@@ -14,18 +14,25 @@
 	let threadId = $derived(page.params.threadID!);
 	let initialization_error = $state<Error | null>(null);
 
-	async function initAssistant(client: Client) {
+	async function initAssistant(client: Client, isActive: () => boolean) {
+		initialization_error = null;
 		try {
-			assistantId = await getOrCreateAssistant(client, 'chat');
+			const id = await getOrCreateAssistant(client, 'chat');
+			if (isActive()) assistantId = id;
 		} catch (err) {
+			if (!isActive()) return;
 			initialization_error = err instanceof Error ? err : new Error(String(err));
 		}
 	}
 
 	$effect(() => {
-		if (assistantId === null && client && threadId) {
-			initAssistant(client);
-		}
+		void backend.recoveryGeneration;
+		if (assistantId !== null || !client || !threadId) return;
+		let active = true;
+		initAssistant(client, () => active);
+		return () => {
+			active = false;
+		};
 	});
 
 	const suggestions = [
@@ -65,7 +72,7 @@
 {#if initialization_error}
 	<ChatError error={initialization_error} />
 {:else if assistantId && client}
-	{#key threadId}
+	{#key `${threadId}:${backend.recoveryGeneration}`}
 		<Chat
 			langGraphClient={client}
 			backendFetch={backend.fetch}

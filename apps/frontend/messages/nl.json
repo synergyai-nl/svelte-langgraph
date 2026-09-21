@@ -5,6 +5,8 @@
 	"nav_chat": "Chat",
 	"auth_sign_in": "Inloggen",
 	"auth_sign_out": "Uitloggen",
+	"auth_sign_out_failed_title": "Uitloggen mislukt",
+	"auth_sign_out_failed_message": "Je bent nog steeds ingelogd. Probeer het opnieuw.",
 	"user_fallback": "Gebruiker",
 	"email_fallback": "email@voorbeeld.com",
 	"chat_greeting_hello": "Probeer je LangGraph-agent, {name}",

@@ -188,6 +188,65 @@ test('a backend 401 preserves the signed-in session and does not replay the reje
 	expect((await token(page)).accessToken).toBeTruthy();
 });
 
+test('retry restarts a failed initial thread lookup without reloading', async ({ page, chat }) => {
+	await authenticateUser(page);
+	let initializationReads = 0;
+	await page.route('**/threads/search', async (route) => {
+		const query = route.request().postDataJSON() as { limit?: number; status?: string };
+		if (query.limit === 1 && query.status === 'idle') {
+			initializationReads++;
+			if (initializationReads === 1) {
+				await route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+				return;
+			}
+		}
+		await route.continue();
+	});
+
+	await page.goto('/chat');
+	await expect(chat.loginModal).toBeVisible();
+	let documentRequests = 0;
+	page.on('request', (request) => {
+		if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documentRequests++;
+	});
+
+	await chat.loginModal.getByRole('button', { name: 'Retry', exact: true }).click();
+	await page.waitForURL(/\/chat\/[\w-]+/);
+	await expect(chat.textInput).toBeEnabled();
+	expect(initializationReads).toBe(2);
+	expect(documentRequests).toBe(0);
+});
+
+test('retry restarts failed assistant and history initialization without reloading', async ({
+	page,
+	chat
+}) => {
+	await authenticateUser(page);
+	let assistantReads = 0;
+	await page.route('**/assistants/search', async (route) => {
+		assistantReads++;
+		if (assistantReads === 1) {
+			await route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+			return;
+		}
+		await route.continue();
+	});
+	const threadId = await gotoFreshThread(page);
+	await expect(chat.loginModal).toBeVisible();
+	let documentRequests = 0;
+	page.on('request', (request) => {
+		if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documentRequests++;
+	});
+
+	await chat.loginModal.getByRole('button', { name: 'Retry', exact: true }).click();
+	await expect(chat.loginModal).toBeHidden();
+	await expect(chat.historyLoading).toBeHidden();
+	await expect(chat.textInput).toBeEnabled();
+	expect(page.url()).toContain(`/chat/${threadId}`);
+	expect(assistantReads).toBe(2);
+	expect(documentRequests).toBe(0);
+});
+
 test('sign-in after refresh failure returns to the existing thread without replaying the failed run', async ({
 	page,
 	chat,

@@ -105,6 +105,23 @@ describe('authenticated backend transport', () => {
 		else expect(onAuthState).not.toHaveBeenCalled();
 	});
 
+	test.each(['invalid', new Date(0).toISOString()])(
+		'rejects an unusable token expiry %s before contacting the backend',
+		async (expiresAt) => {
+			const nativeFetch = vi
+				.fn<typeof fetch>()
+				.mockResolvedValue(Response.json({ accessToken: 'old', expiresAt }));
+			const transport = createAuthenticatedFetch({
+				backendUrl,
+				fetch: nativeFetch,
+				onAuthState: vi.fn()
+			});
+
+			expect((await transport.fetch(`${backendUrl}/threads`)).status).toBe(503);
+			expect(nativeFetch).toHaveBeenCalledOnce();
+		}
+	);
+
 	test.each(['backend', 'refresh'] as const)(
 		'keeps a %s failure visible across unrelated successful requests until explicit retry',
 		async (source) => {
@@ -153,26 +170,24 @@ describe('authenticated backend transport', () => {
 		expect(nativeFetch).not.toHaveBeenCalled();
 	});
 
-	test('bounds stalled token lookup and clears it for another attempt', async () => {
+	test('allows a cookie-rotating token lookup to finish after five seconds', async () => {
 		vi.useFakeTimers();
+		const lookup = deferred<Response>();
 		const nativeFetch = vi
 			.fn<typeof fetch>()
-			.mockImplementation(
-				(_input, init) =>
-					new Promise((_resolve, reject) =>
-						init?.signal?.addEventListener('abort', () => reject(init.signal?.reason))
-					)
+			.mockImplementation(async (input) =>
+				input === '/api/backend-token' ? lookup.promise : new Response('ok')
 			);
 		const transport = createAuthenticatedFetch({
 			backendUrl,
 			fetch: nativeFetch,
 			onAuthState: vi.fn()
 		});
-		const first = transport.fetch(`${backendUrl}/threads`);
-		await vi.advanceTimersByTimeAsync(5000);
-		expect((await first).status).toBe(503);
-		nativeFetch.mockResolvedValueOnce(freshToken());
-		expect(await transport.retry()).toBe(true);
+		const request = transport.fetch(`${backendUrl}/threads`);
+		await vi.advanceTimersByTimeAsync(6000);
+		expect(nativeFetch).toHaveBeenCalledTimes(1);
+		lookup.resolve(freshToken());
+		expect((await request).ok).toBe(true);
 	});
 
 	test('disposing the layout prevents late notifications or backend sends', async () => {

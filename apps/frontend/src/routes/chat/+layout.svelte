@@ -29,6 +29,7 @@
 	let authFailure = $state<AuthFailure | null>(null);
 	let showLogin = $state(!page.data.session);
 	let retrying = $state(false);
+	let recoveryGeneration = $state(0);
 	const transport = createAuthenticatedFetch({
 		backendUrl: apiUrl(),
 		onAuthState(failure) {
@@ -42,12 +43,18 @@
 		get client() {
 			return client;
 		},
+		get recoveryGeneration() {
+			return recoveryGeneration;
+		},
 		fetch: transport.fetch
 	});
 	async function retryAuthentication() {
 		retrying = true;
 		try {
-			await transport.retry();
+			if (await transport.retry()) {
+				recoveryGeneration += 1;
+				threadList.retry();
+			}
 		} finally {
 			retrying = false;
 		}

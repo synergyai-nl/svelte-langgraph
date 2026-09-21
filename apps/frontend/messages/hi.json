@@ -5,6 +5,8 @@
 	"nav_chat": "संवाद",
 	"auth_sign_in": "प्रविष्ट करें",
 	"auth_sign_out": "बाहर निकलें",
+	"auth_sign_out_failed_title": "साइन आउट नहीं हो सका",
+	"auth_sign_out_failed_message": "आप अभी भी साइन इन हैं। कृपया फिर से प्रयास करें।",
 	"user_fallback": "उपयोगकर्ता",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "अपने LangGraph एजेंट को आज़माएँ, {name}",

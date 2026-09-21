@@ -3,6 +3,7 @@ import type { Client } from '@langchain/langgraph-sdk';
 
 interface BackendContext {
 	readonly client: Client | null;
+	readonly recoveryGeneration: number;
 	fetch: typeof globalThis.fetch;
 }
 const KEY = Symbol('backend');
