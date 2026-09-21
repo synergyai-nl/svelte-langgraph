@@ -16,8 +16,12 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import type { Snippet } from 'svelte';
-	import type { Client } from '@langchain/langgraph-sdk';
-	import { createClient, getOrCreateAssistant, type ThreadSummary } from '@svelte-langgraph/client';
+	import {
+		createClient,
+		getOrCreateAssistant,
+		type ThreadSummary,
+		type TitleClient
+	} from '@svelte-langgraph/client';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { LangGraphContext, setLangGraphContext } from './langGraphContext.svelte.js';
 	import type { DeepPartial, LangGraphLabels } from './labels.js';
@@ -29,7 +33,7 @@
 		token?: string | null;
 		headers?: Record<string, string>;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
-		client?: Client;
+		client?: TitleClient;
 		/** Graph id used to resolve/create the assistant. Defaults to `'chat'`. */
 		graph?: string;
 		/** Skip assistant resolution entirely and use this id. */
@@ -102,7 +106,7 @@
 	// skips resolution entirely. `resolvedFor` is a plain (non-reactive) tracking variable, same
 	// pattern as `Chat.svelte`'s `wasLoading` — it only needs to be read/written imperatively
 	// inside this effect, never as a template/derived dependency.
-	let resolvedFor: { client: Client; graph: string } | undefined;
+	let resolvedFor: { client: TitleClient; graph: string } | undefined;
 	let resolutionCounter = 0;
 	$effect(() => {
 		if (assistantIdProp !== undefined) {

@@ -1,36 +1,21 @@
-"""Standalone thread-titling graph.
-
-Registered as its own graph (see aegra.json), invoked separately by the
-frontend after the chat run settles, rather than run as part of the chat
-graph -- so a title call never blocks the user's turn on a second model call.
-"""
+"""Title generation used directly by the authenticated /titles endpoint."""
 
 import asyncio
 import logging
 import re
 import unicodedata
 from collections.abc import Sequence
-from typing import Annotated, TypedDict
+from typing import TypedDict
 
 from langchain_core.messages import AIMessage, AnyMessage, BaseMessage, HumanMessage
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.message import add_messages
-from langgraph.graph.state import CompiledStateGraph
 
-# Absolute import required: Aegra loads this file by path (outside the
-# package), so relative imports would fail at server startup.
 from svelte_langgraph.models import get_title_model
 
 logger = logging.getLogger(__name__)
 
-# Character cap, not word cap: word-counting breaks for languages (e.g.
-# Chinese, Japanese) that don't delimit words with spaces.
+# Character limits also work for languages without word separators.
 TITLE_MAX_CHARS = 60
 
-# The conversation is framed below as untrusted data: the title renders
-# directly in the sidebar, so an injected "ignore previous instructions..."
-# is an attack surface against this summarizer too. `sanitize_title` is the
-# backstop if the model complies anyway.
 TITLE_PROMPT = """Write a short title for the conversation below.
 
 Rules:
@@ -46,24 +31,17 @@ Rules:
 {conversation}
 </conversation>"""
 
-# The opening exchange (first user message + first assistant reply) is what a
-# thread's topic is derived from; see `_render_conversation_for_title`.
 TITLE_CONVERSATION_MAX_TURNS = 2
 TITLE_CONVERSATION_MAX_CHARS_PER_TURN = 500
 
-# Bounds cost only, not user-visible latency: this graph runs as its own
-# invocation, separate from the chat turn.
+# Title generation is separate from the chat turn.
 TITLE_TIMEOUT_SECONDS = 10.0
 
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _WHITESPACE_RUN_RE = re.compile(r"\s+")
-# Chars `sanitize_title` peels off both edges: quotes, backticks, markdown
-# emphasis markers, and whitespace -- so nested wrapping like `"**Title**"`
-# reduces to `Title` in one pass.
 _EDGE_STRIP_CHARS = "\"'`*_~“”‘’ \t\n\r"
 
-# Unicode format-control chars (Cf) plus line/paragraph separators (Zl/Zp):
-# bidi overrides can reorder or hide characters in the rendered title.
+# Remove invisible formatting that can spoof the displayed title.
 _CF_CATEGORIES = {"Cf", "Zl", "Zp"}
 
 
@@ -72,13 +50,7 @@ def _strip_format_chars(text: str) -> str:
 
 
 def sanitize_title(raw: str) -> str | None:
-    """Turn a model's raw title completion into a safe, display-ready title.
-
-    Strips control/format chars, collapses whitespace runs, peels
-    quotes/markdown decoration off both edges, and truncates to
-    `TITLE_MAX_CHARS` Unicode characters. Returns `None` for empty or
-    whitespace-only input.
-    """
+    """Clean and cap a sidebar title; return None when no usable text remains."""
     if not raw:
         return None
 
@@ -87,21 +59,14 @@ def sanitize_title(raw: str) -> str | None:
     text = _WHITESPACE_RUN_RE.sub(" ", text)
     text = text.strip(_EDGE_STRIP_CHARS)
     text = text[:TITLE_MAX_CHARS]
-    # Truncation can re-expose edge junk, e.g. a lone trailing `*` from a
-    # `**Title**` cut mid-marker.
+    # Truncation can expose another markdown marker at the edge.
     text = text.strip(_EDGE_STRIP_CHARS)
 
     return text or None
 
 
 def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
-    """Render the human/assistant turns of `messages` as plain text for
-    `TITLE_PROMPT`, bounded to `TITLE_CONVERSATION_MAX_TURNS` turns of
-    `TITLE_CONVERSATION_MAX_CHARS_PER_TURN` characters each.
-
-    Only `HumanMessage`/`AIMessage` text is included (tool calls/results are
-    noise for a topic summary).
-    """
+    """Render a bounded opening exchange, excluding tool messages."""
     lines: list[str] = []
     for message in messages:
         if len(lines) >= TITLE_CONVERSATION_MAX_TURNS:
@@ -112,11 +77,7 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
             text = message.text.strip()
         elif isinstance(message, AIMessage):
             role = "Assistant"
-            # `.text`, not `str(message.content)`: content is block-form for
-            # some providers, whose `str()` would dump reasoning/signature
-            # metadata into the prompt. `.text` yields just the text blocks --
-            # reasoning separation is the provider/wrapper's job, nothing here
-            # second-guesses it.
+            # `.text` excludes structured reasoning and other non-text blocks.
             text = message.text.strip()
         else:
             continue
@@ -130,25 +91,15 @@ def _render_conversation_for_title(messages: Sequence[BaseMessage]) -> str:
 
 
 class TitleInputState(TypedDict):
-    # `add_messages` coerces the JSON dicts an HTTP invocation sends into
-    # message objects; without it every isinstance check below misses.
-    messages: Annotated[list[AnyMessage], add_messages]
+    messages: list[AnyMessage]
 
 
 class TitleOutputState(TypedDict):
     title: str | None
 
 
-class TitleState(TitleInputState, TitleOutputState):
-    pass
-
-
 async def generate_title(state: TitleInputState) -> TitleOutputState:
-    """Generate a sanitized thread title from the given messages.
-
-    Never raises: any failure is caught and logged, returning `title: None`.
-    The frontend treats that as "no title this run" and retries later.
-    """
+    """Generate a title, or log a failure and return None so the caller can retry."""
     try:
         conversation = _render_conversation_for_title(state["messages"])
         prompt = TITLE_PROMPT.format(conversation=conversation)
@@ -162,13 +113,3 @@ async def generate_title(state: TitleInputState) -> TitleOutputState:
         return {"title": None}
 
     return {"title": title}
-
-
-def make_title_graph() -> CompiledStateGraph:
-    graph = StateGraph(
-        TitleState, input_schema=TitleInputState, output_schema=TitleOutputState
-    )
-    graph.add_node("generate_title", generate_title)
-    graph.add_edge(START, "generate_title")
-    graph.add_edge("generate_title", END)
-    return graph.compile()

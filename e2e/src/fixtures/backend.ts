@@ -47,7 +47,7 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 			Authorization: `Bearer ${accessToken}`,
 			'Content-Type': 'application/json'
 		},
-		data: { metadata: {} }
+		data: { metadata: { graph_id: 'chat' } }
 	});
 	expect(threadRes.ok()).toBeTruthy();
 	const thread = (await threadRes.json()) as { thread_id: string };
