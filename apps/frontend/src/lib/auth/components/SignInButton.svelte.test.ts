@@ -1,7 +1,10 @@
-import { describe, test, expect } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { describe, test, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import SignInButton from './SignInButton.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+const signIn = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
+vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: signIn } } }));
 
 describe('SignInButton', () => {
 	test('defaults its label to the shared sign-in message', () => {
@@ -17,11 +20,13 @@ describe('SignInButton', () => {
 		expect(screen.queryByText(m.auth_sign_in())).not.toBeInTheDocument();
 	});
 
-	test('submits to the OIDC provider', () => {
-		const { container } = render(SignInButton);
-
-		// Auth.js posts the provider id it was configured with.
-		expect(container.querySelector('input[value="oidc"]')).toBeInTheDocument();
+	test('signs in with the OIDC provider and returns to this page', async () => {
+		render(SignInButton);
+		await fireEvent.click(screen.getByRole('button', { name: m.auth_sign_in() }));
+		expect(signIn).toHaveBeenCalledWith({
+			provider: 'oidc',
+			callbackURL: `${location.pathname}${location.search}${location.hash}`
+		});
 	});
 
 	describe('styling props', () => {

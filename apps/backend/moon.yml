@@ -60,10 +60,18 @@ tasks:
     # Two subjects, not one: `other-user` exists so the E2E suite can prove that
     # one signed-in user cannot act on another's runs. Nothing signs in as it by
     # default -- the sign-in flow picks a subject by name.
-    command: "oidc-provider-mock --port 8080 --host localhost --user test-user --user other-user 2>&1"
+    command: "uv run python scripts/oidc_mock.py 2>&1"
     preset: "server"
     env:
       NO_COLOR: "true"
+  oidc-mock-e2e:
+    extends: oidc-mock
+    args: "--test-controls"
+  langgraph-e2e:
+    command: "uv run --group langgraph-test langgraph dev --config langgraph.json --host localhost --port 2027 --no-browser 2>&1"
+    preset: "server"
+    options:
+      envFile: '/.env.e2e'
   docker-postgres:
     # Optional helper: provides the PostgreSQL server via Docker Compose for
     # those not running their own (mirrors oidc-mock). The backend only needs

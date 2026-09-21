@@ -29,7 +29,7 @@ function renderChatWithRefresh() {
 			refresh,
 			chatProps: {
 				langGraphClient: mockClient,
-				accessToken: 'test-token',
+				backendFetch: (...args: Parameters<typeof fetch>) => fetch(...args),
 				assistantId: 'assistant-1',
 				threadId: 'test-123'
 			}

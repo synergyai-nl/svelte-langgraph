@@ -14,6 +14,10 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { ChatThreads } from '$lib/components/ChatThreads';
 	import { createClient, createThread } from '$lib/langgraph/client';
+	import { apiUrl } from '$lib/langgraph/apiUrl';
+	import { createAuthenticatedFetch, type AuthFailure } from '$lib/langgraph/authenticatedFetch';
+	import { setBackend } from '$lib/langgraph/backendContext';
+	import LoginModal from '$lib/components/LoginModal.svelte';
 	import { ThreadList } from '$lib/langgraph/threadList.svelte';
 	import { setThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { setThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
@@ -22,11 +26,40 @@
 
 	let { children } = $props();
 
-	// Derive from the token *string*, not from `page.data.session`: SvelteKit hands out a fresh
-	// data object on every navigation, so keying on the object would mint a new Client — and
-	// restart the thread fetch — on every thread click.
-	let accessToken = $derived(page.data.session?.accessToken ?? null);
-	let client = $derived(accessToken ? createClient(accessToken) : null);
+	let authFailure = $state<AuthFailure | null>(null);
+	let showLogin = $state(!page.data.session);
+	let retrying = $state(false);
+	let recoveryGeneration = $state(0);
+	const transport = createAuthenticatedFetch({
+		backendUrl: apiUrl(),
+		onAuthState(failure) {
+			authFailure = failure;
+			showLogin = failure !== null;
+		}
+	});
+	const sdk = createClient(transport.fetch);
+	let client = $derived(page.data.session ? sdk : null);
+	setBackend({
+		get client() {
+			return client;
+		},
+		get recoveryGeneration() {
+			return recoveryGeneration;
+		},
+		fetch: transport.fetch
+	});
+	async function retryAuthentication() {
+		retrying = true;
+		try {
+			if (await transport.retry()) {
+				recoveryGeneration += 1;
+				threadList.retry();
+			}
+		} finally {
+			retrying = false;
+		}
+	}
+
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
 	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`). The root `load` only
@@ -37,7 +70,7 @@
 		(browser ? parseSidebarCookie(document.cookie) : null) ?? page.data.sidebarOpen
 	);
 
-	const threadList = new ThreadList({ initialLoading: Boolean(page.data.session?.accessToken) });
+	const threadList = new ThreadList({ initialLoading: Boolean(page.data.session) });
 	setThreadListRefresh({ refresh: () => threadList.refresh() });
 
 	// A thread row is "pending" from the click (navigation start) until its history fetch
@@ -62,7 +95,10 @@
 		threadList.setActiveThreadId(activeThreadId);
 	});
 
-	onDestroy(() => threadList.dispose());
+	onDestroy(() => {
+		threadList.dispose();
+		transport.dispose();
+	});
 
 	let creating = $state(false);
 	let createError = $state<string | null>(null);
@@ -135,3 +171,10 @@
 		</div>
 	</div>
 </Sidebar.Provider>
+
+<LoginModal
+	bind:open={showLogin}
+	failure={authFailure}
+	onretry={retryAuthentication}
+	busy={retrying}
+/>

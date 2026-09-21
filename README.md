@@ -70,6 +70,7 @@ The `.env` file is organized into sections:
 
 **Common Variables:**
 - `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
+- `AUTH_OIDC_AUDIENCE` - Required API audience in the provider's signed JWT access tokens (local mock: `svelte-langgraph-api`)
 
 **Backend Variables:**
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
@@ -80,10 +81,11 @@ The `.env` file is organized into sections:
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
-- `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
+- `BETTER_AUTH_URL` - Frontend origin (`http://localhost:5173` for development, `http://localhost:3000` for Compose)
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
-- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
+- `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
+- `AUTH_OIDC_SCOPES` - Optional space-separated scopes; defaults to `openid profile email offline_access`
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
@@ -183,7 +185,44 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
    - **Backend** LangGraph server at `http://localhost:2024`
    - **OIDC mock provider** at `http://localhost:8080`
 
-### Local Development with OIDC Mock Provider
+### Authentication contract
+
+The frontend uses stateless Better Auth sessions and encrypted account cookies;
+there is no authentication database. Register `/api/auth/callback/oidc` on the
+frontend origin as the provider's redirect URI. The provider must issue signed
+JWT **access tokens** for `AUTH_OIDC_AUDIENCE`, include their lifetime, and permit
+refresh tokens. An OIDC ID token or an opaque access token is not an API credential.
+The API audience and frontend OAuth client ID are deliberately different.
+
+The generic OAuth configuration is the single place for provider-specific
+authorization `audience`/`resource` parameters or refresh parameters. Use Better
+Auth's `authorizationUrlParams` and `refreshTokenParams` options there when your
+provider requires them, and grant the corresponding API scopes. Do not send tokens
+intended for Google/Microsoft's own APIs to this backend.
+
+Better Auth defaults token endpoint authentication to `client_secret_post`; it does
+not negotiate this from discovery. For providers requiring HTTP Basic, set
+`tokenEndpointAuth: { method: 'client_secret_basic' }` in that same provider config.
+
+Every browser API request obtains a current token through `POST /api/backend-token`;
+Better Auth refreshes it and saves replacement credentials in the account cookie.
+Chat, thread lists, streaming connections, and Aegra feedback share that transport.
+Page data contains no provider credentials. Refresh failure leaves the conversation
+open with Retry and Sign-in; failed writes are never automatically replayed.
+
+Aegra is the complete supported application runtime. LangGraph Server uses the
+same verifier and thread ownership policy for authentication, chat, and streaming;
+the custom feedback endpoint is Aegra-specific. Production LangGraph custom
+authentication requires an eligible LangSmith deployment. The local contract suite
+does not remove that licensing/deployment restriction. Aegra 0.10.3 normalizes
+authentication infrastructure errors to HTTP 401; recovery wording therefore does
+not assume every 401 means a revoked session.
+
+Stateless sessions do not provide immediate centralized revocation or distributed
+refresh locking. Concurrent tabs can race a provider that permits only one use of a
+refresh token. There are no legacy token/cookie compatibility paths.
+
+### Mock provider behavior
 
 For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
 
@@ -201,6 +240,12 @@ The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (
 - **Client ID**: Any value (e.g., `svelte-langgraph`)
 - **Client Secret**: Any value (e.g., `secret`)
 - **Test User**: `test-user` (subject claim in JWT)
+- **API audience**: `svelte-langgraph-api`
+
+The development launcher reuses the provider's UI, discovery, JWKS, and storage,
+adds signed API access tokens and PKCE, and rotates refresh credentials without
+returning another ID token. `moon backend:oidc-mock-e2e` additionally exposes local
+test controls for expiry and provider failures; never deploy that launcher.
 
 ### Start dev servers
 

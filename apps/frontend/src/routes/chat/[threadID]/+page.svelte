@@ -1,37 +1,38 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { getBackend } from '$lib/langgraph/backendContext';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
-	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getOrCreateAssistant, createClient } from '$lib/langgraph/client';
+	import { getOrCreateAssistant } from '$lib/langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
 
-	let show_login_dialog = $state(!page.data.session);
-
-	// Updates client whenever accessToken changes
-	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
+	const backend = getBackend();
+	let client = $derived(backend.client);
 	let assistantId = $state<string | null>(null);
 	let threadId = $derived(page.params.threadID!);
 	let initialization_error = $state<Error | null>(null);
 
-	async function initAssistant(client: Client) {
+	async function initAssistant(client: Client, isActive: () => boolean) {
+		initialization_error = null;
 		try {
-			assistantId = await getOrCreateAssistant(client, 'chat');
+			const id = await getOrCreateAssistant(client, 'chat');
+			if (isActive()) assistantId = id;
 		} catch (err) {
+			if (!isActive()) return;
 			initialization_error = err instanceof Error ? err : new Error(String(err));
 		}
 	}
 
 	$effect(() => {
-		if (assistantId === null && client && threadId) {
-			initAssistant(client);
-		}
-	});
-
-	$effect.pre(() => {
-		if (!page.data.session) show_login_dialog = true;
+		void backend.recoveryGeneration;
+		if (assistantId !== null || !client || !threadId) return;
+		let active = true;
+		initAssistant(client, () => active);
+		return () => {
+			active = false;
+		};
 	});
 
 	const suggestions = [
@@ -71,10 +72,10 @@
 {#if initialization_error}
 	<ChatError error={initialization_error} />
 {:else if assistantId && client}
-	{#key threadId}
+	{#key `${threadId}:${backend.recoveryGeneration}`}
 		<Chat
 			langGraphClient={client}
-			accessToken={page.data.session!.accessToken}
+			backendFetch={backend.fetch}
 			{assistantId}
 			{threadId}
 			introTitle={greeting}
@@ -85,5 +86,3 @@
 {:else}
 	<ChatLoader />
 {/if}
-
-<LoginModal bind:open={show_login_dialog} />

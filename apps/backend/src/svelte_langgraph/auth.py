@@ -1,211 +1,165 @@
+"""Provider access-token verification shared by Aegra and LangGraph Server."""
+
 import logging
+import math
 import os
+import time
 from typing import Any
 
 import httpx
 from authlib.jose import JsonWebKey, JsonWebToken
-from authlib.jose.errors import (
-    BadSignatureError,
-    DecodeError,
-    JoseError,
-    UnsupportedAlgorithmError,
-)
+from authlib.jose.errors import InvalidClaimError, JoseError
 from authlib.oidc.discovery import get_well_known_url
 from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
 
-# Create a JWT decoder with restricted algorithms to prevent alg:none attacks
-# See: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-with-limited-algorithms
 _jwt = JsonWebToken(["RS256", "RS384", "RS512"])
-
-
 logger = logging.getLogger(__name__)
-
-oidc_issuer = os.getenv("AUTH_OIDC_ISSUER", "")
-
 _jwks_cache: dict[str, Any] | None = None
 
 
-async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
-    """Fetch and cache JWKS from the OIDC issuer.
+def _configuration() -> tuple[str, str]:
+    # Validate at request time: Aegra 0.10.3 falls back to anonymous auth when
+    # importing an authentication module fails.
+    issuer = os.getenv("AUTH_OIDC_ISSUER", "")
+    audience = os.getenv("AUTH_OIDC_AUDIENCE", "")
+    if not issuer or not audience:
+        raise RuntimeError("AUTH_OIDC_ISSUER and AUTH_OIDC_AUDIENCE are required")
+    return issuer, audience
 
-    Args:
-        force_refresh: If True, bypass cache and fetch fresh JWKS.
-    """
+
+async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
+    """Cache discovery keys, with an explicit refresh for signing-key rotation."""
     global _jwks_cache
+    issuer, _ = _configuration()
     if _jwks_cache is not None and not force_refresh:
         return _jwks_cache
 
-    if not oidc_issuer:
-        raise ValueError("AUTH_OIDC_ISSUER environment variable is not set")
-
-    well_known_url = get_well_known_url(oidc_issuer, external=True)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(well_known_url)
+    async with httpx.AsyncClient(timeout=5) as client:
+        response = await client.get(get_well_known_url(issuer, external=True))
         response.raise_for_status()
-        config = response.json()
+        try:
+            config = response.json()
+            if config.get("issuer") != issuer:
+                raise ValueError("Discovery issuer does not match configuration")
+            jwks_uri = config["jwks_uri"]
+            if not isinstance(jwks_uri, str) or not jwks_uri:
+                raise ValueError("Missing JWKS URI")
+        except (ValueError, KeyError, TypeError, AttributeError) as error:
+            raise RuntimeError("Invalid OIDC discovery response") from error
 
-        jwks_uri = config.get("jwks_uri")
-        if not jwks_uri:
-            raise ValueError("JWKS URI not found in OIDC configuration")
-
-        jwks_response = await client.get(jwks_uri)
-        jwks_response.raise_for_status()
-        jwks_data: dict[str, Any] = jwks_response.json()
-        _jwks_cache = jwks_data
-
-    return _jwks_cache
+        response = await client.get(jwks_uri)
+        response.raise_for_status()
+        try:
+            jwks = response.json()
+            if not isinstance(jwks, dict) or not jwks.get("keys"):
+                raise ValueError("Missing signing keys")
+            JsonWebKey.import_key_set(jwks)
+        except (JoseError, ValueError, KeyError, TypeError) as error:
+            raise RuntimeError("Invalid OIDC signing keys") from error
+        _jwks_cache = jwks
+    return jwks
 
 
 def _decode_and_validate(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
-    """Decode and validate a JWT token against a JWKS.
-
-    Args:
-        token: The JWT token string.
-        jwks: The JSON Web Key Set to validate against.
-
-    Returns:
-        The validated claims dictionary.
-
-    Raises:
-        ValueError: If the key is not found in the JWKS.
-        JoseError: If token validation fails.
-    """
-    key_set = JsonWebKey.import_key_set(jwks)
-    claims = _jwt.decode(token, key_set)
-    claims.validate()
+    issuer, audience = _configuration()
+    claims = _jwt.decode(
+        token,
+        JsonWebKey.import_key_set(jwks),
+        claims_options={
+            "iss": {"essential": True, "value": issuer},
+            "sub": {"essential": True},
+            "aud": {"essential": True, "value": audience},
+            "exp": {"essential": True},
+        },
+    )
+    # Authlib validates values but does not enforce all registered-claim types.
+    if not isinstance(claims.get("sub"), str) or not claims["sub"].strip():
+        raise InvalidClaimError("sub")
+    audiences = claims.get("aud")
+    if not isinstance(audiences, str) and not (
+        isinstance(audiences, list)
+        and audiences
+        and all(isinstance(item, str) and item for item in audiences)
+    ):
+        raise InvalidClaimError("aud")
+    for name in ("exp", "nbf", "iat"):
+        if name in claims:
+            value = claims[name]
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or (isinstance(value, float) and not math.isfinite(value))
+            ):
+                raise InvalidClaimError(name)
+    claims.validate(now=time.time())
     return dict(claims)
 
 
-def _is_key_not_found_error(error: Exception) -> bool:
-    """Check if an exception is a 'key not found' error from Authlib."""
-    return isinstance(error, ValueError) and "key not found" in str(error).lower()
-
-
 async def _validate_token(token: str) -> dict[str, Any]:
-    """Validate a JWT token against the OIDC issuer's JWKS.
-
-    Uses cached JWKS by default. If validation fails due to a missing key
-    (e.g., after key rotation), automatically refreshes the JWKS and retries once.
-    """
+    """Retry once on an unknown signing key, never on invalid claims/signature."""
     global _jwks_cache
-
+    jwks = await _get_jwks()
     try:
-        jwks = await _get_jwks()
-        claims = _decode_and_validate(token, jwks)
-    except ValueError as e:
-        if not _is_key_not_found_error(e):
+        return _decode_and_validate(token, jwks)
+    except ValueError as error:
+        if "key not found" not in str(error).lower():
             raise
         _jwks_cache = None
         jwks = await _get_jwks(force_refresh=True)
-        claims = _decode_and_validate(token, jwks)
-
-    expected_issuer = oidc_issuer.rstrip("/")
-    actual_issuer = str(claims.get("iss", "")).rstrip("/")
-    if actual_issuer != expected_issuer:
-        raise JoseError(
-            f"Invalid issuer: expected {expected_issuer}, got {actual_issuer}"
-        )
-
-    return claims
+        return _decode_and_validate(token, jwks)
 
 
 auth = Auth()
 
 
 @auth.authenticate
-async def get_current_user(headers: dict[str, str] | None) -> MinimalUserDict:
-    """Check if the user's token is valid.
-
-    Aegra calls this handler with the request headers as a dict with
-    lowercase keys (unlike langgraph-api, which injected individual
-    parameters by name).
-    """
-
-    authorization = (headers or {}).get("authorization")
-
-    if not authorization:
-        logger.error("No authorization header provided.")
+async def get_current_user(
+    headers: dict[str, str] | dict[bytes, bytes] | None,
+) -> MinimalUserDict:
+    """Authenticate both runtimes' header representations without server imports."""
+    authorization = None
+    for key, value in (headers or {}).items():
+        name = key.decode("latin-1") if isinstance(key, bytes) else key
+        if name.lower() == "authorization":
+            authorization = (
+                value.decode("latin-1") if isinstance(value, bytes) else value
+            )
+            break
+    parts = authorization.split() if authorization else []
+    if len(parts) != 2 or parts[0].lower() != "bearer":
         raise Auth.exceptions.HTTPException(
-            status_code=401, detail="No token provided."
-        )
-
-    parts = authorization.split(" ", 1)
-    if len(parts) != 2:
-        raise Auth.exceptions.HTTPException(
-            status_code=401, detail="Invalid authorization header format."
-        )
-
-    scheme, token = parts
-    if scheme.lower() != "bearer":
-        raise Auth.exceptions.HTTPException(
-            status_code=401, detail="Invalid auth scheme. Expected 'Bearer'."
+            status_code=401, detail="A Bearer access token is required"
         )
 
     try:
-        claims = await _validate_token(token)
-    except (DecodeError, BadSignatureError, UnsupportedAlgorithmError) as e:
-        # Invalid token format, tampered signature, or unsupported algorithm
-        logger.error(f"Token validation failed: {type(e).__name__}: {e}")
+        claims = await _validate_token(parts[1])
+    except (JoseError, ValueError, TypeError):
         raise Auth.exceptions.HTTPException(
-            status_code=401, detail="Invalid or malformed token"
-        )
-    except JoseError as e:
-        # Other JWT validation errors
-        logger.exception(e)
-        raise Auth.exceptions.HTTPException(status_code=401, detail=str(e))
-    except httpx.HTTPError as e:
-        logger.exception(e)
+            status_code=401, detail="Invalid or expired access token"
+        ) from None
+    except (httpx.HTTPError, RuntimeError) as error:
+        # No claims, credentials, provider response body, or request URL in logs.
+        logger.error("Token verification unavailable (%s)", type(error).__name__)
+        # Aegra 0.10.3 normalizes callback exceptions to HTTP 401. Preserve the
+        # correct classification for runtimes that respect the callback status.
         raise Auth.exceptions.HTTPException(
-            status_code=401, detail=f"Failed to validate token: {e}"
-        )
+            status_code=503, detail="Token verification temporarily unavailable"
+        ) from None
 
-    user = MinimalUserDict(
+    return MinimalUserDict(
         identity=claims["sub"],
         is_authenticated=True,
         permissions=claims.get("permissions", []),
     )
 
-    return user
-
 
 @auth.on
-async def add_owner(
-    ctx: Auth.types.AuthContext,
-    value: dict,  # The payload being sent to this access method
-) -> dict:  # Returns a filter dict that restricts access to resources
-    """Authorize all access to threads, runs, crons, and assistants.
-
-    This handler does two things:
-        - Adds a value to resource metadata (to persist with the resource so it can be filtered later)
-        - Returns a filter (to restrict access to existing resources)
-
-    Args:
-        ctx: Authentication context containing user info, permissions, the path, and
-        value: The request payload sent to the endpoint. For creation
-              operations, this contains the resource parameters. For read
-              operations, this contains the resource being accessed.
-
-    Returns:
-        A filter dictionary that LangGraph uses to restrict access to resources.
-    """
-    # Create filter to restrict access to just this user's resources
+async def add_owner(ctx: Auth.types.AuthContext, value: dict) -> dict:
+    """Stamp the authenticated owner and restrict every operation to that owner."""
     filters = {"owner": ctx.user.identity}
-
-    # Get or create the metadata dictionary in the payload
-    # This is where we store persistent info about the resource
-    # Note: Aegra builds the payload via model_dump(), so "metadata" may be
-    # present but None rather than absent.
     metadata = value.get("metadata")
     if metadata is None:
         metadata = value["metadata"] = {}
-
-    # Add owner to metadata - if this is a create or update operation,
-    # this information will be saved with the resource
-    # So we can filter by it later in read operations
     metadata.update(filters)
-
-    # Return filters to restrict access
-    # These filters are applied to ALL operations (create, read, update, search, etc.)
-    # to ensure users can only access their own resources
     return filters

@@ -70,10 +70,10 @@ Prefer `getByRole`, `getByLabel`, and `getByText` over CSS/XPath selectors.
 
 ### Backend helpers (`fixtures/backend.ts`)
 
-| Helper                                               | Purpose                                                            |
-| ---------------------------------------------------- | ------------------------------------------------------------------ |
-| `makeAuthenticatedRequest(page, endpoint, options?)` | Make API call to LangGraph backend with the session's access token |
-| `getAccessToken(page)`                               | Extract access token from session storage                          |
+| Helper                                               | Purpose                                                   |
+| ---------------------------------------------------- | --------------------------------------------------------- |
+| `makeAuthenticatedRequest(page, endpoint, options?)` | Make an API call with a current backend access token      |
+| `getAccessToken(page)`                               | Obtain a token through the cookie-persisting app endpoint |
 
 ### Example test
 
@@ -127,3 +127,25 @@ Both are started automatically by `moon e2e:test` via the `webServer` entries in
 - **Flaky under load** → Stress test: `moon -u e2e:test -- --workers=8 --repeat-each 5`
 - **Debug a single test** → `moon e2e:test-ui` or `moon e2e:test -- --debug`
 - **Traces** → On first retry, traces are saved automatically (`trace: 'on-first-retry'`). View with `npx playwright show-trace`.
+
+# Authentication contracts
+
+`moon e2e:test-runtime-contract` runs the same API authentication, owner isolation,
+SDK chat/stream/reconnect, and CORS scenarios against Aegra (2026) and LangGraph
+development server (2027). LangGraph runtime packages belong to a development-only
+dependency group and are omitted from production installs. All groups share the
+same uv lockfile, so their constraints also update shared production transitive
+dependencies, including cryptography, the LangGraph SDK, and OpenTelemetry.
+`moon e2e:test` runs this contract suite first, then the complete Aegra application
+suite, including feedback and real Better Auth refresh integration. This explicit
+dependency also keeps `moon ci` and `moon check` from starting the suites together:
+they share server ports and reset the same test database. Runtime dependencies are
+installed as part of the contract task, before any of its servers start.
+
+`src/token-refresh.spec.ts` uses the local provider's explicit test controls to
+expire signed tokens on the real server clock. It covers two rotating refreshes,
+encrypted account cookie chunks, omitted replacement credentials, and explicit
+recovery without automatic write replay. Test controls are enabled only by the
+`oidc-mock-e2e` launcher and bind to localhost.
+
+Run these tasks sequentially, like all Moon/Vitest tasks in this repository.

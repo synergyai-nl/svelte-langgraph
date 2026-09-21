@@ -5,6 +5,8 @@
 	"nav_chat": "संवाद",
 	"auth_sign_in": "प्रविष्ट करें",
 	"auth_sign_out": "बाहर निकलें",
+	"auth_sign_out_failed_title": "साइन आउट नहीं हो सका",
+	"auth_sign_out_failed_message": "आप अभी भी साइन इन हैं। कृपया फिर से प्रयास करें।",
 	"user_fallback": "उपयोगकर्ता",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "अपने LangGraph एजेंट को आज़माएँ, {name}",
@@ -178,5 +180,10 @@
 	"landing_table_caption": "सुरक्षा, LangGraph समर्थन, अनुकूलन और समुदाय सुविधाओं के आधार पर एजेंट UI टूल की तुलना",
 	"landing_table_status_supported": "{tool} के लिए समर्थित",
 	"landing_table_status_partial": "{tool} के लिए आंशिक रूप से समर्थित",
-	"landing_table_status_unsupported": "{tool} के लिए समर्थित नहीं"
+	"landing_table_status_unsupported": "{tool} के लिए समर्थित नहीं",
+	"auth_unavailable": "प्रमाणीकरण अस्थायी रूप से उपलब्ध नहीं है। कृपया फिर से प्रयास करें।",
+	"auth_refresh_failed": "हम आपकी पहुँच को नवीनीकृत नहीं कर सके। फिर से प्रयास करें या दोबारा साइन इन करें।",
+	"auth_retry": "फिर से प्रयास करें",
+	"auth_recovery_title": "पहुँच की पुष्टि नहीं हो सकी",
+	"auth_required": "हम आपके प्रमाणीकरण की पुष्टि नहीं कर सके। फिर से प्रयास करें या दोबारा साइन इन करें।"
 }

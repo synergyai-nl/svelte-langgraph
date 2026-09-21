@@ -2,17 +2,11 @@ import { Client, type Thread } from '@langchain/langgraph-sdk';
 import { apiUrl } from './apiUrl';
 import type { ThreadValues } from './types';
 
-export function createClient(accessToken: string): Client {
-	const langchainUrl = apiUrl();
-
-	console.assert(!!accessToken, 'No access token specified.');
-
+export function createClient(authenticatedFetch: typeof fetch): Client {
 	return new Client({
-		defaultHeaders: {
-			Authorization: `Bearer ${accessToken}`
-		},
-		apiUrl: langchainUrl,
-		timeoutMs: 5000 // Increased from 2000ms for CI reliability
+		apiUrl: apiUrl(),
+		callerOptions: { fetch: authenticatedFetch },
+		timeoutMs: 10000
 	});
 }
 

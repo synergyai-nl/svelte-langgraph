@@ -5,6 +5,8 @@
 	"nav_chat": "Chat",
 	"auth_sign_in": "Sign in",
 	"auth_sign_out": "Sign out",
+	"auth_sign_out_failed_title": "Sign out failed",
+	"auth_sign_out_failed_message": "You're still signed in. Please try again.",
 	"user_fallback": "User",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "Try your LangGraph agent, {name}",
@@ -178,5 +180,10 @@
 	"landing_table_caption": "Comparison of agent UI tools across security, LangGraph support, customization, and community features",
 	"landing_table_status_supported": "Supported for {tool}",
 	"landing_table_status_partial": "Partially supported for {tool}",
-	"landing_table_status_unsupported": "Not supported for {tool}"
+	"landing_table_status_unsupported": "Not supported for {tool}",
+	"auth_unavailable": "Authentication is temporarily unavailable. Please retry.",
+	"auth_refresh_failed": "We could not refresh your access. Retry or sign in again.",
+	"auth_retry": "Retry",
+	"auth_recovery_title": "Unable to confirm access",
+	"auth_required": "We could not confirm your authentication. Retry or sign in again."
 }

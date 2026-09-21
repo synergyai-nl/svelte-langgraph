@@ -2,7 +2,16 @@ import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async (event) => {
-	const session = await event.locals.auth();
+	const session =
+		event.locals.session && event.locals.user
+			? {
+					user: {
+						name: event.locals.user.name,
+						email: event.locals.user.email,
+						image: event.locals.user.image
+					}
+				}
+			: null;
 
 	return {
 		session,
