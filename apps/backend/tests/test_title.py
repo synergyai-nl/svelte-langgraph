@@ -1,7 +1,7 @@
-"""Unit tests for the standalone title graph (svelte_langgraph.title).
+"""Unit tests for title generation (svelte_langgraph.title).
 
 Covers:
-- End-to-end graph invocation producing a sanitized title
+- Direct generation producing a sanitized title
 - Unicode format-control stripping in sanitize_title (bidi spoofing, etc.)
 - Prompt-injection resilience
 - Model failure -> {"title": None}, with a warning logged
@@ -18,7 +18,7 @@ from svelte_langgraph.title import (
     TITLE_CONVERSATION_MAX_TURNS,
     TITLE_MAX_CHARS,
     _render_conversation_for_title,
-    make_title_graph,
+    generate_title,
     sanitize_title,
 )
 
@@ -55,22 +55,17 @@ class _StubTitleModel:
         return AIMessage(content=self._response_text or "")
 
 
-@pytest.fixture
-def graph():
-    return make_title_graph()
-
-
-# --- End-to-end graph invocation ------------------------------------------
+# --- Direct title generation ------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_graph_invoke_returns_sanitized_title(graph, monkeypatch):
+async def test_generate_title_returns_sanitized_title(monkeypatch):
     monkeypatch.setattr(
         "svelte_langgraph.title.get_title_model",
         lambda: _StubTitleModel('"Trip to Paris"'),
     )
 
-    result = await graph.ainvoke(
+    result = await generate_title(
         {"messages": [HumanMessage(content="Help me plan a trip to Paris")]}
     )
 
@@ -78,37 +73,8 @@ async def test_graph_invoke_returns_sanitized_title(graph, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_graph_invoke_coerces_dict_messages(graph, monkeypatch):
-    """An HTTP invocation sends messages as JSON dicts, not message objects;
-    without `add_messages` coercion they'd all be skipped as unknown types."""
-    model = _StubTitleModel("Paris Trip")
-    prompts: list[str] = []
-    original = model.ainvoke
-
-    async def recording_ainvoke(prompt: str) -> AIMessage:
-        prompts.append(prompt)
-        return await original(prompt)
-
-    model.ainvoke = recording_ainvoke  # type: ignore[method-assign]
-    monkeypatch.setattr("svelte_langgraph.title.get_title_model", lambda: model)
-
-    result = await graph.ainvoke(
-        {
-            "messages": [
-                {"type": "human", "content": "Help me plan a trip to Paris"},
-                {"type": "ai", "content": "Sure - when are you going?"},
-            ]
-        }
-    )
-
-    assert result == {"title": "Paris Trip"}
-    assert "User: Help me plan a trip to Paris" in prompts[0]
-    assert "Assistant: Sure - when are you going?" in prompts[0]
-
-
-@pytest.mark.asyncio
-async def test_graph_invoke_model_failure_returns_none_and_logs_warning(
-    graph, monkeypatch, caplog
+async def test_generate_title_model_failure_returns_none_and_logs_warning(
+    monkeypatch, caplog
 ):
     monkeypatch.setattr(
         "svelte_langgraph.title.get_title_model",
@@ -116,14 +82,14 @@ async def test_graph_invoke_model_failure_returns_none_and_logs_warning(
     )
 
     with caplog.at_level(logging.WARNING, logger="svelte_langgraph.title"):
-        result = await graph.ainvoke({"messages": [HumanMessage(content="Hello")]})
+        result = await generate_title({"messages": [HumanMessage(content="Hello")]})
 
     assert result == {"title": None}
     assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 @pytest.mark.asyncio
-async def test_graph_invoke_survives_prompt_injection_attempt(graph, monkeypatch):
+async def test_generate_title_survives_prompt_injection_attempt(monkeypatch):
     """A worst-case compliant title model (returning the injected text) still gets
     sanitized and capped."""
     injection_attempt = (
@@ -138,7 +104,7 @@ async def test_graph_invoke_survives_prompt_injection_attempt(graph, monkeypatch
         lambda: _StubTitleModel(overlong_injected_title),
     )
 
-    result = await graph.ainvoke(
+    result = await generate_title(
         {"messages": [HumanMessage(content=injection_attempt)]}
     )
 
