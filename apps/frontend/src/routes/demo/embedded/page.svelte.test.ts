@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/svelte';
 import { vi } from 'vitest';
 
 import EmbeddedDemoPage from './+page.svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 const pageState = {
 	url: new URL('http://localhost/demo/embedded'),
@@ -19,13 +20,16 @@ vi.mock('$env/dynamic/public', () => ({
 }));
 
 describe('/demo/embedded', () => {
-	it('asks a signed-out visitor to sign in, linking to /chat', () => {
+	it('offers direct authentication to a signed-out visitor', () => {
 		pageState.data.session = null;
 		render(EmbeddedDemoPage);
 
-		expect(screen.getByText('Sign in to try the embedded chat demo.')).toBeInTheDocument();
-		// /chat is the route that opens the login modal; the landing page has no sign-in UI.
-		expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute('href', '/chat');
+		expect(
+			screen.getByRole('heading', { level: 1, name: m.demo_embedded_title() })
+		).toBeInTheDocument();
+		expect(screen.getByText(m.demo_embedded_description())).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: m.demo_embedded_sign_in() })).toBeInTheDocument();
+		expect(document.querySelector('a[href="/chat"]')).toBeNull();
 	});
 
 	it('mounts the provider-wrapped surface inside the fixed card when signed in', () => {

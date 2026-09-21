@@ -148,17 +148,18 @@ test.describe('When authenticated', () => {
 test.describe('Navigation', () => {
 	// The marketing and app header variants differ only in chrome — both carry the
 	// same nav, so "/" must expose a way into the app just like "/chat" does.
-	[{ location: '/' }, { location: '/chat' }].forEach(({ location }) => {
-		test(`navbar has home and chat links on ${location}`, async ({ page, app }) => {
+	[{ location: '/' }, { location: '/demo' }, { location: '/chat' }].forEach(({ location }) => {
+		test(`navbar has home and demos links on ${location}`, async ({ page, app }) => {
 			await page.goto(location);
 			await expect(app.homeLink).toBeVisible();
-			await expect(app.chatLink).toBeVisible();
+			await expect(app.demosLink).toBeVisible();
+			await expect(app.header.getByRole('link', { name: /^chat$/i })).toHaveCount(0);
 		});
 	});
 
-	test('clicking chat link navigates to chat page', async ({ page, app }) => {
+	test('clicking demos link navigates to the demos overview', async ({ page, app }) => {
 		await page.goto('/');
-		await app.navigateToChat();
-		await expect(page).toHaveURL(/.*chat.*/);
+		await app.navigateToDemos();
+		await expect(page).toHaveURL('/demo');
 	});
 });

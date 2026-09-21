@@ -1,24 +1,39 @@
 import { test, expect } from './fixtures/test';
 
 test.describe('Homepage hero', () => {
-	test('renders headline and all three CTA buttons', async ({ page }) => {
+	test('renders headline and the primary product actions', async ({ page }) => {
 		await page.goto('/');
 
 		await expect(page.getByRole('heading', { level: 1 })).toContainText('Your agent works.');
-		await expect(page.getByRole('link', { name: /open the chat/i }).first()).toBeVisible();
-		await expect(page.getByRole('link', { name: /try live demo/i }).first()).toBeVisible();
+		await expect(page.getByRole('link', { name: /explore demos/i }).first()).toBeVisible();
 		await expect(page.getByRole('link', { name: /view on github/i }).first()).toBeVisible();
 	});
 
-	test('primary CTA navigates to the chat app', async ({ page }) => {
+	test('discovers and opens the embedded integration demo', async ({ page }) => {
 		await page.goto('/');
 
 		await page
-			.getByRole('link', { name: /open the chat/i })
+			.getByRole('link', { name: /explore demos/i })
 			.first()
 			.click();
 
-		await expect(page).toHaveURL(/\/chat/);
+		await expect(page).toHaveURL('/demo');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Explore integration patterns' })
+		).toBeVisible();
+		await expect(page.getByRole('heading', { level: 2, name: 'Available now' })).toBeVisible();
+		await expect(page.getByRole('heading', { level: 2, name: 'Coming next' })).toBeVisible();
+		await expect(page.getByText('Full-page app', { exact: true })).toBeVisible();
+		await expect(page.getByText('Embedded chat', { exact: true })).toBeVisible();
+		await expect(page.getByText('Overlay', { exact: true })).toBeVisible();
+
+		const embeddedCard = page
+			.locator('[data-slot="card"]')
+			.filter({ has: page.getByText('Embedded chat', { exact: true }) });
+		await embeddedCard.getByRole('link', { name: 'Open demo' }).click();
+
+		await expect(page).toHaveURL('/demo/embedded');
+		await expect(page.getByRole('button', { name: 'Sign in to try this demo' })).toBeVisible();
 	});
 
 	test('renders hero terminal and stack logos', async ({ page }) => {
