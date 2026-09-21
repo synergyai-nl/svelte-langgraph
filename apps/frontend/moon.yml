@@ -55,6 +55,8 @@ tasks:
 
   lint:
     command: eslint .
+    deps:
+      - build
     inputs:
       - '@group(messages)'
       - '@group(sources)'
