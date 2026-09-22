@@ -20,7 +20,9 @@ export function createClient(accessToken: string): TitleClient {
 			messages: TitleMessage[],
 			signal: AbortSignal
 		): Promise<{ title: string | null }> {
-			const response = await fetch(`${langchainUrl.replace(/\/$/, '')}/titles`, {
+			// No local trailing-slash strip: apiUrl() owns that, and a second one
+			// here would hide it going wrong.
+			const response = await fetch(`${langchainUrl}/titles`, {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${accessToken}`,

@@ -13,7 +13,11 @@ import { env } from '$env/dynamic/public';
  * string, which reorders module evaluation enough to break hydration.
  */
 export function apiUrl(): string {
-	const configured = env.PUBLIC_LANGGRAPH_API_URL;
+	// Trimmed first, so a stray space in .env is not carried into every URL --
+	// and so a whitespace-only value is treated as the misconfiguration it is
+	// rather than passing the check below.
+	const configured = env.PUBLIC_LANGGRAPH_API_URL?.trim();
 	if (!configured) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
-	return configured.replace(/\/$/, '');
+	// All trailing slashes, not one: "host//" would otherwise still leave one.
+	return configured.replace(/\/+$/, '');
 }
