@@ -13,11 +13,24 @@ import { env } from '$env/dynamic/public';
  * string, which reorders module evaluation enough to break hydration.
  */
 export function apiUrl(): string {
-	// Trimmed first, so a stray space in .env is not carried into every URL --
-	// and so a whitespace-only value is treated as the misconfiguration it is
-	// rather than passing the check below.
-	const configured = env.PUBLIC_LANGGRAPH_API_URL?.trim();
+	// Trimmed and stripped *before* the emptiness check, not after: "/" and "//"
+	// are truthy but strip to "", which no caller can use. All trailing slashes
+	// rather than one, since "host//" would otherwise still leave one.
+	const configured = env.PUBLIC_LANGGRAPH_API_URL?.trim().replace(/\/+$/, '');
 	if (!configured) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
-	// All trailing slashes, not one: "host//" would otherwise still leave one.
-	return configured.replace(/\/+$/, '');
+
+	// Absolute, because the callers disagree about what a relative value means:
+	// the SDK falls back to its own default while a bare fetch() resolves
+	// same-origin, so one bad value would send requests to two places silently.
+	let parsed: URL;
+	try {
+		parsed = new URL(configured);
+	} catch {
+		throw Error(`PUBLIC_LANGGRAPH_API_URL must be absolute, got "${configured}"`);
+	}
+	// Every caller appends "/something", which would land after these.
+	if (parsed.search || parsed.hash)
+		throw Error('PUBLIC_LANGGRAPH_API_URL must not carry a query or fragment');
+
+	return configured;
 }

@@ -30,8 +30,19 @@ describe('apiUrl', () => {
 		['empty', ''],
 		// Whitespace-only is a misconfiguration, not a base URL: untrimmed it
 		// would pass the check and silently prefix every request with spaces.
-		['whitespace only', '   ']
-	])('refuses a %s value', (_label, configured) => {
+		['whitespace only', '   '],
+		// Truthy, but strips to "" — which the SDK reads as "use your default
+		// host" and a bare fetch reads as "same origin". Two destinations from
+		// one value is worse than failing.
+		['a lone slash', '/'],
+		['only slashes', '//'],
+		// Relative: same divergence, less obviously wrong.
+		['no scheme', 'backend.test'],
+		['an absolute path', '/api'],
+		// Callers append "/something", which would land after these.
+		['a query', 'https://backend.test/?x=1'],
+		['a fragment', 'https://backend.test/#top']
+	])('refuses %s', (_label, configured) => {
 		env.PUBLIC_LANGGRAPH_API_URL = configured;
 		expect(() => apiUrl()).toThrow(/PUBLIC_LANGGRAPH_API_URL/);
 	});

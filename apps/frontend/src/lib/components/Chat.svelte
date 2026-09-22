@@ -217,7 +217,12 @@
 		return failedRuns[runId] ? 'failed' : null;
 	}
 
-	/** Keeps a run's metadata writes in the order they were issued. */
+	/** Serialises this thread's metadata writes.
+	 *
+	 *  Keyed by thread, not by run: Aegra's PATCH is a read-modify-write with
+	 *  no locking, so two writes in flight at once merge onto the same stale
+	 *  blob and one loses its key. Ratings on different messages, and the
+	 *  title written on the first settle, all land here. */
 	const queueMetadataWrite = createWriteQueue();
 
 	/** The rating whose comment box is open, held until the box resolves.
@@ -292,7 +297,7 @@
 		//
 		// Queued rather than fired, so a rating changed twice cannot land its two
 		// writes out of order — see queueMetadataWrite.
-		await queueMetadataWrite(runId, async () => {
+		await queueMetadataWrite(threadId, async () => {
 			try {
 				// Only this run's key — see ratings.ts on why they are flat.
 				await langGraphClient.threads.update(threadId, {
@@ -321,7 +326,10 @@
 	const titler = createThreadTitler({
 		client: langGraphClient,
 		threadId,
-		onTitled: () => threadListRefresh?.refresh()
+		onTitled: () => threadListRefresh?.refresh(),
+		// Same queue as the ratings above, so a title and a rating written at the
+		// same moment cannot overwrite each other.
+		queueWrite: queueMetadataWrite
 	});
 	onDestroy(() => titler.dispose());
 

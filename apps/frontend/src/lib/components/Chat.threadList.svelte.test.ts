@@ -310,6 +310,35 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
 
+	test('the title write does not overlap a rating write', async () => {
+		// Aegra's metadata PATCH is a read-modify-write with no locking, so two
+		// writes in flight at once merge onto the same stale blob and one loses
+		// its key -- the title, or the rating the user just gave.
+		threadsGetMock.mockResolvedValue({ metadata: {} });
+
+		let inFlight = 0;
+		let overlapped = false;
+		threadsUpdateMock.mockImplementation(async () => {
+			overlapped ||= inFlight > 0;
+			inFlight += 1;
+			await Promise.resolve();
+			inFlight -= 1;
+			return {};
+		});
+
+		renderChatWithRefresh();
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(false);
+		await tick();
+
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalled());
+		expect(overlapped).toBe(false);
+	});
+
 	test('a failed title request is retried on the next settle', async () => {
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 		generateTitleMock.mockRejectedValueOnce(new Error('model blip'));
