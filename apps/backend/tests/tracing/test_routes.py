@@ -4,7 +4,7 @@ import httpx
 import respx
 from fastapi.testclient import TestClient
 
-from svelte_langgraph.routes import app
+from svelte_langgraph.http import app
 
 import pytest
 

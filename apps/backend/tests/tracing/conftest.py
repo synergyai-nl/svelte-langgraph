@@ -17,7 +17,7 @@ from sqlalchemy import Select
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
 
-from svelte_langgraph import routes
+from svelte_langgraph import http
 
 from tests.conftest import PROVIDER_CASES
 
@@ -174,7 +174,7 @@ def client(session, caller_id, authenticated):
     cases that exercise the genuine unauthenticated and unowned paths live in
     test_routes.py.
     """
-    app = routes.app
+    app = http.app
     app.dependency_overrides[require_auth] = lambda: User(
         identity=caller_id, display_name=DISPLAY_NAME, is_authenticated=authenticated
     )

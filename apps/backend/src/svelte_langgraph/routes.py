@@ -5,14 +5,15 @@ from aegra_api.core.auth_deps import require_auth
 from aegra_api.core.orm import Run as RunORM
 from aegra_api.core.orm import get_session
 from aegra_api.models import User
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .tracing import Rating, is_configured, record_score
 
-app = FastAPI()
+# A router, not an app: Aegra mounts exactly one custom app, and http.py is it.
+router = APIRouter()
 
 
 # Kept in step with COMMENT_MAX_LENGTH in
@@ -49,7 +50,7 @@ class FeedbackPayload(BaseModel):
 # are still owned by real identities, so the check below refuses them, and only
 # a deployment that never authenticated anyone is exposed. Tracked in #302 and
 # fixed upstream by aegra/aegra#459.
-@app.post("/feedback")
+@router.post("/feedback")
 async def feedback(
     payload: FeedbackPayload,
     user: Annotated[User, Depends(require_auth)],

@@ -215,7 +215,12 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		const { unmount } = render(ChatWithThreadListHost, {
 			props: {
 				refresh,
-				chatProps: { langGraphClient: mockClient, assistantId: 'assistant-1', threadId: 'test-123' }
+				chatProps: {
+					langGraphClient: mockClient,
+					accessToken: 'test-token',
+					assistantId: 'assistant-1',
+					threadId: 'test-123'
+				}
 			}
 		});
 		await waitFor(() => expect(generateTitleMock).toHaveBeenCalledOnce());
@@ -269,7 +274,10 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		mockModule.setIsLoading(false);
 		await tick();
 
-		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		// Not an exact count: restoring stored ratings reads the same thread on
+		// mount, so the number of gets belongs to neither feature alone. What
+		// matters here is that titling asked for nothing and wrote nothing.
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
 		await tick();
 		expect(generateTitleMock).not.toHaveBeenCalled();
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
@@ -278,8 +286,11 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 	});
 
 	test('a rename landing while the title request is in flight is not overwritten', async () => {
-		// Untitled at the pre-run check; renamed by the time the pre-PATCH re-check runs.
+		// Untitled at the pre-run check; renamed by the time the pre-PATCH re-check
+		// runs. Twice, not once: restoring stored ratings reads the same thread on
+		// mount, and that read must not be the one that sees the rename.
 		threadsGetMock
+			.mockResolvedValueOnce({ metadata: {} })
 			.mockResolvedValueOnce({ metadata: {} })
 			.mockResolvedValue({ metadata: { title: 'Renamed mid-run' } });
 
@@ -293,7 +304,8 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		await tick();
 
 		await waitFor(() => expect(generateTitleMock).toHaveBeenCalledTimes(1));
-		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(2));
+		// Three: the ratings restore on mount, then titling's own two checks.
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(3));
 		await tick();
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
