@@ -5,16 +5,20 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ command, isPreview }) => ({
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
-		paraglideVitePlugin({
-			project: './project.inlang',
-			outdir: './src/lib/paraglide',
-			cleanOutdir: false,
-			outputStructure: 'message-modules'
-		}),
+		...(command === 'serve' && !isPreview && !process.env.VITEST
+			? [
+					paraglideVitePlugin({
+						project: './project.inlang',
+						outdir: './src/lib/paraglide',
+						cleanOutdir: false,
+						outputStructure: 'message-modules'
+					})
+				]
+			: []),
 		sentrySvelteKit({
 			sourceMapsUploadOptions: {
 				telemetry: !process.env.VITEST
@@ -37,17 +41,7 @@ export default defineConfig({
 						'src/**/*.server.{spec,test}.{js,ts}'
 					]
 				},
-				plugins: [
-					tailwindcss(),
-					sveltekit(),
-					paraglideVitePlugin({
-						project: './project.inlang',
-						outdir: './src/lib/paraglide',
-						cleanOutdir: false,
-						outputStructure: 'message-modules'
-					}),
-					svelteTesting() // This was missing proper placement
-				]
+				plugins: [tailwindcss(), sveltekit(), svelteTesting()]
 			},
 			{
 				test: {
@@ -57,16 +51,7 @@ export default defineConfig({
 					include: ['src/**/*.{spec,test}.{js,ts}'],
 					exclude: ['src/**/*.svelte.{spec,test}.{js,ts}', 'e2e/**', '**/*.e2e.{spec,test}.{js,ts}']
 				},
-				plugins: [
-					tailwindcss(),
-					sveltekit(),
-					paraglideVitePlugin({
-						project: './project.inlang',
-						outdir: './src/lib/paraglide',
-						cleanOutdir: false,
-						outputStructure: 'message-modules'
-					})
-				]
+				plugins: [tailwindcss(), sveltekit()]
 			}
 		]
 	},
@@ -75,4 +60,4 @@ export default defineConfig({
 			async_hooks: './src/lib/async_hooks_mock.ts'
 		}
 	}
-});
+}));
