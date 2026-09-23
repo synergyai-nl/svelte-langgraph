@@ -18,6 +18,7 @@
 	import type { Message } from '@svelte-langgraph/client';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		message: Message;
@@ -27,7 +28,8 @@
 
 	let { message, onFeedback, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultFeedbackButtonsLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultFeedbackButtonsLabels, ctx?.labels?.feedback, labels));
 
 	let feedbackGiven = $state<'up' | 'down' | null>(null);
 

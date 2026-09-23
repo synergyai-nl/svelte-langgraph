@@ -40,6 +40,7 @@
 	import UserMessageEdit from './UserMessageEdit.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		message: Message;
@@ -60,7 +61,8 @@
 		labels
 	}: Props = $props();
 
-	const l = $derived(resolveLabels(defaultChatMessageLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultChatMessageLabels, ctx?.labels?.message, labels));
 
 	const plugins = [gfmPlugin()];
 

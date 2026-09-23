@@ -5,6 +5,8 @@
 		empty: string;
 		loading: string;
 		error: string;
+		/** Shown when a context-defaulted "New chat" creation fails (see the `error` prop). */
+		newChatError: string;
 		retry: string;
 		loadMore: string;
 		/** `Sheet.Title` for the mobile drawer's sr-only header. */
@@ -19,6 +21,7 @@
 		empty: 'No conversations yet',
 		loading: 'Loading conversations',
 		error: "Couldn't load your conversations.",
+		newChatError: "Couldn't start a new chat. Please try again.",
 		retry: 'Try again',
 		loadMore: 'Load more',
 		mobileTitle: 'Sidebar',
@@ -36,20 +39,28 @@
 	import ThreadListItem from './ThreadListItem.svelte';
 	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
+	import { resolveLabels, type DeepPartial } from '../labels.js';
+	import { useLangGraphOptional } from '../langGraphContext.svelte.js';
 
 	interface Props {
-		/** The reactive thread list instance, consumed whole. */
-		list: ThreadListState;
+		/** The reactive thread list instance, consumed whole. Defaults to the ambient `<LangGraph>` context's. */
+		list?: ThreadListState;
 		activeThreadId?: string | null;
 		/** The row navigation is currently in flight for; renders a trailing spinner. */
 		pendingThreadId?: string | null;
 		/**
-		 * Start a new conversation. The mobile drawer close is handled internally, but only once
-		 * this resolves to something other than `false` — return `false` to report failure and
-		 * keep the drawer open, so an `error` rendered inside it stays visible.
+		 * Start a new conversation. Defaults to the ambient `<LangGraph>` context's `createThread()`.
+		 * The mobile drawer close is handled internally, but only once this resolves to something
+		 * other than `false` — return `false` to report failure and keep the drawer open, so an
+		 * `error` rendered inside it stays visible.
 		 */
-		onNewThread: () => void | boolean | Promise<void | boolean>;
-		/** Thread creation in flight; disables the "New chat" button alongside `disabled`. */
+		onNewThread?: () => void | boolean | Promise<void | boolean>;
+		/**
+		 * Thread creation in flight; disables the "New chat" button alongside `disabled`. Defaults
+		 * to the ambient context's own `creatingThread`, which only matters together with a
+		 * default `onNewThread` — an explicit `onNewThread` should generally come with an explicit
+		 * `busy` too.
+		 */
 		busy?: boolean;
 		/** No client / signed out; disables the "New chat" button. */
 		disabled?: boolean;
@@ -59,26 +70,89 @@
 		onSelect?: (id: string) => void;
 		/** Per-row override; when given, replaces the default row content. */
 		item?: Snippet<[ThreadSummary]>;
-		/** Caller-supplied failure (e.g. thread creation), rendered as an inline alert near "New chat". */
+		/**
+		 * Caller-supplied failure (e.g. thread creation), rendered as an inline alert near "New
+		 * chat". Defaults to the ambient context's own `createThreadError`, for the same reason as
+		 * `busy` above.
+		 */
 		error?: string | null;
-		labels?: Partial<ThreadListLabels>;
+		labels?: DeepPartial<ThreadListLabels>;
 	}
 
+	const ctx = useLangGraphOptional();
+
+	// Context-sourced defaults are computed via explicit `$derived`, not destructuring defaults:
+	// destructuring defaults are evaluated once (see `Composer.svelte`'s `resolvedPlaceholder`
+	// for the same pattern) and would not track later changes to `ctx`'s reactive fields.
 	let {
-		list,
-		activeThreadId = null,
-		pendingThreadId = null,
-		onNewThread,
-		busy = false,
-		disabled = false,
-		hrefFor,
-		onSelect,
+		list: listProp,
+		activeThreadId: activeThreadIdProp,
+		pendingThreadId: pendingThreadIdProp,
+		onNewThread: onNewThreadProp,
+		busy: busyProp,
+		disabled: disabledProp,
+		hrefFor: hrefForProp,
+		onSelect: onSelectProp,
 		item,
-		error = null,
+		error: errorProp,
 		labels
 	}: Props = $props();
 
-	const l = $derived({ ...defaultThreadListLabels, ...labels });
+	/**
+	 * Trivial stand-in used only when neither a `list` prop nor a `<LangGraph>` ancestor is
+	 * present — keeps the component inert rather than crashing. Not expected in real usage: every
+	 * caller either passes `list` explicitly or renders inside `<LangGraph>`.
+	 */
+	const emptyList: Pick<
+		ThreadListState,
+		'threads' | 'loading' | 'error' | 'hasMore' | 'refresh' | 'loadMore' | 'retry'
+	> = {
+		threads: [],
+		loading: false,
+		error: null,
+		hasMore: false,
+		refresh: () => {},
+		loadMore: () => {},
+		retry: () => {}
+	};
+
+	const list = $derived(listProp ?? ctx?.threadList ?? emptyList);
+	// Explicit-`undefined` checks, not `??`: these props deliberately accept `null` as an
+	// explicit "no selection"/"no pending row" override, which `??` would misread as omission
+	// and fall through to the context value.
+	const activeThreadId = $derived(
+		activeThreadIdProp !== undefined ? activeThreadIdProp : (ctx?.activeThreadId ?? null)
+	);
+	const pendingThreadId = $derived(
+		pendingThreadIdProp !== undefined ? pendingThreadIdProp : (ctx?.pendingThreadId ?? null)
+	);
+	const onNewThread = $derived(
+		onNewThreadProp ?? (() => ctx?.createThread() ?? Promise.resolve(false))
+	);
+	const busy = $derived(busyProp ?? ctx?.creatingThread ?? false);
+	// Under a provider, "no client yet" (signed out / still resolving) disables "New chat" —
+	// the default `onNewThread` (`ctx.createThread()`) would silently no-op without one. This
+	// mirrors the old layout's explicit `disabled={!client}` wiring.
+	const disabled = $derived(disabledProp ?? (ctx ? !ctx.client : false));
+	const hrefFor = $derived(hrefForProp ?? ctx?.hrefFor);
+
+	const l = $derived(resolveLabels(defaultThreadListLabels, ctx?.labels?.threadList, labels));
+
+	// The context records the raw `Error` (useful to programmatic consumers), but the alert shows
+	// the localizable label — surfacing `error.message` would leak transport noise like
+	// `HTTP 400: {...}` into the sidebar. Explicit-`undefined` check so `error={null}` can
+	// deliberately suppress the context-defaulted alert (same rationale as `activeThreadId`).
+	const error = $derived(
+		errorProp !== undefined ? errorProp : ctx?.createThreadError ? l.newChatError : null
+	);
+
+	// Button rows (no `hrefFor`) must still open the clicked conversation: under a provider with
+	// no explicit selection wiring — the uncontrolled embed case — default the click through
+	// `ctx.selectThread`. Anchor rows navigate through their own `href`, so they get no default
+	// (`onSelect` there is a side-effect hook, and defaulting it would double-fire selection).
+	const onSelect = $derived(
+		onSelectProp ?? (hrefFor || !ctx ? undefined : (id: string) => ctx.selectThread(id))
+	);
 
 	const sidebar = Sidebar.useSidebar();
 

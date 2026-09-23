@@ -27,6 +27,7 @@
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		message: Message;
@@ -38,7 +39,8 @@
 
 	let { message, isHovered, onRegenerate, onFeedback, labels }: Props = $props();
 
-	const l = $derived(resolveLabels(defaultAIMessageActionsLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultAIMessageActionsLabels, ctx?.labels?.aiActions, labels));
 
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
