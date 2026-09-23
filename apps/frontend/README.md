@@ -60,7 +60,7 @@ primitive built on Svelte 5 runes.
 ```svelte
 <script lang="ts">
 	import { createStateSync } from '@svelte-langgraph/client';
-	import StateField from '$lib/components/StateField.svelte';
+	import StateField from '$lib/components/chat/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props
 	const sync = createStateSync({ stream, client, assistantId });
