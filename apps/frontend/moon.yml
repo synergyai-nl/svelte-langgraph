@@ -25,26 +25,38 @@ tasks:
     # Also wipe .svelte-kit: a stale generated/server/internal.js bakes an old
     # __sveltekit_<version_hash> into the SSR bundle while the client pass computes
     # a fresh one from live config — splitting the build and breaking hydration.
-    command: 'rm -rf build .svelte-kit src/lib/paraglide'
+    command: 'rm -rf build .svelte-kit'
     options:
       cache: false
+
+  paraglide:
+    command: 'pnpm run paraglide'
+    inputs:
+      - '@group(messages)'
+      - 'package.json'
+    outputs:
+      - 'src/lib/paraglide'
 
   build:
     deps:
       - clean
+      - paraglide
     inputs:
       - '@group(sources)'
-      - '@group(messages)'
     outputs:
       - 'build'
-      - 'src/lib/paraglide'
+      - '.svelte-kit'
 
+  # These tasks read generated SvelteKit and Paraglide files, so run them after
+  # `build` has replaced everything removed by the uncached `clean`.
   check:
     deps:
       - build
 
   lint:
     command: eslint .
+    deps:
+      - build
     inputs:
       - '@group(messages)'
       - '@group(sources)'
@@ -85,11 +97,15 @@ tasks:
       mergeArgs: 'replace'
 
   test:
+    deps:
+      - build
     args:
       - '--silent'
       - 'passed-only'
 
   test-cov:
+    deps:
+      - build
     args:
       - '--coverage.reporter text'
       - '--coverage.reporter lcov'
