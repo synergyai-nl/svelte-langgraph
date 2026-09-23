@@ -34,6 +34,15 @@ export interface ThreadTitlerOptions {
 	threadId: string;
 	/** Called once, right after a title is freshly written to thread metadata. */
 	onTitled?: () => void;
+	/**
+	 * Serialises this write against the thread's other metadata writers.
+	 *
+	 * Aegra's PATCH is a read-modify-write with no locking, so it merges keys in
+	 * Python on a stale read: a title and a rating written at once lose one of
+	 * the two. Titling fires on the first settle, which is exactly when the user
+	 * is rating the reply that just appeared. See #307.
+	 */
+	queueWrite?: (key: string, write: () => Promise<unknown>) => Promise<void>;
 }
 
 export interface ThreadTitler {
@@ -53,7 +62,7 @@ async function hasStoredTitle(client: TitleClient, threadId: string): Promise<bo
 }
 
 async function attemptTitle(
-	{ client, threadId }: ThreadTitlerOptions,
+	{ client, threadId, queueWrite }: ThreadTitlerOptions,
 	exchange: RawMessage[],
 	signal: AbortSignal
 ): Promise<'stored' | 'written' | null> {
@@ -74,14 +83,16 @@ async function attemptTitle(
 	// window, and separate tabs can generate and write different titles concurrently.
 	if (await hasStoredTitle(client, threadId)) return 'stored';
 	if (signal.aborted) return null;
-	await client.threads.update(threadId, { metadata: { title } });
+	const write = () => client.threads.update(threadId, { metadata: { title } });
+	await (queueWrite ? queueWrite(threadId, write) : write());
 	return 'written';
 }
 
 export function createThreadTitler({
 	client,
 	threadId,
-	onTitled
+	onTitled,
+	queueWrite
 }: ThreadTitlerOptions): ThreadTitler {
 	let running = false;
 	let knownTitled = false;
@@ -94,7 +105,11 @@ export function createThreadTitler({
 
 		running = true;
 		try {
-			const outcome = await attemptTitle({ client, threadId }, exchange, controller.signal);
+			const outcome = await attemptTitle(
+				{ client, threadId, queueWrite },
+				exchange,
+				controller.signal
+			);
 			knownTitled = outcome !== null;
 			if (outcome === 'written' && !controller.signal.aborted) onTitled?.();
 		} catch {
