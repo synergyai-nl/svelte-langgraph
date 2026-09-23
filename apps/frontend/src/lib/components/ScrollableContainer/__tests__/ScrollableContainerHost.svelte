@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { ScrollableContainer } from '../index';
-	import type { BaseMessage } from '$lib/langgraph/types';
+	import type { BaseMessage } from '@svelte-langgraph/client';
 
 	interface Props {
 		message?: BaseMessage | null;

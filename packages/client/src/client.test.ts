@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
 
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test/api/' }
-}));
-
 afterEach(() => vi.unstubAllGlobals());
 
 const messages = [{ type: 'human' as const, content: 'Plan a trip to Paris' }];
@@ -15,7 +11,7 @@ describe('direct title transport', () => {
 			.fn()
 			.mockResolvedValue(new Response(JSON.stringify({ title: 'Paris Trip' })));
 		vi.stubGlobal('fetch', fetchMock);
-		const client = createClient('test-token');
+		const client = createClient('https://backend.test/api/', 'test-token');
 		const controller = new AbortController();
 		expect(await client.generateTitle(messages, controller.signal)).toEqual({
 			title: 'Paris Trip'
@@ -46,7 +42,10 @@ describe('direct title transport', () => {
 			)
 		);
 		const controller = new AbortController();
-		const request = createClient('test-token').generateTitle(messages, controller.signal);
+		const request = createClient('https://backend.test/api/', 'test-token').generateTitle(
+			messages,
+			controller.signal
+		);
 		const rejected = expect(request).rejects.toMatchObject({ name: 'AbortError' });
 		await started;
 		controller.abort();
@@ -56,7 +55,10 @@ describe('direct title transport', () => {
 	it('rejects an unsuccessful response rather than treating it as a title', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
 		await expect(
-			createClient('test-token').generateTitle(messages, new AbortController().signal)
+			createClient('https://backend.test/api/', 'test-token').generateTitle(
+				messages,
+				new AbortController().signal
+			)
 		).rejects.toThrow('Title request failed: 503');
 	});
 });

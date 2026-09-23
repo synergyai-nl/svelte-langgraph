@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { TitleClient } from '@svelte-langgraph/client';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';

@@ -1,18 +1,22 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { createClient, getOrCreateThread } from '$lib/langgraph/client';
-	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
+	import { env } from '$env/dynamic/public';
+	import { createClient, getOrCreateThread, getThreadListRefresh } from '@svelte-langgraph/client';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
 
 	let show_login_dialog = $state(!page.data.session);
-	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
+	let client = $derived(
+		page.data.session
+			? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', page.data.session.accessToken)
+			: null
+	);
 	let redirect_error = $state<Error | null>(null);
 
 	// `/chat` sits under `chat/+layout.svelte`, so the refresh context is in scope. The layout's
-	// `ThreadList` has usually already resolved its first page by the time `getOrCreateThread`
+	// `ThreadListState` has usually already resolved its first page by the time `getOrCreateThread`
 	// creates a brand-new thread, and the redirect below keeps the same layout/client (so
 	// `setClient` doesn't rerun) — without this nudge the new thread stays invisible in the
 	// sidebar until the user sends a message or reloads.

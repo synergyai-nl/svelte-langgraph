@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { threadLabel, toThreadSummary, type SearchedThread } from './threadList.js';
+import { threadLabel, toThreadSummary, type SearchedThread } from './threads.js';
 
 function formatFallback(createdAt: string, locale = 'en'): string {
 	return new Intl.DateTimeFormat(locale, {

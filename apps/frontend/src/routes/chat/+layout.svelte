@@ -3,20 +3,24 @@
 	 * Chat shell adapter (SLG-104).
 	 *
 	 * This is the seam between SvelteKit-specific concerns (`$app/state`, `$app/navigation`,
-	 * paraglide) and the container-agnostic `ChatThreads` / `ThreadList` pieces, which know
+	 * paraglide) and the container-agnostic `ChatThreads` / `ThreadListState` pieces, which know
 	 * nothing about routing or i18n.
 	 */
 	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { navigating, page } from '$app/state';
+	import { env } from '$env/dynamic/public';
 
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { ChatThreads } from '$lib/components/ChatThreads';
-	import { createClient, createThread } from '$lib/langgraph/client';
-	import { ThreadList } from '$lib/langgraph/threadList.svelte';
-	import { setThreadListRefresh } from '$lib/langgraph/threadListContext';
-	import { setThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
+	import {
+		createClient,
+		createThread,
+		ThreadListState,
+		setThreadListRefresh,
+		setThreadLoadingReporter
+	} from '@svelte-langgraph/client';
 	import { parseSidebarCookie } from '$lib/sidebarCookie';
 	import * as m from '$lib/paraglide/messages.js';
 
@@ -26,7 +30,9 @@
 	// data object on every navigation, so keying on the object would mint a new Client — and
 	// restart the thread fetch — on every thread click.
 	let accessToken = $derived(page.data.session?.accessToken ?? null);
-	let client = $derived(accessToken ? createClient(accessToken) : null);
+	let client = $derived(
+		accessToken ? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', accessToken) : null
+	);
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
 	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`). The root `load` only
@@ -37,7 +43,9 @@
 		(browser ? parseSidebarCookie(document.cookie) : null) ?? page.data.sidebarOpen
 	);
 
-	const threadList = new ThreadList({ initialLoading: Boolean(page.data.session?.accessToken) });
+	const threadList = new ThreadListState({
+		initialLoading: Boolean(page.data.session?.accessToken)
+	});
 	setThreadListRefresh({ refresh: () => threadList.refresh() });
 
 	// A thread row is "pending" from the click (navigation start) until its history fetch
@@ -53,7 +61,7 @@
 	});
 	let pendingThreadId = $derived(navigating.to?.params?.threadID ?? historyLoadingThreadId);
 
-	// The single wiring effect — `ThreadList` deliberately contains no effects of its own.
+	// The single wiring effect — `ThreadListState` deliberately contains no effects of its own.
 	$effect(() => {
 		threadList.setClient(client);
 	});
