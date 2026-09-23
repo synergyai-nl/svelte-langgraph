@@ -1,43 +1,39 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { TitleClient } from '@svelte-langgraph/client';
-import * as mockModule from './__tests__/mockUseStream.svelte';
+import LangGraphHost from './__tests__/LangGraphHost.svelte';
+import Conversation from './Conversation.svelte';
+import { makeContext, makeMockClient } from './__tests__/testContext.js';
+import * as mockModule from '../__tests__/mockUseStream.svelte';
+
+/**
+ * Ported from the deleted `Chat.threadList.svelte.test.ts` (git history at `906acf6`) onto
+ * `Conversation` + a real `LangGraphContext`. The old suite spied on a lightweight
+ * `setThreadListRefresh`/`setThreadLoadingReporter` context; `Conversation` instead calls
+ * `ctx?.threadList.refresh()` directly, so here `ctx.threadList.refresh` is spied on the real
+ * `LangGraphContext` built for each test — assertions are otherwise unchanged.
+ */
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
-	const mod = await import('./__tests__/mockUseStream.svelte');
+	const mod = await import('../__tests__/mockUseStream.svelte');
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Standalone consts, not reached through `mockClient.threads.*`, so `.mockResolvedValueOnce(...)`
-// isn't type-checked against the real SDK types (`mockClient` is cast `as unknown as TitleClient`).
+// Backing mocks for the frontend-driven thread-titling effects under test below (SLG-117).
 const threadsGetMock = vi.fn().mockResolvedValue({ metadata: {} });
 const threadsUpdateMock = vi.fn().mockResolvedValue({});
 const generateTitleMock = vi.fn().mockResolvedValue({ title: 'Generated Title' });
-const mockClient = {
-	assistants: {
-		getSchemas: vi.fn().mockResolvedValue({ state_schema: null })
-	},
-	threads: {
-		get: threadsGetMock,
-		update: threadsUpdateMock
-	},
-	generateTitle: generateTitleMock
-} as unknown as TitleClient;
 
-function renderChatWithRefresh() {
-	const refresh = vi.fn();
-	render(ChatWithThreadListHost, {
-		props: {
-			refresh,
-			chatProps: {
-				langGraphClient: mockClient,
-				assistantId: 'assistant-1',
-				threadId: 'test-123'
-			}
-		}
+function renderConversationWithRefresh() {
+	const client = makeMockClient({
+		threads: { get: threadsGetMock, update: threadsUpdateMock },
+		generateTitle: generateTitleMock
+	});
+	const ctx = makeContext({ client, assistantId: 'assistant-1' });
+	const refresh = vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
+	render(LangGraphHost, {
+		props: { ctx, component: Conversation, threadId: 'test-123' }
 	});
 	return refresh;
 }
@@ -56,9 +52,9 @@ const openingExchange = [
 	{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
 ];
 
-describe('Chat thread-list refresh notification', () => {
+describe('Conversation thread-list refresh notification', () => {
 	test('does not refresh on an empty settled mount', async () => {
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 
 		await tick();
 
@@ -69,7 +65,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 
 		await tick();
 
@@ -80,7 +76,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -98,7 +94,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setMessages([
@@ -122,7 +118,7 @@ describe('Chat thread-list refresh notification', () => {
 	test('does not refresh when history hydrates after mount without a run ever loading', async () => {
 		// isLoading stays false throughout — this simulates an existing thread's history fetch
 		// resolving asynchronously after mount, not a run settling.
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -146,7 +142,7 @@ describe('Chat thread-list refresh notification', () => {
 		]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 		expect(refresh).not.toHaveBeenCalled();
 
@@ -165,7 +161,7 @@ describe('Chat thread-list refresh notification', () => {
 		mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
 		mockModule.setIsLoading(true);
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setMessages([
@@ -204,12 +200,14 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 				})
 		);
 		mockModule.setMessages(openingExchange);
-		const refresh = vi.fn();
-		const { unmount } = render(ChatWithThreadListHost, {
-			props: {
-				refresh,
-				chatProps: { langGraphClient: mockClient, assistantId: 'assistant-1', threadId: 'test-123' }
-			}
+		const client = makeMockClient({
+			threads: { get: threadsGetMock, update: threadsUpdateMock },
+			generateTitle: generateTitleMock
+		});
+		const ctx = makeContext({ client, assistantId: 'assistant-1' });
+		const refresh = vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
+		const { unmount } = render(LangGraphHost, {
+			props: { ctx, component: Conversation, threadId: 'test-123' }
 		});
 		await waitFor(() => expect(generateTitleMock).toHaveBeenCalledOnce());
 		const signal = generateTitleMock.mock.calls[0][1] as AbortSignal;
@@ -224,7 +222,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 	test('settle triggers a title request and metadata PATCH, then refreshes again once titled', async () => {
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -253,7 +251,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 	test('an existing metadata title (a user rename) is left alone — no request, no PATCH', async () => {
 		threadsGetMock.mockResolvedValue({ metadata: { title: 'Renamed by the user' } });
 
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -276,7 +274,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 			.mockResolvedValueOnce({ metadata: {} })
 			.mockResolvedValue({ metadata: { title: 'Renamed mid-run' } });
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -295,7 +293,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 		generateTitleMock.mockRejectedValueOnce(new Error('model blip'));
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);
@@ -321,7 +319,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 
 		mockModule.setIsThreadLoading(true);
-		const refresh = renderChatWithRefresh();
+		const refresh = renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setMessages(openingExchange);
@@ -347,7 +345,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 				})
 		);
 
-		renderChatWithRefresh();
+		renderConversationWithRefresh();
 		await tick();
 
 		mockModule.setIsLoading(true);

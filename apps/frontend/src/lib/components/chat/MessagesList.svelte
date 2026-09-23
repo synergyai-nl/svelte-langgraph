@@ -32,6 +32,7 @@
 	import { fly } from 'svelte/transition';
 	import { ScrollableContainer } from './ScrollableContainer';
 	import { resolveLabels, type DeepPartial } from './labels';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
 		messages: Array<Message>;
@@ -56,7 +57,8 @@
 		labels
 	}: Props = $props();
 
-	const l = $derived(resolveLabels(defaultMessagesListLabels, undefined, labels));
+	const ctx = useLangGraphOptional();
+	const l = $derived(resolveLabels(defaultMessagesListLabels, ctx?.labels?.messagesList, labels));
 
 	// The message currently being generated is always the last one in the list — while a
 	// run is streaming, only that message's thinking pill should show the "still working"
