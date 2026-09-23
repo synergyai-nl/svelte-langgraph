@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { TitleClient } from '@svelte-langgraph/client';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 
 // Mock useStream — this is the key dependency

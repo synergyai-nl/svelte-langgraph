@@ -1,10 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { Client } from '@langchain/langgraph-sdk';
 import { createThread, getOrCreateThread } from './client';
-import { ThreadList } from './threadList.svelte';
-import type { SearchedThread } from './threadList';
-
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+import { ThreadListState } from './threadListState.svelte';
+import type { SearchedThread } from './threads';
 
 function thread(
 	threadId: string,
@@ -61,7 +59,7 @@ describe('title-thread leak', () => {
 
 	it('an active title orphan cannot be pinned into the sidebar', async () => {
 		const { client, search, chat } = mockThreadStore();
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		try {
 			list.setClient(client);
 			list.setActiveThreadId('orphan-title-run');
@@ -83,7 +81,7 @@ describe('title-thread leak', () => {
 
 	it('the sidebar excludes the title orphan and retains the real conversation', async () => {
 		const { client, chat } = mockThreadStore();
-		const list = new ThreadList();
+		const list = new ThreadListState();
 		try {
 			list.setClient(client);
 			await vi.waitFor(() => expect(list.loading).toBe(false));

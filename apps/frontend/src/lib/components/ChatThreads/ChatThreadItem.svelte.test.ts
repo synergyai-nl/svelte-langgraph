@@ -2,8 +2,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import ChatThreadsHost from './__tests__/ChatThreadsHost.svelte';
 import { aThread } from '../__tests__/fixtures';
-import { threadLabel, type ThreadSummary } from '$lib/langgraph/threadList';
-import type { ThreadList } from '$lib/langgraph/threadList.svelte';
+import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from '$lib/components/ui/sidebar';
 
 // Covers ChatThreadItem.svelte:18-21 (handleClick): a row click closes the mobile drawer and
@@ -23,7 +22,7 @@ describe('ChatThreadItem', () => {
 			loadMore: vi.fn(),
 			setClient: vi.fn(),
 			setActiveThreadId: vi.fn()
-		} as unknown as ThreadList;
+		} as unknown as ThreadListState;
 
 		render(ChatThreadsHost, {
 			props: {
@@ -59,7 +58,7 @@ describe('ChatThreadItem', () => {
 				loadMore: vi.fn(),
 				setClient: vi.fn(),
 				setActiveThreadId: vi.fn()
-			} as unknown as ThreadList;
+			} as unknown as ThreadListState;
 
 			return render(ChatThreadsHost, {
 				props: {

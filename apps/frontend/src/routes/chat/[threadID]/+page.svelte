@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { env } from '$env/dynamic/public';
 	import Chat from '$lib/components/Chat.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getOrCreateAssistant, createClient } from '$lib/langgraph/client';
+	import { getOrCreateAssistant, createClient } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
@@ -11,7 +12,11 @@
 	let show_login_dialog = $state(!page.data.session);
 
 	// Updates client whenever accessToken changes
-	let client = $derived(page.data.session ? createClient(page.data.session.accessToken) : null);
+	let client = $derived(
+		page.data.session
+			? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', page.data.session.accessToken)
+			: null
+	);
 	let assistantId = $state<string | null>(null);
 	let threadId = $derived(page.params.threadID!);
 	let initialization_error = $state<Error | null>(null);

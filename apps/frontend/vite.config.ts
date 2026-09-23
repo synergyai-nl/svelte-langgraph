@@ -55,9 +55,16 @@ export default defineConfig(({ command, isPreview }) => ({
 			}
 		]
 	},
+	optimizeDeps: {
+		exclude: ['@svelte-langgraph/client']
+	},
+	ssr: {
+		noExternal: ['@svelte-langgraph/client']
+	},
 	resolve: {
 		alias: {
 			async_hooks: './src/lib/async_hooks_mock.ts'
-		}
+		},
+		dedupe: ['svelte']
 	}
 }));

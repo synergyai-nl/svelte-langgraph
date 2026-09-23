@@ -1,0 +1,36 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+language: typescript
+stack: frontend
+type: library
+
+fileGroups:
+  sources:
+    - 'src/**/*'
+    - '**/*.config.*'
+    - '**/*.{md,mdx,yml,yaml,json}'
+
+tags: ['vitest'] # NOT 'vite' or 'sveltekit' — no build/dev/svelte-check for a no-build source package
+
+tasks:
+  lint:
+    command: eslint .
+    inputs: ['@group(sources)']
+  lint-fix:
+    extends: lint
+    args: ['--cache', '--fix']
+    local: true
+  format:
+    command: prettier
+    args: ['.', '--check']
+    inputs: ['@group(sources)']
+  format-write:
+    extends: format
+    args: ['.', '--cache', '--write']
+    local: true
+    options: { mergeArgs: 'replace' }
+  typecheck:
+    command: 'tsc --noEmit'
+    inputs: ['@group(sources)', 'tsconfig.json']
+  check:
+    deps: [lint, format, typecheck, test]

@@ -34,13 +34,12 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import ChatThreadItem from './ChatThreadItem.svelte';
-	import type { ThreadSummary } from '$lib/langgraph/threadList';
-	import type { ThreadList } from '$lib/langgraph/threadList.svelte';
+	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
 		/** The reactive thread list instance, consumed whole. */
-		list: ThreadList;
+		list: ThreadListState;
 		activeThreadId?: string | null;
 		/** The row navigation is currently in flight for; renders a trailing spinner. */
 		pendingThreadId?: string | null;
