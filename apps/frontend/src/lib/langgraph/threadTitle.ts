@@ -40,7 +40,7 @@ export interface ThreadTitlerOptions {
 	 * Aegra's PATCH is a read-modify-write with no locking, so it merges keys in
 	 * Python on a stale read: a title and a rating written at once lose one of
 	 * the two. Titling fires on the first settle, which is exactly when the user
-	 * is rating the reply that just appeared.
+	 * is rating the reply that just appeared. See #307.
 	 */
 	queueWrite?: (key: string, write: () => Promise<unknown>) => Promise<void>;
 }
@@ -91,7 +91,8 @@ async function attemptTitle(
 export function createThreadTitler({
 	client,
 	threadId,
-	onTitled
+	onTitled,
+	queueWrite
 }: ThreadTitlerOptions): ThreadTitler {
 	let running = false;
 	let knownTitled = false;
@@ -104,7 +105,11 @@ export function createThreadTitler({
 
 		running = true;
 		try {
-			const outcome = await attemptTitle({ client, threadId }, exchange, controller.signal);
+			const outcome = await attemptTitle(
+				{ client, threadId, queueWrite },
+				exchange,
+				controller.signal
+			);
 			knownTitled = outcome !== null;
 			if (outcome === 'written' && !controller.signal.aborted) onTitled?.();
 		} catch {

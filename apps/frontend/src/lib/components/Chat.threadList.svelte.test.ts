@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
 import type { TitleClient } from '$lib/langgraph/threadTitle';
@@ -310,20 +311,36 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
 
-	test('the title write does not overlap a rating write', async () => {
+	test('rating a reply while its title is being written does not overlap the title PATCH', async () => {
 		// Aegra's metadata PATCH is a read-modify-write with no locking, so two
 		// writes in flight at once merge onto the same stale blob and one loses
-		// its key -- the title, or the rating the user just gave.
+		// its key -- the title, or the rating the user just gave. Exercised
+		// through a real rating click: an earlier version of this test only
+		// drove the title write and so could never detect createThreadTitler
+		// dropping queueWrite when it builds attemptTitle's options (#307).
 		threadsGetMock.mockResolvedValue({ metadata: {} });
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
+		);
 
-		let inFlight = 0;
+		// Held open deterministically, rather than raced on microtask timing:
+		// the rating click below is issued while the title write is still
+		// pending, and only released once the rating write has also started.
+		let releaseTitle!: () => void;
+		const titleHeld = new Promise<void>((resolve) => (releaseTitle = resolve));
 		let overlapped = false;
-		threadsUpdateMock.mockImplementation(async () => {
+		let inFlight = 0;
+		threadsUpdateMock.mockImplementation(async (_id: string, body: { metadata: object }) => {
 			overlapped ||= inFlight > 0;
 			inFlight += 1;
-			await Promise.resolve();
+			if ('title' in body.metadata) await titleHeld;
 			inFlight -= 1;
 			return {};
+		});
+
+		mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+			firstSeenState: { metadata: { run_id: 'run-abc' } }
 		});
 
 		renderChatWithRefresh();
@@ -334,8 +351,24 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		mockModule.setMessages(openingExchange);
 		mockModule.setIsLoading(false);
 		await tick();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
 
-		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalled());
+		// Rate the reply while titling's own write is still held open. If the
+		// rating write is correctly queued behind it, this click cannot itself
+		// invoke threadsUpdateMock a second time yet -- so releasing afterwards
+		// and only then waiting for call #2 still distinguishes the two cases:
+		// queued, the second call is deferred and never overlaps; unqueued, it
+		// already ran (and was recorded as overlapping) before the release.
+		const user = userEvent.setup();
+		const aiMessage = await screen.findByText('Hi there!');
+		await user.hover(aiMessage);
+		const group = aiMessage.closest('[role="group"]') as HTMLElement;
+		await user.click(await within(group).findByTitle(/good response/i));
+		const dialog = await screen.findByTestId('feedback-dialog');
+		await user.click(within(dialog).getByTestId('feedback-cancel'));
+
+		releaseTitle();
+		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
 		expect(overlapped).toBe(false);
 	});
 

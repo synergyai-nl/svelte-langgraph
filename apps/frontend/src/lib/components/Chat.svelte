@@ -222,7 +222,11 @@
 	 *  Keyed by thread, not by run: Aegra's PATCH is a read-modify-write with
 	 *  no locking, so two writes in flight at once merge onto the same stale
 	 *  blob and one loses its key. Ratings on different messages, and the
-	 *  title written on the first settle, all land here. */
+	 *  title written on the first settle, all land here.
+	 *
+	 *  Client-side only -- a second tab or device writing this thread at the
+	 *  same time is still exposed. Fixed upstream in aegra/aegra#603 (not yet
+	 *  in a release); see #307. */
 	const queueMetadataWrite = createWriteQueue();
 
 	/** The rating whose comment box is open, held until the box resolves.
