@@ -191,6 +191,10 @@ export class LangGraphContext {
 	async createThread(): Promise<boolean> {
 		const client = this.#client;
 		if (!client) return false;
+		// Re-entrancy guard: a second call while one is in flight (e.g. a double-clicked retry
+		// button that hasn't re-rendered its disabled state yet) would create an orphaned
+		// backend thread.
+		if (this.#creatingThread) return false;
 
 		const startedEpoch = this.#selectionEpoch;
 		this.#creatingThread = true;

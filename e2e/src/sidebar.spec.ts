@@ -191,7 +191,9 @@ test.describe('Sidebar - real backend', () => {
 		await app.navigateToHome();
 		await page.waitForURL('/');
 
-		await app.navigateToChat();
+		await app.navigateToDemos();
+		await page.waitForURL('/demo');
+		await page.locator('a[href="/chat"]').click();
 		await page.waitForURL(/\/chat\/[\w-]+/);
 
 		await expect(sidebar.collapsedRoot).toBeVisible();

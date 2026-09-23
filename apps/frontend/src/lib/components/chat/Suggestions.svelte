@@ -17,7 +17,12 @@
 	let { suggestions, introTitle, intro, onSuggestionClick }: Props = $props();
 </script>
 
-<div class="flex min-h-screen flex-col items-center justify-start pt-16">
+<!-- `min-h-full`, not `min-h-screen`: this renders inside `ChatSurface`'s scroll container, which
+     may be far smaller than the viewport (SLG-133's embeddable-container story — see
+     `routes/demo/embedded`). Referencing the viewport here would force that container to scroll
+     past its own bounds regardless of how small a host page makes it; `routes/+layout.svelte`'s
+     header comment documents the same rule for the app shell itself. -->
+<div class="flex min-h-full flex-col items-center justify-start pt-16">
 	<div class="mx-auto w-full max-w-4xl">
 		<div class="flex flex-col items-center justify-center text-center">
 			<div class="fade-slide-up mx-auto max-w-2xl space-y-8">

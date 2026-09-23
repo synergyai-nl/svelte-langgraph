@@ -64,10 +64,10 @@
 					</NavigationMenu.Item>
 					<NavigationMenu.Item>
 						<NavigationMenu.Link
-							href="/chat"
+							href="/demo"
 							class="hover:bg-accent hover:text-accent-foreground rounded-md px-3 py-2 text-sm font-medium transition-colors"
 						>
-							{m.nav_chat()}
+							{m.nav_demos()}
 						</NavigationMenu.Link>
 					</NavigationMenu.Item>
 					<NavigationMenu.Item>
@@ -99,8 +99,8 @@
 					<DropdownMenu.Item onclick={() => goto('/')} class="cursor-pointer">
 						{m.nav_home()}
 					</DropdownMenu.Item>
-					<DropdownMenu.Item onclick={() => goto('/chat')} class="cursor-pointer">
-						{m.nav_chat()}
+					<DropdownMenu.Item onclick={() => goto('/demo')} class="cursor-pointer">
+						{m.nav_demos()}
 					</DropdownMenu.Item>
 					<!-- Rendered via `child` so the anchor IS the menu item: bits-ui activates a
 					     menu item by calling `click()` on the item element itself, which would
