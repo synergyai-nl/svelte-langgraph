@@ -28,6 +28,18 @@ class SidebarState {
 	#isMobile: IsMobile;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
 
+	// Count of mounted `Sidebar.Root` instances registered against this state (see `registerRoot`).
+	// A `Provider` mounted with no `Root` inside it — an embeddable-API caller that renders its own
+	// chrome without the sidebar UI (SLG-133) — has no chrome to react to the keyboard shortcut or
+	// to a persisted open state, so both global side effects are gated on this being > 0.
+	//
+	// Deliberately a plain field, not `$state`: both readers (`handleShortcutKeydown`,
+	// `Provider`'s `setOpen`) are imperative checks at event time, never a template/`$derived`
+	// dependency. Making it reactive would let `Root`'s registering `$effect` read-and-write the
+	// same tracked value in one run (`this.#registeredRoots++` reads then writes it) — Svelte
+	// flags that as a self-triggering effect and throws `effect_update_depth_exceeded`.
+	#registeredRoots = 0;
+
 	constructor(props: SidebarStateProps) {
 		this.setOpen = props.setOpen;
 		this.#isMobile = new IsMobile();
@@ -40,8 +52,25 @@ class SidebarState {
 		return this.#isMobile.current;
 	}
 
+	/** Whether at least one `Sidebar.Root` is currently mounted against this state. */
+	get hasRegisteredRoot() {
+		return this.#registeredRoots > 0;
+	}
+
+	/**
+	 * Registers a mounted `Sidebar.Root`. Call from `Root`'s mount, and call the returned function
+	 * from its cleanup — `$effect` in the caller is the natural fit for both.
+	 */
+	registerRoot = (): (() => void) => {
+		this.#registeredRoots++;
+		return () => {
+			this.#registeredRoots--;
+		};
+	};
+
 	// Event handler to apply to the `<svelte:window>`
 	handleShortcutKeydown = (e: KeyboardEvent) => {
+		if (!this.hasRegisteredRoot) return;
 		if (e.key === SIDEBAR_KEYBOARD_SHORTCUT && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
 			this.toggle();
