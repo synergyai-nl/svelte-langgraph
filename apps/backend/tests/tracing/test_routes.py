@@ -8,7 +8,7 @@ from svelte_langgraph.http import app
 
 import pytest
 
-from .conftest import OTHER_USER_ID, RUN_ID, USER_ID
+from .conftest import OTHER_USER_ID, RUN_ID, THREAD_ID, USER_ID
 from .test_tracing import ACCEPTED, SCORE_URL, TRACE_ID
 
 
@@ -16,7 +16,9 @@ from .test_tracing import ACCEPTED, SCORE_URL, TRACE_ID
 def test_scores_the_run_and_reports_success(client, langfuse_env):
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "recorded": True}
@@ -30,7 +32,9 @@ def test_a_failed_score_reaches_the_caller(client, langfuse_env):
     its optimistic thumb back on a non-ok response."""
     respx.post(SCORE_URL).mock(side_effect=httpx.ConnectError("unreachable"))
 
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "down"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "down"}
+    )
 
     assert response.status_code == 502
 
@@ -38,7 +42,9 @@ def test_a_failed_score_reaches_the_caller(client, langfuse_env):
 @respx.mock
 def test_an_unconfigured_deployment_accepts_the_rating(client, no_langfuse_env):
     """Running without Langfuse is a deployment choice, not a failed click."""
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "recorded": False}
@@ -46,10 +52,14 @@ def test_an_unconfigured_deployment_accepts_the_rating(client, no_langfuse_env):
 
 
 def test_feedback_rejects_a_malformed_payload(client, langfuse_env):
-    assert client.post("/feedback", json={"score": "up"}).status_code == 422
+    assert (
+        client.post("/feedback", json={"thread_id": THREAD_ID, "score": "up"}).status_code
+        == 422
+    )
     assert (
         client.post(
-            "/feedback", json={"run_id": RUN_ID, "score": "sideways"}
+            "/feedback",
+            json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "sideways"},
         ).status_code
         == 422
     )
@@ -75,38 +85,52 @@ def test_an_unauthenticated_rating_is_rejected(real_auth, langfuse_env):
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
     with TestClient(app) as anonymous:
-        response = anonymous.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+        response = anonymous.post(
+            "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+        )
 
     assert response.status_code == 401
     assert not score.calls
 
 
 @respx.mock
-@pytest.mark.parametrize("runs", ["foreign"], indirect=True)
-def test_a_run_the_caller_does_not_own_is_not_scorable(client, langfuse_env):
-    """Authentication alone was never enough: every signed-in user could score
-    every run, since a run id is the only thing identifying what is being rated
-    and it is readable by anyone who can see the trace.
-
-    404 rather than 403 -- "not yours" and "no such run" are the same answer
-    here, and separating them would confirm the run exists.
-    """
+@pytest.mark.parametrize("threads", ["foreign"], indirect=True)
+def test_a_thread_the_caller_does_not_own_is_not_scorable(client, langfuse_env):
+    """404, not 403 -- "not yours" and "no such thread" must read the same."""
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 404
     assert not score.calls
 
 
 @respx.mock
-@pytest.mark.parametrize("runs", ["foreign"], indirect=True)
+@pytest.mark.parametrize("runs", ["elsewhere"], indirect=True)
+def test_a_run_from_another_thread_is_not_scorable(client, langfuse_env):
+    """Owning thread A doesn't clear a run_id that actually belongs to B."""
+    score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
+
+    assert response.status_code == 404
+    assert not score.calls
+
+
+@respx.mock
+@pytest.mark.parametrize("threads", ["foreign"], indirect=True)
 def test_ownership_is_checked_even_without_langfuse(client, no_langfuse_env):
     """The unconfigured path returns ok early. If that early return came first,
     the ownership check would hold only where Langfuse happens to be set up --
     passing tests and an open endpoint in exactly the deployments least likely
     to notice."""
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 404
 
@@ -120,9 +144,10 @@ def test_the_ownership_query_is_scoped_to_the_caller(
 ):
     """Asserts the SQL, not just that a query happened.
 
-    The stub answers whatever it is asked, so a lookup by run id alone would
-    return the run and satisfy every other test here -- while letting any
-    signed-in user score any run. Only the WHERE clause distinguishes them.
+    The stub answers whatever it is asked, so a lookup by thread id alone would
+    return the thread and satisfy every other test here -- while letting any
+    signed-in user score any thread's runs. Only the WHERE clause distinguishes
+    them.
 
     Run for two callers because one caller proves too little: a route that
     filtered on a hardcoded identity, or on the wrong User field, would satisfy
@@ -130,22 +155,39 @@ def test_the_ownership_query_is_scoped_to_the_caller(
     """
     respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-    client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
-    sql = session.compiled_sql()
-    assert f"runs.user_id = '{caller_id}'" in sql
-    assert f"runs.run_id = '{RUN_ID}'" in sql
+    filters = session.filters_for("thread")
+    assert ("user_id", "eq", caller_id) in filters
+    assert ("thread_id", "eq", THREAD_ID) in filters
+
+
+@respx.mock
+def test_the_auth_handler_metadata_filter_is_applied(client, session, langfuse_env):
+    """Asserts the handler's filter is actually appended to the query, not
+    just computed and discarded -- the gap Aegra's own GET /runs/{id} has."""
+    respx.post(SCORE_URL).mock(return_value=ACCEPTED)
+
+    client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
+
+    assert ("metadata_json", "@>", {"owner": USER_ID}) in session.filters_for("thread")
 
 
 @respx.mock
 @pytest.mark.parametrize("caller_id", [""], indirect=True)
 def test_a_caller_without_an_identity_is_rejected(client, langfuse_env):
-    """An identity is what the run is checked against, so an empty one has
+    """An identity is what the thread is checked against, so an empty one has
     nothing to compare and must not be treated as a caller. Only "" is testable
     here: User.identity is typed str, so None is rejected by the model itself."""
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 401
     assert not score.calls
@@ -160,7 +202,9 @@ def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
     Aegra to act on it would leave the endpoint open once #459 ships."""
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-    response = client.post("/feedback", json={"run_id": RUN_ID, "score": "up"})
+    response = client.post(
+        "/feedback", json={"thread_id": THREAD_ID, "run_id": RUN_ID, "score": "up"}
+    )
 
     assert response.status_code == 401
     assert not score.calls
@@ -169,6 +213,9 @@ def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
 @respx.mock
 def test_a_run_id_that_is_not_a_uuid_is_rejected(client, langfuse_env):
     """422 naming run_id, not a 404 that would read as a missing run."""
-    response = client.post("/feedback", json={"run_id": "not-a-uuid", "score": "up"})
+    response = client.post(
+        "/feedback",
+        json={"thread_id": THREAD_ID, "run_id": "not-a-uuid", "score": "up"},
+    )
 
     assert response.status_code == 422

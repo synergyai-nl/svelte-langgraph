@@ -279,7 +279,7 @@
 		pendingRuns = setFlag(pendingRuns, runId, true);
 
 		try {
-			await submitFeedback(accessToken, runId, type, comment);
+			await submitFeedback(accessToken, threadId, runId, type, comment);
 		} catch (err) {
 			// The score is what the rating is *for*, so this is the failure worth
 			// showing. Roll back only this message; others may have landed since.

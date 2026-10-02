@@ -9,7 +9,7 @@ and keeps this composition out of the files upstream edits.
 from fastapi import FastAPI
 
 from .api import router as title_router
-from .routes import router as feedback_router
+from .feedback.routes import router as feedback_router
 
 app = FastAPI()
 app.include_router(title_router)

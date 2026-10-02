@@ -1,44 +1,21 @@
+"""The /feedback route handler."""
+
 from typing import Annotated
-from uuid import UUID
 
 from aegra_api.core.auth_deps import require_auth
+from aegra_api.core.auth_filters import build_metadata_filter
+from aegra_api.core.auth_handlers import build_auth_context, handle_event
 from aegra_api.core.orm import Run as RunORM
+from aegra_api.core.orm import Thread as ThreadORM
 from aegra_api.core.orm import get_session
 from aegra_api.models import User
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, StringConstraints
+from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .tracing import Rating, is_configured, record_score
+from svelte_langgraph.tracing import is_configured, record_score
 
-# A router, not an app: Aegra mounts exactly one custom app, and http.py is it.
-router = APIRouter()
-
-
-# Kept in step with COMMENT_MAX_LENGTH in
-# apps/frontend/src/lib/langgraph/feedback.ts, which applies the same limit
-# before posting. Both count code points so the number means one thing.
-COMMENT_MAX_LENGTH = 2000
-
-# Stripped before the length check, so trailing newlines don't eat the budget and
-# a whitespace-only box arrives as "". record_score sends the comment either way:
-# the score id makes it an upsert, so a blank has to overwrite whatever a
-# previous rating left there.
-Comment = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, max_length=COMMENT_MAX_LENGTH),
-]
-
-
-class FeedbackPayload(BaseModel):
-    # UUID, not str: the trace id is this id's hex, so a non-UUID matches nothing.
-    run_id: UUID
-    score: Rating
-    # Optional by design: the rating is the feedback, and the comment is an
-    # afterthought the user may never give.
-    comment: Comment | None = None
-
+from .types import FeedbackPayload
 
 # require_auth is declared here and not left to `enable_custom_route_auth` in
 # aegra.json: that flag assigns to route.dependencies after FastAPI has built
@@ -50,7 +27,6 @@ class FeedbackPayload(BaseModel):
 # are still owned by real identities, so the check below refuses them, and only
 # a deployment that never authenticated anyone is exposed. Tracked in #302 and
 # fixed upstream by aegra/aegra#459.
-@router.post("/feedback")
 async def feedback(
     payload: FeedbackPayload,
     user: Annotated[User, Depends(require_auth)],
@@ -62,21 +38,36 @@ async def feedback(
     this is one fast POST with no lookup and no wait for ingestion. That makes
     a failure something the caller can actually be told about.
     """
-    # require_auth admits any result its backend returns without looking at
-    # is_authenticated (auth_deps.py:58-96), so an explicitly unauthenticated
-    # user reaches here as a normal caller. Checked here rather than trusted.
     if not user.is_authenticated or not user.identity:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    # Before the is_configured early return, so it holds without Langfuse too.
-    owned = await session.scalar(
+    # Authorized via the thread, not the run: Aegra's own GET /runs/{id}
+    # discards the filters its auth handler returns (aegra_api 0.10.8,
+    # api/runs.py get_run); GET /threads/{id} applies them. Mirroring the
+    # latter honors a deployment's custom handler the same way.
+    ctx = build_auth_context(user, "threads", "read")
+    filters = await handle_event(ctx, {"thread_id": payload.thread_id})
+
+    stmt = select(ThreadORM.thread_id).where(
+        ThreadORM.thread_id == payload.thread_id,
+        ThreadORM.user_id == user.identity,
+    )
+    auth_filter = build_metadata_filter(ThreadORM.metadata_json, filters)
+    if auth_filter is not None:
+        stmt = stmt.where(auth_filter)
+
+    if await session.scalar(stmt) is None:
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+    # Not a second ownership gate -- just confirming the named run actually
+    # belongs to the thread the caller was just cleared for.
+    run_in_thread = await session.scalar(
         select(RunORM.run_id).where(
             RunORM.run_id == str(payload.run_id),
-            RunORM.user_id == user.identity,
+            RunORM.thread_id == payload.thread_id,
         )
     )
-    if owned is None:
-        # 404, not 403: don't confirm someone else's run exists.
+    if run_in_thread is None:
         raise HTTPException(status_code=404, detail="Run not found")
 
     if not is_configured():

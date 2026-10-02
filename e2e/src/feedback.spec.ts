@@ -14,15 +14,17 @@ test.describe.configure({ mode: 'default' });
 const isScorePost = (req: Request) =>
 	req.method() === 'POST' && /\/feedback$/.test(new URL(req.url()).pathname);
 
-/** Record the run_id carried by every score the page posts. */
-function captureScoredRuns(page: Page): string[] {
+/** Record the thread_id/run_id carried by every score the page posts. */
+function captureScoredRuns(page: Page): { threadIds: string[]; runIds: string[] } {
+	const threadIds: string[] = [];
 	const runIds: string[] = [];
 	page.on('request', (req: Request) => {
 		if (!isScorePost(req)) return;
-		const body = req.postDataJSON() as { run_id?: string } | null;
+		const body = req.postDataJSON() as { thread_id?: string; run_id?: string } | null;
+		if (body?.thread_id) threadIds.push(body.thread_id);
 		if (body?.run_id) runIds.push(body.run_id);
 	});
-	return runIds;
+	return { threadIds, runIds };
 }
 
 /** Send `text` and wait until `expectedCount` AI replies have rendered. */
@@ -78,7 +80,7 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 });
 
 test('rating a reply posts the score for its run, authenticated', async ({ page, chat }) => {
-	const runIds = captureScoredRuns(page);
+	const { threadIds, runIds } = captureScoredRuns(page);
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	const aiMessage = chat.aiMessages.first();
@@ -92,7 +94,11 @@ test('rating a reply posts the score for its run, authenticated', async ({ page,
 	const res = await scored;
 	expect(res.ok()).toBe(true);
 	expect(runIds).toHaveLength(1);
-	expect(res.request().postDataJSON()).toEqual({ run_id: runIds[0], score: 'up' });
+	expect(res.request().postDataJSON()).toEqual({
+		thread_id: threadIds[0],
+		run_id: runIds[0],
+		score: 'up'
+	});
 	// The endpoint is unauthenticated without this, and the ownership check has
 	// no identity to compare against.
 	expect(await res.request().headerValue('authorization')).toMatch(/^Bearer .+/);
@@ -110,10 +116,12 @@ async function scoreOwnReply(page: Page, chat: ChatPage) {
 	await rate(chat, aiMessage, 'up');
 	const request = (await scored).request();
 
+	const body = request.postDataJSON() as { thread_id: string; run_id: string };
 	return {
 		url: request.url(),
 		authorization: (await request.headerValue('authorization'))!,
-		runId: (request.postDataJSON() as { run_id: string }).run_id
+		threadId: body.thread_id,
+		runId: body.run_id
 	};
 }
 
@@ -131,24 +139,24 @@ test('the backend refuses an unauthenticated score, and a run belonging to someo
 	// `enable_custom_route_auth` leaves this at 200 — the route's own
 	// `Depends(require_auth)` is what makes it 401.
 	const anonymous = await page.request.post(owner.url, {
-		data: { run_id: owner.runId, score: 'up' }
+		data: { thread_id: owner.threadId, run_id: owner.runId, score: 'up' }
 	});
 	expect(anonymous.status()).toBe(401);
 
-	// A second signed-in user, with a valid token of their own, aiming at a run
-	// that exists and belongs to the first. A random run id would not test this:
-	// a row that is not there is refused by a query filtered on run id alone,
-	// so it passes with no ownership predicate at all.
+	// A second signed-in user, with a valid token of their own, aiming at a
+	// thread/run that exists and belongs to the first. A random id would not
+	// test this: a row that is not there is refused by a query filtered on id
+	// alone, so it passes with no ownership predicate at all.
 	const otherContext = await browser.newContext();
 	try {
 		const otherPage = await otherContext.newPage();
 		await authenticateUser(otherPage, OIDC_CONFIG.otherUsername);
 		const other = await scoreOwnReply(otherPage, new ChatPage(new AppPage(otherPage)));
-		expect(other.runId).not.toEqual(owner.runId);
+		expect(other.threadId).not.toEqual(owner.threadId);
 
 		const foreign = await otherPage.request.post(owner.url, {
 			headers: { Authorization: other.authorization },
-			data: { run_id: owner.runId, score: 'up' }
+			data: { thread_id: owner.threadId, run_id: owner.runId, score: 'up' }
 		});
 		// 404 rather than 403: the answer must not confirm the run exists.
 		expect(foreign.status()).toBe(404);
@@ -160,7 +168,7 @@ test('the backend refuses an unauthenticated score, and a run belonging to someo
 test('rating an earlier reply scores that run, not the most recent one', async ({ page, chat }) => {
 	// Regression: a per-run URL used to be minted in onFinish and stamped onto
 	// every AI message that lacked one, so rating an older answer scored the newest run.
-	const runIds = captureScoredRuns(page);
+	const { runIds } = captureScoredRuns(page);
 
 	await sendAndAwaitReply(chat, 'First question', 1);
 	await sendAndAwaitReply(chat, 'Second question', 2);
@@ -185,7 +193,7 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	await page.reload();
-	const runIds = captureScoredRuns(page);
+	const { threadIds, runIds } = captureScoredRuns(page);
 	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
 
 	const aiMessage = chat.aiMessages.first();
@@ -197,7 +205,11 @@ test('rating still works after a reload, with no live run', async ({ page, chat 
 	const res = await scored;
 	expect(res.ok()).toBe(true);
 	expect(runIds).toHaveLength(1);
-	expect(res.request().postDataJSON()).toEqual({ run_id: runIds[0], score: 'down' });
+	expect(res.request().postDataJSON()).toEqual({
+		thread_id: threadIds[0],
+		run_id: runIds[0],
+		score: 'down'
+	});
 });
 
 test('a rating is still shown after a reload', async ({ page, chat }) => {

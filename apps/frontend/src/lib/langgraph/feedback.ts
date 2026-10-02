@@ -20,6 +20,7 @@ function codePointLength(value: string): number {
  */
 export async function submitFeedback(
 	accessToken: string,
+	threadId: string,
 	runId: string,
 	score: 'up' | 'down',
 	comment?: string
@@ -37,7 +38,9 @@ export async function submitFeedback(
 		// Omitted rather than sent as null when absent, so a bare rating is the
 		// same request it was before comments existed.
 		body: JSON.stringify(
-			trimmed ? { run_id: runId, score, comment: trimmed } : { run_id: runId, score }
+			trimmed
+				? { thread_id: threadId, run_id: runId, score, comment: trimmed }
+				: { thread_id: threadId, run_id: runId, score }
 		)
 	});
 
