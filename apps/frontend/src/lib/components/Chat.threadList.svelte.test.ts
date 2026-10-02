@@ -311,33 +311,16 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
 	});
 
-	test('rating a reply while its title is being written does not overlap the title PATCH', async () => {
-		// Aegra's metadata PATCH is a read-modify-write with no locking, so two
-		// writes in flight at once merge onto the same stale blob and one loses
-		// its key -- the title, or the rating the user just gave. Exercised
-		// through a real rating click: an earlier version of this test only
-		// drove the title write and so could never detect createThreadTitler
-		// dropping queueWrite when it builds attemptTitle's options (#307).
+	test('rating a reply writes it to thread metadata, alongside an in-flight title PATCH', async () => {
+		// Aegra merges thread metadata atomically in SQL (aegra-api 0.10.8+,
+		// aegra/aegra#603), so the title write and the rating write below are
+		// free to land concurrently -- no client-side ordering is needed, which
+		// is exactly what this asserts by never serialising them.
 		threadsGetMock.mockResolvedValue({ metadata: {} });
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
 		);
-
-		// Held open deterministically, rather than raced on microtask timing:
-		// the rating click below is issued while the title write is still
-		// pending, and only released once the rating write has also started.
-		let releaseTitle!: () => void;
-		const titleHeld = new Promise<void>((resolve) => (releaseTitle = resolve));
-		let overlapped = false;
-		let inFlight = 0;
-		threadsUpdateMock.mockImplementation(async (_id: string, body: { metadata: object }) => {
-			overlapped ||= inFlight > 0;
-			inFlight += 1;
-			if ('title' in body.metadata) await titleHeld;
-			inFlight -= 1;
-			return {};
-		});
 
 		mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
 			firstSeenState: { metadata: { run_id: 'run-abc' } }
@@ -351,14 +334,12 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		mockModule.setMessages(openingExchange);
 		mockModule.setIsLoading(false);
 		await tick();
-		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+		await waitFor(() =>
+			expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
+				metadata: { title: 'Generated Title' }
+			})
+		);
 
-		// Rate the reply while titling's own write is still held open. If the
-		// rating write is correctly queued behind it, this click cannot itself
-		// invoke threadsUpdateMock a second time yet -- so releasing afterwards
-		// and only then waiting for call #2 still distinguishes the two cases:
-		// queued, the second call is deferred and never overlaps; unqueued, it
-		// already ran (and was recorded as overlapping) before the release.
 		const user = userEvent.setup();
 		const aiMessage = await screen.findByText('Hi there!');
 		await user.hover(aiMessage);
@@ -367,9 +348,11 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		const dialog = await screen.findByTestId('feedback-dialog');
 		await user.click(within(dialog).getByTestId('feedback-cancel'));
 
-		releaseTitle();
-		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(2));
-		expect(overlapped).toBe(false);
+		await waitFor(() =>
+			expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
+				metadata: { 'rating:run-abc': 'up' }
+			})
+		);
 	});
 
 	test('a failed title request is retried on the next settle', async () => {

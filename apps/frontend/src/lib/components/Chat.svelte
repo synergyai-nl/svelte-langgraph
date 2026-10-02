@@ -9,7 +9,6 @@
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData, isCancellationError } from '$lib/langgraph/errors';
 	import { ratingKey, ratingsFromMetadata, setFlag } from '$lib/langgraph/ratings';
-	import { createWriteQueue } from '$lib/langgraph/writeQueue';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
@@ -217,18 +216,6 @@
 		return failedRuns[runId] ? 'failed' : null;
 	}
 
-	/** Serialises this thread's metadata writes.
-	 *
-	 *  Keyed by thread, not by run: Aegra's PATCH is a read-modify-write with
-	 *  no locking, so two writes in flight at once merge onto the same stale
-	 *  blob and one loses its key. Ratings on different messages, and the
-	 *  title written on the first settle, all land here.
-	 *
-	 *  Client-side only -- a second tab or device writing this thread at the
-	 *  same time is still exposed. Fixed upstream in aegra/aegra#603 (not yet
-	 *  in a release); see #307. */
-	const queueMetadataWrite = createWriteQueue();
-
 	/** The rating whose comment box is open, held until the box resolves.
 	 *
 	 *  Nothing is sent on the click itself. Every way out of the box — submit,
@@ -298,19 +285,16 @@
 		// score is already recorded, so this failing costs the highlight on the
 		// next load, not the rating. Reporting it would claim the click was lost
 		// when it wasn't, and re-arm the button to post a duplicate score.
-		//
-		// Queued rather than fired, so a rating changed twice cannot land its two
-		// writes out of order — see queueMetadataWrite.
-		await queueMetadataWrite(threadId, async () => {
-			try {
-				// Only this run's key — see ratings.ts on why they are flat.
-				await langGraphClient.threads.update(threadId, {
-					metadata: { [ratingKey(runId)]: type }
-				});
-			} catch (err) {
-				console.error('Failed to persist feedback rating', err);
-			}
-		});
+		try {
+			// Only this run's key — see ratings.ts on why they are flat. Aegra
+			// merges metadata atomically (aegra-api 0.10.8+, aegra/aegra#603),
+			// so this can race the titler's own write without losing either.
+			await langGraphClient.threads.update(threadId, {
+				metadata: { [ratingKey(runId)]: type }
+			});
+		} catch (err) {
+			console.error('Failed to persist feedback rating', err);
+		}
 	}
 
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
@@ -330,10 +314,7 @@
 	const titler = createThreadTitler({
 		client: langGraphClient,
 		threadId,
-		onTitled: () => threadListRefresh?.refresh(),
-		// Same queue as the ratings above, so a title and a rating written at the
-		// same moment cannot overwrite each other.
-		queueWrite: queueMetadataWrite
+		onTitled: () => threadListRefresh?.refresh()
 	});
 	onDestroy(() => titler.dispose());
 
