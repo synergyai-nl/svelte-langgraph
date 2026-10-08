@@ -9,6 +9,8 @@
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData, isCancellationError } from '$lib/langgraph/errors';
 	import { ratingKey, ratingsFromMetadata, setFlag } from '$lib/langgraph/ratings';
+	import { messageRunKey, messageRunsFromMetadata } from '$lib/langgraph/messageRuns';
+	import { createWriteQueue } from '$lib/langgraph/writeQueue';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
@@ -52,6 +54,12 @@
 	// has no batch-by-session query, so rebuilding a thread would cost a lookup
 	// per message, and a fresh score takes ~10s to become readable anyway.
 	let ratings = $state<Record<string, 'up' | 'down'>>({});
+
+	// messageId → the run that produced it. Also mirrored into thread metadata:
+	// `firstSeenState` (below) only exists for the ~10 most recent checkpoints
+	// `fetchStateHistory` fetched, so a message older than that has no live run
+	// to read a run id off of without this.
+	let messageRuns = $state<Record<string, string>>({});
 
 	const stream = useStream({
 		client: langGraphClient,
@@ -166,15 +174,9 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
-	/** The run that produced this message.
-	 *
-	 * Read from the message's own checkpoint metadata rather than from the live
-	 * run, so a rating always scores the trace that actually generated the text —
-	 * including for messages restored from history, where there is no live run at
-	 * all. Aegra pins `configurable.run_id` on every run and LangGraph merges
-	 * `configurable` into checkpoint metadata, so this survives a reload.
-	 */
-	function getRunId(message: Message): string | null {
+	/** The run id in this message's own checkpoint, if still within
+	 *  `fetchStateHistory`'s ~10-entry window. */
+	function getLiveRunId(message: Message): string | null {
 		if (!message.id) return null;
 		const rawMsg = rawMessageById.get(message.id);
 		if (!rawMsg) return null;
@@ -182,12 +184,21 @@
 		return typeof runId === 'string' && runId ? runId : null;
 	}
 
+	/** The run that produced this message. Prefers the persisted mapping,
+	 *  which doesn't age out; the live checkpoint only covers the gap before
+	 *  `persistMessageRuns` (below) has written a fresh message's entry. */
+	function getRunId(message: Message): string | null {
+		if (!message.id) return null;
+		return messageRuns[message.id] ?? getLiveRunId(message);
+	}
+
 	async function loadRatings() {
 		try {
 			const thread = await langGraphClient.threads.get(threadId);
-			// Merge under, never over: a rating given while this was in flight is
+			// Merge under, never over: a write given while this was in flight is
 			// newer than the server's copy.
 			ratings = { ...ratingsFromMetadata(thread.metadata), ...ratings };
+			messageRuns = { ...messageRunsFromMetadata(thread.metadata), ...messageRuns };
 		} catch (err) {
 			// The buttons stay disabled, so a rating can't be given against an
 			// unknown baseline and then appear to vanish on reload.
@@ -208,6 +219,13 @@
 	 *  it. Keyed by run for the same reason `ratings` is. */
 	let pendingRuns = $state<Record<string, true>>({});
 	let failedRuns = $state<Record<string, true>>({});
+
+	/** Serialises a run's rating-persist writes, keyed by run id.
+	 *
+	 *  Aegra's atomic merge only protects different keys landing together —
+	 *  two writes to the *same* `rating:<runId>` key can still complete out of
+	 *  order (rate up, then down, but the "up" PATCH responds last). */
+	const queueRatingWrite = createWriteQueue();
 
 	function getFeedbackStatus(message: Message): 'pending' | 'failed' | null {
 		const runId = getRunId(message);
@@ -285,15 +303,47 @@
 		// score is already recorded, so this failing costs the highlight on the
 		// next load, not the rating. Reporting it would claim the click was lost
 		// when it wasn't, and re-arm the button to post a duplicate score.
+		//
+		// Queued per run — see queueRatingWrite above.
+		await queueRatingWrite(runId, async () => {
+			try {
+				// Only this run's key — see ratings.ts on why they are flat.
+				await langGraphClient.threads.update(threadId, {
+					metadata: { [ratingKey(runId)]: type }
+				});
+			} catch (err) {
+				console.error('Failed to persist feedback rating', err);
+			}
+		});
+	}
+
+	/** Write each new AI message's producing run id to thread metadata, so
+	 *  `getRunId` keeps resolving it once the live checkpoint ages out.
+	 *  Safe on every settle: already-known messages are skipped. */
+	async function persistMessageRuns() {
+		const toWrite = messages
+			.filter((message) => message.type === 'ai' && message.id && !messageRuns[message.id])
+			.flatMap((message) => {
+				const runId = getLiveRunId(message);
+				return runId ? [[message.id as string, runId] as const] : [];
+			});
+		if (toWrite.length === 0) return;
+
+		// Optimistic, same as ratings above.
+		messageRuns = { ...messageRuns, ...Object.fromEntries(toWrite) };
 		try {
-			// Only this run's key — see ratings.ts on why they are flat. Aegra
-			// merges metadata atomically (aegra-api 0.10.8+, aegra/aegra#603),
-			// so this can race the titler's own write without losing either.
 			await langGraphClient.threads.update(threadId, {
-				metadata: { [ratingKey(runId)]: type }
+				metadata: Object.fromEntries(toWrite.map(([id, runId]) => [messageRunKey(id), runId]))
 			});
 		} catch (err) {
-			console.error('Failed to persist feedback rating', err);
+			// Rolled back, not left in place: these messages are still within
+			// the live-checkpoint window, so clearing them here means the next
+			// settle's `!messageRuns[message.id]` filter retries the write
+			// instead of silently giving up on it for good.
+			const rolledBack = { ...messageRuns };
+			for (const [id] of toWrite) delete rolledBack[id];
+			messageRuns = rolledBack;
+			console.error('Failed to persist message run mapping', err);
 		}
 	}
 
@@ -327,6 +377,7 @@
 			threadListRefresh?.refresh();
 			// The titler awaits the response and cancels its request on unmount.
 			void titler.ensureThreadTitle(stream.messages);
+			void persistMessageRuns();
 		});
 	});
 

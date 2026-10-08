@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
+import { tick } from 'svelte';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
@@ -510,7 +511,7 @@ describe('Chat', () => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ run_id: 'run-abc', score: 'up' }),
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'up' }),
 						// The user's own token, not a signed URL: the backend checks
 						// that the run belongs to whoever this identifies.
 						headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
@@ -740,7 +741,7 @@ describe('Chat', () => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ run_id: 'historical-run', score: 'down' })
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'historical-run', score: 'down' })
 					})
 				);
 			});
@@ -767,16 +768,119 @@ describe('Chat', () => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ run_id: 'run-for-ai-old', score: 'up' })
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-for-ai-old', score: 'up' })
 					})
 				);
 			});
 			expect(fetchMock).not.toHaveBeenCalledWith(
 				FEEDBACK_URL,
 				expect.objectContaining({
-					body: JSON.stringify({ run_id: 'run-for-ai-new', score: 'up' })
+					body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-for-ai-new', score: 'up' })
 				})
 			);
+		});
+
+		test('rates a message whose checkpoint has aged out of the live window', async () => {
+			// Regression: `fetchStateHistory` only keeps the ~10 most recent
+			// checkpoints, so `getMessagesMetadata(...).firstSeenState` goes
+			// missing for an older message well before the thread is "old" in
+			// any other sense. The persisted mapping from a prior settle (now in
+			// thread metadata, restored on mount) has to carry it from there —
+			// not the live checkpoint, which this test never provides for the
+			// aged-out message.
+			mockThreads.get.mockResolvedValue({ metadata: { 'run:ai-old': 'run-for-ai-old' } });
+			const fetchMock = mockFeedbackFetch();
+			vi.stubGlobal('fetch', fetchMock);
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn((msg: unknown) => {
+				const id = (msg as { id?: string }).id;
+				// Only the newer message still has a live checkpoint.
+				if (id !== 'ai-new') return undefined;
+				return { firstSeenState: { metadata: { run_id: 'run-for-ai-new' } } };
+			});
+			mockModule.setMessages([
+				{ type: 'ai', content: 'AI response', id: 'ai-old' },
+				{ type: 'ai', content: 'Newest response', id: 'ai-new' }
+			]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-for-ai-old', score: 'up' })
+					})
+				);
+			});
+
+			await rate(/good response/i, 'Newest response');
+
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					FEEDBACK_URL,
+					expect.objectContaining({
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-for-ai-new', score: 'up' })
+					})
+				);
+			});
+		});
+
+		test('persists a new AI message\'s producing run once it settles', async () => {
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+
+			renderChat();
+			await tick();
+			mockModule.setIsLoading(true);
+			await tick();
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+			mockModule.setIsLoading(false);
+			await tick();
+
+			await waitFor(() => {
+				expect(mockThreads.update).toHaveBeenCalledWith('test-123', {
+					metadata: { 'run:ai-1': 'run-abc' }
+				});
+			});
+		});
+
+		test('retries persisting the run mapping on the next settle after a failed write', async () => {
+			// Regression: an earlier version left the optimistic mapping in place
+			// on failure, so a message whose write never actually reached the
+			// server could still look persisted here -- the live checkpoint was
+			// the only thing still carrying it, and that ages out.
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { metadata: { run_id: 'run-abc' } }
+			});
+			mockThreads.update.mockRejectedValueOnce(new Error('network blip'));
+
+			renderChat();
+			await tick();
+			mockModule.setIsLoading(true);
+			await tick();
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+			mockModule.setIsLoading(false);
+			await tick();
+
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalledTimes(1));
+
+			// A second settle with no new message -- same as a regenerate landing
+			// the same length, or any later turn -- must retry rather than treat
+			// the failed message as already handled. Asserting the call *count*,
+			// not just that it was called with these args: the first, failed
+			// call already satisfies toHaveBeenCalledWith on its own, so only a
+			// genuine second attempt distinguishes retry from giving up.
+			mockModule.setIsLoading(true);
+			await tick();
+			mockModule.setIsLoading(false);
+			await tick();
+
+			await waitFor(() => expect(mockThreads.update).toHaveBeenCalledTimes(2));
+			expect(mockThreads.update).toHaveBeenNthCalledWith(2, 'test-123', {
+				metadata: { 'run:ai-1': 'run-abc' }
+			});
 		});
 
 		test('sends the comment together with the rating, as one request', async () => {
@@ -794,7 +898,7 @@ describe('Chat', () => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ run_id: 'run-abc', score: 'up', comment: 'genuinely helpful' })
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'up', comment: 'genuinely helpful' })
 					})
 				);
 			});
@@ -822,7 +926,7 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
-					expect.objectContaining({ body: JSON.stringify({ run_id: 'run-abc', score: 'down' }) })
+					expect.objectContaining({ body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'down' }) })
 				);
 			});
 		});
