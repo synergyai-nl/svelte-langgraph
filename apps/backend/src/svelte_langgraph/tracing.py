@@ -12,6 +12,24 @@ id, so scoring a run would mean searching Langfuse for the trace carrying its
 being ingested, which is exactly when people rate an answer. Choosing the trace
 id up front removes the search: `pin_trace_to_run` makes it equal to the run id,
 and `record_score` can then post straight to it.
+
+This is a client-side shim for aegra/aegra#372 ("seed OTEL trace_id from
+run_id"), open and unmerged as of this writing. That PR seeds the same id a
+different way -- a `RunIdAwareIdGenerator` fed by a ContextVar, not an attached
+parent span -- and its own review thread already flags an edge case (the
+worker path can silently skip the seed if a span is active when it runs).
+Running both mechanisms at once is unverified and not something to find out
+in production: `pin_trace_to_run`'s attached parent span would very likely
+just pre-empt upstream's generator, making the two agree by accident, but
+"probably agrees" is not a guarantee either side's maintainers have made.
+
+When upgrading to an aegra-api release containing #372: delete the single
+`pin_trace_to_run(config)` call in graph.py (marked there), then before
+trusting upstream's version, confirm against a real Langfuse export that the
+exported trace id still equals `UUID(run_id).hex` and that the root span has
+no parent, in both of Aegra's run paths -- `LocalExecutor.submit` and the
+worker's `asyncio.create_task` (see `pin_trace_to_run`'s docstring for why
+those two are the ones that matter).
 """
 
 import asyncio

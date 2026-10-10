@@ -150,6 +150,11 @@ def make_graph(
 ) -> CompiledStateGraph:
     # Must run before the agent traces anything: it fixes this run's trace id to
     # its run id, which is what lets /feedback score the trace without a lookup.
+    #
+    # DELETE THIS LINE when upgrading to an aegra-api release containing
+    # aegra/aegra#372 ("seed OTEL trace_id from run_id") -- see tracing.py's
+    # module docstring for why the two mechanisms must not run together, and
+    # what to verify before relying on upstream's instead.
     pin_trace_to_run(config)
     return create_agent(
         model=get_chat_model(),
