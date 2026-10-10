@@ -30,11 +30,16 @@
 	}: Props = $props();
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	// A pending/failed rating must stay legible after the pointer leaves — see
+	// the focus-within/touch classes below for the other two visibility gaps
+	// (keyboard navigation, devices with no hover at all).
+	let visible = $derived(isHovered || feedbackStatus === 'pending' || feedbackStatus === 'failed');
 </script>
 
 <div
-	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
-	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
+	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out focus-within:opacity-100! focus-within:translate-y-0! [@media(hover:none)]:opacity-100! [@media(hover:none)]:translate-y-0!"
+	style="opacity: {visible ? '1' : '0'}; transform: translateY({visible ? '0' : '-4px'});"
 >
 	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>

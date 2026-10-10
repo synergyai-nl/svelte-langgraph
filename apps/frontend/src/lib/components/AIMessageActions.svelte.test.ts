@@ -43,4 +43,14 @@ describe('AIMessageActions', () => {
 			expect(screen.getByTitle(/regenerate/i)).not.toBeVisible();
 		});
 	});
+
+	describe('when isHovered is false but a rating is pending or failed', () => {
+		// The pointer leaving must not hide a marker the user still needs to
+		// see — losing it on hover-out is what the regenerate button is free to
+		// do, but a pending/failed rating is not just another action button.
+		test.each([['pending'], ['failed']] as const)('stays visible for %s', (status) => {
+			renderComponent({ isHovered: false, feedbackStatus: status });
+			expect(screen.getByTitle(/regenerate/i)).toBeVisible();
+		});
+	});
 });
