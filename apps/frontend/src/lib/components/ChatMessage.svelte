@@ -13,7 +13,7 @@
 		message: Message;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		onFeedback?: (message: Message, type: 'up' | 'down', comment?: string) => Promise<void>;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
 	}
@@ -60,8 +60,12 @@
 			{#if message.type === 'user' && isEditing}
 				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
 			{:else}
+				<!-- data-testid carries the sender because nothing else in the rendered
+				     markup distinguishes an AI card from a user card except its Tailwind
+				     colour classes, which E2E must not depend on. -->
 				<div
 					role="group"
+					data-testid="message-{message.type}"
 					onmouseenter={() => (isHovered = true)}
 					onmouseleave={() => (isHovered = false)}
 					class="relative w-full"
@@ -76,7 +80,13 @@
 									<Markdown md={message.text} {plugins} />
 								</Card.Content>
 							</Card.Root>
-							<AIMessageActions {message} {isHovered} {onRegenerate} {onFeedback} />
+							<AIMessageActions
+								{message}
+								{isHovered}
+								{onRegenerate}
+								onFeedback={onFeedback && ((type, comment) => onFeedback(message, type, comment))}
+								feedbackAvailable={message.type === 'ai' && message.rateable === true}
+							/>
 						{/if}
 					{:else}
 						<Card.Root class="bg-foreground border-0 shadow-sm">

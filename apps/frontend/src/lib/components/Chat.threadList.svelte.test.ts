@@ -5,6 +5,12 @@ import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
 import type { TitleClient } from '$lib/langgraph/threadTitle';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 
+// Chat's feedback path posts straight to Aegra, reading the backend URL from
+// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
+vi.mock('$env/dynamic/public', () => ({
+	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
+}));
+
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('./__tests__/mockUseStream.svelte');
@@ -34,6 +40,7 @@ function renderChatWithRefresh() {
 			refresh,
 			chatProps: {
 				langGraphClient: mockClient,
+				accessToken: 'test-token',
 				assistantId: 'assistant-1',
 				threadId: 'test-123'
 			}
@@ -208,7 +215,12 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		const { unmount } = render(ChatWithThreadListHost, {
 			props: {
 				refresh,
-				chatProps: { langGraphClient: mockClient, assistantId: 'assistant-1', threadId: 'test-123' }
+				chatProps: {
+					langGraphClient: mockClient,
+					accessToken: 'test-token',
+					assistantId: 'assistant-1',
+					threadId: 'test-123'
+				}
 			}
 		});
 		await waitFor(() => expect(generateTitleMock).toHaveBeenCalledOnce());
@@ -262,7 +274,10 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		mockModule.setIsLoading(false);
 		await tick();
 
-		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
+		// Not an exact count: restoring stored ratings reads the same thread on
+		// mount, so the number of gets belongs to neither feature alone. What
+		// matters here is that titling asked for nothing and wrote nothing.
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
 		await tick();
 		expect(generateTitleMock).not.toHaveBeenCalled();
 		expect(threadsUpdateMock).not.toHaveBeenCalled();

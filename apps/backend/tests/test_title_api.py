@@ -5,13 +5,19 @@ from unittest.mock import AsyncMock, Mock
 
 import httpx
 import pytest
+from fastapi import FastAPI
 from langchain_core.messages import AIMessage
 from starlette.authentication import AuthCredentials
 
-from svelte_langgraph.api import app
+from svelte_langgraph.api import router
 from svelte_langgraph import title
 
 from .conftest import DEFAULT_BASE_URL, ProviderCase
+
+# Built here rather than in api.py: production mounts the router through
+# http.py, so an app living in the module itself would exist only for this test.
+app = FastAPI()
+app.include_router(router)
 
 
 @pytest.fixture(scope="module")

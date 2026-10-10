@@ -1,5 +1,6 @@
-import { describe, test, expect, beforeEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import AIMessageActions from './AIMessageActions.svelte';
 import { anAIMessage } from './__tests__/fixtures';
@@ -41,6 +42,26 @@ describe('AIMessageActions', () => {
 
 		test('does not show any action buttons', () => {
 			expect(screen.getByTitle(/regenerate/i)).not.toBeVisible();
+		});
+	});
+
+	describe('when isHovered is false but a rating is pending or failed', () => {
+		// The pointer leaving must not hide a marker the user still needs to
+		// see — losing it on hover-out is what the regenerate button is free to
+		// do, but a pending/failed rating is not just another action button.
+		test.each([
+			['pending', () => new Promise<void>(() => {}), 'feedback-pending'],
+			['failed', () => Promise.reject(new Error('502')), 'feedback-failed']
+		] as const)('stays visible for %s', async (_, onFeedback, marker) => {
+			const user = userEvent.setup();
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			renderComponent({ isHovered: false, onFeedback });
+
+			await user.click(screen.getByTitle(/good response/i));
+			await user.click(await screen.findByTestId('feedback-submit'));
+
+			await screen.findByTestId(marker);
+			expect(screen.getByTitle(/regenerate/i)).toBeVisible();
 		});
 	});
 });

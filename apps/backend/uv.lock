@@ -1,13 +1,14 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = "==3.12.*"
 
 [[package]]
 name = "aegra-api"
-version = "0.10.3"
+version = "0.10.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
+    { name = "anyio" },
     { name = "asgi-correlation-id" },
     { name = "asyncpg" },
     { name = "croniter" },
@@ -30,9 +31,9 @@ dependencies = [
     { name = "structlog" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/64/61cf61c35b11243f7e6948971be5e9699e3f5c6408669994268306ed5e89/aegra_api-0.10.3.tar.gz", hash = "sha256:9c501dffac0fa2e480c7b3b823617e44405b5914e642d38fe8074aee66f2a6c4", size = 455380, upload-time = "2026-08-16T11:48:58.017Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/4e/d6f46ff1a972df95ab96c25bf50f11747a617ca8d9290973121b184567dc/aegra_api-0.10.8.tar.gz", hash = "sha256:6210700ba09df4576c5bdea1ddbc59c0aacdc8300a6796da9f84ab08f8b5b7e9", size = 521954, upload-time = "2026-10-01T18:03:52.902Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/5b/3a0cbb8580d8b6f4f6edfdc0c7676cc1c17a51a7cd708f825a9ed3a4ecc7/aegra_api-0.10.3-py3-none-any.whl", hash = "sha256:75f8d1e171abca70636c4abd9a808e69f8f95cb55f9cf1581b9bac1ee4305b3f", size = 232377, upload-time = "2026-08-16T11:48:56.868Z" },
+    { url = "https://files.pythonhosted.org/packages/88/de/59e722bb85d7a133cf237bc813b45b98ce9c696e977ac783a25cc1f121ef/aegra_api-0.10.8-py3-none-any.whl", hash = "sha256:9aad20cfa977f83808e9d03f9864215d3b5453e073d5c4a5e64cef18390c520d", size = 253207, upload-time = "2026-10-01T18:03:51.68Z" },
 ]
 
 [[package]]
@@ -93,16 +94,15 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.9.0"
+version = "4.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
-    { name = "sniffio" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/95/7d/4c1bd541d4dffa1b52bd83fb8527089e097a106fc90b467a7313b105f840/anyio-4.9.0.tar.gz", hash = "sha256:673c0c244e15788651a4ff38710fea9675823028a6f08a5eda409e0c9840a028", size = 190949, upload-time = "2025-03-17T00:02:54.77Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/d2/f4d173e22df740bc37b1db102b386ba719b66e95b0f0d751f556b387e6d2/anyio-4.15.1.tar.gz", hash = "sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94", size = 276966, upload-time = "2026-09-05T10:42:39.44Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a1/ee/48ca1a7c89ffec8b6a0c5d02b89c305671d5ffd8d3c94acf8b8c408575bb/anyio-4.9.0-py3-none-any.whl", hash = "sha256:9f76d541cad6e36af7beb62e978876f3b41e3e04f2c1fbf0884604c0a9c4d93c", size = 100916, upload-time = "2025-03-17T00:02:52.713Z" },
+    { url = "https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl", hash = "sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101", size = 132079, upload-time = "2026-09-05T10:42:37.923Z" },
 ]
 
 [[package]]
@@ -1867,11 +1867,11 @@ wheels = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.14.0"
+version = "4.16.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d1/bc/51647cd02527e87d05cb083ccc402f93e441606ff1f01739a62c8ad09ba5/typing_extensions-4.14.0.tar.gz", hash = "sha256:8676b788e32f02ab42d9e7c61324048ae4c6d844a399eebace3d4979d75ceef4", size = 107423, upload-time = "2025-06-02T14:52:11.399Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/69/e0/552843e0d356fbb5256d21449fa957fa4eff3bbc135a74a691ee70c7c5da/typing_extensions-4.14.0-py3-none-any.whl", hash = "sha256:a1514509136dd0b477638fc68d6a91497af5076466ad0fa6c338e44e359944af", size = 43839, upload-time = "2025-06-02T14:52:10.026Z" },
+    { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
 ]
 
 [[package]]

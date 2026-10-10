@@ -63,11 +63,14 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 		const additionalKwargs = item.additional_kwargs as Record<string, unknown> | undefined;
 		const text = extractTextFromContent(item.content);
 		const thinking = extractThinkingFromContent(item.content, additionalKwargs);
+		const responseMetadata = item.response_metadata as Record<string, unknown> | undefined;
 		return {
 			type: 'ai',
 			text,
 			id: (item.id as string) || crypto.randomUUID(),
-			...(thinking ? { thinking } : {})
+			...(thinking ? { thinking } : {}),
+			// A generated id would name nothing the backend knows.
+			...(item.id && typeof responseMetadata?.run_id === 'string' ? { rateable: true } : {})
 		} as AIMessage;
 	} else if (item.type === 'tool') {
 		return {

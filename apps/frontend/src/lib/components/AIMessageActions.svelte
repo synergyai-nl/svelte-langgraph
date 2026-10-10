@@ -5,23 +5,30 @@
 	import type { Message } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
-	import FeedbackButtons from './FeedbackButtons.svelte';
+	import FeedbackButtons, { type FeedbackStatus } from './FeedbackButtons.svelte';
 
 	interface Props {
 		message: Message;
 		isHovered: boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		onFeedback?: (type: 'up' | 'down', comment?: string) => Promise<void>;
+		feedbackAvailable?: boolean;
 	}
 
-	let { message, isHovered, onRegenerate, onFeedback }: Props = $props();
+	let { message, isHovered, onRegenerate, onFeedback, feedbackAvailable = true }: Props = $props();
+	let feedbackStatus = $state<FeedbackStatus>(null);
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	// A pending/failed rating must stay legible after the pointer leaves — see
+	// the focus-within/touch classes below for the other two visibility gaps
+	// (keyboard navigation, devices with no hover at all).
+	let visible = $derived(isHovered || feedbackStatus === 'pending' || feedbackStatus === 'failed');
 </script>
 
 <div
-	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out"
-	style="opacity: {isHovered ? '1' : '0'}; transform: translateY({isHovered ? '0' : '-4px'});"
+	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out focus-within:translate-y-0! focus-within:opacity-100! [@media(hover:none)]:translate-y-0! [@media(hover:none)]:opacity-100!"
+	style="opacity: {visible ? '1' : '0'}; transform: translateY({visible ? '0' : '-4px'});"
 >
 	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>
@@ -64,5 +71,9 @@
 		</TooltipContent>
 	</Tooltip>
 
-	<FeedbackButtons {message} {onFeedback} />
+	<FeedbackButtons
+		onSubmit={onFeedback}
+		available={feedbackAvailable}
+		bind:status={feedbackStatus}
+	/>
 </div>
