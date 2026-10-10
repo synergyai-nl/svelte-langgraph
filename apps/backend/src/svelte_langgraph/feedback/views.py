@@ -17,6 +17,7 @@ from svelte_langgraph.tracing import is_configured, record_score
 
 from .types import FeedbackPayload
 
+
 # require_auth is declared here and not left to `enable_custom_route_auth` in
 # aegra.json: that flag assigns to route.dependencies after FastAPI has built
 # route.dependant from it, so it enforces nothing (aegra_api 0.10.3, main.py:223).

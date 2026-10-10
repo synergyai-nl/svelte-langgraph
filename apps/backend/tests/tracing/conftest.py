@@ -148,7 +148,9 @@ def threads(request):
     if case == "none":
         return []
     owner = OTHER_USER_ID if case == "foreign" else USER_ID
-    return [{"thread_id": THREAD_ID, "user_id": owner, "metadata_json": {"owner": owner}}]
+    return [
+        {"thread_id": THREAD_ID, "user_id": owner, "metadata_json": {"owner": owner}}
+    ]
 
 
 @pytest.fixture

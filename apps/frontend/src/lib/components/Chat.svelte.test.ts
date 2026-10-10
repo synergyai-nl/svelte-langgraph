@@ -826,7 +826,7 @@ describe('Chat', () => {
 			});
 		});
 
-		test('persists a new AI message\'s producing run once it settles', async () => {
+		test("persists a new AI message's producing run once it settles", async () => {
 			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
 				firstSeenState: { metadata: { run_id: 'run-abc' } }
 			});
@@ -898,7 +898,12 @@ describe('Chat', () => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
 					expect.objectContaining({
-						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'up', comment: 'genuinely helpful' })
+						body: JSON.stringify({
+							thread_id: 'test-123',
+							run_id: 'run-abc',
+							score: 'up',
+							comment: 'genuinely helpful'
+						})
 					})
 				);
 			});
@@ -926,7 +931,9 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(fetchMock).toHaveBeenCalledWith(
 					FEEDBACK_URL,
-					expect.objectContaining({ body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'down' }) })
+					expect.objectContaining({
+						body: JSON.stringify({ thread_id: 'test-123', run_id: 'run-abc', score: 'down' })
+					})
 				);
 			});
 		});

@@ -78,7 +78,11 @@ async function attemptTitle(
 	return 'written';
 }
 
-export function createThreadTitler({ client, threadId, onTitled }: ThreadTitlerOptions): ThreadTitler {
+export function createThreadTitler({
+	client,
+	threadId,
+	onTitled
+}: ThreadTitlerOptions): ThreadTitler {
 	let running = false;
 	let knownTitled = false;
 	const controller = new AbortController();

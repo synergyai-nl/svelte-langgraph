@@ -53,7 +53,9 @@ def test_an_unconfigured_deployment_accepts_the_rating(client, no_langfuse_env):
 
 def test_feedback_rejects_a_malformed_payload(client, langfuse_env):
     assert (
-        client.post("/feedback", json={"thread_id": THREAD_ID, "score": "up"}).status_code
+        client.post(
+            "/feedback", json={"thread_id": THREAD_ID, "score": "up"}
+        ).status_code
         == 422
     )
     assert (

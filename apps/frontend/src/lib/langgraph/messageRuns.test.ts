@@ -9,9 +9,7 @@ describe('messageRunKey', () => {
 
 describe('messageRunsFromMetadata', () => {
 	test('reads the producing run ids out, keyed by message', () => {
-		expect(
-			messageRunsFromMetadata({ 'run:msg-1': 'run-a', 'run:msg-2': 'run-b' })
-		).toEqual({
+		expect(messageRunsFromMetadata({ 'run:msg-1': 'run-a', 'run:msg-2': 'run-b' })).toEqual({
 			'msg-1': 'run-a',
 			'msg-2': 'run-b'
 		});
@@ -24,9 +22,9 @@ describe('messageRunsFromMetadata', () => {
 	});
 
 	test('ignores values that are not a non-empty string', () => {
-		expect(
-			messageRunsFromMetadata({ 'run:msg-1': '', 'run:msg-2': null, 'run:msg-3': 1 })
-		).toEqual({});
+		expect(messageRunsFromMetadata({ 'run:msg-1': '', 'run:msg-2': null, 'run:msg-3': 1 })).toEqual(
+			{}
+		);
 	});
 
 	test.each([
@@ -45,8 +43,9 @@ describe('messageRunsFromMetadata', () => {
 	test('two messages can share the same producing run', () => {
 		// Keyed by message, not by run, so parallel tool calls or multiple AI
 		// messages from one run don't collide.
-		expect(
-			messageRunsFromMetadata({ 'run:msg-1': 'run-a', 'run:msg-2': 'run-a' })
-		).toEqual({ 'msg-1': 'run-a', 'msg-2': 'run-a' });
+		expect(messageRunsFromMetadata({ 'run:msg-1': 'run-a', 'run:msg-2': 'run-a' })).toEqual({
+			'msg-1': 'run-a',
+			'msg-2': 'run-a'
+		});
 	});
 });
