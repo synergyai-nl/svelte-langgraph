@@ -13,36 +13,12 @@
 		message: Message;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
-		/** Resolves the rating already recorded for a message. Passed as a function
-		 *  rather than a value because only Chat can map a message to its run. */
-		getRating?: (message: Message) => 'up' | 'down' | null;
-		/** Resolves whether this message's rating is in flight or last failed. */
-		getFeedbackStatus?: (message: Message) => 'pending' | 'failed' | null;
-		/** False until stored ratings are known; disables rating. */
-		feedbackReady?: boolean;
-		/** Stored ratings could not be loaded at all. */
-		ratingsError?: boolean;
+		onFeedback?: (message: Message, type: 'up' | 'down', comment?: string) => Promise<void>;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
 	}
 
-	let {
-		message,
-		onEdit,
-		onRegenerate,
-		onFeedback,
-		getRating,
-		getFeedbackStatus,
-		feedbackReady = true,
-		ratingsError = false,
-		isThinkingActive = false
-	}: Props = $props();
-
-	// Reads Chat's ratings state through the closure, so it re-runs when a
-	// rating is added or rolled back.
-	let rating = $derived(getRating?.(message) ?? null);
-	let feedbackStatus = $derived(getFeedbackStatus?.(message) ?? null);
+	let { message, onEdit, onRegenerate, onFeedback, isThinkingActive = false }: Props = $props();
 
 	const plugins = [gfmPlugin()];
 
@@ -108,11 +84,8 @@
 								{message}
 								{isHovered}
 								{onRegenerate}
-								{onFeedback}
-								{rating}
-								{feedbackStatus}
-								{feedbackReady}
-								feedbackUnavailable={ratingsError}
+								onFeedback={onFeedback && ((type, comment) => onFeedback(message, type, comment))}
+								feedbackAvailable={message.type === 'ai' && message.rateable === true}
 							/>
 						{/if}
 					{:else}

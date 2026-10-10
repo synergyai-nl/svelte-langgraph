@@ -16,11 +16,7 @@
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
-		getRating?: (message: Message) => 'up' | 'down' | null;
-		getFeedbackStatus?: (message: Message) => 'pending' | 'failed' | null;
-		feedbackReady?: boolean;
-		ratingsError?: boolean;
+		onFeedback?: (message: Message, type: 'up' | 'down', comment?: string) => Promise<void>;
 	}
 
 	let {
@@ -31,11 +27,7 @@
 		onRetryError,
 		onEdit,
 		onRegenerate,
-		onFeedback,
-		getRating,
-		getFeedbackStatus,
-		feedbackReady = true,
-		ratingsError = false
+		onFeedback
 	}: Props = $props();
 
 	// The message currently being generated is always the last one in the list — while a
@@ -93,10 +85,6 @@
 						{onEdit}
 						{onRegenerate}
 						{onFeedback}
-						{getRating}
-						{getFeedbackStatus}
-						{feedbackReady}
-						{ratingsError}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
 					/>
 				{/if}

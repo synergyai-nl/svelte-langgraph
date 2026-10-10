@@ -1,6 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/svelte';
-import { userEvent } from '@testing-library/user-event';
+import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
 import type { TitleClient } from '$lib/langgraph/threadTitle';
@@ -287,11 +286,8 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 	});
 
 	test('a rename landing while the title request is in flight is not overwritten', async () => {
-		// Untitled at the pre-run check; renamed by the time the pre-PATCH re-check
-		// runs. Twice, not once: restoring stored ratings reads the same thread on
-		// mount, and that read must not be the one that sees the rename.
+		// Untitled at the pre-run check; renamed by the time the pre-PATCH re-check runs.
 		threadsGetMock
-			.mockResolvedValueOnce({ metadata: {} })
 			.mockResolvedValueOnce({ metadata: {} })
 			.mockResolvedValue({ metadata: { title: 'Renamed mid-run' } });
 
@@ -305,54 +301,9 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		await tick();
 
 		await waitFor(() => expect(generateTitleMock).toHaveBeenCalledTimes(1));
-		// Three: the ratings restore on mount, then titling's own two checks.
-		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(3));
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(2));
 		await tick();
 		expect(threadsUpdateMock).not.toHaveBeenCalled();
-	});
-
-	test('rating a reply writes it to thread metadata, alongside an in-flight title PATCH', async () => {
-		// Aegra merges thread metadata atomically in SQL (aegra-api 0.10.8+,
-		// aegra/aegra#603), so the title write and the rating write below are
-		// free to land concurrently -- no client-side ordering is needed, which
-		// is exactly what this asserts by never serialising them.
-		threadsGetMock.mockResolvedValue({ metadata: {} });
-		vi.stubGlobal(
-			'fetch',
-			vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }))
-		);
-
-		mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
-			firstSeenState: { metadata: { run_id: 'run-abc' } }
-		});
-
-		renderChatWithRefresh();
-		await tick();
-
-		mockModule.setIsLoading(true);
-		await tick();
-		mockModule.setMessages(openingExchange);
-		mockModule.setIsLoading(false);
-		await tick();
-		await waitFor(() =>
-			expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
-				metadata: { title: 'Generated Title' }
-			})
-		);
-
-		const user = userEvent.setup();
-		const aiMessage = await screen.findByText('Hi there!');
-		await user.hover(aiMessage);
-		const group = aiMessage.closest('[role="group"]') as HTMLElement;
-		await user.click(await within(group).findByTitle(/good response/i));
-		const dialog = await screen.findByTestId('feedback-dialog');
-		await user.click(within(dialog).getByTestId('feedback-cancel'));
-
-		await waitFor(() =>
-			expect(threadsUpdateMock).toHaveBeenCalledWith('test-123', {
-				metadata: { 'rating:run-abc': 'up' }
-			})
-		);
 	});
 
 	test('a failed title request is retried on the next settle', async () => {

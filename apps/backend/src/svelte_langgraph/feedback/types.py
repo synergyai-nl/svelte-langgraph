@@ -23,9 +23,11 @@ Comment = Annotated[
 
 
 class FeedbackPayload(BaseModel):
-    # UUID, not str: the trace id is this id's hex, so a non-UUID matches nothing.
-    thread_id: str
-    run_id: UUID
+    # UUID, not str: it becomes a path segment of the Aegra calls in views.py.
+    thread_id: UUID
+    # The answer being rated. Its producing run is looked up server-side, so a
+    # client can't point a rating at some other run's trace.
+    message_id: Annotated[str, StringConstraints(min_length=1, max_length=256)]
     score: Rating
     # Optional by design: the rating is the feedback, and the comment is an
     # afterthought the user may never give.

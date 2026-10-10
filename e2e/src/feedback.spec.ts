@@ -14,17 +14,25 @@ test.describe.configure({ mode: 'default' });
 const isScorePost = (req: Request) =>
 	req.method() === 'POST' && /\/feedback$/.test(new URL(req.url()).pathname);
 
-/** Record the thread_id/run_id carried by every score the page posts. */
-function captureScoredRuns(page: Page): { threadIds: string[]; runIds: string[] } {
-	const threadIds: string[] = [];
-	const runIds: string[] = [];
+type ScoreBody = { thread_id: string; message_id: string; score: string; comment?: string };
+
+/** Record the body of every score the page posts. */
+function captureScores(page: Page): ScoreBody[] {
+	const bodies: ScoreBody[] = [];
 	page.on('request', (req: Request) => {
-		if (!isScorePost(req)) return;
-		const body = req.postDataJSON() as { thread_id?: string; run_id?: string } | null;
-		if (body?.thread_id) threadIds.push(body.thread_id);
-		if (body?.run_id) runIds.push(body.run_id);
+		if (isScorePost(req)) bodies.push(req.postDataJSON() as ScoreBody);
 	});
-	return { threadIds, runIds };
+	return bodies;
+}
+
+/** The bearer token the page sends to the backend, once it has sent one. */
+function captureToken(page: Page): () => string | undefined {
+	let token: string | undefined;
+	page.on('request', (req: Request) => {
+		if (!req.url().startsWith(LANGGRAPH_CONFIG.apiUrl)) return;
+		token ??= req.headers()['authorization'];
+	});
+	return () => token;
 }
 
 /** Send `text` and wait until `expectedCount` AI replies have rendered. */
@@ -73,14 +81,14 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 
 	await expect(up).toBeVisible();
 	await expect(down).toBeVisible();
-	// Enabled only once the thread's stored ratings have loaded, so this also
-	// covers that the load actually completes against a real backend.
+	// Enabled only once the answer carries the run the backend stamped on it,
+	// so this also covers the stamp surviving a real run into thread state.
 	await expect(up).toBeEnabled();
 	await expect(down).toBeEnabled();
 });
 
-test('rating a reply posts the score for its run, authenticated', async ({ page, chat }) => {
-	const { threadIds, runIds } = captureScoredRuns(page);
+test('rating a reply posts the score for that message, authenticated', async ({ page, chat }) => {
+	const bodies = captureScores(page);
 	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	const aiMessage = chat.aiMessages.first();
@@ -93,18 +101,15 @@ test('rating a reply posts the score for its run, authenticated', async ({ page,
 
 	const res = await scored;
 	expect(res.ok()).toBe(true);
-	expect(runIds).toHaveLength(1);
-	expect(res.request().postDataJSON()).toEqual({
-		thread_id: threadIds[0],
-		run_id: runIds[0],
-		score: 'up'
-	});
-	// The endpoint is unauthenticated without this, and the ownership check has
-	// no identity to compare against.
+	expect(bodies).toHaveLength(1);
+	expect(Object.keys(bodies[0]).sort()).toEqual(['message_id', 'score', 'thread_id']);
+	expect(bodies[0]).toMatchObject({ score: 'up' });
+	// Without this the endpoint is unauthenticated, and Aegra has no caller to
+	// authorize the thread read as.
 	expect(await res.request().headerValue('authorization')).toMatch(/^Bearer .+/);
 });
 
-/** Rate a reply on an already signed-in page, and report the run that was
+/** Rate a reply on an already signed-in page, and report the message that was
  *  scored plus the credentials it was scored with. */
 async function scoreOwnReply(page: Page, chat: ChatPage) {
 	await gotoFreshThread(page);
@@ -116,37 +121,36 @@ async function scoreOwnReply(page: Page, chat: ChatPage) {
 	await rate(chat, aiMessage, 'up');
 	const request = (await scored).request();
 
-	const body = request.postDataJSON() as { thread_id: string; run_id: string };
+	const body = request.postDataJSON() as ScoreBody;
 	return {
 		url: request.url(),
 		authorization: (await request.headerValue('authorization'))!,
 		threadId: body.thread_id,
-		runId: body.run_id
+		messageId: body.message_id
 	};
 }
 
-test('the backend refuses an unauthenticated score, and a run belonging to someone else', async ({
+test("the backend refuses an unauthenticated score, and one on someone else's thread", async ({
 	page,
 	chat,
 	browser
 }) => {
-	// The unit tests stub the session, so this is the only place the ownership
-	// query runs against real rows in Postgres, written by real runs.
+	// The unit tests fake Aegra, so this is the only place the thread read runs
+	// through Aegra's real routes and auth handlers, against real rows.
 	// Already signed in as the default subject by the beforeEach hook.
 	const owner = await scoreOwnReply(page, chat);
 
-	// The run it does own, minus the credentials. Aegra's own
+	// The message it does own, minus the credentials. Aegra's own
 	// `enable_custom_route_auth` leaves this at 200 — the route's own
 	// `Depends(require_auth)` is what makes it 401.
 	const anonymous = await page.request.post(owner.url, {
-		data: { thread_id: owner.threadId, run_id: owner.runId, score: 'up' }
+		data: { thread_id: owner.threadId, message_id: owner.messageId, score: 'up' }
 	});
 	expect(anonymous.status()).toBe(401);
 
 	// A second signed-in user, with a valid token of their own, aiming at a
-	// thread/run that exists and belongs to the first. A random id would not
-	// test this: a row that is not there is refused by a query filtered on id
-	// alone, so it passes with no ownership predicate at all.
+	// thread and message that exist and belong to the first. A random id would
+	// be refused for not existing, whether or not access is checked at all.
 	const otherContext = await browser.newContext();
 	try {
 		const otherPage = await otherContext.newPage();
@@ -156,88 +160,94 @@ test('the backend refuses an unauthenticated score, and a run belonging to someo
 
 		const foreign = await otherPage.request.post(owner.url, {
 			headers: { Authorization: other.authorization },
-			data: { thread_id: owner.threadId, run_id: owner.runId, score: 'up' }
+			data: { thread_id: owner.threadId, message_id: owner.messageId, score: 'up' }
 		});
-		// 404 rather than 403: the answer must not confirm the run exists.
+		// 404 rather than 403: the answer must not confirm the thread exists.
 		expect(foreign.status()).toBe(404);
 	} finally {
 		await otherContext.close();
 	}
 });
 
-test('rating an earlier reply scores that run, not the most recent one', async ({ page, chat }) => {
-	// Regression: a per-run URL used to be minted in onFinish and stamped onto
-	// every AI message that lacked one, so rating an older answer scored the newest run.
-	const { runIds } = captureScoredRuns(page);
-
-	await sendAndAwaitReply(chat, 'First question', 1);
-	await sendAndAwaitReply(chat, 'Second question', 2);
-
-	const older = chat.aiMessages.first();
-	await older.hover();
-	await rate(chat, older, 'up');
-	await expect.poll(() => runIds).toHaveLength(1);
-	const olderRunId = runIds[0];
-
-	const newer = chat.aiMessages.nth(1);
-	await newer.hover();
-	await rate(chat, newer, 'up');
-	await expect.poll(() => runIds).toHaveLength(2);
-
-	expect(runIds[1]).not.toEqual(olderRunId);
-});
-
-test('rating still works after a reload, with no live run', async ({ page, chat }) => {
-	// Regression: feedback URLs lived only in memory and were populated by onFinish,
-	// so restored history had none and the buttons silently did nothing.
-	await sendAndAwaitReply(chat, 'Hello', 1);
+test('past the live checkpoint window, each answer is scored as its own message', async ({
+	page,
+	chat
+}) => {
+	// The SDK fetches only the latest ten checkpoints, and four turns make well
+	// over ten. The run must come from the answer itself, not that window.
+	const token = captureToken(page);
+	const turns = 4;
+	for (let i = 1; i <= turns; i++) await sendAndAwaitReply(chat, `Question ${i}`, i);
 
 	await page.reload();
-	const { threadIds, runIds } = captureScoredRuns(page);
-	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
+	await expect(chat.aiMessages).toHaveCount(turns, { timeout: 30_000 });
+	const bodies = captureScores(page);
+
+	for (const [index, score] of [
+		[0, 'up'],
+		[turns - 1, 'down']
+	] as const) {
+		const answer = chat.aiMessages.nth(index);
+		await answer.hover();
+		const scored = page.waitForResponse((res) => isScorePost(res.request()));
+		await rate(chat, answer, score);
+		expect((await scored).ok()).toBe(true);
+	}
+
+	// What the backend resolves those ids to: the run each answer carries must
+	// be the run that produced it, in order, one run per answer.
+	const threadId = bodies[0].thread_id;
+	const headers = { Authorization: token()! };
+	const api = LANGGRAPH_CONFIG.apiUrl;
+	const runs = (await (
+		await page.request.get(`${api}/threads/${threadId}/runs`, { headers })
+	).json()) as {
+		run_id: string;
+		created_at: string;
+	}[];
+	const state = await (
+		await page.request.get(`${api}/threads/${threadId}/state`, { headers })
+	).json();
+	const answers = (
+		state.values.messages as { id: string; type: string; response_metadata?: { run_id?: string } }[]
+	).filter((m) => m.type === 'ai');
+
+	const runsInOrder = runs
+		.sort((a, b) => a.created_at.localeCompare(b.created_at))
+		.map((r) => r.run_id);
+	expect(answers.map((m) => m.response_metadata?.run_id)).toEqual(runsInOrder);
+	expect(bodies.map((b) => b.message_id)).toEqual([answers[0].id, answers[turns - 1].id]);
+});
+
+test('a submitted rating is acknowledged and not resubmittable until reload', async ({
+	page,
+	chat
+}) => {
+	const bodies = captureScores(page);
+	await sendAndAwaitReply(chat, 'Hello', 1);
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
-
 	const scored = page.waitForResponse((res) => isScorePost(res.request()));
-	await rate(chat, aiMessage, 'down');
-
-	const res = await scored;
-	expect(res.ok()).toBe(true);
-	expect(runIds).toHaveLength(1);
-	expect(res.request().postDataJSON()).toEqual({
-		thread_id: threadIds[0],
-		run_id: runIds[0],
-		score: 'down'
-	});
-});
-
-test('a rating is still shown after a reload', async ({ page, chat }) => {
-	// The rating is mirrored into thread metadata precisely so it can be read
-	// back here. Langfuse can't serve it: no batch-by-thread query, and a fresh
-	// score takes ~10s to become readable.
-	await sendAndAwaitReply(chat, 'Hello', 1);
-
-	const aiMessage = chat.aiMessages.first();
-	await aiMessage.hover();
-
-	const persisted = page.waitForRequest(
-		(req) => req.method() === 'PATCH' && /\/threads\//.test(req.url())
-	);
 	await rate(chat, aiMessage, 'up');
-	await persisted;
+	expect((await scored).ok()).toBe(true);
 
+	const { up, down } = chat.feedbackButtons(aiMessage);
+	await expect(up).toHaveClass(/bg-muted/);
+	await expect(up).toBeDisabled();
+	await expect(down).toBeDisabled();
+
+	// Submit-only: nothing is read back, so a reload starts fresh, and rating
+	// again is accepted -- the backend's score id makes it an update.
 	await page.reload();
 	await expect(chat.aiMessages).toHaveCount(1, { timeout: 30_000 });
-
-	// No hover here on purpose. The buttons are always in the DOM — hover only
-	// animates the container's opacity — and `toHaveClass` runs no actionability
-	// check. Hovering would instead race the tooltip: the virtual mouse is still
-	// parked on the button from the click above, so after the reload it reopens
-	// instantly and its content div swallows the pointer events.
 	const restored = chat.aiMessages.first();
-	await expect(chat.feedbackButtons(restored).up).toHaveClass(/bg-muted/);
-	await expect(chat.feedbackButtons(restored).down).not.toHaveClass(/bg-muted/);
+	await expect(chat.feedbackButtons(restored).up).not.toHaveClass(/bg-muted/);
+	await restored.hover();
+	const rescored = page.waitForResponse((res) => isScorePost(res.request()));
+	await rate(chat, restored, 'down');
+	expect((await rescored).ok()).toBe(true);
+	expect(bodies.map((b) => b.message_id)).toEqual([bodies[0].message_id, bodies[0].message_id]);
 });
 
 test('a comment is sent with its rating, in the same request', async ({ page, chat }) => {
@@ -280,8 +290,8 @@ test('cancelling the comment box still records the rating', async ({ page, chat 
 	expect(res.request().postDataJSON()).toMatchObject({ score: 'up' });
 	expect(res.ok()).toBe(true);
 
-	// Survives the round trip: the rollback runs on failure, so a thumb still
-	// filled after the response — and no failure marker — is the real evidence.
+	// Survives the round trip: the highlight is dropped on failure, so a thumb
+	// still filled after the response — and no failure marker — is the evidence.
 	await expect(chat.feedbackButtons(aiMessage).up).toHaveClass(/bg-muted/);
 	await expect(aiMessage.getByTestId('feedback-failed')).toHaveCount(0);
 });

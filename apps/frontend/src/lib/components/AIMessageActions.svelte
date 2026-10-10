@@ -5,29 +5,18 @@
 	import type { Message } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
-	import FeedbackButtons from './FeedbackButtons.svelte';
+	import FeedbackButtons, { type FeedbackStatus } from './FeedbackButtons.svelte';
 
 	interface Props {
 		message: Message;
 		isHovered: boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
-		rating?: 'up' | 'down' | null;
-		feedbackStatus?: 'pending' | 'failed' | null;
-		feedbackReady?: boolean;
-		feedbackUnavailable?: boolean;
+		onFeedback?: (type: 'up' | 'down', comment?: string) => Promise<void>;
+		feedbackAvailable?: boolean;
 	}
 
-	let {
-		message,
-		isHovered,
-		onRegenerate,
-		onFeedback,
-		rating = null,
-		feedbackStatus = null,
-		feedbackReady = true,
-		feedbackUnavailable = false
-	}: Props = $props();
+	let { message, isHovered, onRegenerate, onFeedback, feedbackAvailable = true }: Props = $props();
+	let feedbackStatus = $state<FeedbackStatus>(null);
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -83,11 +72,8 @@
 	</Tooltip>
 
 	<FeedbackButtons
-		{message}
-		{onFeedback}
-		{rating}
-		status={feedbackStatus}
-		ready={feedbackReady}
-		unavailable={feedbackUnavailable}
+		onSubmit={onFeedback}
+		available={feedbackAvailable}
+		bind:status={feedbackStatus}
 	/>
 </div>

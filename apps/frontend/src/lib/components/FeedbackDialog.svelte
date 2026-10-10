@@ -6,13 +6,13 @@
 	// Capped here so the backend's 422 is unreachable from the UI. `maxlength`
 	// counts UTF-16 units against a backend limit in code points, so it can only
 	// ever stop short of it -- never over.
-	import { COMMENT_MAX_LENGTH } from '$lib/langgraph/feedback';
+	import { COMMENT_MAX_LENGTH } from '$lib/langgraph/feedbackLimits';
 
 	interface Props {
 		/** The rating being commented on, or null when the box is closed. */
 		rating: 'up' | 'down' | null;
 		/** Called for every way out of the box. `comment` is undefined unless the
-		 *  user submitted one, but the rating is sent either way — see Chat. */
+		 *  user submitted one, but the rating is sent either way. */
 		onResolve: (comment?: string) => void;
 	}
 

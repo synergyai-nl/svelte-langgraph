@@ -22,6 +22,7 @@ from langgraph.runtime import Runtime
 
 # Absolute imports required: Aegra loads this file by path (outside the
 # package), so relative imports would fail at server startup.
+from svelte_langgraph.feedback.provenance import RunStampMiddleware
 from svelte_langgraph.models import get_chat_model
 from svelte_langgraph.phase import DEFAULT_PHASE, VALID_PHASES, Phase
 from svelte_langgraph.reducers import last_value
@@ -159,6 +160,6 @@ def make_graph(
     return create_agent(
         model=get_chat_model(),
         tools=get_tools(),
-        middleware=[phase_gate, PromptMiddleware()],
+        middleware=[phase_gate, PromptMiddleware(), RunStampMiddleware()],
         state_schema=AgentExtendedState,
     )

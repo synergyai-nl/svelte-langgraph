@@ -1,52 +1,63 @@
+<script lang="ts" module>
+	export type FeedbackStatus = 'pending' | 'sent' | 'failed' | null;
+</script>
+
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown, Asterisk } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
+	import FeedbackDialog from './FeedbackDialog.svelte';
 
 	interface Props {
-		message: Message;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
-		/** The rating already recorded for this message, or null if unrated. */
-		rating?: 'up' | 'down' | null;
-		/** 'pending' while the score is in flight, 'failed' if the last try didn't land. */
-		status?: 'pending' | 'failed' | null;
-		/** False until the stored ratings are known — see Chat.svelte. */
-		ready?: boolean;
-		/** The stored ratings couldn't be loaded at all, so rating stays off. */
-		unavailable?: boolean;
+		/** Sends the rating with its optional comment; rejects if it didn't land. */
+		onSubmit?: (type: 'up' | 'down', comment?: string) => Promise<void>;
+		/** False for an answer the backend can't tie to a trace. */
+		available?: boolean;
+		/** Bindable, so the action row can stay visible while pending or failed. */
+		status?: FeedbackStatus;
 	}
 
-	let {
-		message,
-		onFeedback,
-		rating = null,
-		status = null,
-		ready = true,
-		unavailable = false
-	}: Props = $props();
+	let { onSubmit, available = true, status = $bindable(null) }: Props = $props();
 
-	// Controlled by the parent rather than held locally: the highlight has to
-	// survive a remount and a reload, and it should reflect what was actually
-	// stored, not merely what was clicked.
-	let disabled = $derived(!ready || status === 'pending');
+	// Local by design: nothing is read back, so a remount starts fresh. The
+	// backend's per-user, per-message score id makes rating again an update.
+	let rating = $state<'up' | 'down' | null>(null);
+	let draft = $state<'up' | 'down' | null>(null);
 
-	// A failure is worth saying out loud, but not worth shouting about later —
-	// the label replaces the tooltip only until the next attempt.
+	// Sent is final until remount: the click is acknowledged, not editable.
+	let disabled = $derived(!available || !onSubmit || status === 'pending' || status === 'sent');
+
 	let label = $derived(
-		unavailable
+		!available
 			? m.message_feedback_unavailable()
-			: !ready
-				? m.message_feedback_loading()
+			: status === 'sent'
+				? m.message_feedback_sent()
 				: status === 'failed'
 					? m.message_feedback_failed()
 					: null
 	);
 
-	function handleFeedback(type: 'up' | 'down') {
-		if (disabled || rating === type) return;
-		onFeedback?.(message, type);
+	function choose(type: 'up' | 'down') {
+		if (disabled || draft) return;
+		rating = type;
+		draft = type;
+	}
+
+	async function resolve(comment?: string) {
+		const type = draft;
+		draft = null;
+		if (!type || !onSubmit) return;
+
+		status = 'pending';
+		try {
+			await onSubmit(type, comment);
+			status = 'sent';
+		} catch (err) {
+			rating = null;
+			status = 'failed';
+			console.error('Failed to submit feedback', err);
+		}
 	}
 </script>
 
@@ -54,7 +65,7 @@
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => handleFeedback('up')}
+				onclick={() => choose('up')}
 				{disabled}
 				variant="ghost"
 				size="icon-sm"
@@ -69,7 +80,7 @@
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => handleFeedback('down')}
+				onclick={() => choose('down')}
 				{disabled}
 				variant="ghost"
 				size="icon-sm"
@@ -83,8 +94,7 @@
 	</Tooltip>
 
 	{#if status === 'pending'}
-		<!-- Marks the in-flight window without moving anything: the asterisk sits in
-		     the same slot the failure marker uses, so the row doesn't reflow. -->
+		<!-- Same slot as the failure marker, so the row doesn't reflow. -->
 		<Asterisk
 			size={14}
 			class="text-muted-foreground animate-pulse"
@@ -105,3 +115,5 @@
 		</Tooltip>
 	{/if}
 </div>
+
+<FeedbackDialog rating={draft} onResolve={resolve} />

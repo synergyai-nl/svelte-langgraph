@@ -143,6 +143,7 @@ async def record_score(
     score: Rating,
     name: str = "user_feedback",
     comment: str | None = None,
+    score_id: str | None = None,
 ) -> bool:
     """Attach `score` to the Langfuse trace produced by `run_id`.
 
@@ -164,8 +165,9 @@ async def record_score(
         # Deterministic, so this is an upsert: Langfuse updates a score when the
         # id already exists. Without it a changed mind (rate up, then down)
         # leaves two scores on the same trace, contradicting each other and both
-        # counted. This is also why the comment below is always sent.
-        "id": f"{trace_id}-{name}",
+        # counted. This is also why the comment below is always sent. /feedback
+        # passes a per-user, per-message id: one run can produce several answers.
+        "id": score_id or f"{trace_id}-{name}",
         "traceId": trace_id,
         "name": name,
         # Categorical values travel in `value`; there is no `stringValue` on

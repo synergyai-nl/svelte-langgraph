@@ -1,7 +1,7 @@
 import { apiUrl } from './apiUrl';
+import { COMMENT_MAX_LENGTH } from './feedbackLimits';
 
-/** Same limit as COMMENT_MAX_LENGTH in apps/backend/src/svelte_langgraph/routes.py. */
-export const COMMENT_MAX_LENGTH = 2000;
+export { COMMENT_MAX_LENGTH };
 
 /** Code points, not `.length`: UTF-16 units would reject a comment of emoji at
  *  half the stated limit while the backend still accepted it. */
@@ -10,18 +10,15 @@ function codePointLength(value: string): number {
 }
 
 /**
- * Score a run.
+ * Rate an AI answer. The backend resolves which run produced it.
  *
  * Posts straight to Aegra with the caller's own bearer token, the same one
- * `createClient` sends. There is no SvelteKit hop: the browser already talks to
- * this backend for threads and runs, and the endpoint now checks that the run
- * belongs to the caller, which a signed URL minted for any requested run id
- * never did.
+ * `createClient` sends.
  */
 export async function submitFeedback(
 	accessToken: string,
 	threadId: string,
-	runId: string,
+	messageId: string,
 	score: 'up' | 'down',
 	comment?: string
 ): Promise<void> {
@@ -39,8 +36,8 @@ export async function submitFeedback(
 		// same request it was before comments existed.
 		body: JSON.stringify(
 			trimmed
-				? { thread_id: threadId, run_id: runId, score, comment: trimmed }
-				: { thread_id: threadId, run_id: runId, score }
+				? { thread_id: threadId, message_id: messageId, score, comment: trimmed }
+				: { thread_id: threadId, message_id: messageId, score }
 		)
 	});
 

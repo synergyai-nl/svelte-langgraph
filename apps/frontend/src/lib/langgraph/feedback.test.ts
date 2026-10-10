@@ -38,7 +38,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'run-1', 'up');
+		await submitFeedback('token', 'thread-1', 'ai-1', 'up');
 
 		expect(postedUrl(fetchMock)).toBe('https://backend.test/feedback');
 	});
@@ -47,12 +47,12 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'run-1', 'down');
+		await submitFeedback('token', 'thread-1', 'ai-1', 'down');
 
 		expect(fetchMock.mock.calls[0][1]).toMatchObject({
 			method: 'POST',
 			headers: expect.objectContaining({ Authorization: 'Bearer token' }),
-			body: JSON.stringify({ thread_id: 'thread-1', run_id: 'run-1', score: 'down' })
+			body: JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'down' })
 		});
 	});
 
@@ -60,10 +60,10 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'run-1', 'up', '   \n ');
+		await submitFeedback('token', 'thread-1', 'ai-1', 'up', '   \n ');
 
 		expect(fetchMock.mock.calls[0][1].body).toBe(
-			JSON.stringify({ thread_id: 'thread-1', run_id: 'run-1', score: 'up' })
+			JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'up' })
 		);
 	});
 
@@ -72,7 +72,7 @@ describe('submitFeedback', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		await expect(
-			submitFeedback('token', 'thread-1', 'run-1', 'up', 'x'.repeat(COMMENT_MAX_LENGTH + 1))
+			submitFeedback('token', 'thread-1', 'ai-1', 'up', 'x'.repeat(COMMENT_MAX_LENGTH + 1))
 		).rejects.toThrow(/at most/);
 		expect(fetchMock).not.toHaveBeenCalled();
 	});
@@ -82,7 +82,7 @@ describe('submitFeedback', () => {
 		vi.stubGlobal('fetch', fetchMock);
 
 		// Two UTF-16 units each: `.length` would reject this at twice the limit.
-		await submitFeedback('token', 'thread-1', 'run-1', 'up', '😀'.repeat(COMMENT_MAX_LENGTH));
+		await submitFeedback('token', 'thread-1', 'ai-1', 'up', '😀'.repeat(COMMENT_MAX_LENGTH));
 
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
@@ -93,7 +93,7 @@ describe('submitFeedback', () => {
 			vi.fn(() => Promise.resolve(new Response(null, { status: 404 })))
 		);
 
-		await expect(submitFeedback('token', 'thread-1', 'run-1', 'up')).rejects.toThrow(/404/);
+		await expect(submitFeedback('token', 'thread-1', 'ai-1', 'up')).rejects.toThrow(/404/);
 	});
 
 	test('fails when the backend URL is unset', async () => {
@@ -101,7 +101,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await expect(submitFeedback('token', 'thread-1', 'run-1', 'up')).rejects.toThrow(
+		await expect(submitFeedback('token', 'thread-1', 'ai-1', 'up')).rejects.toThrow(
 			/PUBLIC_LANGGRAPH_API_URL/
 		);
 		expect(fetchMock).not.toHaveBeenCalled();
