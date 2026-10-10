@@ -38,7 +38,7 @@
 </script>
 
 <div
-	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out focus-within:opacity-100! focus-within:translate-y-0! [@media(hover:none)]:opacity-100! [@media(hover:none)]:translate-y-0!"
+	class="absolute left-0 flex items-center gap-1 transition-all duration-300 ease-in-out focus-within:translate-y-0! focus-within:opacity-100! [@media(hover:none)]:translate-y-0! [@media(hover:none)]:opacity-100!"
 	style="opacity: {visible ? '1' : '0'}; transform: translateY({visible ? '0' : '-4px'});"
 >
 	<Tooltip disableCloseOnTriggerClick>
