@@ -35,6 +35,10 @@ function captureToken(page: Page): () => string | undefined {
 	return () => token;
 }
 
+/** The row hides by opacity, which Playwright's `toBeVisible` ignores (it
+ *  counts opacity: 0 as visible), so its visibility is asserted on the CSS. */
+const actionsRow = (message: Locator) => message.getByTestId('message-actions');
+
 /** Send `text` and wait until `expectedCount` AI replies have rendered. */
 async function sendAndAwaitReply(chat: ChatPage, text: string, expectedCount: number) {
 	await chat.textInput.fill(text);
@@ -309,7 +313,7 @@ test('message actions are visible on a touch device without hovering', async ({ 
 		await sendAndAwaitReply(chat, 'Hello', 1);
 
 		const aiMessage = chat.aiMessages.first();
-		await expect(aiMessage.getByTitle(/regenerate/i)).toBeVisible();
+		await expect(actionsRow(aiMessage)).toHaveCSS('opacity', '1');
 		await expect(chat.feedbackButtons(aiMessage).up).toBeVisible();
 	} finally {
 		await context.close();
@@ -321,15 +325,13 @@ test('message actions are revealed by keyboard focus, not just hover', async ({ 
 
 	const aiMessage = chat.aiMessages.first();
 	const regenerate = aiMessage.getByTitle(/regenerate/i);
-	// Visibility is opacity-driven, not removal from the DOM, so this guards
-	// against a focus-within rule that never actually overrides it.
-	await expect(regenerate).not.toBeVisible();
+	await expect(actionsRow(aiMessage)).toHaveCSS('opacity', '0');
 
 	// `:focus-within` doesn't care how focus arrived, so a direct `.focus()`
 	// exercises the same CSS path a real Tab press would, without depending
 	// on how many unrelated elements sit earlier in tab order.
 	await regenerate.focus();
-	await expect(regenerate).toBeVisible();
+	await expect(actionsRow(aiMessage)).toHaveCSS('opacity', '1');
 });
 
 test('a failed rating marker stays visible after the pointer leaves', async ({ page, chat }) => {
@@ -351,5 +353,6 @@ test('a failed rating marker stays visible after the pointer leaves', async ({ p
 
 	// Move the pointer well away from the message, onto the input instead.
 	await chat.textInput.hover();
+	await expect(actionsRow(aiMessage)).toHaveCSS('opacity', '1');
 	await expect(aiMessage.getByTestId('feedback-failed')).toBeVisible();
 });
