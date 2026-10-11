@@ -10,6 +10,8 @@ vi.mock('$env/dynamic/public', () => ({ env }));
 /** Typed with fetch's own shape so `mock.calls` keeps the argument types. */
 type FetchCall = (url: string, init: RequestInit) => Promise<Response>;
 
+const auth = { Authorization: 'Bearer token' };
+
 const ok: FetchCall = () => Promise.resolve(new Response(null, { status: 200 }));
 
 beforeEach(() => {
@@ -38,7 +40,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'ai-1', 'up');
+		await submitFeedback(auth, 'thread-1', 'ai-1', 'up');
 
 		expect(postedUrl(fetchMock)).toBe('https://backend.test/feedback');
 	});
@@ -47,7 +49,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'ai-1', 'down');
+		await submitFeedback(auth, 'thread-1', 'ai-1', 'down');
 
 		expect(fetchMock.mock.calls[0][1]).toMatchObject({
 			method: 'POST',
@@ -60,7 +62,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await submitFeedback('token', 'thread-1', 'ai-1', 'up', '   \n ');
+		await submitFeedback(auth, 'thread-1', 'ai-1', 'up', '   \n ');
 
 		expect(fetchMock.mock.calls[0][1].body).toBe(
 			JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'up' })
@@ -73,7 +75,7 @@ describe('submitFeedback', () => {
 			vi.fn(() => Promise.resolve(new Response(null, { status: 404 })))
 		);
 
-		await expect(submitFeedback('token', 'thread-1', 'ai-1', 'up')).rejects.toThrow(/404/);
+		await expect(submitFeedback(auth, 'thread-1', 'ai-1', 'up')).rejects.toThrow(/404/);
 	});
 
 	test('fails when the backend URL is unset', async () => {
@@ -81,7 +83,7 @@ describe('submitFeedback', () => {
 		const fetchMock = vi.fn<FetchCall>(ok);
 		vi.stubGlobal('fetch', fetchMock);
 
-		await expect(submitFeedback('token', 'thread-1', 'ai-1', 'up')).rejects.toThrow(
+		await expect(submitFeedback(auth, 'thread-1', 'ai-1', 'up')).rejects.toThrow(
 			/PUBLIC_LANGGRAPH_API_URL/
 		);
 		expect(fetchMock).not.toHaveBeenCalled();

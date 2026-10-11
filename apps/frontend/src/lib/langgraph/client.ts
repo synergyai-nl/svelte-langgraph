@@ -2,14 +2,27 @@ import { Client, type Thread } from '@langchain/langgraph-sdk';
 import { apiEndpoint, apiUrl } from './apiUrl';
 import type { ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
+import { submitFeedback, type FeedbackScore } from './feedback';
 
-export function createClient(accessToken: string): TitleClient {
+/** The SDK client plus our own backend routes, all sending the same auth. */
+export interface AppClient extends TitleClient {
+	submitFeedback(
+		threadId: string,
+		messageId: string,
+		score: FeedbackScore,
+		comment?: string
+	): Promise<void>;
+}
+
+export function createClient(accessToken: string): AppClient {
 	console.assert(!!accessToken, 'No access token specified.');
 
+	// The SDK keeps its headers protected, so our routes share this instead.
+	const auth = { Authorization: `Bearer ${accessToken}` };
+
 	const client = new Client({
-		defaultHeaders: {
-			Authorization: `Bearer ${accessToken}`
-		},
+		// A copy: the SDK may write x-api-key into the object it is given.
+		defaultHeaders: { ...auth },
 		apiUrl: apiUrl(),
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
@@ -20,16 +33,16 @@ export function createClient(accessToken: string): TitleClient {
 		): Promise<{ title: string | null }> {
 			const response = await fetch(apiEndpoint('titles'), {
 				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${accessToken}`,
-					'Content-Type': 'application/json'
-				},
+				headers: { ...auth, 'Content-Type': 'application/json' },
 				body: JSON.stringify({ messages }),
 				// Allow the backend's 10-second model timeout to return its result.
 				signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)])
 			});
 			if (!response.ok) throw new Error(`Title request failed: ${response.status}`);
 			return await response.json();
+		},
+		submitFeedback(threadId: string, messageId: string, score: FeedbackScore, comment?: string) {
+			return submitFeedback(auth, threadId, messageId, score, comment);
 		}
 	});
 }

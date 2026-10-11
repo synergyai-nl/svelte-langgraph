@@ -3,16 +3,10 @@ import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { AppClient } from '$lib/langgraph/client';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
-
-// Feedback posts straight to Aegra, so the module reads the backend URL from
-// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
-}));
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
@@ -22,13 +16,15 @@ vi.mock('@langchain/svelte', async () => {
 
 // Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
 // `threads` backs the titler's metadata reads and writes.
+const submitFeedbackMock = vi.fn();
 const mockClient = {
 	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
 	threads: {
 		get: vi.fn().mockResolvedValue({ metadata: {} }),
 		update: vi.fn().mockResolvedValue({})
-	}
-} as unknown as TitleClient;
+	},
+	submitFeedback: submitFeedbackMock
+} as unknown as AppClient;
 
 /** The `threads` mock, typed for assertions. */
 const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
@@ -41,7 +37,6 @@ const suggestions: ChatSuggestion[] = [
 function renderChat(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(Chat, {
 		langGraphClient: mockClient,
-		accessToken: 'test-token',
 		assistantId: 'assistant-1',
 		threadId: 'test-123',
 		suggestions,
@@ -55,6 +50,7 @@ beforeEach(() => {
 	mockModule.resetMock();
 	mockThreads.get.mockReset().mockResolvedValue({ metadata: {} });
 	mockThreads.update.mockReset().mockResolvedValue({});
+	submitFeedbackMock.mockReset().mockResolvedValue(undefined);
 });
 
 describe('Chat', () => {
@@ -426,18 +422,6 @@ describe('Chat', () => {
 	});
 
 	describe('when an AI message is rated', () => {
-		const FEEDBACK_URL = 'https://backend.test/feedback';
-
-		function mockFeedbackFetch() {
-			return vi.fn(
-				async () =>
-					new Response(JSON.stringify({ ok: true }), {
-						status: 200,
-						headers: { 'Content-Type': 'application/json' }
-					})
-			);
-		}
-
 		/** Hover the message with `text` and click one of ITS rating buttons.
 		 *  Scoped with `within` because every AI message renders its own pair.
 		 *  Stops at the click, which only opens the comment box — see `rate`. */
@@ -501,32 +485,27 @@ describe('Chat', () => {
 				Object.keys((body as { metadata?: object }).metadata ?? {})
 			);
 
-		test('posts the message id with the caller token, and nothing else', async () => {
-			const fetchMock = mockFeedbackFetch();
-			vi.stubGlobal('fetch', fetchMock);
+		test('rates through the client by message id, and stores nothing', async () => {
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
 			renderChat();
 			await rate(/good response/i);
 
-			await waitFor(() => {
-				expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
-					FEEDBACK_URL,
-					expect.objectContaining({
-						// The run is resolved server-side, so the client can't point
-						// a rating at another run's trace.
-						body: JSON.stringify({ thread_id: 'test-123', message_id: 'ai-1', score: 'up' }),
-						headers: expect.objectContaining({ Authorization: 'Bearer test-token' })
-					})
-				);
-			});
+			// The run is resolved server-side, so the client can't point a rating
+			// at another run's trace.
+			await waitFor(() =>
+				expect(submitFeedbackMock).toHaveBeenCalledExactlyOnceWith(
+					'test-123',
+					'ai-1',
+					'up',
+					undefined
+				)
+			);
 			// Submit-only: no rating is stored anywhere to be read back.
 			expect(metadataKeys()).toEqual([]);
 		});
 
 		test('rates each answer on its own, even two from one run', async () => {
-			const fetchMock = mockFeedbackFetch();
-			vi.stubGlobal('fetch', fetchMock);
 			mockModule.setMessages([
 				{ ...stampedAnswer('ai-1', 'First answer'), response_metadata: { run_id: 'same' } },
 				{ ...stampedAnswer('ai-2', 'Second answer'), response_metadata: { run_id: 'same' } }
@@ -536,12 +515,10 @@ describe('Chat', () => {
 			await rate(/good response/i, 'First answer');
 			await rate(/bad response/i, 'Second answer');
 
-			await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-			const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
-			const bodies = calls.map(([, init]) => JSON.parse(String(init.body)));
-			expect(bodies).toEqual([
-				{ thread_id: 'test-123', message_id: 'ai-1', score: 'up' },
-				{ thread_id: 'test-123', message_id: 'ai-2', score: 'down' }
+			await waitFor(() => expect(submitFeedbackMock).toHaveBeenCalledTimes(2));
+			expect(submitFeedbackMock.mock.calls).toEqual([
+				['test-123', 'ai-1', 'up', undefined],
+				['test-123', 'ai-2', 'down', undefined]
 			]);
 			// The first stays acknowledged; rating the second didn't touch it.
 			const first = (await screen.findByText('First answer')).closest('[role="group"]');
@@ -549,19 +526,16 @@ describe('Chat', () => {
 		});
 
 		test('a pre-stamp answer cannot be rated', async () => {
-			const fetchMock = mockFeedbackFetch();
-			vi.stubGlobal('fetch', fetchMock);
 			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
 
 			renderChat();
 			const group = (await screen.findByText('AI response')).closest('[role="group"]');
 
 			expect(within(group as HTMLElement).getByTitle(/good response/i)).toBeDisabled();
-			expect(fetchMock).not.toHaveBeenCalled();
+			expect(submitFeedbackMock).not.toHaveBeenCalled();
 		});
 
 		test('a remount forgets the submitted state, so the answer can be rated again', async () => {
-			vi.stubGlobal('fetch', mockFeedbackFetch());
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
 			const { unmount } = renderChat();
@@ -574,10 +548,7 @@ describe('Chat', () => {
 		});
 
 		test("a request pending in one thread doesn't reach the next thread's buttons", async () => {
-			vi.stubGlobal(
-				'fetch',
-				vi.fn(() => new Promise<Response>(() => {}))
-			);
+			submitFeedbackMock.mockReturnValue(new Promise(() => {}));
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
 			const { unmount } = renderChat();

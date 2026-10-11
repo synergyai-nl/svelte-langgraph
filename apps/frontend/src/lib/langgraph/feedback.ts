@@ -1,26 +1,21 @@
 import { apiEndpoint } from './apiUrl';
 
-/**
- * Rate an AI answer. The backend resolves which run produced it.
- *
- * Posts straight to Aegra with the caller's own bearer token, the same one
- * `createClient` sends.
- */
+export type FeedbackScore = 'up' | 'down';
+
+/** Rate an AI answer. The backend resolves which run produced it. Reached
+ *  through `AppClient.submitFeedback`, which supplies the client's own auth. */
 export async function submitFeedback(
-	accessToken: string,
+	auth: { Authorization: string },
 	threadId: string,
 	messageId: string,
-	score: 'up' | 'down',
+	score: FeedbackScore,
 	comment?: string
 ): Promise<void> {
 	const trimmed = comment?.trim();
 
 	const res = await fetch(apiEndpoint('feedback'), {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${accessToken}`
-		},
+		headers: { ...auth, 'Content-Type': 'application/json' },
 		// Omitted rather than sent as null when absent, so a bare rating is the
 		// same request it was before comments existed.
 		body: JSON.stringify(

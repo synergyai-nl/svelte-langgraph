@@ -2,14 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { AppClient } from '$lib/langgraph/client';
 import * as mockModule from './__tests__/mockUseStream.svelte';
-
-// Chat's feedback path posts straight to Aegra, reading the backend URL from
-// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
-}));
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
@@ -20,7 +14,7 @@ vi.mock('@langchain/svelte', async () => {
 // Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
 const mockClient = {
 	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
-} as unknown as TitleClient;
+} as unknown as AppClient;
 
 function renderChat({
 	loadingReporter
@@ -32,7 +26,6 @@ function renderChat({
 			loadingReporter: loadingReporter && { setLoading: loadingReporter },
 			chatProps: {
 				langGraphClient: mockClient,
-				accessToken: 'test-token',
 				assistantId: 'assistant-1',
 				threadId: 'test-123'
 			}

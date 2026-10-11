@@ -11,17 +11,14 @@
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
-	import { createThreadTitler, type TitleClient } from '$lib/langgraph/threadTitle';
+	import { createThreadTitler } from '$lib/langgraph/threadTitle';
+	import type { AppClient } from '$lib/langgraph/client';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
-	import { submitFeedback } from '$lib/langgraph/feedback';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
-		langGraphClient: TitleClient;
-		/** Bearer token for the backend, the same one `langGraphClient` sends.
-		 *  Feedback posts to Aegra directly, so it needs the token itself. */
-		accessToken: string;
+		langGraphClient: AppClient;
 		assistantId: string;
 		threadId: string;
 		suggestions?: ChatSuggestion[];
@@ -31,7 +28,6 @@
 
 	let {
 		langGraphClient,
-		accessToken,
 		assistantId,
 		threadId,
 		suggestions = [],
@@ -153,7 +149,7 @@
 	}
 
 	function rateMessage(message: Message, type: 'up' | 'down', comment?: string) {
-		return submitFeedback(accessToken, threadId, message.id, type, comment);
+		return langGraphClient.submitFeedback(threadId, message.id, type, comment);
 	}
 
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated

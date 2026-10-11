@@ -2,14 +2,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatWithThreadListHost from './__tests__/ChatWithThreadListHost.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { AppClient } from '$lib/langgraph/client';
 import * as mockModule from './__tests__/mockUseStream.svelte';
-
-// Chat's feedback path posts straight to Aegra, reading the backend URL from
-// `$env/dynamic/public` — a SvelteKit global that only exists at runtime.
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test' }
-}));
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
@@ -18,7 +12,7 @@ vi.mock('@langchain/svelte', async () => {
 });
 
 // Standalone consts, not reached through `mockClient.threads.*`, so `.mockResolvedValueOnce(...)`
-// isn't type-checked against the real SDK types (`mockClient` is cast `as unknown as TitleClient`).
+// isn't type-checked against the real SDK types (`mockClient` is cast `as unknown as AppClient`).
 const threadsGetMock = vi.fn().mockResolvedValue({ metadata: {} });
 const threadsUpdateMock = vi.fn().mockResolvedValue({});
 const generateTitleMock = vi.fn().mockResolvedValue({ title: 'Generated Title' });
@@ -31,7 +25,7 @@ const mockClient = {
 		update: threadsUpdateMock
 	},
 	generateTitle: generateTitleMock
-} as unknown as TitleClient;
+} as unknown as AppClient;
 
 function renderChatWithRefresh() {
 	const refresh = vi.fn();
@@ -40,7 +34,6 @@ function renderChatWithRefresh() {
 			refresh,
 			chatProps: {
 				langGraphClient: mockClient,
-				accessToken: 'test-token',
 				assistantId: 'assistant-1',
 				threadId: 'test-123'
 			}
@@ -217,7 +210,6 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 				refresh,
 				chatProps: {
 					langGraphClient: mockClient,
-					accessToken: 'test-token',
 					assistantId: 'assistant-1',
 					threadId: 'test-123'
 				}
