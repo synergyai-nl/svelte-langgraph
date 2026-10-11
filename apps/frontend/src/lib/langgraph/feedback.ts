@@ -1,13 +1,4 @@
 import { apiEndpoint } from './apiUrl';
-import { COMMENT_MAX_LENGTH } from './feedbackLimits';
-
-export { COMMENT_MAX_LENGTH };
-
-/** Code points, not `.length`: UTF-16 units would reject a comment of emoji at
- *  half the stated limit while the backend still accepted it. */
-function codePointLength(value: string): number {
-	return [...value].length;
-}
 
 /**
  * Rate an AI answer. The backend resolves which run produced it.
@@ -23,8 +14,6 @@ export async function submitFeedback(
 	comment?: string
 ): Promise<void> {
 	const trimmed = comment?.trim();
-	if (trimmed && codePointLength(trimmed) > COMMENT_MAX_LENGTH)
-		throw new Error(`comment must be at most ${COMMENT_MAX_LENGTH} characters`);
 
 	const res = await fetch(apiEndpoint('feedback'), {
 		method: 'POST',

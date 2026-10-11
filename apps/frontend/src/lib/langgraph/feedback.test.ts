@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
-import { COMMENT_MAX_LENGTH, submitFeedback } from './feedback';
+import { submitFeedback } from './feedback';
 
 // The backend URL is read from `$env/dynamic/public`, a SvelteKit global that
 // only exists at runtime. Mutable so each test can set its own shape, and
@@ -65,26 +65,6 @@ describe('submitFeedback', () => {
 		expect(fetchMock.mock.calls[0][1].body).toBe(
 			JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'up' })
 		);
-	});
-
-	test('refuses a comment over the shared limit', async () => {
-		const fetchMock = vi.fn<FetchCall>(ok);
-		vi.stubGlobal('fetch', fetchMock);
-
-		await expect(
-			submitFeedback('token', 'thread-1', 'ai-1', 'up', 'x'.repeat(COMMENT_MAX_LENGTH + 1))
-		).rejects.toThrow(/at most/);
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	test('counts the limit in code points, so emoji are not halved', async () => {
-		const fetchMock = vi.fn<FetchCall>(ok);
-		vi.stubGlobal('fetch', fetchMock);
-
-		// Two UTF-16 units each: `.length` would reject this at twice the limit.
-		await submitFeedback('token', 'thread-1', 'ai-1', 'up', '😀'.repeat(COMMENT_MAX_LENGTH));
-
-		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	test('reports a rejected score to the caller', async () => {
