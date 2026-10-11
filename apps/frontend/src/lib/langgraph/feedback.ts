@@ -1,4 +1,4 @@
-import { apiUrl } from './apiUrl';
+import { apiEndpoint } from './apiUrl';
 import { COMMENT_MAX_LENGTH } from './feedbackLimits';
 
 export { COMMENT_MAX_LENGTH };
@@ -26,7 +26,7 @@ export async function submitFeedback(
 	if (trimmed && codePointLength(trimmed) > COMMENT_MAX_LENGTH)
 		throw new Error(`comment must be at most ${COMMENT_MAX_LENGTH} characters`);
 
-	const res = await fetch(`${apiUrl()}/feedback`, {
+	const res = await fetch(apiEndpoint('feedback'), {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

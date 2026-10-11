@@ -1,18 +1,16 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
-import { apiUrl } from './apiUrl';
+import { apiEndpoint, apiUrl } from './apiUrl';
 import type { ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
 
 export function createClient(accessToken: string): TitleClient {
-	const langchainUrl = apiUrl();
-
 	console.assert(!!accessToken, 'No access token specified.');
 
 	const client = new Client({
 		defaultHeaders: {
 			Authorization: `Bearer ${accessToken}`
 		},
-		apiUrl: langchainUrl,
+		apiUrl: apiUrl(),
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
 	return Object.assign(client, {
@@ -20,9 +18,7 @@ export function createClient(accessToken: string): TitleClient {
 			messages: TitleMessage[],
 			signal: AbortSignal
 		): Promise<{ title: string | null }> {
-			// No local trailing-slash strip: apiUrl() owns that, and a second one
-			// here would hide it going wrong.
-			const response = await fetch(`${langchainUrl}/titles`, {
+			const response = await fetch(apiEndpoint('titles'), {
 				method: 'POST',
 				headers: {
 					Authorization: `Bearer ${accessToken}`,
