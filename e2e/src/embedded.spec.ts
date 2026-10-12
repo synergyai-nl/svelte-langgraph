@@ -48,14 +48,21 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	// `has:` locators are matched against the whole page, then checked for descendance from the
 	// candidate — building the inner locator from `card` too would require a *second*
 	// `[data-testid="embedded-chat-card"]` nested inside each group, which doesn't exist and
-	// silently zeroes the match. `page.locator('.prose')` here, scoped down by the outer
+	// silently zeroes the match. `page.locator(...)` here, scoped down by the outer
 	// `card.getByRole('group')` — same split chat.spec.ts uses for its own `.prose` filter.
+	// AI bubbles use `prose` (+ literal `dark:prose-invert`), user bubbles `prose prose-invert`,
+	// so `:not(.prose-invert)` excludes the user's own bubble (which also carries `.prose` and
+	// would otherwise match first, letting the test pass without any AI reply).
 	const aiMessage = card
 		.getByRole('group')
-		.filter({ has: page.locator('.prose') })
+		.filter({ has: page.locator('.prose:not(.prose-invert)') })
 		.first();
 	await expect(aiMessage).toBeVisible({ timeout: 30_000 });
-	await expect(aiMessage).not.toBeEmpty();
+	// The mock backend echoes the user input; assert the head of the question (robust to any
+	// truncation) is in the AI bubble.
+	await expect(aiMessage).toContainText(question.split(' ').slice(0, 3).join(' '), {
+		timeout: 30_000
+	});
 	await expect(textInput).toBeEnabled({ timeout: 30_000 });
 
 	// (d) The message list scrolls WITHIN the card, not the page. The app's own <main> is the
