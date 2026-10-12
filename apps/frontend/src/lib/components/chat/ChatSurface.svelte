@@ -3,7 +3,7 @@
 	 * `<ChatSurface>` — the assembled, ready-to-drop-in chat surface (SLG-133 PR 3).
 	 *
 	 * Thin composition only: `ThreadList` (optional) beside `Conversation`, with the
-	 * intro/`Suggestions` empty state layered in via `Conversation`'s `children` render-prop. No
+	 * intro/`Suggestions` empty state filled into `Conversation`'s `empty` render-prop. No
 	 * business logic of its own — everything it renders is driven by `ConversationApi` and the
 	 * ambient `<LangGraph>` context.
 	 *
@@ -22,9 +22,6 @@
 	import Conversation, { type ConversationLabels } from './Conversation.svelte';
 	import { ThreadList } from './ThreadList';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
-	import MessagesList from './MessagesList.svelte';
-	import Composer from './Composer.svelte';
-	import StateField from './StateField.svelte';
 	import { type DeepPartial } from './labels.js';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
@@ -77,53 +74,13 @@
 			{#key ctx?.client}
 				{#key ctx?.assistantId}
 					<Conversation threadId={resolvedThreadId} {labels}>
-						{#snippet children(api)}
-							<div class="flex h-full min-h-0 flex-col">
-								<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
-								<div class="flex justify-end px-4 py-1">
-									<StateField name="phase" field={api.sync.field('phase')} />
-								</div>
-								<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={api.isThreadLoading}>
-									{#if api.isThreadLoading}
-										<div
-											data-testid="chat-history-loading"
-											class="mx-auto w-full max-w-4xl space-y-4 p-4"
-										>
-											<p class="sr-only" role="status" aria-live="polite">
-												{api.labels.historyLoading}
-											</p>
-											<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
-											<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
-											<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
-										</div>
-									{:else if !api.chatStarted}
-										<Suggestions
-											{suggestions}
-											{introTitle}
-											{intro}
-											onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
-										/>
-									{:else}
-										<MessagesList
-											messages={api.messages}
-											finalAnswerStarted={api.finalAnswerStarted}
-											isStreaming={api.isLoading}
-											generationError={api.error}
-											onRetryError={api.retry}
-											onEdit={api.edit}
-											onRegenerate={api.regenerate}
-											labels={api.labelOverrides?.messagesList}
-										/>
-									{/if}
-								</div>
-								<Composer
-									bind:value={() => api.input, (v) => api.setInput(v)}
-									isStreaming={api.isLoading}
-									onSubmit={() => api.submit(api.input)}
-									onStop={api.stop}
-									labels={api.labelOverrides?.composer}
-								/>
-							</div>
+						{#snippet empty(api)}
+							<Suggestions
+								{suggestions}
+								{introTitle}
+								{intro}
+								onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+							/>
 						{/snippet}
 					</Conversation>
 				{/key}

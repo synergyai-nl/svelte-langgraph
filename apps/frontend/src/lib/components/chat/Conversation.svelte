@@ -22,10 +22,12 @@
 	};
 
 	/**
-	 * The reactive surface `Conversation` hands to its `children` snippet (and sets as
-	 * `ConversationContext` for deep-tree consumers). Everything the component's own default
+	 * The reactive surface `Conversation` hands to its `children` and `empty` snippets (and sets
+	 * as `ConversationContext` for deep-tree consumers). Everything the component's own default
 	 * composition reads is on here too — see the template below — so a caller replacing that
-	 * composition via `children` has everything needed to reproduce or extend it.
+	 * composition wholesale via `children` has everything needed to build its own. A caller that
+	 * only wants different empty-thread content (e.g. `ChatSurface`'s `Suggestions`) should pass
+	 * `empty` instead of copying the default composition into `children`.
 	 */
 	export interface ConversationApi {
 		/** Render-ready messages for the current thread. */
@@ -105,7 +107,14 @@
 		client?: TitleClient;
 		assistantId?: string;
 		labels?: DeepPartial<ConversationLabels>;
+		/** Replaces the entire default composition (phase bar, message list, composer). */
 		children?: Snippet<[ConversationApi]>;
+		/**
+		 * Rendered by the default composition in place of the message list while the thread is
+		 * bare (`!api.chatStarted`, history loaded) — the phase bar and composer stay. Ignored
+		 * when `children` is given. `Conversation` renders nothing there itself.
+		 */
+		empty?: Snippet<[ConversationApi]>;
 	}
 
 	let {
@@ -113,7 +122,8 @@
 		client: clientProp,
 		assistantId: assistantIdProp,
 		labels,
-		children
+		children,
+		empty
 	}: Props = $props();
 
 	const ctx = useLangGraphOptional();
@@ -374,11 +384,12 @@
 {:else}
 	<!--
 		Default composition — deliberately expressed purely in terms of `api`, the same object
-		handed to `children`, so a caller replacing this via `children` (e.g. `ChatSurface`, to
-		layer `Suggestions` in for the empty-thread state — see SLG-133 PR 3) can reproduce it
-		exactly. `Suggestions`/intro are NOT rendered here: unlike `Chat.svelte`, which mixed
-		conversation mechanics with that app-content empty state, `Conversation` is the pure
-		mechanics half — `ChatSurface` is the layer that adds Suggestions back for a bare thread.
+		handed to `children`, so a caller replacing this wholesale via `children` can build on
+		the same surface. `Suggestions`/intro are NOT rendered here: unlike `Chat.svelte`, which
+		mixed conversation mechanics with that app-content empty state, `Conversation` is the
+		pure mechanics half. It only leaves the `empty` slot for that content — `ChatSurface` is
+		the layer that fills it with Suggestions for a bare thread (SLG-133 PR 3), rather than
+		copying this whole composition into `children` just to add one branch.
 	-->
 	<div class="flex h-full min-h-0 flex-col">
 		<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
@@ -393,6 +404,8 @@
 					<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
 					<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
 				</div>
+			{:else if empty && !api.chatStarted}
+				{@render empty(api)}
 			{:else}
 				<MessagesList
 					messages={api.messages}
