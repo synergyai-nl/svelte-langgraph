@@ -62,3 +62,29 @@ describe('direct title transport', () => {
 		).rejects.toThrow('Title request failed: 503');
 	});
 });
+
+describe('createClient', () => {
+	it('does not log a failure when no token is given', () => {
+		const assertSpy = vi.spyOn(console, 'assert').mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			createClient('https://backend.test/api/');
+			expect(assertSpy.mock.calls.filter(([condition]) => !condition)).toEqual([]);
+			expect(errorSpy).not.toHaveBeenCalled();
+		} finally {
+			assertSpy.mockRestore();
+			errorSpy.mockRestore();
+		}
+	});
+
+	it('sends custom headers but no Authorization header without a token', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ title: 'Paris Trip' })));
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createClient('https://backend.test/api/', undefined, { 'X-Org': 'acme' });
+		await client.generateTitle(messages, new AbortController().signal);
+		const init = fetchMock.mock.calls[0][1];
+		expect(init.headers).toEqual({ 'X-Org': 'acme', 'Content-Type': 'application/json' });
+	});
+});

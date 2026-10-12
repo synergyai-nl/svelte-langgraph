@@ -15,8 +15,6 @@ export function createClient(
 ): TitleClient {
 	if (!url) throw Error('Required LangGraph API URL is undefined');
 
-	console.assert(!!token, 'No access token specified.');
-
 	const defaultHeaders: Record<string, string> = { ...headers };
 	if (token) {
 		defaultHeaders.Authorization = `Bearer ${token}`;
