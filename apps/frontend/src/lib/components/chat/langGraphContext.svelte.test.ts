@@ -169,6 +169,31 @@ describe('LangGraphContext', () => {
 			expect(ctx.creatingThread).toBe(false);
 		});
 
+		test('re-entrancy guard: a second call while one is in flight creates no second thread', async () => {
+			// Regression test: the guard used to check only `!client`, so a double-clicked retry
+			// button (one whose disabled state hadn't re-rendered yet) created two backend threads —
+			// orphaning one — and the first completion reset `creatingThread` while the second was
+			// still running.
+			// Collect every create's resolver, so an unguarded second call shows up as a failed
+			// assertion below rather than a hung, never-settling promise.
+			const resolvers: ((thread: { thread_id: string }) => void)[] = [];
+			const create = vi.fn(() => new Promise((resolve) => resolvers.push(resolve)));
+			const client = makeMockClient({ threads: { create } });
+			const ctx = makeContext({ client });
+			vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
+
+			const first = ctx.createThread();
+			const second = ctx.createThread();
+			await vi.waitFor(() => expect(create).toHaveBeenCalled());
+			resolvers.forEach((resolve, i) => resolve({ thread_id: `new-thread-${i + 1}` }));
+
+			expect(await second).toBe(false);
+			expect(create).toHaveBeenCalledTimes(1);
+			await expect(first).resolves.toBe(true);
+			expect(ctx.activeThreadId).toBe('new-thread-1');
+			expect(ctx.creatingThread).toBe(false);
+		});
+
 		test('startedFrom race guard: a late success after the active thread changed does not steal navigation', async () => {
 			// Regression test: the success path used to select the new thread unconditionally, with
 			// no equivalent to the failure path's `startedFrom` guard — so a creation that resolved

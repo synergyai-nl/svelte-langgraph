@@ -127,6 +127,23 @@ describe('ChatSurface', () => {
 		});
 	});
 
+	describe('labels', () => {
+		// Regression test: ChatSurface's composition used to forward `api.labels.messagesList` —
+		// the fully default-filled scope — which, as a prop, beat a provider leaf override.
+		test('a provider leaf override reaches AIMessageActions', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'An answer', id: 'ai-1' }]);
+			const client = makeMockClient();
+			const ctx = makeContext({
+				client,
+				assistantId: 'assistant-1',
+				labels: { aiActions: { regenerate: 'Regénérer' } }
+			});
+			render(LangGraphHost, { props: { ctx, component: ChatSurface, threadId: 'test-123' } });
+
+			expect(screen.getByTitle('Regénérer')).toBeInTheDocument();
+		});
+	});
+
 	describe('threadId resolution', () => {
 		test('shows the ChatLoader when there is no threadId prop and no active thread in context', () => {
 			renderChatSurface({ threadId: undefined });

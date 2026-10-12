@@ -1,10 +1,11 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
-import { resolveLabels } from './labels.js';
+import { labelOverrides, resolveLabels, type DeepPartial, type LangGraphLabels } from './labels.js';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
 import { makeContext } from './__tests__/testContext.js';
 import Composer from './Composer.svelte';
 import AIMessageActions from './AIMessageActions.svelte';
+import MessagesList, { type MessagesListLabels } from './MessagesList.svelte';
 import { anAIMessage } from '../__tests__/fixtures.js';
 
 describe('resolveLabels', () => {
@@ -39,6 +40,29 @@ describe('resolveLabels', () => {
 		expect(resolveLabels(defaults, { copy: 'Kopieren' }, { copy: undefined })).toEqual({
 			copy: 'Kopieren',
 			copied: 'Copied'
+		});
+	});
+});
+
+describe('labelOverrides', () => {
+	type CopyLabels = { copy: string; copied: string };
+
+	test('with neither context nor prop, returns undefined (nothing to forward)', () => {
+		expect(labelOverrides(undefined, undefined)).toBeUndefined();
+	});
+
+	test('merges context and prop with no defaults, prop winning per key', () => {
+		expect(
+			labelOverrides<CopyLabels>({ copy: 'Kopieren', copied: 'Kopiert' }, { copy: 'Copier' })
+		).toEqual({
+			copy: 'Copier',
+			copied: 'Kopiert'
+		});
+	});
+
+	test('drops keys explicitly set to undefined instead of forwarding them', () => {
+		expect(labelOverrides<CopyLabels>({ copy: 'Kopieren' }, { copy: undefined })).toEqual({
+			copy: 'Kopieren'
 		});
 	});
 });
@@ -122,6 +146,67 @@ describe('label precedence end-to-end', () => {
 				}
 			});
 			expect(screen.getByTitle('Regenerar')).toBeInTheDocument();
+		});
+	});
+
+	// Regression tests: every aggregating component used to forward its fully default-filled child
+	// scope as that child's `labels` prop — and since a prop beats context, a provider leaf
+	// override (`labels.aiActions`, `labels.feedback`) was silently replaced by the English default
+	// whenever the leaf rendered through an aggregate rather than directly. Aggregates now forward
+	// only explicit overrides (see `labelOverrides`).
+	describe('provider leaf scopes reached through an aggregate (MessagesList → ChatMessage → …)', () => {
+		function renderList(
+			ctxLabels: DeepPartial<LangGraphLabels>,
+			listLabels?: DeepPartial<MessagesListLabels>
+		) {
+			const ctx = makeContext({ labels: ctxLabels });
+			render(LangGraphHost, {
+				props: {
+					ctx,
+					component: MessagesList,
+					messages: [anAIMessage()],
+					finalAnswerStarted: true,
+					onEdit: vi.fn(),
+					onRegenerate: vi.fn(),
+					labels: listLabels
+				}
+			});
+		}
+
+		test('a provider aiActions leaf override reaches AIMessageActions', () => {
+			renderList({ aiActions: { regenerate: 'Regénérer' } });
+			expect(screen.getByTitle('Regénérer')).toBeInTheDocument();
+		});
+
+		test('a provider feedback leaf override reaches FeedbackButtons, three aggregates deep', () => {
+			renderList({ feedback: { good: 'Bonne réponse' } });
+			expect(screen.getByTitle('Bonne réponse')).toBeInTheDocument();
+			expect(screen.getByTitle('Bad Response')).toBeInTheDocument();
+		});
+
+		test('a provider aggregate override beats the provider leaf scope', () => {
+			renderList({
+				aiActions: { regenerate: 'Regénérer' },
+				messagesList: { message: { aiActions: { regenerate: 'Regenerar' } } }
+			});
+			expect(screen.getByTitle('Regenerar')).toBeInTheDocument();
+		});
+
+		test("an ancestor's labels prop beats the provider leaf scope", () => {
+			renderList(
+				{ aiActions: { regenerate: 'Regénérer' } },
+				{ message: { aiActions: { regenerate: 'Rigenera' } } }
+			);
+			expect(screen.getByTitle('Rigenera')).toBeInTheDocument();
+		});
+
+		test('the provider leaf scope still fills keys an aggregate override leaves unset', () => {
+			renderList({
+				feedback: { bad: 'Mauvaise réponse' },
+				messagesList: { message: { aiActions: { feedback: { good: 'Bonne réponse' } } } }
+			});
+			expect(screen.getByTitle('Bonne réponse')).toBeInTheDocument();
+			expect(screen.getByTitle('Mauvaise réponse')).toBeInTheDocument();
 		});
 	});
 });

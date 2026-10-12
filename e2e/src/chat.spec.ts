@@ -32,6 +32,33 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await expect(aiMessage).not.toBeEmpty();
 });
 
+test('clicking the Send button submits the message without a native form navigation', async ({
+	page,
+	chat
+}) => {
+	await authenticateUser(page);
+
+	await page.goto('/chat');
+	await page.waitForURL(/\/chat\/.+/);
+
+	const message = `Click send ${randomUUID()}`;
+	await chat.textInput.fill(message);
+	await chat.sendButton.click();
+
+	await expect(page.getByText(message, { exact: true })).toBeVisible();
+
+	// Wait for the run to finish (AI bubble echoing the message, input re-enabled) so the
+	// URL check below runs after any buggy native-submit navigation would have happened.
+	// :not(.prose-invert) selects AI bubbles only (user cards use `prose prose-invert`).
+	await expect(
+		page.locator('.prose:not(.prose-invert)').filter({ hasText: message }).first()
+	).toBeVisible({ timeout: 30_000 });
+	await expect(chat.textInput).toBeEnabled({ timeout: 45_000 });
+
+	// The form must not fall through to a native GET submission (?message=...).
+	await expect(page).not.toHaveURL(/[?&]message=/);
+});
+
 test.describe('Streaming', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

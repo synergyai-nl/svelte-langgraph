@@ -31,7 +31,7 @@
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
 	import { ScrollableContainer } from './ScrollableContainer';
-	import { resolveLabels, type DeepPartial } from './labels';
+	import { labelOverrides, type DeepPartial } from './labels';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -58,7 +58,9 @@
 	}: Props = $props();
 
 	const ctx = useLangGraphOptional();
-	const l = $derived(resolveLabels(defaultMessagesListLabels, ctx?.labels?.messagesList, labels));
+	// Renders no strings of its own, so nothing to resolve against defaults — only explicit
+	// overrides to forward (see `labelOverrides` for why never the resolved scopes).
+	const o = $derived(labelOverrides<MessagesListLabels>(ctx?.labels?.messagesList, labels));
 
 	// The message currently being generated is always the last one in the list — while a
 	// run is streaming, only that message's thinking pill should show the "still working"
@@ -108,14 +110,14 @@
 				transition:fly={{ y: 20, duration: backlog ? 0 : 800 }}
 			>
 				{#if message.type === 'tool'}
-					<ChatToolMessage {message} labels={l.toolMessage} />
+					<ChatToolMessage {message} labels={o?.toolMessage} />
 				{:else if message.text || (message.type === 'ai' && message.thinking)}
 					<ChatMessage
 						{message}
 						{onEdit}
 						{onRegenerate}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
-						labels={l.message}
+						labels={o?.message}
 					/>
 				{/if}
 			</div>
@@ -125,7 +127,7 @@
 			transition:fly={{ y: 20, duration: revealFrom === 0 ? 800 : 0 }}
 		>
 			{#if generationError && onRetryError}
-				<ChatErrorMessage error={generationError} onRetry={onRetryError} labels={l.errorMessage} />
+				<ChatErrorMessage error={generationError} onRetry={onRetryError} labels={o?.errorMessage} />
 			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}

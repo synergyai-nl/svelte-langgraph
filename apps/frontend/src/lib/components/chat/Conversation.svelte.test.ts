@@ -12,8 +12,8 @@ import * as m from '$lib/paraglide/messages.js';
  * Ported from the deleted `Chat.svelte.test.ts` (see git history at `906acf6`) onto `Conversation`,
  * the headless successor to `Chat.svelte` — see SLG-133 PR 3. `Conversation`'s default composition
  * renders only the mechanics (history-loading skeleton / MessagesList / Composer), not the
- * suggestions empty state — that moved to `ChatSurface`, which layers `Suggestions` in via
- * `Conversation`'s `children` render-prop. Assertions about the suggestions screen itself
+ * suggestions empty state — that moved to `ChatSurface`, which fills `Conversation`'s `empty`
+ * render-prop with `Suggestions`. Assertions about the suggestions screen itself
  * (`heading`, "switches from suggestions to messages") were ported onto `ChatSurface.svelte.test.ts`
  * instead; everything else here is a mechanical 1:1 port.
  */
@@ -339,6 +339,97 @@ describe('Conversation', () => {
 
 			await waitFor(() => {
 				expect(screen.getByRole('status')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('labels', () => {
+		// Regression test: Conversation (and every aggregate under it) used to forward its fully
+		// default-filled child scope as the child's `labels` prop, which beats context — so a
+		// provider leaf override never reached a leaf rendered through the default composition.
+		test('a provider leaf override reaches AIMessageActions through the default composition', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'An answer', id: 'ai-1' }]);
+			const client = makeMockClient();
+			const ctx = makeContext({
+				client,
+				assistantId: 'assistant-1',
+				labels: { aiActions: { regenerate: 'Regénérer' } }
+			});
+			render(LangGraphHost, { props: { ctx, component: Conversation, threadId: 'test-123' } });
+
+			expect(screen.getByTitle('Regénérer')).toBeInTheDocument();
+		});
+
+		test("Conversation's own labels prop still beats the provider leaf scope", () => {
+			mockModule.setMessages([{ type: 'ai', content: 'An answer', id: 'ai-1' }]);
+			const client = makeMockClient();
+			const ctx = makeContext({
+				client,
+				assistantId: 'assistant-1',
+				labels: { aiActions: { regenerate: 'Regénérer' } }
+			});
+			render(LangGraphHost, {
+				props: {
+					ctx,
+					component: Conversation,
+					threadId: 'test-123',
+					labels: { messagesList: { message: { aiActions: { regenerate: 'Regenerar' } } } }
+				}
+			});
+
+			expect(screen.getByTitle('Regenerar')).toBeInTheDocument();
+		});
+	});
+
+	describe('empty render-prop', () => {
+		function renderWithEmpty() {
+			const client = makeMockClient();
+			const ctx = makeContext({ client, assistantId: 'assistant-1' });
+			const empty = createRawSnippet<[ConversationApi]>((getApi) => ({
+				render: () => `<div data-testid="custom-empty">chatStarted=${getApi().chatStarted}</div>`
+			}));
+			return render(LangGraphHost, {
+				props: { ctx, component: Conversation, threadId: 'test-123', empty }
+			});
+		}
+
+		test('renders inside the default composition for a bare thread, receiving the ConversationApi', () => {
+			renderWithEmpty();
+
+			expect(screen.getByTestId('custom-empty')).toHaveTextContent('chatStarted=false');
+			// It replaces only the message list — the rest of the default composition stays.
+			expect(screen.getByPlaceholderText('Ask your agent…')).toBeInTheDocument();
+		});
+
+		test('does not render once the chat has started', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'Previous answer', id: 'ai-1' }]);
+			renderWithEmpty();
+
+			expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+			expect(screen.getByText('Previous answer')).toBeInTheDocument();
+		});
+
+		test('does not render while the thread history is loading', () => {
+			mockModule.setIsThreadLoading(true);
+			renderWithEmpty();
+
+			expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+			expect(screen.getByTestId('chat-history-loading')).toBeInTheDocument();
+		});
+
+		test('switches to the message list once a message is submitted', async () => {
+			const user = userEvent.setup();
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+			});
+			renderWithEmpty();
+
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+				expect(screen.getByText('Hello')).toBeInTheDocument();
 			});
 		});
 	});

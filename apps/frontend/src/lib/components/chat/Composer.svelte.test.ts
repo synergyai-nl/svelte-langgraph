@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/svelte';
+import { screen, fireEvent } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
 import Composer from './Composer.svelte';
@@ -43,6 +43,18 @@ describe('Composer', () => {
 		await user.keyboard('{Enter}');
 
 		expect(onSubmit).toHaveBeenCalled();
+	});
+
+	test('submitting the form calls onSubmit once and prevents the native submission', async () => {
+		const onSubmit = vi.fn();
+		const { container } = renderComposer({ value: 'Hello', onSubmit });
+
+		const form = container.querySelector('form')!;
+		// fireEvent returns false when preventDefault() was called on the event
+		const notPrevented = await fireEvent.submit(form);
+
+		expect(onSubmit).toHaveBeenCalledTimes(1);
+		expect(notPrevented).toBe(false);
 	});
 
 	test('does not call onSubmit on Shift+Enter', async () => {
