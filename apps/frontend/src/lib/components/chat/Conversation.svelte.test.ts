@@ -343,6 +343,44 @@ describe('Conversation', () => {
 		});
 	});
 
+	describe('labels', () => {
+		// Regression test: Conversation (and every aggregate under it) used to forward its fully
+		// default-filled child scope as the child's `labels` prop, which beats context — so a
+		// provider leaf override never reached a leaf rendered through the default composition.
+		test('a provider leaf override reaches AIMessageActions through the default composition', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'An answer', id: 'ai-1' }]);
+			const client = makeMockClient();
+			const ctx = makeContext({
+				client,
+				assistantId: 'assistant-1',
+				labels: { aiActions: { regenerate: 'Regénérer' } }
+			});
+			render(LangGraphHost, { props: { ctx, component: Conversation, threadId: 'test-123' } });
+
+			expect(screen.getByTitle('Regénérer')).toBeInTheDocument();
+		});
+
+		test("Conversation's own labels prop still beats the provider leaf scope", () => {
+			mockModule.setMessages([{ type: 'ai', content: 'An answer', id: 'ai-1' }]);
+			const client = makeMockClient();
+			const ctx = makeContext({
+				client,
+				assistantId: 'assistant-1',
+				labels: { aiActions: { regenerate: 'Regénérer' } }
+			});
+			render(LangGraphHost, {
+				props: {
+					ctx,
+					component: Conversation,
+					threadId: 'test-123',
+					labels: { messagesList: { message: { aiActions: { regenerate: 'Regenerar' } } } }
+				}
+			});
+
+			expect(screen.getByTitle('Regenerar')).toBeInTheDocument();
+		});
+	});
+
 	describe('children render-prop', () => {
 		test('replaces the default composition and receives the ConversationApi', () => {
 			mockModule.setMessages([{ type: 'ai', content: 'From api', id: 'ai-1' }]);

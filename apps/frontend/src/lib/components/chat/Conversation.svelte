@@ -3,6 +3,7 @@
 	import { defaultMessagesListLabels, type MessagesListLabels } from './MessagesList.svelte';
 	import { getContext, setContext } from 'svelte';
 	import type { Message, SchemaStatus, FieldBinding } from '@svelte-langgraph/client';
+	import type { DeepPartial } from './labels.js';
 
 	/**
 	 * Purely a pass-through aggregate — `Conversation` renders no label strings of its own except
@@ -56,10 +57,20 @@
 		sync: { readonly schema: SchemaStatus; field(name: string): FieldBinding };
 		/**
 		 * Fully-resolved labels (defaults ← context ← prop) — the same value the default
-		 * composition renders with. Custom `children` (e.g. `ChatSurface`) read this instead of
-		 * re-running `resolveLabels` themselves, keeping precedence logic in one place.
+		 * composition renders its own strings (`historyLoading`) with. Custom `children` read this
+		 * for strings they render themselves instead of re-running `resolveLabels`, keeping
+		 * precedence logic in one place — but must NOT forward its nested scopes to a child
+		 * component (`labels={api.labels.messagesList}`): that fully default-filled scope would
+		 * beat, as a prop, the child's provider leaf scopes. Forward `labelOverrides` instead.
 		 */
 		labels: ConversationLabels;
+		/**
+		 * Explicit overrides only (context ← prop, no defaults; `undefined` when neither is set) —
+		 * what the default composition forwards to `MessagesList`/`Composer`, and what custom
+		 * `children` should forward too: `labels={api.labelOverrides?.messagesList}`. See
+		 * `labelOverrides` in `labels.ts`.
+		 */
+		labelOverrides: DeepPartial<ConversationLabels> | undefined;
 	}
 
 	const CONVERSATION_KEY = Symbol.for('slg-conversation');
@@ -86,7 +97,7 @@
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
-	import { resolveLabels, type DeepPartial } from './labels.js';
+	import { labelOverrides, resolveLabels } from './labels.js';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -137,7 +148,12 @@
 	const langGraphClient = requireClient(clientProp ?? ctx?.client);
 	const assistantId = requireAssistantId(assistantIdProp ?? ctx?.assistantId);
 
+	// `l` renders this component's own string (`historyLoading`); `o` is what it forwards to its
+	// children — explicit overrides only, never `l`'s default-filled scopes (see `labelOverrides`).
+	// Its "own scope" in the provider's labels is the aggregate root itself: `ConversationLabels`'
+	// keys (`composer`, `messagesList`, `historyLoading`) live at the top of `LangGraphLabels`.
 	const l = $derived(resolveLabels(defaultConversationLabels, ctx?.labels, labels));
+	const o = $derived(labelOverrides<ConversationLabels>(ctx?.labels, labels));
 
 	const stream = useStream({
 		client: langGraphClient,
@@ -344,6 +360,9 @@
 		sync,
 		get labels() {
 			return l;
+		},
+		get labelOverrides() {
+			return o;
 		}
 	};
 
@@ -383,7 +402,7 @@
 					onRetryError={api.retry}
 					onEdit={api.edit}
 					onRegenerate={api.regenerate}
-					labels={l.messagesList}
+					labels={o?.messagesList}
 				/>
 			{/if}
 		</div>
@@ -392,7 +411,7 @@
 			isStreaming={api.isLoading}
 			onSubmit={() => api.submit(api.input)}
 			onStop={api.stop}
-			labels={l.composer}
+			labels={o?.composer}
 		/>
 	</div>
 {/if}

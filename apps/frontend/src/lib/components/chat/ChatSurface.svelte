@@ -112,7 +112,7 @@
 											onRetryError={api.retry}
 											onEdit={api.edit}
 											onRegenerate={api.regenerate}
-											labels={api.labels.messagesList}
+											labels={api.labelOverrides?.messagesList}
 										/>
 									{/if}
 								</div>
@@ -121,7 +121,7 @@
 									isStreaming={api.isLoading}
 									onSubmit={() => api.submit(api.input)}
 									onStop={api.stop}
-									labels={api.labels.composer}
+									labels={api.labelOverrides?.composer}
 								/>
 							</div>
 						{/snippet}

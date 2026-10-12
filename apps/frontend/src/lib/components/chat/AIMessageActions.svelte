@@ -26,7 +26,7 @@
 	import type { Message } from '@svelte-langgraph/client';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
 	import FeedbackButtons from './FeedbackButtons.svelte';
-	import { resolveLabels, type DeepPartial } from './labels';
+	import { labelOverrides, resolveLabels, type DeepPartial } from './labels';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -41,6 +41,9 @@
 
 	const ctx = useLangGraphOptional();
 	const l = $derived(resolveLabels(defaultAIMessageActionsLabels, ctx?.labels?.aiActions, labels));
+	// `l` is for this component's own strings; `feedback` is forwarded as explicit overrides only,
+	// so a provider `labels.feedback` leaf scope isn't clobbered by `l.feedback`'s defaults.
+	const o = $derived(labelOverrides<AIMessageActionsLabels>(ctx?.labels?.aiActions, labels));
 
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -91,5 +94,5 @@
 		</TooltipContent>
 	</Tooltip>
 
-	<FeedbackButtons {message} {onFeedback} labels={l.feedback} />
+	<FeedbackButtons {message} {onFeedback} labels={o?.feedback} />
 </div>

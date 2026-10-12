@@ -39,7 +39,7 @@
 	import UserMessageActions from './UserMessageActions.svelte';
 	import UserMessageEdit from './UserMessageEdit.svelte';
 	import ThinkingBlock from './ThinkingBlock.svelte';
-	import { resolveLabels, type DeepPartial } from './labels';
+	import { labelOverrides, type DeepPartial } from './labels';
 	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -62,7 +62,9 @@
 	}: Props = $props();
 
 	const ctx = useLangGraphOptional();
-	const l = $derived(resolveLabels(defaultChatMessageLabels, ctx?.labels?.message, labels));
+	// Renders no strings of its own, so nothing to resolve against defaults — only explicit
+	// overrides to forward (see `labelOverrides` for why never the resolved scopes).
+	const o = $derived(labelOverrides<ChatMessageLabels>(ctx?.labels?.message, labels));
 
 	const plugins = [gfmPlugin()];
 
@@ -106,7 +108,7 @@
 					bind:value={editText}
 					onConfirm={confirmEdit}
 					onCancel={cancelEditing}
-					labels={l.userEdit}
+					labels={o?.userEdit}
 				/>
 			{:else}
 				<div
@@ -120,7 +122,7 @@
 							<ThinkingBlock
 								thinking={message.thinking}
 								active={isThinkingActive}
-								labels={l.thinking}
+								labels={o?.thinking}
 							/>
 						{/if}
 						{#if message.text}
@@ -134,7 +136,7 @@
 								{isHovered}
 								{onRegenerate}
 								{onFeedback}
-								labels={l.aiActions}
+								labels={o?.aiActions}
 							/>
 						{/if}
 					{:else}
@@ -145,7 +147,7 @@
 								{message.text}
 							</Card.Content>
 						</Card.Root>
-						<UserMessageActions {isHovered} onEdit={startEditing} labels={l.userActions} />
+						<UserMessageActions {isHovered} onEdit={startEditing} labels={o?.userActions} />
 					{/if}
 				</div>
 			{/if}
