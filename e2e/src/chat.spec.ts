@@ -32,6 +32,25 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await expect(aiMessage).not.toBeEmpty();
 });
 
+test('clicking the Send button submits the message without a native form navigation', async ({
+	page,
+	chat
+}) => {
+	await authenticateUser(page);
+
+	await page.goto('/chat');
+	await page.waitForURL(/\/chat\/.+/);
+
+	const message = `Click send ${randomUUID()}`;
+	await chat.textInput.fill(message);
+	await chat.sendButton.click();
+
+	// The user message is rendered, and the form did not fall through to a native GET
+	// submission that would leak the text into the URL as ?message=...
+	await expect(page.getByText(message, { exact: true })).toBeVisible();
+	expect(page.url()).not.toContain('message=');
+});
+
 test.describe('Streaming', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

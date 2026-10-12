@@ -35,6 +35,12 @@
 	const resolvedPlaceholder = $derived(placeholder ?? l.placeholder);
 
 	let isEmpty = $derived(!(value ?? '').trim());
+	function handleSubmit(event: SubmitEvent) {
+		// Prevent the native GET form submission (would navigate to ?message=<text>).
+		event.preventDefault();
+		onSubmit();
+	}
+
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false && !event.isComposing) {
 			event.preventDefault();
@@ -49,7 +55,7 @@
 	<div class="mx-auto w-full max-w-4xl px-4 py-4">
 		<form
 			id="input_form"
-			onsubmit={onSubmit}
+			onsubmit={handleSubmit}
 			class="border-border-input bg-card rounded-xl border px-4 py-2 shadow-md"
 		>
 			<div class="flex items-end gap-3">
