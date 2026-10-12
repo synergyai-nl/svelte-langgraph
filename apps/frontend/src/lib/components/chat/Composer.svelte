@@ -1,4 +1,11 @@
+<!--
+	@component
+	Composer — the message input area: a textarea plus send/stop controls. Also known as the chat
+	input, message box, or prompt input. Enter submits, Shift+Enter inserts a newline.
+-->
+
 <script lang="ts" module>
+	/** Labels for `Composer`, the chat input / message box / prompt input. */
 	export interface ComposerLabels {
 		placeholder: string;
 	}

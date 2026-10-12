@@ -35,6 +35,7 @@ export type DeepPartial<T> = {
  */
 export interface LangGraphLabels {
 	threadList?: DeepPartial<ThreadListLabels>;
+	/** Labels for `Composer`: the chat input / message box / prompt input. */
 	composer?: DeepPartial<ComposerLabels>;
 	messagesList?: DeepPartial<MessagesListLabels>;
 	message?: DeepPartial<ChatMessageLabels>;
