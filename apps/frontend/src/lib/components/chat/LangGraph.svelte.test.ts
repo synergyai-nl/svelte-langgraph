@@ -48,6 +48,35 @@ describe('<LangGraph> client identity', () => {
 		expect(getCtx()?.client).not.toBe(first);
 	});
 
+	// Regression test: `headers` used to be read by object identity, so an inline
+	// `headers={{ 'X-Org': id }}` minted a new client (and restarted the thread fetch) on every
+	// parent re-render, even with unchanged contents.
+	test('a new-but-equal headers object across prop updates keeps the same client object', async () => {
+		const base = { url: 'http://localhost:8000', token: 'tok-a', assistantId: 'assistant-1' };
+		const { rerender, getCtx } = renderProbe({ ...base, headers: { 'X-Org': 'org-1' } });
+		await tick();
+		const first = getCtx()?.client;
+		expect(first).toBeDefined();
+
+		await rerender({ ...base, headers: { 'X-Org': 'org-1' } });
+		await tick();
+
+		expect(getCtx()?.client).toBe(first);
+	});
+
+	test('headers with different contents mint a new client', async () => {
+		const base = { url: 'http://localhost:8000', token: 'tok-a', assistantId: 'assistant-1' };
+		const { rerender, getCtx } = renderProbe({ ...base, headers: { 'X-Org': 'org-1' } });
+		await tick();
+		const first = getCtx()?.client;
+
+		await rerender({ ...base, headers: { 'X-Org': 'org-2' } });
+		await tick();
+
+		expect(getCtx()?.client).toBeDefined();
+		expect(getCtx()?.client).not.toBe(first);
+	});
+
 	test('no token and no client prop leaves the client undefined', async () => {
 		const { getCtx } = renderProbe({ url: 'http://localhost:8000' });
 		await tick();

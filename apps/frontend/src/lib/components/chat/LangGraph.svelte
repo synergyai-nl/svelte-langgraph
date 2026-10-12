@@ -31,6 +31,7 @@
 		url?: string;
 		/** Bearer token. Derived on the token *string* so unrelated re-renders don't mint a new client. */
 		token?: string | null;
+		/** Extra request headers. Derived on their serialized *contents*, like `token`, so an inline object literal doesn't mint a new client on every re-render. */
 		headers?: Record<string, string>;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
 		client?: TitleClient;
@@ -73,8 +74,20 @@
 	// Derive the client on the token *string* (not a session object) so navigations that keep the
 	// same token don't mint a new `Client` and restart the thread fetch — see `+layout.svelte`'s
 	// existing discipline, preserved here. `client` is a pure escape hatch and always wins.
+	//
+	// `headers` gets the same treatment via `headersKey`: read by object identity, an inline
+	// `headers={{ 'X-Org': id }}` is a fresh object on every parent re-render and would mint a
+	// new client each time. The serialized string only changes when the contents do, and a
+	// `$derived` whose value is unchanged (`===`) doesn't propagate — so `derivedClient` below
+	// reads only `headersKey`, never `headers` itself. Key order counts as a change; harmless,
+	// since an inline literal keeps its order across re-renders.
+	const headersKey = $derived(headers ? JSON.stringify(headers) : '');
 	let derivedClient = $derived.by(
-		() => clientProp ?? (token ? createClient(url ?? '', token, headers) : undefined)
+		() =>
+			clientProp ??
+			(token
+				? createClient(url ?? '', token, headersKey ? JSON.parse(headersKey) : undefined)
+				: undefined)
 	);
 
 	$effect(() => {
