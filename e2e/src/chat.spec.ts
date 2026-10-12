@@ -45,10 +45,18 @@ test('clicking the Send button submits the message without a native form navigat
 	await chat.textInput.fill(message);
 	await chat.sendButton.click();
 
-	// The user message is rendered, and the form did not fall through to a native GET
-	// submission that would leak the text into the URL as ?message=...
 	await expect(page.getByText(message, { exact: true })).toBeVisible();
-	expect(page.url()).not.toContain('message=');
+
+	// Wait for the run to finish (AI bubble echoing the message, input re-enabled) so the
+	// URL check below runs after any buggy native-submit navigation would have happened.
+	// :not(.prose-invert) selects AI bubbles only (user cards use `prose prose-invert`).
+	await expect(
+		page.locator('.prose:not(.prose-invert)').filter({ hasText: message }).first()
+	).toBeVisible({ timeout: 30_000 });
+	await expect(chat.textInput).toBeEnabled({ timeout: 45_000 });
+
+	// The form must not fall through to a native GET submission (?message=...).
+	await expect(page).not.toHaveURL(/[?&]message=/);
 });
 
 test.describe('Streaming', () => {
