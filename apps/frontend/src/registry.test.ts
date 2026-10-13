@@ -15,6 +15,18 @@ function chatSourceFiles(): string[] {
 		.sort();
 }
 
+/** Patched copies of upstream shadcn-svelte ui items that the chat components depend on. */
+const patchedUiDirs = ['sidebar', 'spinner', 'copy-button'];
+const uiDir = 'src/lib/components/ui';
+
+function uiSourceFiles(dir: string): string[] {
+	return readdirSync(`${frontendRoot}/${uiDir}/${dir}`, { recursive: true, encoding: 'utf8' })
+		.filter((file) => /\.(svelte|ts|js)$/.test(file))
+		.filter((file) => !file.includes('__tests__') && !/\.(test|spec)\./.test(file))
+		.map((file) => `${uiDir}/${dir}/${file}`)
+		.sort();
+}
+
 describe('shadcn-svelte registry', () => {
 	const chat = registry.items.find((item) => item.name === 'chat')!;
 	const paths = chat.files.map((file) => file.path);
@@ -39,5 +51,26 @@ describe('shadcn-svelte registry', () => {
 				target: `messages/chat/${locale}.json`
 			});
 		}
+	});
+
+	test.each(patchedUiDirs)('ships every file of the patched ui/%s and no tests', (dir) => {
+		const shipped = paths.filter((path) => path.startsWith(`${uiDir}/${dir}/`)).sort();
+		expect(shipped).toEqual(uiSourceFiles(dir));
+	});
+
+	test('installs patched ui files into the consumer ui directory', () => {
+		for (const dir of patchedUiDirs) {
+			for (const file of chat.files.filter((file) => file.path.startsWith(`${uiDir}/${dir}/`))) {
+				expect(file.type).toBe('registry:ui');
+				expect(file.target).toBe(file.path.replace(`${uiDir}/`, ''));
+			}
+		}
+	});
+
+	test('does not also depend on the upstream versions of the patched ui items', () => {
+		for (const dir of patchedUiDirs) {
+			expect(chat.registryDependencies).not.toContain(dir);
+		}
+		expect(chat.registryDependencies.join()).not.toContain('copy-button');
 	});
 });

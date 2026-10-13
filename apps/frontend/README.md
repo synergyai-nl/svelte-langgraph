@@ -63,8 +63,14 @@ runs it first), so a deployed frontend serves the item at `/r/chat.json`.
    pnpm dlx shadcn-svelte@latest add https://<your-frontend>/r/chat.json
    ```
 
-   This copies the components into `$lib/components/chat/`, pulls in the shadcn-svelte UI
-   components they use, and writes the chat strings to `messages/chat/{locale}.json`.
+   This copies the components into `$lib/components/chat/`, pulls in the upstream shadcn-svelte
+   UI components they use, and writes the chat strings to `messages/chat/{locale}.json`.
+
+   The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
+   which **overwrite** your own versions of those: the chat components rely on the
+   container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
+   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. The CLI prompts before
+   overwriting existing files; review the diff if you customized any of them.
 
 2. Load those messages alongside your own: in `project.inlang/settings.json`, make
    `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
