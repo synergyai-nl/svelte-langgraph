@@ -69,11 +69,11 @@ describe('Header', () => {
 	describe('navigation', () => {
 		// Both variants carry the same links — "/" must not become a dead end.
 		(['app', 'marketing'] as const).forEach((variant) => {
-			test(`exposes home, chat and docs links in the ${variant} variant`, () => {
+			test(`exposes home, demos and docs links in the ${variant} variant`, () => {
 				renderHeader({ variant });
 
 				expect(screen.getByRole('link', { name: m.nav_home() })).toHaveAttribute('href', '/');
-				expect(screen.getByRole('link', { name: m.nav_chat() })).toHaveAttribute('href', '/chat');
+				expect(screen.getByRole('link', { name: m.nav_demos() })).toHaveAttribute('href', '/demo');
 				expect(screen.getByRole('link', { name: m.nav_docs() })).toHaveAttribute(
 					'href',
 					expect.stringContaining('github.com')
@@ -95,14 +95,20 @@ describe('Header', () => {
 			expect(screen.getByRole('button', { name: 'Toggle menu' })).toBeInTheDocument();
 		});
 
-		test('navigates to chat from the mobile menu', async () => {
+		test('navigates to demos from the mobile menu', async () => {
 			const user = userEvent.setup();
 			renderHeader();
 
 			await user.click(screen.getByRole('button', { name: 'Toggle menu' }));
-			await user.click(await screen.findByRole('menuitem', { name: m.nav_chat() }));
+			await user.click(await screen.findByRole('menuitem', { name: m.nav_demos() }));
 
-			expect(goto).toHaveBeenCalledWith('/chat');
+			expect(goto).toHaveBeenCalledWith('/demo');
+		});
+
+		test('does not expose chat as a top-level destination', () => {
+			renderHeader();
+
+			expect(screen.queryByRole('link', { name: /^chat$/i })).not.toBeInTheDocument();
 		});
 
 		test('renders the mobile docs entry as the menu item itself', async () => {
