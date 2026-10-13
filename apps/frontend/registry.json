@@ -331,17 +331,17 @@
 				{
 					"path": "messages/chat/en.json",
 					"type": "registry:file",
-					"target": "messages/chat/en.json"
+					"target": "~/messages/chat/en.json"
 				},
 				{
 					"path": "messages/chat/nl.json",
 					"type": "registry:file",
-					"target": "messages/chat/nl.json"
+					"target": "~/messages/chat/nl.json"
 				},
 				{
 					"path": "messages/chat/hi.json",
 					"type": "registry:file",
-					"target": "messages/chat/hi.json"
+					"target": "~/messages/chat/hi.json"
 				}
 			]
 		}
