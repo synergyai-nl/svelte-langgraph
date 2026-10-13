@@ -1,0 +1,189 @@
+{
+	"$schema": "https://shadcn-svelte.com/schema/registry.json",
+	"name": "svelte-langgraph",
+	"homepage": "https://github.com/synergyai-nl/svelte-langgraph",
+	"aliases": {
+		"lib": "$lib",
+		"ui": "$lib/components/ui",
+		"utils": "$lib/utils",
+		"hooks": "$lib/hooks"
+	},
+	"items": [
+		{
+			"name": "chat",
+			"type": "registry:block",
+			"title": "Chat",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/chat/{locale}.json). TODO: @svelte-langgraph/client is a private workspace package (packages/client) that is not published to npm yet.",
+			"registryDependencies": [
+				"button",
+				"card",
+				"sidebar",
+				"spinner",
+				"textarea",
+				"tooltip",
+				"https://shadcn-svelte-extras.com/r/copy-button.json"
+			],
+			"dependencies": [
+				"@inlang/paraglide-js@^2.25.4",
+				"@langchain/langgraph-sdk@^1.8.3",
+				"@langchain/svelte@^0.3.1",
+				"@lucide/svelte@^0.562.0",
+				"@svelte-langgraph/client",
+				"svelte-exmarkdown@^5.0.1"
+			],
+			"devDependencies": [],
+			"files": [
+				{
+					"path": "src/lib/components/chat/AIMessageActions.svelte",
+					"type": "registry:component",
+					"target": "chat/AIMessageActions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatErrorMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatErrorMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatSurface.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatSurface.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatToolMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatToolMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatWaiting.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatWaiting.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/MessageComposer.svelte",
+					"type": "registry:component",
+					"target": "chat/MessageComposer.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/Conversation.svelte",
+					"type": "registry:component",
+					"target": "chat/Conversation.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/FeedbackButtons.svelte",
+					"type": "registry:component",
+					"target": "chat/FeedbackButtons.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/LangGraph.svelte",
+					"type": "registry:component",
+					"target": "chat/LangGraph.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/langGraphContext.svelte.ts",
+					"type": "registry:component",
+					"target": "chat/langGraphContext.svelte.ts"
+				},
+				{
+					"path": "src/lib/components/chat/MessagesList.svelte",
+					"type": "registry:component",
+					"target": "chat/MessagesList.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/index.js",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/index.js"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/ScrollableContainer.svelte",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/ScrollableContainer.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/scrollControls.ts",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/scrollControls.ts"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/scrollListener.ts",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/scrollListener.ts"
+				},
+				{
+					"path": "src/lib/components/chat/StateField.svelte",
+					"type": "registry:component",
+					"target": "chat/StateField.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/SubmitButton.svelte",
+					"type": "registry:component",
+					"target": "chat/SubmitButton.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/SuggestionCard.svelte",
+					"type": "registry:component",
+					"target": "chat/SuggestionCard.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/Suggestions.svelte",
+					"type": "registry:component",
+					"target": "chat/Suggestions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThinkingBlock.svelte",
+					"type": "registry:component",
+					"target": "chat/ThinkingBlock.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/index.ts",
+					"type": "registry:component",
+					"target": "chat/ThreadList/index.ts"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/ThreadList.svelte",
+					"type": "registry:component",
+					"target": "chat/ThreadList/ThreadList.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/ThreadListItem.svelte",
+					"type": "registry:component",
+					"target": "chat/ThreadList/ThreadListItem.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/UserMessageActions.svelte",
+					"type": "registry:component",
+					"target": "chat/UserMessageActions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/UserMessageEdit.svelte",
+					"type": "registry:component",
+					"target": "chat/UserMessageEdit.svelte"
+				},
+				{
+					"path": "src/lib/components/ChatLoader.svelte",
+					"type": "registry:component",
+					"target": "ChatLoader.svelte"
+				},
+				{
+					"path": "messages/chat/en.json",
+					"type": "registry:file",
+					"target": "messages/chat/en.json"
+				},
+				{
+					"path": "messages/chat/nl.json",
+					"type": "registry:file",
+					"target": "messages/chat/nl.json"
+				},
+				{
+					"path": "messages/chat/hi.json",
+					"type": "registry:file",
+					"target": "messages/chat/hi.json"
+				}
+			]
+		}
+	]
+}
