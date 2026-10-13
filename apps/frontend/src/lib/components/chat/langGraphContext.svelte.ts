@@ -4,10 +4,10 @@
  * One stable `LangGraphContext` instance per provider, constructed and set into context by
  * `LangGraph.svelte`, read by descendants via `useLangGraph()`.
  *
- * The provider is mandatory: chat components that read this context (`ThreadList`, ...) call
- * `useLangGraph('<Name>')` once at init and throw, naming themselves, when rendered outside a
- * `<LangGraph>`. There is no silent "no provider" mode — their props are overrides of the
- * context's values, not an alternative to it.
+ * The provider is mandatory: chat components that read this context (`ThreadList`,
+ * `Conversation`, `ChatSurface`) call `useLangGraph('<Name>')` once at init and throw, naming
+ * themselves, when rendered outside a `<LangGraph>`. There is no silent "no provider" mode —
+ * their props are overrides of the context's values, not an alternative to it.
  *
  * House pattern (same as `ThreadListState`, see `threadListState.svelte.ts`): private `$state`
  * fields + public getters/setters, no `$effect` inside the class. `LangGraph.svelte` owns every
@@ -226,7 +226,7 @@ export class LangGraphContext {
 		return this.#pendingThreadId;
 	}
 
-	/** Folds the old `threadLoadingContext` semantics: report a thread's history-loading state. */
+	/** Report a thread's history-loading state; drives `pendingThreadId` (the loading row). */
 	setThreadLoading(threadId: string, loading: boolean): void {
 		if (loading) this.#pendingThreadId = threadId;
 		else if (this.#pendingThreadId === threadId) this.#pendingThreadId = null;
@@ -269,12 +269,4 @@ export function useLangGraph(componentName?: string): LangGraphContext {
 		);
 	}
 	return ctx;
-}
-
-/**
- * Read the `<LangGraph>` context, or `undefined` outside a provider. Transitional: components
- * must use `useLangGraph()`; this goes away once the remaining callers are migrated.
- */
-export function useLangGraphOptional(): LangGraphContext | undefined {
-	return getContext<LangGraphContext | undefined>(KEY);
 }

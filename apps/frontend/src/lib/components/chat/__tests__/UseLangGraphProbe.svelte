@@ -1,24 +1,21 @@
 <script lang="ts">
 	/**
-	 * Calls `useLangGraph()`/`useLangGraphOptional()` during component init and hands the result (or
-	 * the thrown error, for `useLangGraph()` outside a provider) to the test via callback props.
-	 * Rendered bare (no `<LangGraph>` ancestor) to test the "outside a provider" cases, or nested
-	 * inside `<LangGraph>`/`LangGraphHost` to capture the live context instance.
+	 * Calls `useLangGraph()` during component init and hands the result to the test via a callback
+	 * prop. Rendered bare (no `<LangGraph>` ancestor) to test that it throws outside a provider, or
+	 * nested inside `<LangGraph>`/`LangGraphHost` to capture the live context instance.
 	 */
-	import { useLangGraph, useLangGraphOptional } from '../langGraphContext.svelte.js';
+	import { useLangGraph } from '../langGraphContext.svelte.js';
 	import type { LangGraphContext } from '../langGraphContext.svelte.js';
 
 	interface Props {
-		/** Use `useLangGraph()` (throws outside a provider) instead of the optional variant. */
-		required?: boolean;
-		/** Component name passed to `useLangGraph(name)` (only with `required`). */
+		/** Component name passed to `useLangGraph(name)`. */
 		name?: string;
-		onResult?: (ctx: LangGraphContext | undefined) => void;
+		onResult?: (ctx: LangGraphContext) => void;
 	}
 
-	let { required = false, name, onResult }: Props = $props();
+	let { name, onResult }: Props = $props();
 
-	const ctx = required ? useLangGraph(name) : useLangGraphOptional();
+	const ctx = useLangGraph(name);
 	onResult?.(ctx);
 </script>
 
