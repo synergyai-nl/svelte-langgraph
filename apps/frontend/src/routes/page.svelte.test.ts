@@ -3,7 +3,6 @@ import { render, screen, within } from '@testing-library/svelte';
 import Page from './+page.svelte';
 
 const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
-const DEMO_URL = 'https://svelte-langgraph-demo.synergyai.nl/';
 
 beforeEach(() => {
 	render(Page);
@@ -18,16 +17,11 @@ describe('landing page', () => {
 			expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Your agent works.');
 		});
 
-		test('makes the chat the primary call to action', () => {
-			expect(hero().getByRole('link', { name: /open the chat/i })).toHaveAttribute('href', '/chat');
-		});
+		test('makes the demos overview the primary call to action', () => {
+			const demo = hero().getByRole('link', { name: /explore demos/i });
 
-		test('links the live demo out to the hosted instance', () => {
-			const demo = hero().getByRole('link', { name: /try live demo/i });
-
-			expect(demo).toHaveAttribute('href', DEMO_URL);
-			expect(demo).toHaveAttribute('target', '_blank');
-			expect(demo).toHaveAttribute('rel', expect.stringContaining('noopener'));
+			expect(demo).toHaveAttribute('href', '/demo');
+			expect(demo).not.toHaveAttribute('target');
 		});
 
 		test('links to the GitHub repository', () => {
@@ -41,6 +35,36 @@ describe('landing page', () => {
 			expect(screen.getByTestId('hero-terminal-body')).toBeInTheDocument();
 			expect(screen.getByAltText('Svelte')).toBeInTheDocument();
 			expect(screen.getByAltText('LangGraph')).toBeInTheDocument();
+		});
+	});
+
+	describe('final call to action', () => {
+		test('links internally to the demos overview', () => {
+			const heading = screen.getByRole('heading', {
+				level: 2,
+				name: /your agent is the product/i
+			});
+			const section = within(heading.closest('section')!);
+			const demo = section.getByRole('link', { name: /explore demos/i });
+
+			expect(demo).toHaveAttribute('href', '/demo');
+			expect(demo).not.toHaveAttribute('target');
+		});
+
+		test('does not link to the old deployed-root demo URL', () => {
+			const demoLinks = screen.getAllByRole('link', { name: /explore demos/i });
+
+			expect(demoLinks).toHaveLength(2);
+			demoLinks.forEach((link) => {
+				expect(link).toHaveAttribute('href', '/demo');
+				expect(link).not.toHaveAttribute('target');
+			});
+			expect(
+				screen.queryByRole('link', { name: /open the chat|try live demo/i })
+			).not.toBeInTheDocument();
+			expect(
+				document.querySelector('a[href="https://svelte-langgraph-demo.synergyai.nl/"]')
+			).toBeNull();
 		});
 	});
 
