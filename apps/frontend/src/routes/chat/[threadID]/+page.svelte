@@ -1,39 +1,24 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
 	import Chat from '$lib/components/chat/Conversation.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getOrCreateAssistant, createClient } from '@svelte-langgraph/client';
+	import { setThreadListRefresh, setThreadLoadingReporter } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
-	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
+	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
 
 	let show_login_dialog = $state(!page.data.session);
 
-	// Updates client whenever accessToken changes
-	let client = $derived(
-		page.data.session
-			? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', page.data.session.accessToken)
-			: null
-	);
-	let assistantId = $state<string | null>(null);
-	let threadId = $derived(page.params.threadID!);
-	let initialization_error = $state<Error | null>(null);
-
-	async function initAssistant(client: Client) {
-		try {
-			assistantId = await getOrCreateAssistant(client, 'chat');
-		} catch (err) {
-			initialization_error = err instanceof Error ? err : new Error(String(err));
-		}
-	}
-
-	$effect(() => {
-		if (assistantId === null && client && threadId) {
-			initAssistant(client);
-		}
+	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
+	// page only reads the result.
+	const ctx = useLangGraph();
+	// Bridges the legacy contexts `Chat` still reads; removed in the next PR when `Conversation` reads the provider directly.
+	setThreadListRefresh({ refresh: () => ctx.threadList.refresh() });
+	setThreadLoadingReporter({
+		setLoading: (threadId, loading) => ctx.setThreadLoading(threadId, loading)
 	});
+	let threadId = $derived(page.params.threadID!);
 
 	$effect.pre(() => {
 		if (!page.data.session) show_login_dialog = true;
@@ -73,13 +58,13 @@
 	});
 </script>
 
-{#if initialization_error}
-	<ChatError error={initialization_error} />
-{:else if assistantId && client}
+{#if ctx.error}
+	<ChatError error={ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))} />
+{:else if ctx.assistantId && ctx.client}
 	{#key threadId}
 		<Chat
-			langGraphClient={client}
-			{assistantId}
+			langGraphClient={ctx.client}
+			assistantId={ctx.assistantId}
 			{threadId}
 			introTitle={greeting}
 			intro={m.chat_intro()}

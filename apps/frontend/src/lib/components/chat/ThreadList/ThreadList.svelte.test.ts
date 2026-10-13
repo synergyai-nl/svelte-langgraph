@@ -2,6 +2,8 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import { createRawSnippet, tick } from 'svelte';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';
+import ThreadList from './ThreadList.svelte';
+import { makeContext } from '../__tests__/testContext.js';
 import { aThread } from '../../__tests__/fixtures';
 import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from '$lib/components/ui/sidebar';
@@ -30,17 +32,28 @@ function makeListStub(overrides: ListStubOverrides = {}): ThreadListState {
 	} as unknown as ThreadListState;
 }
 
+/**
+ * Mounts `ThreadList` under a bare `<LangGraph>` context (no client), with every presentational
+ * input passed as an explicit prop override. `disabled: false` overrides the context default
+ * (`!ctx.client`, i.e. disabled with no client) so the "New chat" tests exercise the button.
+ */
 function renderComponent(props: Record<string, unknown> = {}) {
 	return render(ThreadListHost, {
 		props: {
+			ctx: makeContext(),
 			list: makeListStub(),
 			onNewThread: vi.fn(),
+			disabled: false,
 			...props
 		}
 	});
 }
 
 describe('ThreadList', () => {
+	test('throws at init, naming itself, when rendered outside <LangGraph>', () => {
+		expect(() => render(ThreadList)).toThrow(/<ThreadList> must be rendered inside <LangGraph>/);
+	});
+
 	describe('rows', () => {
 		test('renders a link per thread with hrefFor and threadLabel as accessible name', () => {
 			const t1 = aThread({ id: 'thread-00000000-0000-0000-0000-000000000001', title: null });
