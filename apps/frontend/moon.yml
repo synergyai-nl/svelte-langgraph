@@ -37,10 +37,24 @@ tasks:
     outputs:
       - 'src/lib/paraglide'
 
+  # Builds the shadcn-svelte registry (`registry.json`) into `static/r`, so the app serves
+  # it at `/r/chat.json` for `shadcn-svelte add`. Generated output: gitignored.
+  registry-build:
+    command: 'shadcn-svelte registry build --output static/r'
+    inputs:
+      - 'registry.json'
+      - 'src/lib/components/chat/**/*'
+      - 'src/lib/components/ChatLoader.svelte'
+      - 'messages/chat/**/*'
+      - 'package.json'
+    outputs:
+      - 'static/r'
+
   build:
     deps:
       - clean
       - paraglide
+      - registry-build
     inputs:
       - '@group(sources)'
     outputs:
