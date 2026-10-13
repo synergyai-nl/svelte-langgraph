@@ -20,16 +20,12 @@ test('user can send a message and receive an AI response', async ({ page, chat }
 	await page.goto('/chat');
 	await page.waitForURL(/\/chat\/.+/);
 
-	await chat.textInput.fill('Hello');
+	// Unique, since /chat may reuse an idle thread that already holds an earlier reply.
+	const message = `Hello ${randomUUID()}`;
+	await chat.textInput.fill(message);
 	await chat.textInput.press('Enter');
 
-	// Wait for an AI message card to appear
-	const aiMessage = page
-		.getByRole('group')
-		.filter({ has: page.locator('.prose') })
-		.first();
-	await expect(aiMessage).toBeVisible();
-	await expect(aiMessage).not.toBeEmpty();
+	await chat.expectAiReply(message);
 });
 
 test('clicking the Send button submits the message without a native form navigation', async ({
@@ -45,15 +41,11 @@ test('clicking the Send button submits the message without a native form navigat
 	await chat.textInput.fill(message);
 	await chat.sendButton.click();
 
-	await expect(page.getByText(message, { exact: true })).toBeVisible();
+	await expect(chat.userMessage(message)).toBeVisible();
 
-	// Wait for the run to finish (AI bubble echoing the message, input re-enabled) so the
-	// URL check below runs after any buggy native-submit navigation would have happened.
-	// :not(.prose-invert) selects AI bubbles only (user cards use `prose prose-invert`).
-	await expect(
-		page.locator('.prose:not(.prose-invert)').filter({ hasText: message }).first()
-	).toBeVisible({ timeout: 30_000 });
-	await expect(chat.textInput).toBeEnabled({ timeout: 45_000 });
+	// Wait for the run to finish so the URL check below runs after any buggy native-submit
+	// navigation would have happened.
+	await chat.expectAiReply(message);
 
 	// The form must not fall through to a native GET submission (?message=...).
 	await expect(page).not.toHaveURL(/[?&]message=/);
@@ -67,7 +59,6 @@ test.describe('Streaming', () => {
 	});
 
 	test('AI response streams into the UI incrementally, not only on completion', async ({
-		page,
 		chat
 	}) => {
 		// The mock echoes ~256 chars with a per-chunk delay (~13s total), which
@@ -88,13 +79,8 @@ test.describe('Streaming', () => {
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 
-		// Scope to AI message bodies — the user's own bubble contains the full
-		// input text, so a broader locator would match it trivially. AI cards use
-		// `prose` (with the literal class "dark:prose-invert"), user cards use
-		// `prose prose-invert`, so :not(.prose-invert) selects AI bubbles only.
-		const aiProse = page.locator('.prose:not(.prose-invert)');
-		const aiWithPartial = aiProse.filter({ hasText: partialEcho });
-		const aiWithTail = aiProse.filter({ hasText: tailEcho });
+		const aiWithPartial = chat.aiMessage(partialEcho);
+		const aiWithTail = chat.aiMessage(tailEcho);
 
 		// The echo's head must appear in an AI bubble mid-run: before its tail
 		// exists and while the input is still disabled (run in flight). The
@@ -106,8 +92,7 @@ test.describe('Streaming', () => {
 		await expect(chat.textInput).toBeDisabled();
 
 		// The run then completes normally: full echo present, input re-enabled.
-		await expect(aiWithTail.first()).toBeVisible({ timeout: 45_000 });
-		await expect(chat.textInput).toBeEnabled({ timeout: 45_000 });
+		await chat.expectAiReply(tailEcho, { timeout: 45_000 });
 	});
 });
 
@@ -126,10 +111,7 @@ test.describe('Edit message', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for the user message to appear
-		const userMessageGroup = page
-			.getByRole('group')
-			.filter({ has: page.getByText('Hello') })
-			.first();
+		const userMessageGroup = chat.userMessage('Hello');
 		await expect(userMessageGroup).toBeVisible();
 
 		// Hover to reveal the edit button and click it
@@ -146,10 +128,7 @@ test.describe('Edit message', () => {
 		await chat.textInput.fill('Hello');
 		await chat.textInput.press('Enter');
 
-		const userMessageGroup = page
-			.getByRole('group')
-			.filter({ has: page.getByText('Hello') })
-			.first();
+		const userMessageGroup = chat.userMessage('Hello');
 		await expect(userMessageGroup).toBeVisible();
 
 		await userMessageGroup.hover();
@@ -157,8 +136,8 @@ test.describe('Edit message', () => {
 
 		await page.keyboard.press('Escape');
 
-		// Edit textarea is removed; only the chat input textbox remains
-		await expect(page.getByText('Hello').first()).toBeVisible();
+		// Edit textarea is removed (the user bubble is back); only the chat input textbox remains
+		await expect(userMessageGroup).toBeVisible();
 		await expect(page.getByRole('textbox')).toHaveCount(1);
 	});
 
@@ -170,20 +149,11 @@ test.describe('Edit message', () => {
 		await chat.textInput.fill(originalQuestion);
 		await chat.textInput.press('Enter');
 
-		const aiMessage = page
-			.getByRole('group')
-			.filter({ has: page.locator('.prose') })
-			.first();
-		await expect(aiMessage).toBeVisible();
-		await expect(aiMessage).not.toBeEmpty();
-		// Wait for streaming to finish — edit button is disabled while streaming.
-		await expect(chat.textInput).toBeEnabled();
+		// Also waits for streaming to finish — edit button is disabled while streaming.
+		await chat.expectAiReply(originalQuestion);
 
 		// Edit the user message
-		const userMessageGroup = page
-			.getByRole('group')
-			.filter({ has: page.getByText(originalQuestion) })
-			.first();
+		const userMessageGroup = chat.userMessage(originalQuestion);
 		await userMessageGroup.hover();
 		await userMessageGroup.getByTitle(/edit/i).click();
 
@@ -191,12 +161,12 @@ test.describe('Edit message', () => {
 		await editTextarea.fill(editedQuestion);
 		await editTextarea.press('Enter');
 
-		// Verify the edited prompt is shown and a response was regenerated.
-		// We don't assert the response text changed — the LLM may produce the
-		// same output at low temperature — we only assert it completed.
-		await expect(page.getByText(editedQuestion).first()).toBeVisible();
-		await expect(aiMessage).toBeVisible();
-		await expect(aiMessage).not.toBeEmpty();
+		// Verify the edited prompt is shown and a response was regenerated for it: the mock
+		// echoes its input, so the new branch's reply echoes the edited question, and the
+		// original question's reply is no longer shown.
+		await expect(chat.userMessage(editedQuestion)).toBeVisible();
+		await chat.expectAiReply(editedQuestion);
+		await expect(chat.aiMessage(originalQuestion)).toHaveCount(0);
 	});
 });
 
@@ -230,14 +200,8 @@ test.describe('Regenerate message', () => {
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
 
-		const aiMessage = page
-			.getByRole('group')
-			.filter({ has: page.locator('.prose') })
-			.filter({ hasText: question })
-			.last();
-		await expect(aiMessage).toBeVisible();
-		// Wait for streaming to finish — the regenerate button is unavailable while streaming.
-		await expect(chat.textInput).toBeEnabled();
+		// Also waits for streaming to finish — the regenerate button is unavailable while streaming.
+		const aiMessage = await chat.expectAiReply(question);
 
 		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
 		// Guard against a route that never observed an authenticated request (e.g. request
@@ -281,8 +245,7 @@ test.describe('Regenerate message', () => {
 		expect(after?.id, 'regenerate must produce a new AI message id').not.toBe(before!.id);
 
 		// The UI settles with a visible answer and the input re-enabled.
-		await expect(aiMessage).toBeVisible();
-		await expect(chat.textInput).toBeEnabled();
+		await chat.expectAiReply(question);
 	});
 });
 
@@ -307,13 +270,15 @@ test.describe('Cancellation', () => {
 		const stopButton = chat.stopButton;
 		await expect(stopButton).toBeVisible();
 
-		// Also confirm partial content has started arriving
-		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
+		// Also confirm partial AI content has started arriving (the generous timeout only
+		// tolerates first-token latency, as in the streaming test)
+		const partialReply = chat.aiMessage(partialEcho);
+		await expect(partialReply).toBeVisible({ timeout: 30_000 });
 
 		await stopButton.click();
 
 		// Partial content is preserved after stopping
-		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
+		await expect(partialReply).toBeVisible();
 
 		// is_streaming=false → input re-enabled, no error shown
 		await expect(chat.textInput).toBeEnabled();
@@ -353,7 +318,7 @@ test.describe('Cancellation', () => {
 
 		const stopButton = chat.stopButton;
 		await expect(stopButton).toBeVisible();
-		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
+		await expect(chat.aiMessage(partialEcho)).toBeVisible({ timeout: 30_000 });
 
 		await stopButton.click();
 
