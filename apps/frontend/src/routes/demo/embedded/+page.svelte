@@ -10,8 +10,8 @@
 	 *   read a thread id from or push one into, so `<LangGraph>` runs in its uncontrolled
 	 *   thread-selection mode instead (see `EmbeddedChatSurface.svelte`, which creates the first
 	 *   thread on mount).
-	 * - Chat components render their strings through paraglide (`messages/{locale}.json`), so the
-	 *   embed follows the app's current locale like every other route.
+	 * - Chat components render their strings through paraglide (`messages/chat/{locale}.json`), so
+	 *   the embed follows the app's current locale like every other route.
 	 *
 	 * The fixed-height card below stands in for whatever real container an embed lives in (a
 	 * support-chat overlay, a docked widget, ...): `ChatSurface` is `h-full min-h-0`, so it fills
