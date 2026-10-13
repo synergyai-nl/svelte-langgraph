@@ -48,7 +48,7 @@ describe('shadcn-svelte registry', () => {
 			expect(chat.files).toContainEqual({
 				path: `messages/chat/${locale}.json`,
 				type: 'registry:file',
-				target: `messages/chat/${locale}.json`
+				target: `~/messages/chat/${locale}.json`
 			});
 		}
 	});
