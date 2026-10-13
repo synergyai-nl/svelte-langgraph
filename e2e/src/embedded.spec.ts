@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
+import { ChatSurfacePage } from './pages';
 
 /**
  * `/demo/embedded` (SLG-133 PR 4) — proves the container-agnostic story: `<LangGraph>` +
@@ -40,30 +41,14 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	// space-separated words (not one long unbroken token, which wouldn't wrap and so wouldn't
 	// grow the container's height) so the echoed AI bubble alone overflows the card's small fixed
 	// height — needed for the scroll check in (d) below to be a meaningful, non-vacuous assertion.
-	const textInput = card.getByRole('textbox', { name: 'Ask your agent…' });
+	const surface = new ChatSurfacePage(card);
 	const question = Array.from({ length: 36 }, () => randomUUID().slice(0, 8)).join(' ');
-	await textInput.fill(question);
-	await textInput.press('Enter');
+	await surface.textInput.fill(question);
+	await surface.textInput.press('Enter');
 
-	// `has:` locators are matched against the whole page, then checked for descendance from the
-	// candidate — building the inner locator from `card` too would require a *second*
-	// `[data-testid="embedded-chat-card"]` nested inside each group, which doesn't exist and
-	// silently zeroes the match. `page.locator(...)` here, scoped down by the outer
-	// `card.getByRole('group')` — same split chat.spec.ts uses for its own `.prose` filter.
-	// AI bubbles use `prose` (+ literal `dark:prose-invert`), user bubbles `prose prose-invert`,
-	// so `:not(.prose-invert)` excludes the user's own bubble (which also carries `.prose` and
-	// would otherwise match first, letting the test pass without any AI reply).
-	const aiMessage = card
-		.getByRole('group')
-		.filter({ has: page.locator('.prose:not(.prose-invert)') })
-		.first();
-	await expect(aiMessage).toBeVisible({ timeout: 30_000 });
 	// The mock backend echoes the user input; assert the head of the question (robust to any
-	// truncation) is in the AI bubble.
-	await expect(aiMessage).toContainText(question.split(' ').slice(0, 3).join(' '), {
-		timeout: 30_000
-	});
-	await expect(textInput).toBeEnabled({ timeout: 30_000 });
+	// truncation) is in an AI bubble inside the card.
+	await surface.expectAiReply(question.split(' ').slice(0, 3).join(' '));
 
 	// (d) The message list scrolls WITHIN the card, not the page. The app's own <main> is the
 	// single outer viewport-height reference (see routes/+layout.svelte and thinking.spec.ts's

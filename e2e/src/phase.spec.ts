@@ -40,9 +40,8 @@ test.describe('Phase state-sync', () => {
 		const currentValue = await chat.phaseSelect.inputValue();
 		const targetValue = currentValue === 'draft' ? 'research' : 'draft';
 
-		// Snapshot AI message-group count before the phase change.
-		const aiGroups = page.getByRole('group').filter({ has: page.locator('.prose') });
-		const countBefore = await aiGroups.count();
+		// Snapshot the rendered message count before the phase change.
+		const countBefore = await chat.messages.count();
 
 		// Change the phase — this triggers a state-only run (entry router, no LLM call).
 		await chat.phaseSelect.selectOption(targetValue);
@@ -55,7 +54,7 @@ test.describe('Phase state-sync', () => {
 		// state-only run has fully completed, so only then is it safe to assert that it
 		// did NOT produce any chat message.
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
-		expect(await aiGroups.count()).toBe(countBefore);
+		expect(await chat.messages.count()).toBe(countBefore);
 
 		// Reload to verify the server committed the phase (not just an optimistic value).
 		await page.reload();
@@ -63,7 +62,7 @@ test.describe('Phase state-sync', () => {
 		await expect(chat.phaseSelect).toHaveValue(targetValue);
 	});
 
-	test('phase is visible to the model', async ({ page, chat }) => {
+	test('phase is visible to the model', async ({ chat }) => {
 		// Wait for schema and initial stream.
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
@@ -81,16 +80,11 @@ test.describe('Phase state-sync', () => {
 		await chat.textInput.press('Enter');
 
 		// The backend system message at offset 1 is "Current phase: draft".
-		// The ai-mock matches that and replies "PHASE_VISIBLE: draft".
-		await expect(page.getByText('PHASE_VISIBLE: draft', { exact: false }).first()).toBeVisible({
-			timeout: 20000
-		});
-
-		// Confirm the run finished cleanly.
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		// The ai-mock matches that and replies "PHASE_VISIBLE: draft"; the run then finishes cleanly.
+		await chat.expectAiReply('PHASE_VISIBLE: draft', { timeout: 20000 });
 	});
 
-	test('AI-driven phase change updates the dropdown live', async ({ page, chat }) => {
+	test('AI-driven phase change updates the dropdown live', async ({ chat }) => {
 		// Wait for schema and initial stream.
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
@@ -109,16 +103,9 @@ test.describe('Phase state-sync', () => {
 		// `values` events don't surface subgraph progress mid-generation).
 		await expect(chat.phaseSelect).toHaveValue('review', { timeout: 20000 });
 
-		// Run completes normally: input re-enabled (streaming did not stall).
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
-
-		// An AI message appears after the tool call (echoed user text from the follow-up LLM call).
-		const aiMessage = page
-			.getByRole('group')
-			.filter({ has: page.locator('.prose') })
-			.first();
-		await expect(aiMessage).toBeVisible({ timeout: 20000 });
-		await expect(aiMessage).not.toBeEmpty();
+		// Run completes normally with an AI message after the tool call (echoed user text from
+		// the follow-up LLM call) and the input re-enabled (streaming did not stall).
+		await chat.expectAiReply('Please switch to the review phase', { timeout: 20000 });
 	});
 
 	test('AI-driven parallel phase changes: last write wins', async ({ page, chat }) => {
@@ -140,15 +127,9 @@ test.describe('Phase state-sync', () => {
 		// must not die with InvalidUpdateError.
 		await expect(chat.phaseSelect).toHaveValue('review', { timeout: 20000 });
 
-		// Run completed normally (input re-enabled => not stalled/errored).
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
-
-		const aiMessage = page
-			.getByRole('group')
-			.filter({ has: page.locator('.prose') })
-			.first();
-		await expect(aiMessage).toBeVisible({ timeout: 20000 });
-		await expect(aiMessage).not.toBeEmpty();
+		// Run completed normally: the follow-up LLM call's echo is shown and the input
+		// re-enabled (not stalled/errored).
+		await chat.expectAiReply('Please switch to draft then review', { timeout: 20000 });
 
 		// Server actually committed "review" (not "draft", not a wedged thread).
 		await page.reload();
