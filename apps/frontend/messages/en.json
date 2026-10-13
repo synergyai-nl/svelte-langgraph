@@ -16,6 +16,8 @@
 	"error_try_again": "Please try again later or go back to the homepage.",
 	"error_return_home": "Return Home",
 	"chat_input_placeholder": "Ask your agent…",
+	"chat_input_send": "Send message",
+	"chat_input_stop": "Stop generating",
 	"chat_history_loading": "Loading conversation…",
 	"tools_using": "I'm using tools...",
 	"tool_label": "Tool:",

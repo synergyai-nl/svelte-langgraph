@@ -41,7 +41,9 @@
 		},
 		historyLoading: m.chat_history_loading(),
 		composer: {
-			placeholder: m.chat_input_placeholder()
+			placeholder: m.chat_input_placeholder(),
+			send: m.chat_input_send(),
+			stop: m.chat_input_stop()
 		},
 		messagesList: {
 			message: {
