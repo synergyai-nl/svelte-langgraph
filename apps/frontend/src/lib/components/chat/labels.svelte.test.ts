@@ -100,12 +100,28 @@ describe('label precedence end-to-end', () => {
 			expect(screen.getByPlaceholderText('Demandez à votre agent…')).toBeInTheDocument();
 		});
 
-		test('under <LangGraph labels={...}> the Send and Stop button names come from context', () => {
+		test('under <LangGraph labels={...}> the idle Send button name comes from context', () => {
 			const ctx = makeContext({ labels: { composer: { send: 'Senden', stop: 'Stopp' } } });
 			render(LangGraphHost, {
 				props: { ctx, component: Composer, value: '', onSubmit: () => {} }
 			});
 			expect(screen.getByRole('button', { name: 'Senden' })).toBeInTheDocument();
+		});
+
+		test('under <LangGraph labels={...}> the streaming Stop button name comes from context', () => {
+			const ctx = makeContext({ labels: { composer: { send: 'Senden', stop: 'Stopp' } } });
+			render(LangGraphHost, {
+				props: {
+					ctx,
+					component: Composer,
+					value: '',
+					onSubmit: () => {},
+					isStreaming: true,
+					onStop: () => {}
+				}
+			});
+			expect(screen.getByRole('button', { name: 'Stopp' })).toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Senden' })).not.toBeInTheDocument();
 		});
 
 		test('a context key explicitly set to undefined falls back to the default', () => {
