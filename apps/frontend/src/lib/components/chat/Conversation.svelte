@@ -1,3 +1,53 @@
+<script lang="ts" module>
+	import { getContext, setContext } from 'svelte';
+	import type { Message, SchemaStatus, FieldBinding } from '@svelte-langgraph/client';
+
+	/**
+	 * The reactive surface `Conversation` hands to its `children` and `empty` snippets (and sets
+	 * as `ConversationContext` for deep-tree consumers). Everything the component's own default
+	 * composition reads is on here too — see the template below — so a caller replacing that
+	 * composition wholesale via `children` has everything needed to build its own. A caller that
+	 * only wants different empty-thread content (e.g. `ChatSurface`'s `Suggestions`) should pass
+	 * `empty` instead of copying the default composition into `children`.
+	 */
+	export interface ConversationApi {
+		/** Render-ready messages for the current thread. */
+		messages: Message[];
+		/** Current composer input text. */
+		input: string;
+		setInput: (value: string) => void;
+		/** A run is actively streaming (submit/edit/regenerate in flight). */
+		isLoading: boolean;
+		/** The thread's history is still being fetched/reconnected. */
+		isThreadLoading: boolean;
+		/** `true` once the thread has any messages, is loading, or has a generation error. */
+		chatStarted: boolean;
+		/** `false` while the in-flight run's final AI answer hasn't started yet (still "thinking"). */
+		finalAnswerStarted: boolean;
+		/** Current (non-cancellation) generation error, if any. */
+		error: Error | null;
+		/** Submit a new user message. No-op while `isLoading` or given only whitespace. */
+		submit: (text: string) => void;
+		/** Resubmit the last user message after a generation error. */
+		retry: () => void;
+		/** Stop the in-flight run. */
+		stop: () => void;
+		/** Branch-edit a past user message. Returns `false` when it couldn't (e.g. no checkpoint). */
+		edit: (message: Message, newText: string) => boolean;
+		/** Regenerate the AI response following a past message. */
+		regenerate: (message: Message) => void;
+		/** State-sync bindings (`sync.field(name)`) for this thread — see `createStateSync`. */
+		sync: { readonly schema: SchemaStatus; field(name: string): FieldBinding };
+	}
+
+	const CONVERSATION_KEY = Symbol.for('slg-conversation');
+
+	/** Read the nearest `Conversation`'s api, or `undefined` outside one. */
+	export function useConversation(): ConversationApi | undefined {
+		return getContext(CONVERSATION_KEY);
+	}
+</script>
+
 <script lang="ts">
 	import { useStream } from '@langchain/svelte';
 	import { SvelteMap } from 'svelte/reactivity';
@@ -5,38 +55,71 @@
 		convertThreadMessage,
 		InvalidData,
 		createStateSync,
-		getThreadListRefresh,
-		getThreadLoadingReporter,
 		createThreadTitler,
-		type Message,
 		type ToolMessage,
 		type TitleClient
 	} from '@svelte-langgraph/client';
 	import MessageComposer from './MessageComposer.svelte';
 	import MessagesList from './MessagesList.svelte';
-	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
+	import { useLangGraphOptional } from './langGraphContext.svelte.js';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
-		langGraphClient: TitleClient;
-		assistantId: string;
 		threadId: string;
-		suggestions?: ChatSuggestion[];
-		intro?: string;
-		introTitle?: string;
+		client?: TitleClient;
+		assistantId?: string;
+		/** Replaces the entire default composition (phase bar, message list, composer). */
+		children?: Snippet<[ConversationApi]>;
+		/**
+		 * Rendered by the default composition in place of the message list while the thread is
+		 * bare (`!api.chatStarted`, history loaded) — the phase bar and composer stay. Ignored
+		 * when `children` is given. `Conversation` renders nothing there itself.
+		 */
+		empty?: Snippet<[ConversationApi]>;
 	}
 
 	let {
-		langGraphClient,
-		assistantId,
 		threadId,
-		suggestions = [],
-		intro = '',
-		introTitle = ''
+		client: clientProp,
+		assistantId: assistantIdProp,
+		children,
+		empty
 	}: Props = $props();
+
+	const ctx = useLangGraphOptional();
+
+	// Resolved once, at init — `useStream` (below) captures its options once too, so a client or
+	// assistant that only becomes available later can't be picked up mid-mount anyway. Callers
+	// (`ChatSurface`, routes) are responsible for not mounting `Conversation` — or for
+	// remounting it via `{#key threadId}` — until both are ready, exactly as `Chat.svelte`'s
+	// callers guarded on `{#if assistantId && client}` today.
+	//
+	// Resolved through small helpers, not an inline `if (!x) throw`, so the resulting `const`s
+	// are typed as definitely-defined from declaration — TypeScript's control-flow narrowing
+	// from a later guard doesn't reach into closures declared further down this file (the
+	// title-mirroring functions), which is exactly where `langGraphClient` is used again.
+	function requireClient(client: TitleClient | undefined): TitleClient {
+		if (!client) {
+			throw new Error(
+				'<Conversation> requires a `client` prop or a <LangGraph> provider with a resolved client.'
+			);
+		}
+		return client;
+	}
+	function requireAssistantId(id: string | undefined): string {
+		if (!id) {
+			throw new Error(
+				'<Conversation> requires an `assistantId` prop or a <LangGraph> provider with a resolved assistantId.'
+			);
+		}
+		return id;
+	}
+
+	const langGraphClient = requireClient(clientProp ?? ctx?.client);
+	const assistantId = requireAssistantId(assistantIdProp ?? ctx?.assistantId);
 
 	const stream = useStream({
 		client: langGraphClient,
@@ -164,20 +247,19 @@
 	// thread moves to the top. Fires on the isLoading true→false edge — not on message-count
 	// changes — so a same-length regenerate still refreshes. Safe against the initial history
 	// fetch: `isLoading` reflects only an active run, never the separate history hydration
-	// (`isThreadLoading`). The context is optional: Chat renders fine (and stays testable)
-	// without it.
+	// (`isThreadLoading`). The provider is optional: Conversation renders fine (and stays
+	// testable) without one.
 	//
 	// This fires on every settle within the mount, including a stop()-cancelled or errored run
 	// (both flip `isLoading` through the same finally as a successful completion) — a few extra
 	// `threads.search` calls in exchange for correctness. Don't "optimize" this back to a
 	// success-only check.
-	const threadListRefresh = getThreadListRefresh();
 	let wasLoading = false;
 
 	const titler = createThreadTitler({
 		client: langGraphClient,
 		threadId,
-		onTitled: () => threadListRefresh?.refresh()
+		onTitled: () => ctx?.threadList.refresh()
 	});
 	onDestroy(() => titler.dispose());
 
@@ -187,7 +269,7 @@
 		wasLoading = loading;
 		if (!settled) return;
 		untrack(() => {
-			threadListRefresh?.refresh();
+			ctx?.threadList.refresh();
 			// The titler awaits the response and cancels its request on unmount.
 			void titler.ensureThreadTitle(stream.messages);
 		});
@@ -204,52 +286,93 @@
 	});
 
 	// Report history-loading state up so the sidebar can mark this thread's row as pending.
-	// `threadId` is fixed per instance — the route remounts Chat via `{#key threadId}`.
-	const reporter = getThreadLoadingReporter();
-
+	// `threadId` is fixed per instance — callers remount `Conversation` via `{#key threadId}`.
 	$effect(() => {
-		reporter?.setLoading(threadId, stream.isThreadLoading);
+		ctx?.setThreadLoading(threadId, stream.isThreadLoading);
 	});
 
-	onDestroy(() => reporter?.setLoading(threadId, false));
+	onDestroy(() => ctx?.setThreadLoading(threadId, false));
+
+	const api: ConversationApi = {
+		get messages() {
+			return messages;
+		},
+		get input() {
+			return current_input;
+		},
+		setInput(value: string) {
+			current_input = value;
+		},
+		get isLoading() {
+			return stream.isLoading;
+		},
+		get isThreadLoading() {
+			return stream.isThreadLoading;
+		},
+		get chatStarted() {
+			return chat_started;
+		},
+		get finalAnswerStarted() {
+			return final_answer_started;
+		},
+		get error() {
+			return generationError;
+		},
+		submit: submitInput,
+		retry: retryGenerationAfterError,
+		stop: stopGeneration,
+		edit: handleEdit,
+		regenerate: handleRegenerate,
+		sync
+	};
+
+	setContext(CONVERSATION_KEY, api);
 </script>
 
-<div class="flex h-full min-h-0 flex-col">
-	<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
-	<div class="flex justify-end px-4 py-1">
-		<StateField name="phase" field={sync.field('phase')} />
+{#if children}
+	{@render children(api)}
+{:else}
+	<!--
+		Default composition — deliberately expressed purely in terms of `api`, the same object
+		handed to `children`, so a caller replacing this wholesale via `children` can build on
+		the same surface. `Suggestions`/intro are NOT rendered here: unlike `Chat.svelte`, which
+		mixed conversation mechanics with that app-content empty state, `Conversation` is the
+		pure mechanics half. It only leaves the `empty` slot for that content — `ChatSurface` is
+		the layer that fills it with Suggestions for a bare thread (SLG-133 PR 3), rather than
+		copying this whole composition into `children` just to add one branch.
+	-->
+	<div class="flex h-full min-h-0 flex-col">
+		<!-- Slim state-field bar — renders nothing when schema is unavailable (degraded mode) -->
+		<div class="flex justify-end px-4 py-1">
+			<StateField name="phase" field={api.sync.field('phase')} />
+		</div>
+		<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={api.isThreadLoading}>
+			{#if api.isThreadLoading}
+				<div data-testid="chat-history-loading" class="mx-auto w-full max-w-4xl space-y-4 p-4">
+					<p class="sr-only" role="status" aria-live="polite">{m.chat_history_loading()}</p>
+					<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
+					<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
+					<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
+				</div>
+			{:else if empty && !api.chatStarted}
+				{@render empty(api)}
+			{:else}
+				<MessagesList
+					messages={api.messages}
+					finalAnswerStarted={api.finalAnswerStarted}
+					isStreaming={api.isLoading}
+					generationError={api.error}
+					onRetryError={api.retry}
+					onEdit={api.edit}
+					onRegenerate={api.regenerate}
+				/>
+			{/if}
+		</div>
+		<MessageComposer
+			bind:value={() => api.input, (v) => api.setInput(v)}
+			isStreaming={api.isLoading}
+			onSubmit={() => api.submit(api.input)}
+			onStop={api.stop}
+		/>
 	</div>
-	<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={stream.isThreadLoading}>
-		{#if stream.isThreadLoading}
-			<div data-testid="chat-history-loading" class="mx-auto w-full max-w-4xl space-y-4 p-4">
-				<p class="sr-only" role="status" aria-live="polite">{m.chat_history_loading()}</p>
-				<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
-				<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
-				<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>
-			</div>
-		{:else if !chat_started}
-			<Suggestions
-				{suggestions}
-				{introTitle}
-				{intro}
-				onSuggestionClick={(suggestedText) => submitInput(suggestedText)}
-			/>
-		{:else}
-			<MessagesList
-				{messages}
-				finalAnswerStarted={final_answer_started}
-				isStreaming={stream.isLoading}
-				{generationError}
-				onRetryError={retryGenerationAfterError}
-				onEdit={handleEdit}
-				onRegenerate={handleRegenerate}
-			/>
-		{/if}
-	</div>
-	<MessageComposer
-		bind:value={current_input}
-		isStreaming={stream.isLoading}
-		onSubmit={() => submitInput(current_input)}
-		onStop={() => stopGeneration()}
-	/>
-</div>
+{/if}

@@ -1,39 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
-	import Chat from '$lib/components/chat/Conversation.svelte';
+	import Conversation from '$lib/components/chat/Conversation.svelte';
+	import Suggestions from '$lib/components/chat/Suggestions.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { getOrCreateAssistant, createClient } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
-	import type { Client } from '@langchain/langgraph-sdk';
 	import ChatError from '$lib/components/ChatError.svelte';
+	import { useLangGraphOptional } from '$lib/components/chat/langGraphContext.svelte.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	let show_login_dialog = $state(!page.data.session);
 
-	// Updates client whenever accessToken changes
-	let client = $derived(
-		page.data.session
-			? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', page.data.session.accessToken)
-			: null
-	);
-	let assistantId = $state<string | null>(null);
+	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
+	// page only reads the result.
+	const ctx = useLangGraphOptional();
 	let threadId = $derived(page.params.threadID!);
-	let initialization_error = $state<Error | null>(null);
-
-	async function initAssistant(client: Client) {
-		try {
-			assistantId = await getOrCreateAssistant(client, 'chat');
-		} catch (err) {
-			initialization_error = err instanceof Error ? err : new Error(String(err));
-		}
-	}
-
-	$effect(() => {
-		if (assistantId === null && client && threadId) {
-			initAssistant(client);
-		}
-	});
 
 	$effect.pre(() => {
 		if (!page.data.session) show_login_dialog = true;
@@ -73,18 +53,26 @@
 	});
 </script>
 
-{#if initialization_error}
-	<ChatError error={initialization_error} />
-{:else if assistantId && client}
+{#if ctx?.error}
+	<ChatError error={ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))} />
+{:else if ctx?.assistantId && ctx?.client}
+	<!-- `Conversation` captures its thread, client and assistant at init, so a change to any of
+	     them must remount it. -->
 	{#key threadId}
-		<Chat
-			langGraphClient={client}
-			{assistantId}
-			{threadId}
-			introTitle={greeting}
-			intro={m.chat_intro()}
-			{suggestions}
-		/>
+		{#key ctx.client}
+			{#key ctx.assistantId}
+				<Conversation {threadId}>
+					{#snippet empty(api)}
+						<Suggestions
+							{suggestions}
+							introTitle={greeting}
+							intro={m.chat_intro()}
+							onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+						/>
+					{/snippet}
+				</Conversation>
+			{/key}
+		{/key}
 	{/key}
 {:else}
 	<ChatLoader />
