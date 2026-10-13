@@ -17,11 +17,14 @@
 			"registryDependencies": [
 				"button",
 				"card",
-				"sidebar",
-				"spinner",
+				"input",
+				"is-mobile",
+				"separator",
+				"sheet",
+				"skeleton",
 				"textarea",
 				"tooltip",
-				"https://shadcn-svelte-extras.com/r/copy-button.json"
+				"https://shadcn-svelte-extras.com/r/use-clipboard.json"
 			],
 			"dependencies": [
 				"@inlang/paraglide-js@^2.25.4",
@@ -29,7 +32,9 @@
 				"@langchain/svelte@^0.3.1",
 				"@lucide/svelte@^0.562.0",
 				"@svelte-langgraph/client",
-				"svelte-exmarkdown@^5.0.1"
+				"bits-ui@^2.15.4",
+				"svelte-exmarkdown@^5.0.1",
+				"tailwind-variants@^3.2.2"
 			],
 			"devDependencies": [],
 			"files": [
@@ -167,6 +172,161 @@
 					"path": "src/lib/components/ChatLoader.svelte",
 					"type": "registry:component",
 					"target": "ChatLoader.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/constants.ts",
+					"type": "registry:ui",
+					"target": "sidebar/constants.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/context.svelte.ts",
+					"type": "registry:ui",
+					"target": "sidebar/context.svelte.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/index.ts",
+					"type": "registry:ui",
+					"target": "sidebar/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-content.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-content.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-footer.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-footer.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-action.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-action.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-content.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-content.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-label.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-label.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-header.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-header.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-input.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-input.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-inset.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-inset.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-action.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-action.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-badge.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-badge.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-button.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-item.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-item.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-skeleton.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-skeleton.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub-button.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub-item.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub-item.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-provider.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-provider.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-rail.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-rail.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-separator.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-separator.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-trigger.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-trigger.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/spinner/index.ts",
+					"type": "registry:ui",
+					"target": "spinner/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/spinner/spinner.svelte",
+					"type": "registry:ui",
+					"target": "spinner/spinner.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/copy-button.svelte",
+					"type": "registry:ui",
+					"target": "copy-button/copy-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/index.ts",
+					"type": "registry:ui",
+					"target": "copy-button/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/types.ts",
+					"type": "registry:ui",
+					"target": "copy-button/types.ts"
 				},
 				{
 					"path": "messages/chat/en.json",
