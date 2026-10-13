@@ -28,6 +28,13 @@ describe('ChatToolMessage', () => {
 		test('button is collapsed by default', () => {
 			expect(screen.getByRole('button')).toHaveAttribute('aria-expanded', 'false');
 		});
+
+		test('marks its container as a tool message for styling-independent selection', () => {
+			expect(screen.getByRole('button').closest('[data-message-type]')).toHaveAttribute(
+				'data-message-type',
+				'tool'
+			);
+		});
 	});
 
 	describe('when collapsed (default)', () => {
