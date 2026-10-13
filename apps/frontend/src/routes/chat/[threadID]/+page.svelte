@@ -1,23 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Chat from '$lib/components/chat/Conversation.svelte';
+	import Conversation from '$lib/components/chat/Conversation.svelte';
+	import Suggestions from '$lib/components/chat/Suggestions.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { setThreadListRefresh, setThreadLoadingReporter } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
 	import ChatError from '$lib/components/ChatError.svelte';
 	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+	import * as m from '$lib/paraglide/messages.js';
 
 	let show_login_dialog = $state(!page.data.session);
 
 	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
 	// page only reads the result.
 	const ctx = useLangGraph();
-	// Bridges the legacy contexts `Chat` still reads; removed in the next PR when `Conversation` reads the provider directly.
-	setThreadListRefresh({ refresh: () => ctx.threadList.refresh() });
-	setThreadLoadingReporter({
-		setLoading: (threadId, loading) => ctx.setThreadLoading(threadId, loading)
-	});
 	let threadId = $derived(page.params.threadID!);
 
 	$effect.pre(() => {
@@ -61,15 +56,23 @@
 {#if ctx.error}
 	<ChatError error={ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))} />
 {:else if ctx.assistantId && ctx.client}
+	<!-- `Conversation` captures its thread, client and assistant at init, so a change to any of
+	     them must remount it. -->
 	{#key threadId}
-		<Chat
-			langGraphClient={ctx.client}
-			assistantId={ctx.assistantId}
-			{threadId}
-			introTitle={greeting}
-			intro={m.chat_intro()}
-			{suggestions}
-		/>
+		{#key ctx.client}
+			{#key ctx.assistantId}
+				<Conversation {threadId}>
+					{#snippet empty(api)}
+						<Suggestions
+							{suggestions}
+							introTitle={greeting}
+							intro={m.chat_intro()}
+							onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+						/>
+					{/snippet}
+				</Conversation>
+			{/key}
+		{/key}
 	{/key}
 {:else}
 	<ChatLoader />
