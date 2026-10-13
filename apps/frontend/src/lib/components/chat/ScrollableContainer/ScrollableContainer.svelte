@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createScrollListener } from '$lib/components/chat/ScrollableContainer/scrollListener';
+	import { createScrollListener } from './scrollListener';
 	import { findScrollContainer, createBottomScroller } from './scrollControls';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
