@@ -100,6 +100,14 @@ describe('label precedence end-to-end', () => {
 			expect(screen.getByPlaceholderText('Demandez à votre agent…')).toBeInTheDocument();
 		});
 
+		test('under <LangGraph labels={...}> the Send and Stop button names come from context', () => {
+			const ctx = makeContext({ labels: { composer: { send: 'Senden', stop: 'Stopp' } } });
+			render(LangGraphHost, {
+				props: { ctx, component: Composer, value: '', onSubmit: () => {} }
+			});
+			expect(screen.getByRole('button', { name: 'Senden' })).toBeInTheDocument();
+		});
+
 		test('a context key explicitly set to undefined falls back to the default', () => {
 			const ctx = makeContext({ labels: { composer: { placeholder: undefined } } });
 			render(LangGraphHost, {

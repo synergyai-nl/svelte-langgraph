@@ -31,7 +31,7 @@ export type DeepPartial<T> = {
  * another.
  *
  * Only components that actually render label strings (directly or by aggregating their
- * children's) get an entry — e.g. `Suggestions`, `SubmitButton`, `StateField`, and `ChatWaiting`
+ * children's) get an entry — e.g. `Suggestions`, `StateField`, and `ChatWaiting`
  * take their text as data/props already and have nothing to localize here.
  */
 export interface LangGraphLabels {

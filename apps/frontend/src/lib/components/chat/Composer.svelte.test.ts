@@ -22,8 +22,14 @@ describe('Composer', () => {
 			expect(screen.getByRole('textbox')).toBeInTheDocument();
 		});
 
-		test('displays submit button', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+		test('displays a Send button with an accessible name', () => {
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
+		});
+
+		test('marks the Send icon as decorative', () => {
+			expect(
+				screen.getByRole('button', { name: 'Send message' }).querySelector('svg')
+			).toHaveAttribute('aria-hidden', 'true');
 		});
 	});
 
@@ -75,9 +81,10 @@ describe('Composer', () => {
 			expect(screen.getByRole('textbox')).toBeDisabled();
 		});
 
-		test('shows enabled stop button', () => {
+		test('shows enabled stop button with an accessible name', () => {
 			renderComposer({ value: 'Hello', isStreaming: true });
-			expect(screen.getByRole('button')).not.toBeDisabled();
+			expect(screen.getByRole('button', { name: 'Stop generating' })).not.toBeDisabled();
+			expect(screen.queryByRole('button', { name: 'Send message' })).not.toBeInTheDocument();
 		});
 
 		test('calls onStop when stop button is clicked', async () => {
@@ -85,7 +92,7 @@ describe('Composer', () => {
 			const onStop = vi.fn();
 			renderComposer({ value: 'Hello', isStreaming: true, onStop });
 
-			const button = screen.getByRole('button');
+			const button = screen.getByRole('button', { name: 'Stop generating' });
 			await user.click(button);
 
 			expect(onStop).toHaveBeenCalled();
@@ -95,7 +102,17 @@ describe('Composer', () => {
 	test('disables submit button when input is empty', () => {
 		renderComposer({ value: '' });
 
-		expect(screen.getByRole('button')).toBeDisabled();
+		expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+	});
+
+	test('honours labels overrides for the Send and Stop buttons', () => {
+		const labels = { send: 'Versturen', stop: 'Stoppen' };
+		const { unmount } = renderComposer({ labels });
+		expect(screen.getByRole('button', { name: 'Versturen' })).toBeInTheDocument();
+		unmount();
+
+		renderComposer({ labels, isStreaming: true });
+		expect(screen.getByRole('button', { name: 'Stoppen' })).toBeInTheDocument();
 	});
 
 	test('does not call onSubmit when pressing Enter with empty input', async () => {

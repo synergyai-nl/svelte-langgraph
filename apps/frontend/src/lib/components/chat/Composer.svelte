@@ -8,10 +8,16 @@
 	/** Labels for `Composer`, the chat input / message box / prompt input. */
 	export interface ComposerLabels {
 		placeholder: string;
+		/** Accessible name of the icon-only Send button. */
+		send: string;
+		/** Accessible name of the icon-only Stop button (shown while a response is streaming). */
+		stop: string;
 	}
 
 	export const defaultComposerLabels: ComposerLabels = {
-		placeholder: 'Ask your agent…'
+		placeholder: 'Ask your agent…',
+		send: 'Send message',
+		stop: 'Stop generating'
 	};
 </script>
 
@@ -84,7 +90,13 @@
 
 				<!-- Submit button -->
 				<div class="flex shrink-0 items-end pb-1">
-					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} {onStop} />
+					<SubmitButton
+						{isStreaming}
+						disabled={isStreaming || isEmpty}
+						{onStop}
+						sendLabel={l.send}
+						stopLabel={l.stop}
+					/>
 				</div>
 			</div>
 		</form>
