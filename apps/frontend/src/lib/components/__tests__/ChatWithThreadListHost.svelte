@@ -5,7 +5,7 @@
 		setThreadLoadingReporter,
 		type ThreadLoadingReporter
 	} from '@svelte-langgraph/client';
-	import Chat from '../Chat.svelte';
+	import Chat from '../chat/Conversation.svelte';
 	import type { ComponentProps } from 'svelte';
 
 	interface Props {

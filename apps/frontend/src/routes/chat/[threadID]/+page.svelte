@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
-	import Chat from '$lib/components/Chat.svelte';
+	import Chat from '$lib/components/chat/Conversation.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import { getOrCreateAssistant, createClient } from '@svelte-langgraph/client';
