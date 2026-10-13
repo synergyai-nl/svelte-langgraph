@@ -1,17 +1,13 @@
 import type { Locator } from '@playwright/test';
 import { AppPage } from './app.page';
+import { ChatSurfacePage } from './chat-surface.page';
 
 /**
- * ChatPage encapsulates elements specific to the /chat route.
+ * ChatPage encapsulates elements specific to the /chat route: the chat surface mounted in
+ * `app.main` (composer + messages, inherited from ChatSurfacePage) plus route chrome.
  */
-export class ChatPage {
+export class ChatPage extends ChatSurfacePage {
 	readonly app: AppPage;
-
-	// Chat elements
-	readonly textInput: Locator;
-	// Icon-only composer buttons, located by accessible name
-	readonly sendButton: Locator;
-	readonly stopButton: Locator;
 
 	// Phase state field (data-testid="state-field-phase")
 	readonly phaseWrapper: Locator;
@@ -25,12 +21,8 @@ export class ChatPage {
 	readonly modalSignInButton: Locator;
 
 	constructor(app: AppPage) {
+		super(app.main);
 		this.app = app;
-
-		this.textInput = app.main.getByRole('textbox', { name: 'Ask your agent…' });
-		// Icon-only buttons located by their accessible name (English default labels).
-		this.sendButton = app.main.getByRole('button', { name: 'Send message' });
-		this.stopButton = app.main.getByRole('button', { name: 'Stop generating' });
 
 		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
 		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');

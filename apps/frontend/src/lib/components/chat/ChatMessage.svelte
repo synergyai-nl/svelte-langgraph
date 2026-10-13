@@ -61,7 +61,7 @@
 				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
 			{:else}
 				<!-- `data-message-type` is the stable, styling-independent hook E2E page objects use to
-				     tell AI replies from the user's own bubbles (see e2e/src/pages/messages.page.ts). -->
+				     tell AI replies from the user's own bubbles (see e2e/src/pages/chat-surface.page.ts). -->
 				<div
 					role="group"
 					data-message-type={message.type}
