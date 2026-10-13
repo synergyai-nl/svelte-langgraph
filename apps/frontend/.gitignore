@@ -37,6 +37,9 @@ project.inlang/.meta.json
 project.inlang/README.md
 src/lib/paraglide
 
+# shadcn-svelte registry, built by `moon frontend:registry-build`
+/static/r
+
 # Sentry Config File
 .env.sentry-build-plugin
 
