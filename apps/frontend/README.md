@@ -50,6 +50,38 @@ You can preview the production build with `npm run preview`.
 
 ---
 
+## Installing the chat UI from the registry
+
+The chat components (`src/lib/components/chat/`) are published as a
+[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) item, `chat`.
+`moon frontend:registry-build` builds `registry.json` into `static/r/` (gitignored; `build`
+runs it first), so a deployed frontend serves the item at `/r/chat.json`.
+
+1. In a SvelteKit project already set up with shadcn-svelte and Paraglide, install it:
+
+   ```bash
+   pnpm dlx shadcn-svelte@latest add https://<your-frontend>/r/chat.json
+   ```
+
+   This copies the components into `$lib/components/chat/`, pulls in the shadcn-svelte UI
+   components they use, and writes the chat strings to `messages/chat/{locale}.json`.
+
+2. Load those messages alongside your own: in `project.inlang/settings.json`, make
+   `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
+
+   ```json
+   "plugin.inlang.messageFormat": {
+   	"pathPattern": ["./messages/{locale}.json", "./messages/chat/{locale}.json"]
+   }
+   ```
+
+3. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
+   there and to `locales` in the settings.
+
+Note: `@svelte-langgraph/client` (`packages/client/`) is not published to npm yet.
+
+---
+
 ## Generic state synchronisation (`createStateSync`)
 
 `@svelte-langgraph/client` (`packages/client/`) contains a runtime-schema-driven state-sync
