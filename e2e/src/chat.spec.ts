@@ -3,52 +3,49 @@ import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
 import { LANGGRAPH_CONFIG, gotoFreshThread } from './fixtures/backend';
 
-// Opt this file out of fullyParallel: the frontend reuses the most recent idle thread
-// per user, so tests in this file frequently land on the SAME LangGraph thread. Run
-// concurrently, the edit/branch tests rewind that shared thread's head to a parent
-// checkpoint while the cancellation test polls `/threads/{id}/state` — moving the head
-// to a branch that excludes the cancelled run's messages and making its positive guard
-// (human message present in state) fail nondeterministically. `mode: 'default'` runs
-// this file's tests sequentially in one worker (other files still run in parallel;
-// thinking.spec fully mocks the LangGraph endpoints and auth.spec never submits runs,
-// so they cannot mutate threads).
+// Opt this file out of fullyParallel. Every test here now starts on its own fresh thread
+// (gotoFreshThread), so none of them share LangGraph thread state; serial mode is kept as
+// a safeguard. It used to be load-bearing: when tests went through `/chat`, which reuses the
+// most recent idle thread per user, the edit/branch tests could rewind a shared thread's
+// head while the cancellation test polled `/threads/{id}/state`, failing its positive guard
+// nondeterministically.
 test.describe.configure({ mode: 'default' });
 
-test('user can send a message and receive an AI response', async ({ page, chat }) => {
-	await authenticateUser(page);
+test.describe('Sending', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		// Fresh thread, not `/chat`: these tests assert the AI echoes the sent text, and
+		// `/chat` reuses the latest idle thread, whose persisted state (e.g. `phase: draft`,
+		// for which the ai-mock answers `PHASE_VISIBLE: draft` whatever the prompt) can
+		// change the reply. See fixtures/backend.ts#gotoFreshThread.
+		await gotoFreshThread(page);
+	});
 
-	await page.goto('/chat');
-	await page.waitForURL(/\/chat\/.+/);
+	test('user can send a message and receive an AI response', async ({ chat }) => {
+		const message = `Hello ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
 
-	// Unique, since /chat may reuse an idle thread that already holds an earlier reply.
-	const message = `Hello ${randomUUID()}`;
-	await chat.textInput.fill(message);
-	await chat.textInput.press('Enter');
+		await chat.expectAiReply(message);
+	});
 
-	await chat.expectAiReply(message);
-});
+	test('clicking the Send button submits the message without a native form navigation', async ({
+		page,
+		chat
+	}) => {
+		const message = `Click send ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.sendButton.click();
 
-test('clicking the Send button submits the message without a native form navigation', async ({
-	page,
-	chat
-}) => {
-	await authenticateUser(page);
+		await expect(chat.userMessage(message)).toBeVisible();
 
-	await page.goto('/chat');
-	await page.waitForURL(/\/chat\/.+/);
+		// Wait for the run to finish so the URL check below runs after any buggy native-submit
+		// navigation would have happened.
+		await chat.expectAiReply(message);
 
-	const message = `Click send ${randomUUID()}`;
-	await chat.textInput.fill(message);
-	await chat.sendButton.click();
-
-	await expect(chat.userMessage(message)).toBeVisible();
-
-	// Wait for the run to finish so the URL check below runs after any buggy native-submit
-	// navigation would have happened.
-	await chat.expectAiReply(message);
-
-	// The form must not fall through to a native GET submission (?message=...).
-	await expect(page).not.toHaveURL(/[?&]message=/);
+		// The form must not fall through to a native GET submission (?message=...).
+		await expect(page).not.toHaveURL(/[?&]message=/);
+	});
 });
 
 test.describe('Streaming', () => {
