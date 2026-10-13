@@ -9,8 +9,9 @@ export class ChatPage {
 
 	// Chat elements
 	readonly textInput: Locator;
-	// Icon-only submit button inside the composer form (has no accessible name)
+	// Icon-only composer buttons, located by accessible name
 	readonly sendButton: Locator;
+	readonly stopButton: Locator;
 
 	// Phase state field (data-testid="state-field-phase")
 	readonly phaseWrapper: Locator;
@@ -31,7 +32,9 @@ export class ChatPage {
 		this.app = app;
 
 		this.textInput = app.main.getByRole('textbox', { name: 'Ask your agent…' });
-		this.sendButton = app.main.locator('#input_form button[type="submit"]');
+		// Icon-only buttons located by their accessible name (English default labels).
+		this.sendButton = app.main.getByRole('button', { name: 'Send message' });
+		this.stopButton = app.main.getByRole('button', { name: 'Stop generating' });
 
 		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
 		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');
