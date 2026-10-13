@@ -11,12 +11,14 @@
 	interface Props {
 		/** Use `useLangGraph()` (throws outside a provider) instead of the optional variant. */
 		required?: boolean;
+		/** Component name passed to `useLangGraph(name)` (only with `required`). */
+		name?: string;
 		onResult?: (ctx: LangGraphContext | undefined) => void;
 	}
 
-	let { required = false, onResult }: Props = $props();
+	let { required = false, name, onResult }: Props = $props();
 
-	const ctx = required ? useLangGraph() : useLangGraphOptional();
+	const ctx = required ? useLangGraph(name) : useLangGraphOptional();
 	onResult?.(ctx);
 </script>
 

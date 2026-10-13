@@ -315,6 +315,12 @@ describe('useLangGraph / useLangGraphOptional', () => {
 		);
 	});
 
+	test('useLangGraph(name) names the component in its error outside a provider', () => {
+		expect(() =>
+			render(UseLangGraphProbe, { props: { required: true, name: 'ThreadList' } })
+		).toThrow('<ThreadList> must be rendered inside <LangGraph>.');
+	});
+
 	test('useLangGraphOptional() returns undefined outside a provider', () => {
 		let result: unknown = 'not-called';
 		render(UseLangGraphProbe, { props: { onResult: (ctx: unknown) => (result = ctx) } });
