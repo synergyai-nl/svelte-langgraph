@@ -42,8 +42,6 @@ export class ChatPage {
 		this.aiMessages = app.page.locator('[data-testid="message-ai"]');
 	}
 
-	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
-	 *  Actions only become visible on hover, so hover before clicking. */
 	/** The comment box a rating click opens. The rating is not sent until this
 	 *  resolves, so every rating in a test has to go through it. */
 	get feedbackDialog(): Locator {
@@ -62,6 +60,8 @@ export class ChatPage {
 		return this.app.page.getByTestId('feedback-cancel');
 	}
 
+	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
+	 *  Actions only become visible on hover, so hover before clicking. */
 	feedbackButtons(aiMessage: Locator): { up: Locator; down: Locator } {
 		return {
 			up: aiMessage.getByTitle('Good Response'),

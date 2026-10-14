@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+	import type { FeedbackScore } from '$lib/langgraph/types';
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown, Asterisk } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
@@ -11,7 +12,7 @@
 
 	interface Props {
 		/** Sends the rating with its optional comment; rejects if it didn't land. */
-		onSubmit?: (type: 'up' | 'down', comment?: string) => Promise<void>;
+		onSubmit?: (type: FeedbackScore, comment?: string) => Promise<void>;
 		/** False for an answer the backend can't tie to a trace. */
 		available?: boolean;
 		/** Bindable, so the action row can stay visible while pending or failed. */
@@ -22,8 +23,8 @@
 
 	// Local by design: nothing is read back, so a remount starts fresh. The
 	// backend's per-user, per-message score id makes rating again an update.
-	let rating = $state<'up' | 'down' | null>(null);
-	let draft = $state<'up' | 'down' | null>(null);
+	let rating = $state<FeedbackScore | null>(null);
+	let draft = $state<FeedbackScore | null>(null);
 
 	// Sent is final until remount: the click is acknowledged, not editable.
 	let disabled = $derived(!available || !onSubmit || status === 'pending' || status === 'sent');
@@ -38,7 +39,7 @@
 					: null
 	);
 
-	function choose(type: 'up' | 'down') {
+	function choose(type: FeedbackScore) {
 		if (disabled || draft) return;
 		rating = type;
 		draft = type;

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { FeedbackScore } from '$lib/langgraph/types';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
@@ -10,7 +11,7 @@
 
 	interface Props {
 		/** The rating being commented on, or null when the box is closed. */
-		rating: 'up' | 'down' | null;
+		rating: FeedbackScore | null;
 		/** Called for every way out of the box. `comment` is undefined unless the
 		 *  user submitted one, but the rating is sent either way. */
 		onResolve: (comment?: string) => void;

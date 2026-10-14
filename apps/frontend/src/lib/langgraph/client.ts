@@ -1,11 +1,11 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
 import { apiEndpoint, apiUrl } from './apiUrl';
-import type { ThreadValues } from './types';
+import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
-import { submitFeedback, type FeedbackScore } from './feedback';
 
 /** The SDK client plus our own backend routes, all sending the same auth. */
 export interface AppClient extends TitleClient {
+	/** Rate an AI answer. The backend resolves which run produced it. */
 	submitFeedback(
 		threadId: string,
 		messageId: string,
@@ -26,23 +26,35 @@ export function createClient(accessToken: string): AppClient {
 		apiUrl: apiUrl(),
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
+
+	async function postJson(route: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+		const response = await fetch(apiEndpoint(route), {
+			method: 'POST',
+			headers: { ...auth, 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+			signal
+		});
+		if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
+		return response;
+	}
+
 	return Object.assign(client, {
 		async generateTitle(
 			messages: TitleMessage[],
 			signal: AbortSignal
 		): Promise<{ title: string | null }> {
-			const response = await fetch(apiEndpoint('titles'), {
-				method: 'POST',
-				headers: { ...auth, 'Content-Type': 'application/json' },
-				body: JSON.stringify({ messages }),
-				// Allow the backend's 10-second model timeout to return its result.
-				signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)])
-			});
-			if (!response.ok) throw new Error(`Title request failed: ${response.status}`);
-			return await response.json();
+			// Allow the backend's 10-second model timeout to return its result.
+			const timeout = AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
+			return (await postJson('titles', { messages }, timeout)).json();
 		},
-		submitFeedback(threadId: string, messageId: string, score: FeedbackScore, comment?: string) {
-			return submitFeedback(auth, threadId, messageId, score, comment);
+		async submitFeedback(
+			threadId: string,
+			messageId: string,
+			score: FeedbackScore,
+			comment?: string
+		) {
+			// An undefined comment drops out of the JSON, leaving a bare rating.
+			await postJson('feedback', { thread_id: threadId, message_id: messageId, score, comment });
 		}
 	});
 }

@@ -5,7 +5,7 @@
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, ToolMessage } from '$lib/langgraph/types';
+	import type { FeedbackScore, Message, ToolMessage } from '$lib/langgraph/types';
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { InvalidData, isCancellationError } from '$lib/langgraph/errors';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
@@ -148,7 +148,7 @@
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
 	}
 
-	function rateMessage(message: Message, type: 'up' | 'down', comment?: string) {
+	function rateMessage(message: Message, type: FeedbackScore, comment?: string) {
 		return langGraphClient.submitFeedback(threadId, message.id, type, comment);
 	}
 

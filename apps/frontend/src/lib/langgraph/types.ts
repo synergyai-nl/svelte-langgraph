@@ -1,3 +1,5 @@
+export type FeedbackScore = 'up' | 'down';
+
 export interface BaseMessage {
 	type: string;
 	text: string;

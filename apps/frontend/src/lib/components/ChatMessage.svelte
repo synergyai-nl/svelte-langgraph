@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { User } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { FeedbackScore, Message } from '$lib/langgraph/types';
 	import Markdown from 'svelte-exmarkdown';
 	import { gfmPlugin } from 'svelte-exmarkdown/gfm';
 	import AIMessageActions from './AIMessageActions.svelte';
@@ -13,7 +13,7 @@
 		message: Message;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
-		onFeedback?: (message: Message, type: 'up' | 'down', comment?: string) => Promise<void>;
+		onFeedback?: (message: Message, type: FeedbackScore, comment?: string) => Promise<void>;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
 	}

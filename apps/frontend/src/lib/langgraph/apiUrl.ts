@@ -3,10 +3,6 @@ import { env } from '$env/dynamic/public';
 /**
  * The configured backend base, with exactly one trailing slash so relative
  * routes resolve beneath it rather than replacing its last path segment.
- *
- * Its own module, rather than living in client.ts: importing that from
- * `feedback.ts` would pull the SDK into every chunk that only wants this
- * string, which reorders module evaluation enough to break hydration.
  */
 function baseUrl(): URL {
 	const configured = env.PUBLIC_LANGGRAPH_API_URL?.trim();
