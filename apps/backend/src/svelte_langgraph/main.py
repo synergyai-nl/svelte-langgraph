@@ -13,11 +13,7 @@ from svelte_langgraph.graph import make_graph, INITIAL_MESSAGE
 async def main():
     load_dotenv()
 
-    config = RunnableConfig(
-        configurable={
-            "thread_id": "1",
-        },
-    )
+    config = RunnableConfig(configurable={"thread_id": "1"})
 
     agent = make_graph(config).copy(update={"checkpointer": InMemorySaver()})
 

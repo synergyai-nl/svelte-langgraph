@@ -42,6 +42,8 @@ Rating = Literal["up", "down"]
 # configured once rather than twice.
 _DEFAULT_BASE_URL = "http://localhost:3000"
 
+_SCORE_NAME = "user_feedback"
+
 # Langfuse's own latency runs to several seconds under normal load, so httpx's
 # default would give up well before it.
 _TIMEOUT = httpx.Timeout(30.0)
@@ -112,12 +114,12 @@ def pin_trace_to_run(config: RunnableConfig) -> None:
         logger.warning("run_id %r is not a UUID; leaving the trace id random", run_id)
         return
 
-    uid = UUID(str(run_id))
+    trace_int = int(trace_id, 16)
     span_context = SpanContext(
-        trace_id=uid.int,
+        trace_id=trace_int,
         # Any non-zero span id works — this parent is never exported, it only
         # carries the trace id. Deriving it from the run keeps it deterministic.
-        span_id=(uid.int >> 64) or 1,
+        span_id=(trace_int >> 64) or 1,
         is_remote=True,
         trace_flags=TraceFlags(TraceFlags.SAMPLED),
     )
@@ -127,9 +129,8 @@ def pin_trace_to_run(config: RunnableConfig) -> None:
 async def record_score(
     run_id: str,
     score: Rating,
-    name: str = "user_feedback",
+    score_id: str,
     comment: str | None = None,
-    score_id: str | None = None,
 ) -> bool:
     """Attach `score` to the Langfuse trace produced by `run_id`.
 
@@ -153,9 +154,9 @@ async def record_score(
         # leaves two scores on the same trace, contradicting each other and both
         # counted. This is also why the comment below is always sent. /feedback
         # passes a per-user, per-message id: one run can produce several answers.
-        "id": score_id or f"{trace_id}-{name}",
+        "id": score_id,
         "traceId": trace_id,
-        "name": name,
+        "name": _SCORE_NAME,
         # Categorical values travel in `value`; there is no `stringValue` on
         # the request, and without `dataType` the label is read as a numeric.
         # Adding a `configId` here would also map the categories to numbers,

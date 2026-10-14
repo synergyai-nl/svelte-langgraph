@@ -28,7 +28,8 @@ from .conftest import BASE_URL, RUN_ID
 TRACE_ID = "2762a74500bb4933a51aeddd65679b75"
 
 SCORE_URL = f"{BASE_URL}/api/public/scores"
-ACCEPTED = httpx.Response(200, json={"id": "score-1"})
+SCORE_ID = "score-1"
+ACCEPTED = httpx.Response(200, json={"id": SCORE_ID})
 
 
 def test_the_trace_id_is_the_run_id_without_its_dashes():
@@ -143,7 +144,7 @@ class TestScoring:
     async def test_no_score_without_credentials(self, no_langfuse_env):
         """Langfuse is optional, so an unconfigured deployment must no-op rather
         than raise — and must not reach out to the default localhost host."""
-        assert await record_score(RUN_ID, "up") is False
+        assert await record_score(RUN_ID, "up", SCORE_ID) is False
         assert not respx.calls
 
     @respx.mock
@@ -151,11 +152,11 @@ class TestScoring:
         """The point of pinning: no lookup call, just the score."""
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, "up") is True
+        assert await record_score(RUN_ID, "up", SCORE_ID) is True
 
         assert len(respx.calls) == 1
         assert json.loads(score.calls.last.request.content) == {
-            "id": f"{TRACE_ID}-user_feedback",
+            "id": SCORE_ID,
             "traceId": TRACE_ID,
             "name": "user_feedback",
             "value": "up",
@@ -164,15 +165,8 @@ class TestScoring:
         }
 
     @respx.mock
-    async def test_score_name_is_overridable(self, langfuse_env):
-        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
-
-        assert await record_score(RUN_ID, "down", name="thumbs") is True
-        assert json.loads(score.calls.last.request.content)["name"] == "thumbs"
-
-    @respx.mock
     async def test_a_non_uuid_run_is_not_scored(self, langfuse_env, caplog):
-        assert await record_score("cli", "up") is False
+        assert await record_score("cli", "up", SCORE_ID) is False
         assert not respx.calls
         assert "not a UUID" in caplog.text
 
@@ -183,7 +177,7 @@ class TestScoring:
         a 500 and lose the distinction."""
         score = respx.post(SCORE_URL).mock(return_value=httpx.Response(401))
 
-        assert await record_score(RUN_ID, "up") is False
+        assert await record_score(RUN_ID, "up", SCORE_ID) is False
         assert score.call_count == 1
         assert "Langfuse rejected" in caplog.text
 
@@ -195,7 +189,7 @@ class TestScoring:
             side_effect=[httpx.Response(503), httpx.ConnectError("blip"), ACCEPTED]
         )
 
-        assert await record_score(RUN_ID, "up") is True
+        assert await record_score(RUN_ID, "up", SCORE_ID) is True
         assert score.call_count == 3
 
     @respx.mock
@@ -203,7 +197,7 @@ class TestScoring:
         """/feedback awaits this, so it must fail rather than hang."""
         score = respx.post(SCORE_URL).mock(return_value=httpx.Response(503))
 
-        assert await record_score(RUN_ID, "up") is False
+        assert await record_score(RUN_ID, "up", SCORE_ID) is False
         assert score.call_count == 3
         assert "Giving up" in caplog.text
 
@@ -213,7 +207,7 @@ class TestScoring:
         rating until its comment box resolves."""
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, "down", comment="too vague") is True
+        assert await record_score(RUN_ID, "down", SCORE_ID, comment="too vague") is True
 
         assert len(respx.calls) == 1
         body = json.loads(score.calls.last.request.content)
@@ -228,8 +222,11 @@ class TestScoring:
         keeping across one."""
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, "down", comment="wrong and confident") is True
-        assert await record_score(RUN_ID, "up") is True
+        assert (
+            await record_score(RUN_ID, "down", SCORE_ID, comment="wrong and confident")
+            is True
+        )
+        assert await record_score(RUN_ID, "up", SCORE_ID) is True
 
         assert json.loads(score.calls.last.request.content)["comment"] == ""
 
@@ -237,23 +234,11 @@ class TestScoring:
     async def test_a_whitespace_comment_is_not_a_comment(self, langfuse_env):
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
-        assert await record_score(RUN_ID, "up", comment="   \n  ") is True
+        assert await record_score(RUN_ID, "up", SCORE_ID, comment="   \n  ") is True
 
         assert json.loads(score.calls.last.request.content)["comment"] == ""
 
     @respx.mock
-    async def test_the_score_id_is_stable_across_a_changed_mind(self, langfuse_env):
-        """Langfuse upserts on id, so rating up then down leaves one score
-        rather than two that contradict each other."""
-        score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
-
-        assert await record_score(RUN_ID, "up") is True
-        assert await record_score(RUN_ID, "down") is True
-
-        ids = {json.loads(call.request.content)["id"] for call in score.calls}
-        assert len(ids) == 1
-
-    @respx.mock
     async def test_a_missing_run_id_is_not_an_error(self, langfuse_env):
-        assert await record_score("", "up") is False
+        assert await record_score("", "up", SCORE_ID) is False
         assert not respx.calls

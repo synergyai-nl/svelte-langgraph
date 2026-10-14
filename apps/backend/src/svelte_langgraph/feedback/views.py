@@ -7,12 +7,15 @@ from uuid import NAMESPACE_URL, uuid5
 import httpx
 from aegra_api.core.auth_deps import require_auth
 from aegra_api.models import User
-from fastapi import Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from svelte_langgraph.tracing import is_configured, record_score
 
 from .provenance import run_id_for_message
 from .types import FeedbackPayload
+
+# A router, not an app: Aegra mounts exactly one custom app, and http.py is it.
+router = APIRouter()
 
 
 async def aegra_client(request: Request) -> AsyncIterator[httpx.AsyncClient]:
@@ -47,6 +50,7 @@ async def _get(client: httpx.AsyncClient, *segments: str) -> dict:
 
 # `enable_custom_route_auth` applies require_auth too; it is declared here for
 # the `User`, and require_auth caches its result on the request, so it's free.
+@router.post("/feedback")
 async def feedback(
     payload: FeedbackPayload,
     user: Annotated[User, Depends(require_auth)],
