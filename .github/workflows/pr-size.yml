@@ -1,0 +1,26 @@
+name: "PR size"
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, labeled, unlabeled] # `edited` covers stack base retargets
+permissions: {}
+concurrency:
+  group: pr-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  pr-size:
+    name: "PR size"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Count reviewable lines
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_SIZE_OVERRIDE: ${{ contains(github.event.pull_request.labels.*.name, 'size/override') }}
+        run: bash .github/scripts/pr-size.sh "$BASE_SHA" "$HEAD_SHA"
