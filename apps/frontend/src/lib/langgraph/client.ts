@@ -14,6 +14,9 @@ export interface AppClient extends TitleClient {
 	): Promise<void>;
 }
 
+// Above the backend's 10-second deadlines, so its own error arrives first.
+const ROUTE_TIMEOUT_MS = 15_000;
+
 export function createClient(accessToken: string): AppClient {
 	console.assert(!!accessToken, 'No access token specified.');
 
@@ -28,11 +31,12 @@ export function createClient(accessToken: string): AppClient {
 	});
 
 	async function postJson(route: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+		const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
 		const response = await fetch(apiEndpoint(route), {
 			method: 'POST',
 			headers: { ...auth, 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
-			signal
+			signal: signal ? AbortSignal.any([signal, timeout]) : timeout
 		});
 		if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
 		return response;
@@ -43,9 +47,7 @@ export function createClient(accessToken: string): AppClient {
 			messages: TitleMessage[],
 			signal: AbortSignal
 		): Promise<{ title: string | null }> {
-			// Allow the backend's 10-second model timeout to return its result.
-			const timeout = AbortSignal.any([signal, AbortSignal.timeout(15_000)]);
-			return (await postJson('titles', { messages }, timeout)).json();
+			return (await postJson('titles', { messages }, signal)).json();
 		},
 		async submitFeedback(
 			threadId: string,

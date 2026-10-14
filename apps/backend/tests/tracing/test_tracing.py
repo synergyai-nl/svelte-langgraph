@@ -193,6 +193,35 @@ class TestScoring:
         assert score.call_count == 3
 
     @respx.mock
+    @pytest.mark.parametrize("status", [408, 429])
+    async def test_timeouts_and_rate_limits_are_retried(self, langfuse_env, status):
+        """Langfuse rate-limits bursts; these say "later", not "wrong"."""
+        score = respx.post(SCORE_URL).mock(
+            side_effect=[httpx.Response(status), ACCEPTED]
+        )
+
+        assert await record_score(RUN_ID, "up", SCORE_ID) is True
+        assert score.call_count == 2
+
+    @respx.mock
+    async def test_a_stalled_langfuse_hits_the_deadline(
+        self, langfuse_env, monkeypatch, caplog
+    ):
+        """The per-attempt timeout alone would let retries stack up to minutes."""
+        from svelte_langgraph import tracing
+
+        monkeypatch.setattr(tracing, "_DEADLINE_SECONDS", 0.05)
+
+        async def stall(request):
+            await asyncio.sleep(5)
+            return ACCEPTED
+
+        respx.post(SCORE_URL).mock(side_effect=stall)
+
+        assert await record_score(RUN_ID, "up", SCORE_ID) is False
+        assert "Giving up" in caplog.text
+
+    @respx.mock
     async def test_retries_are_bounded(self, langfuse_env, caplog):
         """/feedback awaits this, so it must fail rather than hang."""
         score = respx.post(SCORE_URL).mock(return_value=httpx.Response(503))

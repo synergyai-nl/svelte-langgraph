@@ -50,9 +50,13 @@ _TIMEOUT = httpx.Timeout(30.0)
 
 # Pinning removed the *ingestion* race, not ordinary flakiness: a 5xx, a DNS
 # blip or a restarting self-hosted instance would otherwise lose the rating
-# outright, since the caller has nowhere to put it. Short and bounded, because
-# /feedback is awaited and a click must not hang.
+# outright, since the caller has nowhere to put it.
 _RETRY_DELAYS = (0.5, 2.0)
+_RETRYABLE_STATUSES = {408, 429}
+
+# One bound on the whole call, retries included, because /feedback awaits it.
+# The frontend's request timeout sits above this, so the 502 arrives first.
+_DEADLINE_SECONDS = 10.0
 
 
 def is_configured() -> bool:
@@ -137,8 +141,8 @@ async def record_score(
     No lookup and no waiting for ingestion: the trace id is derived from the run
     id, and Langfuse keeps a score whose trace hasn't landed yet, joining the two
     on `traceId` once it does (verified against cloud.langfuse.com). So this is a
-    single POST, briefly retried on transport or 5xx failures, that can be
-    awaited inside the request that triggered it.
+    single POST, retried on transient failures within one deadline, that can
+    be awaited inside the request that triggered it.
     """
     if not run_id or not is_configured():
         return False
@@ -172,6 +176,17 @@ async def record_score(
         "comment": (comment or "").strip(),
     }
     url = f"{_base_url()}/api/public/scores"
+    try:
+        async with asyncio.timeout(_DEADLINE_SECONDS):
+            return await _post_with_retries(url, payload, run_id)
+    except TimeoutError:
+        logger.error(
+            "Giving up on the score for run %s after %ss", run_id, _DEADLINE_SECONDS
+        )
+        return False
+
+
+async def _post_with_retries(url: str, payload: dict[str, object], run_id: str) -> bool:
     last_error: Exception | None = None
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
@@ -183,13 +198,12 @@ async def record_score(
                 response.raise_for_status()
                 return True
             except httpx.HTTPStatusError as exc:
-                # 4xx means this request is wrong and will stay wrong; only a
-                # server-side or transport failure is worth repeating.
-                if exc.response.status_code < 500:
+                status = exc.response.status_code
+                if status < 500 and status not in _RETRYABLE_STATUSES:
                     logger.error(
                         "Langfuse rejected the score for run %s: %s %s",
                         run_id,
-                        exc.response.status_code,
+                        status,
                         exc.response.text[:200],
                     )
                     return False

@@ -72,7 +72,8 @@ describe('feedback transport', () => {
 			method: 'POST',
 			headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
 			body: JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'up' }),
-			signal: undefined
+			// Without one a stalled backend leaves the thumbs pending forever.
+			signal: expect.any(AbortSignal)
 		});
 	});
 
