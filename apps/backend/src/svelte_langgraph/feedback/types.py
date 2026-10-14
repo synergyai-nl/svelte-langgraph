@@ -7,9 +7,8 @@ from pydantic import BaseModel, StringConstraints
 
 from svelte_langgraph.tracing import Rating
 
-# Kept in step with COMMENT_MAX_LENGTH in
-# apps/frontend/src/lib/langgraph/feedback.ts, which applies the same limit
-# before posting. Both count code points so the number means one thing.
+# The frontend mirrors this in feedbackLimits.ts to cap the comment box. This
+# one is the limit that's enforced.
 COMMENT_MAX_LENGTH = 2000
 
 # Stripped before the length check, so trailing newlines don't eat the budget and

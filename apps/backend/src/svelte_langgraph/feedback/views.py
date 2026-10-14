@@ -45,14 +45,15 @@ async def _get(client: httpx.AsyncClient, *segments: str) -> dict:
     return response.json()
 
 
-# require_auth is declared here, not left to `enable_custom_route_auth` in
-# aegra.json, which enforces nothing (aegra_api 0.10.3, main.py:223).
+# `enable_custom_route_auth` applies require_auth too; it is declared here for
+# the `User`, and require_auth caches its result on the request, so it's free.
 async def feedback(
     payload: FeedbackPayload,
     user: Annotated[User, Depends(require_auth)],
     aegra: Annotated[httpx.AsyncClient, Depends(aegra_client)],
 ) -> dict:
     """Attach a rating to the trace of the run that produced the message."""
+    # require_auth doesn't read is_authenticated (aegra/aegra#459).
     if not user.is_authenticated or not user.identity:
         raise HTTPException(status_code=401, detail="Authentication required")
 

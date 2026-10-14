@@ -90,10 +90,6 @@ def test_an_unauthenticated_rating_is_rejected(real_auth, langfuse_env):
     in place of whatever Aegra resolves from the process CWD. Without it, running
     pytest from the repo root found no auth, and the route answered from the
     anonymous fallback instead of rejecting -- the very hole this guards.
-
-    `enable_custom_route_auth` in aegra.json looks like it protects this route
-    and does not (aegra_api 0.10.3, aegra_api/main.py:223), so nothing else
-    would notice the route answering an anonymous caller.
     """
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
@@ -253,9 +249,7 @@ def test_a_caller_without_an_identity_is_rejected(client, langfuse_env):
 @pytest.mark.parametrize("authenticated", [False], indirect=True)
 def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
     """require_auth admits whatever its backend returns without reading
-    is_authenticated. aegra/aegra#459 sets that flag on the anonymous user, so
-    relying on Aegra to act on it would leave the endpoint open once #459
-    ships."""
+    is_authenticated (aegra/aegra#459), so the route checks it itself."""
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
     assert rate(client).status_code == 401

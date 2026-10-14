@@ -266,10 +266,7 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 		mockModule.setIsLoading(false);
 		await tick();
 
-		// Not an exact count: restoring stored ratings reads the same thread on
-		// mount, so the number of gets belongs to neither feature alone. What
-		// matters here is that titling asked for nothing and wrote nothing.
-		await waitFor(() => expect(threadsGetMock).toHaveBeenCalled());
+		await waitFor(() => expect(threadsGetMock).toHaveBeenCalledTimes(1));
 		await tick();
 		expect(generateTitleMock).not.toHaveBeenCalled();
 		expect(threadsUpdateMock).not.toHaveBeenCalled();

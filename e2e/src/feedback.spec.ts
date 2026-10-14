@@ -144,9 +144,7 @@ test("the backend refuses an unauthenticated score, and one on someone else's th
 	// Already signed in as the default subject by the beforeEach hook.
 	const owner = await scoreOwnReply(page, chat);
 
-	// The message it does own, minus the credentials. Aegra's own
-	// `enable_custom_route_auth` leaves this at 200 — the route's own
-	// `Depends(require_auth)` is what makes it 401.
+	// The message it does own, minus the credentials.
 	const anonymous = await page.request.post(owner.url, {
 		data: { thread_id: owner.threadId, message_id: owner.messageId, score: 'up' }
 	});

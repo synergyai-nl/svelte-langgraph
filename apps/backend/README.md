@@ -62,7 +62,7 @@ I'll check the weather in Paredes de Coura for you. It's always sunny in Paredes
 
 Thumbs up/down on an AI answer is one `POST /feedback` (`svelte_langgraph.feedback`), fire-and-forget: success is acknowledged in the UI, a reload forgets it, and nothing is read back. Ratings are stored only as Langfuse scores.
 
-- **Authorization.** The route requires auth itself (`Depends(require_auth)`), because `enable_custom_route_auth` in `aegra.json` does not enforce it. It then calls Aegra's public API in-process with the caller's token: GET thread first (that call applies the auth handler's filters), then GET state to find the message. Another user's thread returns 404. The feedback module owns validation and the score; Aegra owns access.
+- **Authorization.** `enable_custom_route_auth` in `aegra.json` requires auth on the route; it also declares `Depends(require_auth)` for the `User`, and checks `is_authenticated` itself. It then calls Aegra's public API in-process with the caller's token: GET thread first (that call applies the auth handler's filters), then GET state to find the message. Another user's thread returns 404. The feedback module owns validation and the score; Aegra owns access.
 - **Run lookup.** `RunStampMiddleware` (`feedback/provenance.py`) stamps each AI message with the run that produced it, so feedback never searches checkpoints. Messages created before that stamp existed return 404 instead of being guessed at.
 - **Score identity.** One score per user per message (`score_id`), so resubmitting updates the earlier score.
 - **Configuration.** `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` and optionally `LANGFUSE_BASE_URL`, with `OTEL_TARGETS=LANGFUSE`. Without the keys, feedback is accepted and not recorded.
