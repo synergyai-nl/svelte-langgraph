@@ -42,7 +42,6 @@
 	"message_feedback_good": "अच्छा उत्तर",
 	"message_feedback_bad": "कमज़ोर उत्तर",
 	"message_feedback_failed": "रेटिंग विफल रही, फिर से प्रयास करें",
-	"message_feedback_sent": "आपकी प्रतिक्रिया के लिए धन्यवाद",
 	"message_feedback_unavailable": "इस उत्तर के लिए प्रतिक्रिया उपलब्ध नहीं है",
 	"message_feedback_dialog_title_positive": "सकारात्मक प्रतिक्रिया दें",
 	"message_feedback_dialog_title_negative": "नकारात्मक प्रतिक्रिया दें",

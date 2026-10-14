@@ -29,15 +29,8 @@
 	// Sent is final until remount: the click is acknowledged, not editable.
 	let disabled = $derived(!available || !onSubmit || status === 'pending' || status === 'sent');
 
-	let label = $derived(
-		!available
-			? m.message_feedback_unavailable()
-			: status === 'sent'
-				? m.message_feedback_sent()
-				: status === 'failed'
-					? m.message_feedback_failed()
-					: null
-	);
+	// Sent and failed need no label: the highlight and the asterisk say those.
+	let label = $derived(available ? null : m.message_feedback_unavailable());
 
 	function choose(type: FeedbackScore) {
 		if (disabled || draft) return;

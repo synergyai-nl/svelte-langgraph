@@ -73,6 +73,33 @@ describe('FeedbackButtons', () => {
 		expect(screen.queryByTestId('feedback-failed')).not.toBeInTheDocument();
 	});
 
+	test("a landed rating leaves the other thumb's tooltip alone", async () => {
+		// The tooltip positions itself with this, and jsdom has none.
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			}
+		);
+		const user = userEvent.setup();
+		renderComponent({ onSubmit: vi.fn().mockResolvedValue(undefined) });
+
+		await rate(user, up());
+		await waitFor(() => expect(down()).toBeDisabled());
+
+		// The trigger, not the disabled button, which takes no pointer events.
+		await user.hover(down().closest('[data-slot="tooltip-trigger"]')!);
+		// Past the open delay plus bits-ui's 250ms pointer-transit check.
+		await waitFor(
+			() =>
+				expect(document.querySelector('[data-tooltip-content]')).toHaveTextContent('Bad Response'),
+			{ timeout: 3000 }
+		);
+		vi.unstubAllGlobals();
+	});
+
 	test('marks a failed rating, drops its highlight and allows a retry', async () => {
 		const user = userEvent.setup();
 		const onSubmit = vi.fn().mockRejectedValueOnce(new Error('502')).mockResolvedValue(undefined);

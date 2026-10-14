@@ -42,7 +42,6 @@
 	"message_feedback_good": "Goed antwoord",
 	"message_feedback_bad": "Slecht antwoord",
 	"message_feedback_failed": "Beoordeling mislukt, probeer het opnieuw",
-	"message_feedback_sent": "Bedankt voor je feedback",
 	"message_feedback_unavailable": "Feedback is niet beschikbaar voor dit antwoord",
 	"message_feedback_dialog_title_positive": "Geef positieve feedback",
 	"message_feedback_dialog_title_negative": "Geef negatieve feedback",
