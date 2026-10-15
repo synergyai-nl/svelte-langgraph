@@ -61,4 +61,15 @@ afterEach(() => {
 	document.body.style.pointerEvents = '';
 });
 
+// jsdom does not implement ResizeObserver — needed by floating-ui (via bits-ui's Tooltip/Popper)
+// to reposition an open tooltip/popover, which real pointer-hover interactions
+// (`userEvent.hover(...)`) exercise.
+if (typeof window.ResizeObserver === 'undefined') {
+	window.ResizeObserver = class ResizeObserver {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+}
+
 // add more mocks here if you need them
