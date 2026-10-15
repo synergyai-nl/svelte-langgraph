@@ -75,7 +75,14 @@ runs it first), so a deployed frontend serves the item at `/r/chat.json`.
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
 
-2. Load those messages alongside your own: in `project.inlang/settings.json`, make
+2. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
+   which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
+
+   ```css
+   @plugin '@tailwindcss/typography';
+   ```
+
+3. Load those messages alongside your own: in `project.inlang/settings.json`, make
    `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
 
    ```json
@@ -84,7 +91,7 @@ runs it first), so a deployed frontend serves the item at `/r/chat.json`.
    }
    ```
 
-3. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
+4. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
    there and to `locales` in the settings.
 
 Note: `@svelte-langgraph/client` (`packages/client/`) is not published to npm yet.

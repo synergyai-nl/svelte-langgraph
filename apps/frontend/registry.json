@@ -33,6 +33,7 @@
 				"@langchain/svelte@^0.3.1",
 				"@lucide/svelte@^0.562.0",
 				"@svelte-langgraph/client",
+				"@tailwindcss/typography@^0.5.15",
 				"bits-ui@^2.15.4",
 				"svelte-exmarkdown@^5.0.1",
 				"tailwind-variants@^3.2.2"
