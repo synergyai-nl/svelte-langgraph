@@ -19,8 +19,7 @@
 		Headphones,
 		CircleDot,
 		Circle,
-		ExternalLink,
-		MessageSquare
+		ExternalLink
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
 	import HeroTerminal from '$lib/components/marketing/HeroTerminal.svelte';
@@ -228,7 +227,6 @@
 	];
 
 	const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
-	const DEMO_URL = 'https://svelte-langgraph-demo.synergyai.nl/';
 	const DOCS_URL = `${GITHUB_URL}#readme`;
 
 	const ecosystemLinks = [
@@ -281,24 +279,12 @@
 							class="flex flex-col items-center justify-center gap-3 sm:flex-row lg:items-start lg:justify-start"
 						>
 							<Button
-								href="/chat"
+								href="/demo"
 								size="lg"
 								class="shadow-primary-600/20 w-full cursor-pointer gap-2 px-8 text-base shadow-lg sm:w-auto"
 							>
-								<MessageSquare class="size-4" />
-								{m.landing_cta_open_chat()}
+								{m.landing_cta_explore_demos()}
 								<ArrowRight class="size-4" />
-							</Button>
-							<Button
-								href={DEMO_URL}
-								target="_blank"
-								rel="noopener noreferrer"
-								size="lg"
-								variant="outline"
-								class="w-full cursor-pointer gap-2 px-8 text-base sm:w-auto"
-							>
-								{m.landing_cta_live_demo()}
-								<ExternalLink class="size-4" />
 							</Button>
 							<Button
 								href={GITHUB_URL}
@@ -645,13 +631,11 @@
 			</p>
 			<div class="flex flex-col justify-center gap-4 sm:flex-row">
 				<Button
-					href={DEMO_URL}
-					target="_blank"
-					rel="noopener noreferrer"
+					href="/demo"
 					size="lg"
 					class="shadow-primary-600/20 cursor-pointer gap-2 px-8 text-base shadow-lg"
 				>
-					{m.landing_cta_live_demo()}
+					{m.landing_cta_explore_demos()}
 					<ArrowRight class="size-4" />
 				</Button>
 				<Button
