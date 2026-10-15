@@ -50,6 +50,54 @@ You can preview the production build with `npm run preview`.
 
 ---
 
+## Installing the chat UI from the registry
+
+The chat components (`src/lib/components/chat/`) are published as a
+[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) item, `chat`.
+`moon frontend:registry-build` builds `registry.json` into `static/r/` (gitignored; `build`
+runs it first), so a deployed frontend serves the item at `/r/chat.json`.
+
+1. In a SvelteKit project already set up with shadcn-svelte and Paraglide, install it:
+
+   ```bash
+   pnpm dlx shadcn-svelte@latest add https://<your-frontend>/r/chat.json
+   ```
+
+   This copies the components into `$lib/components/chat/`, pulls in the upstream shadcn-svelte
+   UI components they use, and writes the chat strings to `messages/chat/{locale}.json`.
+
+   The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
+   which **overwrite** your own versions of those: the chat components rely on the
+   container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
+   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. The CLI prompts before
+   overwriting existing files; review the diff if you customized any of them.
+
+   `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
+   at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
+
+2. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
+   which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
+
+   ```css
+   @plugin '@tailwindcss/typography';
+   ```
+
+3. Load those messages alongside your own: in `project.inlang/settings.json`, make
+   `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
+
+   ```json
+   "plugin.inlang.messageFormat": {
+   	"pathPattern": ["./messages/{locale}.json", "./messages/chat/{locale}.json"]
+   }
+   ```
+
+4. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
+   there and to `locales` in the settings.
+
+Note: `@svelte-langgraph/client` (`packages/client/`) is not published to npm yet.
+
+---
+
 ## Generic state synchronisation (`createStateSync`)
 
 `@svelte-langgraph/client` (`packages/client/`) contains a runtime-schema-driven state-sync
