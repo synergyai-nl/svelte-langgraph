@@ -17,6 +17,7 @@
 			"registryDependencies": [
 				"button",
 				"card",
+				"dialog",
 				"input",
 				"is-mobile",
 				"separator",
@@ -82,6 +83,11 @@
 					"path": "src/lib/components/chat/FeedbackButtons.svelte",
 					"type": "registry:component",
 					"target": "chat/FeedbackButtons.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/FeedbackDialog.svelte",
+					"type": "registry:component",
+					"target": "chat/FeedbackDialog.svelte"
 				},
 				{
 					"path": "src/lib/components/chat/LangGraph.svelte",
