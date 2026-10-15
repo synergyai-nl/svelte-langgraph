@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import type { FeedbackScore, Message } from '$lib/langgraph/types';
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';
@@ -16,6 +16,7 @@
 		onRetryError?: () => void;
 		onEdit: (message: Message, newText: string) => boolean;
 		onRegenerate: (message: Message) => void;
+		onFeedback?: (message: Message, type: FeedbackScore, comment?: string) => Promise<void>;
 	}
 
 	let {
@@ -25,7 +26,8 @@
 		generationError = null,
 		onRetryError,
 		onEdit,
-		onRegenerate
+		onRegenerate,
+		onFeedback
 	}: Props = $props();
 
 	// The message currently being generated is always the last one in the list — while a
@@ -82,6 +84,7 @@
 						{message}
 						{onEdit}
 						{onRegenerate}
+						{onFeedback}
 						isThinkingActive={message.type === 'ai' && message.id === streamingMessageId}
 					/>
 				{/if}

@@ -57,6 +57,47 @@ describe('direct title transport', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
 		await expect(
 			createClient('test-token').generateTitle(messages, new AbortController().signal)
-		).rejects.toThrow('Title request failed: 503');
+		).rejects.toThrow('POST titles failed: 503');
+	});
+});
+
+describe('feedback transport', () => {
+	it('posts to /feedback with the same bearer the SDK sends', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await createClient('test-token').submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock).toHaveBeenCalledExactlyOnceWith('https://backend.test/api/feedback', {
+			method: 'POST',
+			headers: { Authorization: 'Bearer test-token', 'Content-Type': 'application/json' },
+			body: JSON.stringify({ thread_id: 'thread-1', message_id: 'ai-1', score: 'up' }),
+			// Without one a stalled backend leaves the thumbs pending forever.
+			signal: expect.any(AbortSignal)
+		});
+	});
+
+	it('sends a comment with its rating', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+		vi.stubGlobal('fetch', fetchMock);
+
+		await createClient('test-token').submitFeedback('thread-1', 'ai-1', 'down', 'too vague');
+
+		expect(fetchMock.mock.calls[0][1].body).toBe(
+			JSON.stringify({
+				thread_id: 'thread-1',
+				message_id: 'ai-1',
+				score: 'down',
+				comment: 'too vague'
+			})
+		);
+	});
+
+	it('reports a rejected score to the caller', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
+
+		await expect(
+			createClient('test-token').submitFeedback('thread-1', 'ai-1', 'up')
+		).rejects.toThrow(/404/);
 	});
 });

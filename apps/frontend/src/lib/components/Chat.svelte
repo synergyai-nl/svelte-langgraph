@@ -5,19 +5,20 @@
 	import ChatInput from './ChatInput.svelte';
 	import ChatMessages from './ChatMessages.svelte';
 	import ChatSuggestions, { type ChatSuggestion } from './ChatSuggestions.svelte';
-	import type { Message, ToolMessage } from '$lib/langgraph/types';
+	import type { FeedbackScore, Message, ToolMessage } from '$lib/langgraph/types';
 	import type { Checkpoint } from '@langchain/langgraph-sdk';
-	import { InvalidData } from '$lib/langgraph/errors';
+	import { InvalidData, isCancellationError } from '$lib/langgraph/errors';
 	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
 	import { getThreadListRefresh } from '$lib/langgraph/threadListContext';
 	import { getThreadLoadingReporter } from '$lib/langgraph/threadLoadingContext';
-	import { createThreadTitler, type TitleClient } from '$lib/langgraph/threadTitle';
+	import { createThreadTitler } from '$lib/langgraph/threadTitle';
+	import type { AppClient } from '$lib/langgraph/client';
 	import { onDestroy, untrack } from 'svelte';
 	import StateField from './StateField.svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
 	interface Props {
-		langGraphClient: TitleClient;
+		langGraphClient: AppClient;
 		assistantId: string;
 		threadId: string;
 		suggestions?: ChatSuggestion[];
@@ -80,15 +81,6 @@
 	let rawMessageById = $derived(
 		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
 	);
-
-	function isCancellationError(err: unknown): boolean {
-		if (err instanceof Error) {
-			return err.name === 'CancelledError' || err.name === 'AbortError';
-		}
-		// Python server stores cancellation as a raw string in thread task history
-		const str = String(err);
-		return str.includes('CancelledError') || str.includes('AbortError');
-	}
 
 	let generationError = $derived(
 		!isCancellationError(stream.error) && stream.error != null
@@ -154,6 +146,10 @@
 		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		stream.submit(undefined, { checkpoint: parentCheckpoint });
+	}
+
+	function rateMessage(message: Message, type: FeedbackScore, comment?: string) {
+		return langGraphClient.submitFeedback(threadId, message.id, type, comment);
 	}
 
 	// Nudge the sidebar's thread list once a run settles, so a freshly titled/updated/regenerated
@@ -239,6 +235,7 @@
 				onRetryError={retryGenerationAfterError}
 				onEdit={handleEdit}
 				onRegenerate={handleRegenerate}
+				onFeedback={rateMessage}
 			/>
 		{/if}
 	</div>

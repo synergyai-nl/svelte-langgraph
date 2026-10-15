@@ -14,9 +14,9 @@ export async function expectOIDCProviderURL(page: Page) {
  * Complete OIDC authentication flow.
  * The oidc-provider-mock automatically authenticates the test-user.
  */
-export async function authenticateUser(page: Page) {
+export async function authenticateUser(page: Page, username: string = OIDC_CONFIG.username) {
 	const app = new AppPage(page);
-	const oidc = new OidcPage(page);
+	const oidc = new OidcPage(page, username);
 
 	await page.goto('/');
 	await app.signIn();

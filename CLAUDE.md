@@ -50,6 +50,12 @@ moon :lint-fix       # Fix linting issues
 moon :format-write   # Fix formatting issues
 ```
 
+#### Running individual tests
+```bash
+# Arguments after `--` are passed to vitest; paths are relative to apps/frontend
+moon run frontend:test -- src/lib/components/Chat.svelte.test.ts
+```
+
 ### Building
 ```bash
 # Build entire workspace

@@ -1,54 +1,113 @@
+<script lang="ts" module>
+	export type FeedbackStatus = 'pending' | 'sent' | 'failed' | null;
+</script>
+
 <script lang="ts">
+	import type { FeedbackScore } from '$lib/langgraph/types';
 	import { Button } from '$lib/components/ui/button';
-	import { ThumbsUp, ThumbsDown } from '@lucide/svelte';
-	import type { Message } from '$lib/langgraph/types';
+	import { ThumbsUp, ThumbsDown, Asterisk } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
+	import FeedbackDialog from './FeedbackDialog.svelte';
 
 	interface Props {
-		message: Message;
-		onFeedback?: (message: Message, type: 'up' | 'down') => void;
+		/** Sends the rating with its optional comment; rejects if it didn't land. */
+		onSubmit?: (type: FeedbackScore, comment?: string) => Promise<void>;
+		/** False for an answer the backend can't tie to a trace. */
+		available?: boolean;
+		/** Bindable, so the action row can stay visible while pending or failed. */
+		status?: FeedbackStatus;
 	}
 
-	let { message, onFeedback }: Props = $props();
+	let { onSubmit, available = true, status = $bindable(null) }: Props = $props();
 
-	let feedbackGiven = $state<'up' | 'down' | null>(null);
+	// Local by design: nothing is read back, so a remount starts fresh. The
+	// backend's per-user, per-message score id makes rating again an update.
+	let rating = $state<FeedbackScore | null>(null);
+	let draft = $state<FeedbackScore | null>(null);
 
-	function handleFeedback(type: 'up' | 'down') {
-		feedbackGiven = feedbackGiven === type ? null : type;
-		onFeedback?.(message, type);
+	// Sent is final until remount: the click is acknowledged, not editable.
+	let disabled = $derived(!available || !onSubmit || status === 'pending' || status === 'sent');
+
+	// Sent and failed need no label: the highlight and the asterisk say those.
+	let label = $derived(available ? null : m.message_feedback_unavailable());
+
+	function choose(type: FeedbackScore) {
+		if (disabled || draft) return;
+		rating = type;
+		draft = type;
+	}
+
+	async function resolve(comment?: string) {
+		const type = draft;
+		draft = null;
+		if (!type || !onSubmit) return;
+
+		status = 'pending';
+		try {
+			await onSubmit(type, comment);
+			status = 'sent';
+		} catch (err) {
+			rating = null;
+			status = 'failed';
+			console.error('Failed to submit feedback', err);
+		}
 	}
 </script>
 
-<div class="border-border-card ml-2 flex gap-1 border-l pl-2">
+<div class="border-border-card ml-2 flex items-center gap-1 border-l pl-2">
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => handleFeedback('up')}
+				onclick={() => choose('up')}
+				{disabled}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'up' ? 'bg-muted' : ''}"
+				class="h-6 w-6 p-1.5 {rating === 'up' ? 'bg-muted' : ''}"
 				title={m.message_feedback_good()}
-				disabled
 			>
 				<ThumbsUp size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{label ?? m.message_feedback_good()}</TooltipContent>
 	</Tooltip>
 	<Tooltip>
 		<TooltipTrigger>
 			<Button
-				onclick={() => handleFeedback('down')}
+				onclick={() => choose('down')}
+				{disabled}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6 p-1.5 {feedbackGiven === 'down' ? 'bg-muted' : ''}"
+				class="h-6 w-6 p-1.5 {rating === 'down' ? 'bg-muted' : ''}"
 				title={m.message_feedback_bad()}
-				disabled
 			>
 				<ThumbsDown size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{m.coming_soon()}</TooltipContent>
+		<TooltipContent>{label ?? m.message_feedback_bad()}</TooltipContent>
 	</Tooltip>
+
+	{#if status === 'pending'}
+		<!-- Same slot as the failure marker, so the row doesn't reflow. -->
+		<Asterisk
+			size={14}
+			class="text-muted-foreground animate-pulse"
+			data-testid="feedback-pending"
+			aria-hidden="true"
+		/>
+	{:else if status === 'failed'}
+		<Tooltip>
+			<TooltipTrigger>
+				<Asterisk
+					size={14}
+					class="text-destructive"
+					data-testid="feedback-failed"
+					aria-label={m.message_feedback_failed()}
+				/>
+			</TooltipTrigger>
+			<TooltipContent>{m.message_feedback_failed()}</TooltipContent>
+		</Tooltip>
+	{/if}
 </div>
+
+<FeedbackDialog rating={draft} onResolve={resolve} />

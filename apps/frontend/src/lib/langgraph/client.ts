@@ -1,38 +1,62 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
-import { env } from '$env/dynamic/public';
-import type { ThreadValues } from './types';
+import { apiEndpoint, apiUrl } from './apiUrl';
+import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
 
-export function createClient(accessToken: string): TitleClient {
-	const langchainUrl = env.PUBLIC_LANGGRAPH_API_URL;
-	if (!langchainUrl) throw Error('Required PUBLIC_LANGGRAPH_API_URL is undefined');
+/** The SDK client plus our own backend routes, all sending the same auth. */
+export interface AppClient extends TitleClient {
+	/** Rate an AI answer. The backend resolves which run produced it. */
+	submitFeedback(
+		threadId: string,
+		messageId: string,
+		score: FeedbackScore,
+		comment?: string
+	): Promise<void>;
+}
 
+// Above the backend's 10-second deadlines, so its own error arrives first.
+const ROUTE_TIMEOUT_MS = 15_000;
+
+export function createClient(accessToken: string): AppClient {
 	console.assert(!!accessToken, 'No access token specified.');
 
+	// The SDK keeps its headers protected, so our routes share this instead.
+	const auth = { Authorization: `Bearer ${accessToken}` };
+
 	const client = new Client({
-		defaultHeaders: {
-			Authorization: `Bearer ${accessToken}`
-		},
-		apiUrl: langchainUrl,
+		// A copy: the SDK may write x-api-key into the object it is given.
+		defaultHeaders: { ...auth },
+		apiUrl: apiUrl(),
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
+
+	async function postJson(route: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+		const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
+		const response = await fetch(apiEndpoint(route), {
+			method: 'POST',
+			headers: { ...auth, 'Content-Type': 'application/json' },
+			body: JSON.stringify(body),
+			signal: signal ? AbortSignal.any([signal, timeout]) : timeout
+		});
+		if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
+		return response;
+	}
+
 	return Object.assign(client, {
 		async generateTitle(
 			messages: TitleMessage[],
 			signal: AbortSignal
 		): Promise<{ title: string | null }> {
-			const response = await fetch(`${langchainUrl.replace(/\/$/, '')}/titles`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${accessToken}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ messages }),
-				// Allow the backend's 10-second model timeout to return its result.
-				signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)])
-			});
-			if (!response.ok) throw new Error(`Title request failed: ${response.status}`);
-			return await response.json();
+			return (await postJson('titles', { messages }, signal)).json();
+		},
+		async submitFeedback(
+			threadId: string,
+			messageId: string,
+			score: FeedbackScore,
+			comment?: string
+		) {
+			// An undefined comment drops out of the JSON, leaving a bare rating.
+			await postJson('feedback', { thread_id: threadId, message_id: messageId, score, comment });
 		}
 	});
 }

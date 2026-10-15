@@ -3,7 +3,7 @@
 from typing import Annotated, Literal
 
 from aegra_api.core.auth_deps import require_auth
-from fastapi import Depends, FastAPI
+from fastapi import APIRouter, Depends
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from pydantic import BaseModel, Field
 
@@ -13,7 +13,8 @@ from svelte_langgraph.title import (
     generate_title,
 )
 
-app = FastAPI()
+# A router, not an app: Aegra mounts exactly one custom app, and http.py is it.
+router = APIRouter()
 
 
 class TitleMessage(BaseModel):
@@ -27,7 +28,7 @@ class TitleRequest(BaseModel):
     ]
 
 
-@app.post("/titles", dependencies=[Depends(require_auth)])
+@router.post("/titles", dependencies=[Depends(require_auth)])
 async def create_title(request: TitleRequest) -> TitleOutputState:
     messages: list[AnyMessage] = [
         HumanMessage(content=message.content)

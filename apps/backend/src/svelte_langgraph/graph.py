@@ -22,10 +22,12 @@ from langgraph.runtime import Runtime
 
 # Absolute imports required: Aegra loads this file by path (outside the
 # package), so relative imports would fail at server startup.
+from svelte_langgraph.feedback.provenance import RunStampMiddleware
 from svelte_langgraph.models import get_chat_model
 from svelte_langgraph.phase import DEFAULT_PHASE, VALID_PHASES, Phase
 from svelte_langgraph.reducers import last_value
 from svelte_langgraph.tools import get_tools
+from svelte_langgraph.tracing import pin_trace_to_run
 
 
 # AgentState is generic over the structured-response type since langchain 1.3;
@@ -147,9 +149,13 @@ class PromptMiddleware(AgentMiddleware[AgentExtendedState, None, Any]):
 def make_graph(
     config: RunnableConfig,
 ) -> CompiledStateGraph:
+    # Must run before the agent traces anything: it fixes this run's trace id to
+    # its run id, which is what lets /feedback score the trace without a lookup.
+    # Remove once Aegra ships aegra/aegra#372: see "Tracing shim" in the README.
+    pin_trace_to_run(config)
     return create_agent(
         model=get_chat_model(),
         tools=get_tools(),
-        middleware=[phase_gate, PromptMiddleware()],
+        middleware=[phase_gate, PromptMiddleware(), RunStampMiddleware()],
         state_schema=AgentExtendedState,
     )

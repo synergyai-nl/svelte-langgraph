@@ -1,3 +1,5 @@
+export type FeedbackScore = 'up' | 'down';
+
 export interface BaseMessage {
 	type: string;
 	text: string;
@@ -7,6 +9,9 @@ export interface BaseMessage {
 export interface AIMessage extends BaseMessage {
 	type: 'ai';
 	thinking?: string;
+	/** Carries the producing run the backend stamps on, so /feedback can
+	 *  score its trace. Absent while streaming and on pre-stamp answers. */
+	rateable?: boolean;
 }
 
 export interface UserMessage extends BaseMessage {

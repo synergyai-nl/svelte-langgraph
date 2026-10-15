@@ -1,9 +1,9 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Chat from './Chat.svelte';
-import type { TitleClient } from '$lib/langgraph/threadTitle';
+import type { AppClient } from '$lib/langgraph/client';
 import type { ChatSuggestion } from './ChatSuggestions.svelte';
 import * as mockModule from './__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
@@ -14,10 +14,20 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema)
+// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
+// `threads` backs the titler's metadata reads and writes.
+const submitFeedbackMock = vi.fn();
 const mockClient = {
-	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) }
-} as unknown as TitleClient;
+	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
+	threads: {
+		get: vi.fn().mockResolvedValue({ metadata: {} }),
+		update: vi.fn().mockResolvedValue({})
+	},
+	submitFeedback: submitFeedbackMock
+} as unknown as AppClient;
+
+/** The `threads` mock, typed for assertions. */
+const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
 
 const suggestions: ChatSuggestion[] = [
 	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
@@ -38,6 +48,9 @@ function renderChat(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
 	mockModule.resetMock();
+	mockThreads.get.mockReset().mockResolvedValue({ metadata: {} });
+	mockThreads.update.mockReset().mockResolvedValue({});
+	submitFeedbackMock.mockReset().mockResolvedValue(undefined);
 });
 
 describe('Chat', () => {
@@ -405,6 +418,148 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(screen.getByRole('status')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('when an AI message is rated', () => {
+		/** Hover the message with `text` and click one of ITS rating buttons.
+		 *  Scoped with `within` because every AI message renders its own pair.
+		 *  Stops at the click, which only opens the comment box — see `rate`. */
+		async function clickRating(title: RegExp, text = 'AI response') {
+			const user = userEvent.setup();
+			const aiMessage = await screen.findByText(text);
+			await user.hover(aiMessage);
+			const group = aiMessage.closest('[role="group"]') as HTMLElement;
+			await user.click(await within(group).findByTitle(title));
+			return user;
+		}
+
+		/** Click a rating and then resolve the comment box it opens.
+		 *
+		 *  Nothing is sent until the box resolves, so every rating goes through it.
+		 *  Cancelling is the no-comment path, which is what most of these assert. */
+		async function rate(title: RegExp, text = 'AI response', comment?: string) {
+			const user = await clickRating(title, text);
+
+			const dialog = await screen.findByTestId('feedback-dialog');
+			if (comment === undefined) {
+				await user.click(within(dialog).getByTestId('feedback-cancel'));
+			} else {
+				// Pasted rather than typed because bits-ui's dialog focus scope pulls
+				// focus off the field after the first state-driven update under
+				// jsdom, so `user.type` lands only the first character or two. This
+				// afflicts any dialog, not this one — a bare <textarea bind:value>
+				// in a plain Dialog.Root truncates identically. Pasting sidesteps
+				// focus entirely, which means the only proof a user can actually
+				// type a comment is the `pressSequentially` case in
+				// e2e/src/feedback.spec.ts. Do not weaken that one.
+				// Retried because that same focus scope can steal focus before the
+				// paste lands at all when the suite runs under load.
+				const box = within(dialog).getByTestId('feedback-comment');
+				await waitFor(async () => {
+					if ((box as HTMLTextAreaElement).value !== comment) {
+						await user.click(box);
+						await user.paste(comment);
+					}
+					expect(box).toHaveValue(comment);
+				});
+				await user.click(within(dialog).getByTestId('feedback-submit'));
+			}
+
+			// The open box blocks pointer events on <body> and only releases them
+			// once it has actually left the DOM. Without this wait the next hover —
+			// here or in the following test — is refused.
+			await waitFor(() => expect(screen.queryByTestId('feedback-dialog')).not.toBeInTheDocument());
+			// The style outlives the node by a tick, which only shows up when the
+			// same message is rated twice in a row.
+			await waitFor(() => expect(document.body.style.pointerEvents).not.toBe('none'));
+		}
+
+		/** An answer as the backend stores it: stamped with its producing run. */
+		function stampedAnswer(id: string, content: string) {
+			return { type: 'ai', content, id, response_metadata: { run_id: `run-of-${id}` } };
+		}
+
+		const metadataKeys = () =>
+			mockThreads.update.mock.calls.flatMap(([, body]) =>
+				Object.keys((body as { metadata?: object }).metadata ?? {})
+			);
+
+		test('rates through the client by message id, and stores nothing', async () => {
+			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
+
+			renderChat();
+			await rate(/good response/i);
+
+			// The run is resolved server-side, so the client can't point a rating
+			// at another run's trace.
+			await waitFor(() =>
+				expect(submitFeedbackMock).toHaveBeenCalledExactlyOnceWith(
+					'test-123',
+					'ai-1',
+					'up',
+					undefined
+				)
+			);
+			// Submit-only: no rating is stored anywhere to be read back.
+			expect(metadataKeys()).toEqual([]);
+		});
+
+		test('rates each answer on its own, even two from one run', async () => {
+			mockModule.setMessages([
+				{ ...stampedAnswer('ai-1', 'First answer'), response_metadata: { run_id: 'same' } },
+				{ ...stampedAnswer('ai-2', 'Second answer'), response_metadata: { run_id: 'same' } }
+			]);
+
+			renderChat();
+			await rate(/good response/i, 'First answer');
+			await rate(/bad response/i, 'Second answer');
+
+			await waitFor(() => expect(submitFeedbackMock).toHaveBeenCalledTimes(2));
+			expect(submitFeedbackMock.mock.calls).toEqual([
+				['test-123', 'ai-1', 'up', undefined],
+				['test-123', 'ai-2', 'down', undefined]
+			]);
+			// The first stays acknowledged; rating the second didn't touch it.
+			const first = (await screen.findByText('First answer')).closest('[role="group"]');
+			expect(within(first as HTMLElement).getByTitle(/good response/i)).toHaveClass('bg-muted');
+		});
+
+		test('a pre-stamp answer cannot be rated', async () => {
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+
+			renderChat();
+			const group = (await screen.findByText('AI response')).closest('[role="group"]');
+
+			expect(within(group as HTMLElement).getByTitle(/good response/i)).toBeDisabled();
+			expect(submitFeedbackMock).not.toHaveBeenCalled();
+		});
+
+		test('a remount forgets the submitted state, so the answer can be rated again', async () => {
+			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
+
+			const { unmount } = renderChat();
+			await rate(/good response/i);
+			await waitFor(() => expect(screen.getByTitle(/good response/i)).toBeDisabled());
+			unmount();
+
+			renderChat();
+			expect(await screen.findByTitle(/good response/i)).toBeEnabled();
+		});
+
+		test("a request pending in one thread doesn't reach the next thread's buttons", async () => {
+			submitFeedbackMock.mockReturnValue(new Promise(() => {}));
+			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
+
+			const { unmount } = renderChat();
+			await rate(/good response/i);
+			expect(await screen.findByTestId('feedback-pending')).toBeInTheDocument();
+			unmount();
+
+			// The route remounts Chat per thread via {#key threadId}.
+			renderChat({ threadId: 'other-thread' });
+			expect(await screen.findByTitle(/good response/i)).toBeEnabled();
+			expect(screen.queryByTestId('feedback-pending')).not.toBeInTheDocument();
 		});
 	});
 });

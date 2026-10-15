@@ -35,6 +35,16 @@ describe('convertThreadMessage', () => {
 		});
 	});
 
+	it('marks an ai message rateable once the backend has stamped its run', () => {
+		const stamped = { type: 'ai', content: 'Hi', id: 'ai-1', response_metadata: { run_id: 'r' } };
+
+		expect(convertThreadMessage(stamped)).toMatchObject({ rateable: true });
+		expect(convertThreadMessage({ ...stamped, response_metadata: {} })).not.toHaveProperty(
+			'rateable'
+		);
+		expect(convertThreadMessage({ ...stamped, id: undefined })).not.toHaveProperty('rateable');
+	});
+
 	it('should convert tool message to ToolMessage', () => {
 		const item = {
 			type: 'tool',
