@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-	import type { FeedbackScore } from '$lib/langgraph/types';
+	import type { FeedbackScore } from '@svelte-langgraph/client';
 	import { Button } from '$lib/components/ui/button';
 	import { ThumbsUp, ThumbsDown, Asterisk } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
