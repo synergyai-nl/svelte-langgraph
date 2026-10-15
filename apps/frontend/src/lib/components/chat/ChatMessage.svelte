@@ -64,7 +64,6 @@
 				     tell AI replies from the user's own bubbles (see e2e/src/pages/chat-surface.page.ts). -->
 				<div
 					role="group"
-					data-testid="message-{message.type}"
 					data-message-type={message.type}
 					onmouseenter={() => (isHovered = true)}
 					onmouseleave={() => (isHovered = false)}
