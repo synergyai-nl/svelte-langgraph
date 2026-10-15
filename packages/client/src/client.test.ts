@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
 
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'https://backend.test/api/' }
-}));
-
 afterEach(() => vi.unstubAllGlobals());
 
 const messages = [{ type: 'human' as const, content: 'Plan a trip to Paris' }];
@@ -15,7 +11,7 @@ describe('direct title transport', () => {
 			.fn()
 			.mockResolvedValue(new Response(JSON.stringify({ title: 'Paris Trip' })));
 		vi.stubGlobal('fetch', fetchMock);
-		const client = createClient('test-token');
+		const client = createClient('https://backend.test/api/', 'test-token');
 		const controller = new AbortController();
 		expect(await client.generateTitle(messages, controller.signal)).toEqual({
 			title: 'Paris Trip'
@@ -46,7 +42,10 @@ describe('direct title transport', () => {
 			)
 		);
 		const controller = new AbortController();
-		const request = createClient('test-token').generateTitle(messages, controller.signal);
+		const request = createClient('https://backend.test/api/', 'test-token').generateTitle(
+			messages,
+			controller.signal
+		);
 		const rejected = expect(request).rejects.toMatchObject({ name: 'AbortError' });
 		await started;
 		controller.abort();
@@ -56,7 +55,10 @@ describe('direct title transport', () => {
 	it('rejects an unsuccessful response rather than treating it as a title', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
 		await expect(
-			createClient('test-token').generateTitle(messages, new AbortController().signal)
+			createClient('https://backend.test/api/', 'test-token').generateTitle(
+				messages,
+				new AbortController().signal
+			)
 		).rejects.toThrow('POST titles failed: 503');
 	});
 });
@@ -66,7 +68,11 @@ describe('feedback transport', () => {
 		const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
 
-		await createClient('test-token').submitFeedback('thread-1', 'ai-1', 'up');
+		await createClient('https://backend.test/api/', 'test-token').submitFeedback(
+			'thread-1',
+			'ai-1',
+			'up'
+		);
 
 		expect(fetchMock).toHaveBeenCalledExactlyOnceWith('https://backend.test/api/feedback', {
 			method: 'POST',
@@ -81,7 +87,12 @@ describe('feedback transport', () => {
 		const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
 		vi.stubGlobal('fetch', fetchMock);
 
-		await createClient('test-token').submitFeedback('thread-1', 'ai-1', 'down', 'too vague');
+		await createClient('https://backend.test/api/', 'test-token').submitFeedback(
+			'thread-1',
+			'ai-1',
+			'down',
+			'too vague'
+		);
 
 		expect(fetchMock.mock.calls[0][1].body).toBe(
 			JSON.stringify({
@@ -97,7 +108,37 @@ describe('feedback transport', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 404 })));
 
 		await expect(
-			createClient('test-token').submitFeedback('thread-1', 'ai-1', 'up')
+			createClient('https://backend.test/api/', 'test-token').submitFeedback(
+				'thread-1',
+				'ai-1',
+				'up'
+			)
 		).rejects.toThrow(/404/);
+	});
+});
+
+describe('createClient', () => {
+	it('does not log a failure when no token is given', () => {
+		const assertSpy = vi.spyOn(console, 'assert').mockImplementation(() => {});
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			createClient('https://backend.test/api/');
+			expect(assertSpy.mock.calls.filter(([condition]) => !condition)).toEqual([]);
+			expect(errorSpy).not.toHaveBeenCalled();
+		} finally {
+			assertSpy.mockRestore();
+			errorSpy.mockRestore();
+		}
+	});
+
+	it('sends custom headers but no Authorization header without a token', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(new Response(JSON.stringify({ title: 'Paris Trip' })));
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createClient('https://backend.test/api/', undefined, { 'X-Org': 'acme' });
+		await client.generateTitle(messages, new AbortController().signal);
+		const init = fetchMock.mock.calls[0][1];
+		expect(init.headers).toEqual({ 'X-Org': 'acme', 'Content-Type': 'application/json' });
 	});
 });

@@ -2,10 +2,10 @@ import { describe, test, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ChatThreadsHost from '$lib/components/ChatThreads/__tests__/ChatThreadsHost.svelte';
-import type { ThreadList } from '$lib/langgraph/threadList.svelte';
+import type { ThreadListState } from '@svelte-langgraph/client';
 import { useSidebar } from './index.js';
 
-function makeListStub(): ThreadList {
+function makeListStub(): ThreadListState {
 	return {
 		threads: [],
 		loading: false,
@@ -16,7 +16,7 @@ function makeListStub(): ThreadList {
 		retry: () => {},
 		setClient: () => {},
 		setActiveThreadId: () => {}
-	} as unknown as ThreadList;
+	} as unknown as ThreadListState;
 }
 
 describe('Sidebar.Root desktop collapse (SLG-104)', () => {

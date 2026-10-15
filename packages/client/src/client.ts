@@ -1,5 +1,5 @@
 import { Client, type Thread } from '@langchain/langgraph-sdk';
-import { apiEndpoint, apiUrl } from './apiUrl';
+import { apiEndpoint, normalizeApiUrl } from './apiUrl';
 import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
 
@@ -17,24 +17,39 @@ export interface AppClient extends TitleClient {
 // Above the backend's 10-second deadlines, so its own error arrives first.
 const ROUTE_TIMEOUT_MS = 15_000;
 
-export function createClient(accessToken: string): AppClient {
-	console.assert(!!accessToken, 'No access token specified.');
+/**
+ * @param url - LangGraph server API URL. Callers own resolving this (e.g. from
+ * `PUBLIC_LANGGRAPH_API_URL` in the SvelteKit app) — this package has no SvelteKit dependency.
+ * It must be absolute, without query or fragment; it is normalised so the SDK and our own
+ * routes resolve against the same base.
+ * @param token - Bearer token sent as the `Authorization` header, when provided.
+ * @param headers - Additional default headers, merged in under `Authorization`.
+ */
+export function createClient(
+	url: string,
+	token?: string | null,
+	headers?: Record<string, string>
+): AppClient {
+	const baseUrl = normalizeApiUrl(url);
 
 	// The SDK keeps its headers protected, so our routes share this instead.
-	const auth = { Authorization: `Bearer ${accessToken}` };
+	const defaultHeaders: Record<string, string> = { ...headers };
+	if (token) {
+		defaultHeaders.Authorization = `Bearer ${token}`;
+	}
 
 	const client = new Client({
 		// A copy: the SDK may write x-api-key into the object it is given.
-		defaultHeaders: { ...auth },
-		apiUrl: apiUrl(),
+		defaultHeaders: { ...defaultHeaders },
+		apiUrl: baseUrl,
 		timeoutMs: 5000 // Increased from 2000ms for CI reliability
 	});
 
 	async function postJson(route: string, body: unknown, signal?: AbortSignal): Promise<Response> {
 		const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
-		const response = await fetch(apiEndpoint(route), {
+		const response = await fetch(apiEndpoint(baseUrl, route), {
 			method: 'POST',
-			headers: { ...auth, 'Content-Type': 'application/json' },
+			headers: { ...defaultHeaders, 'Content-Type': 'application/json' },
 			body: JSON.stringify(body),
 			signal: signal ? AbortSignal.any([signal, timeout]) : timeout
 		});

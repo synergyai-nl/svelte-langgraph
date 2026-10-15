@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FeedbackScore } from '$lib/langgraph/types';
+	import type { FeedbackScore } from '@svelte-langgraph/client';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
 	import { Textarea } from '$lib/components/ui/textarea';
@@ -7,7 +7,7 @@
 	// Capped here so the backend's 422 is unreachable from the UI. `maxlength`
 	// counts UTF-16 units against a backend limit in code points, so it can only
 	// ever stop short of it -- never over.
-	import { COMMENT_MAX_LENGTH } from '$lib/langgraph/feedbackLimits';
+	import { COMMENT_MAX_LENGTH } from '@svelte-langgraph/client';
 
 	interface Props {
 		/** The rating being commented on, or null when the box is closed. */

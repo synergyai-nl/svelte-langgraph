@@ -16,7 +16,7 @@ import {
 	toThreadSummary,
 	type SearchedThread,
 	type ThreadSummary
-} from './threadList.js';
+} from './threads.js';
 
 export interface ThreadListOptions {
 	/** Page size for `threads.search`. Defaults to 20. */
@@ -51,7 +51,7 @@ function rejectedParameter(err: unknown): boolean {
 	return status === 422;
 }
 
-export class ThreadList {
+export class ThreadListState {
 	#threads = $state<ThreadSummary[]>([]);
 	#loading = $state(false);
 	#error = $state<Error | null>(null);

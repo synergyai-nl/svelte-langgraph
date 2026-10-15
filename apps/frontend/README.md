@@ -52,13 +52,14 @@ You can preview the production build with `npm run preview`.
 
 ## Generic state synchronisation (`createStateSync`)
 
-`src/lib/langgraph/` contains a runtime-schema-driven state-sync primitive built on Svelte 5 runes.
+`@svelte-langgraph/client` (`packages/client/`) contains a runtime-schema-driven state-sync
+primitive built on Svelte 5 runes.
 
 ### Usage
 
 ```svelte
 <script lang="ts">
-	import { createStateSync } from '$lib/langgraph/stateSync.svelte.js';
+	import { createStateSync } from '@svelte-langgraph/client';
 	import StateField from '$lib/components/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props
