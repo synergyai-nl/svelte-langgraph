@@ -46,6 +46,9 @@ tasks:
       - 'src/lib/components/chat/**/*'
       - 'src/lib/components/ChatLoader.svelte'
       - 'messages/chat/**/*'
+      - 'src/lib/components/ui/sidebar/**/*'
+      - 'src/lib/components/ui/spinner/**/*'
+      - 'src/lib/components/ui/copy-button/**/*'
       - 'package.json'
     outputs:
       - 'static/r'
