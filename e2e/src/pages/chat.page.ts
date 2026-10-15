@@ -20,10 +20,6 @@ export class ChatPage extends ChatSurfacePage {
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
 
-	/** Every rendered AI message (data-testid="message-ai"). Rating buttons are
-	 *  scoped per-message, so pass one of these to `feedbackButtons`. */
-	readonly aiMessages: Locator;
-
 	constructor(app: AppPage) {
 		super(app.main);
 		this.app = app;
@@ -36,8 +32,6 @@ export class ChatPage extends ChatSurfacePage {
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
-
-		this.aiMessages = app.page.locator('[data-testid="message-ai"]');
 	}
 
 	/** The comment box a rating click opens. The rating is not sent until this
@@ -58,7 +52,8 @@ export class ChatPage extends ChatSurfacePage {
 		return this.app.page.getByTestId('feedback-cancel');
 	}
 
-	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
+	/** The thumbs-up / thumbs-down buttons belonging to one AI message (pass one of the
+	 *  inherited `aiMessages` / `aiMessage()` locators).
 	 *  Actions only become visible on hover, so hover before clicking. */
 	feedbackButtons(aiMessage: Locator): { up: Locator; down: Locator } {
 		return {
