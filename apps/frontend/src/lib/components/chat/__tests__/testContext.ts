@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { TitleClient } from '@svelte-langgraph/client';
+import type { AppClient } from '@svelte-langgraph/client';
 import { LangGraphContext } from '../langGraphContext.svelte.js';
 
 /**
@@ -8,12 +8,12 @@ import { LangGraphContext } from '../langGraphContext.svelte.js';
  * fixtures' `mockClient`. Spread `overrides` in to add `threads.get`/`threads.update`/etc. for
  * tests that need them (see title-mirroring tests).
  */
-export function makeMockClient(overrides: Record<string, unknown> = {}): TitleClient {
+export function makeMockClient(overrides: Record<string, unknown> = {}): AppClient {
 	return {
 		assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
 		generateTitle: vi.fn().mockResolvedValue({ title: null }),
 		...overrides
-	} as unknown as TitleClient;
+	} as unknown as AppClient;
 }
 
 /**
@@ -23,7 +23,7 @@ export function makeMockClient(overrides: Record<string, unknown> = {}): TitleCl
  */
 export function makeContext(
 	options: {
-		client?: TitleClient;
+		client?: AppClient;
 		assistantId?: string;
 	} = {}
 ): LangGraphContext {
