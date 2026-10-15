@@ -57,7 +57,12 @@ window.scrollTo = function () {} as typeof window.scrollTo;
 // https://github.com/huntabyte/bits-ui/blob/bits-ui@2.15.5/packages/bits-ui/src/lib/internal/body-scroll-lock.svelte.ts
 // <body> is shared across a file's tests, so a test ending inside that window
 // hands the next one a <body> that user-event refuses to click.
-afterEach(() => {
+// A still-locked <body> also means that timer is pending: let it fire while jsdom's
+// `document` exists, or the last test of a file leaks it past teardown ("document is not defined").
+afterEach(async () => {
+	if (document.body.style.pointerEvents === 'none') {
+		await new Promise((resolve) => setTimeout(resolve, 50));
+	}
 	document.body.style.pointerEvents = '';
 });
 
