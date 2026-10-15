@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Conversation from '$lib/components/chat/Conversation.svelte';
-	import Suggestions from '$lib/components/chat/Suggestions.svelte';
+	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
@@ -13,7 +12,6 @@
 	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
 	// page only reads the result.
 	const ctx = useLangGraph();
-	let threadId = $derived(page.params.threadID!);
 
 	$effect.pre(() => {
 		if (!page.data.session) show_login_dialog = true;
@@ -56,24 +54,12 @@
 {#if ctx.error}
 	<ChatError error={ctx.error instanceof Error ? ctx.error : new Error(String(ctx.error))} />
 {:else if ctx.assistantId && ctx.client}
-	<!-- `Conversation` captures its thread, client and assistant at init, so a change to any of
-	     them must remount it. -->
-	{#key threadId}
-		{#key ctx.client}
-			{#key ctx.assistantId}
-				<Conversation {threadId}>
-					{#snippet empty(api)}
-						<Suggestions
-							{suggestions}
-							introTitle={greeting}
-							intro={m.chat_intro()}
-							onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
-						/>
-					{/snippet}
-				</Conversation>
-			{/key}
-		{/key}
-	{/key}
+	<ChatSurface
+		threadId={page.params.threadID}
+		introTitle={greeting}
+		intro={m.chat_intro()}
+		{suggestions}
+	/>
 {:else}
 	<ChatLoader />
 {/if}

@@ -11,7 +11,7 @@ export class AppPage {
 	// Navigation elements
 	readonly header: Locator;
 	readonly homeLink: Locator;
-	readonly chatLink: Locator;
+	readonly demosLink: Locator;
 	readonly signInButton: Locator;
 
 	// User menu elements
@@ -24,7 +24,7 @@ export class AppPage {
 		// Header
 		this.header = this.page.getByRole('banner');
 		this.homeLink = this.header.getByRole('link', { name: /home/i });
-		this.chatLink = this.header.getByRole('link', { name: /chat/i });
+		this.demosLink = this.header.getByRole('link', { name: /demos/i });
 		this.signInButton = this.header.getByRole('button', { name: 'Sign in' });
 
 		// User menu
@@ -54,8 +54,8 @@ export class AppPage {
 		await this.signInButton.waitFor({ state: 'visible' });
 	}
 
-	async navigateToChat() {
-		await this.chatLink.click();
+	async navigateToDemos() {
+		await this.demosLink.click();
 	}
 
 	async navigateToHome() {

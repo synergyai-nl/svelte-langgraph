@@ -9,8 +9,8 @@
 	 * `useLangGraph()` — they never resolve an assistant themselves.
 	 *
 	 * The provider is mandatory, the same way shadcn's `Sidebar.*` requires `Sidebar.Provider`:
-	 * `ThreadList` (and, in later PRs, `Conversation`/`ChatSurface`) must be rendered inside
-	 * `<LangGraph>` and throws at init otherwise. Their props override context values; they are
+	 * `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and
+	 * throw at init otherwise. Their props override context values; they are
 	 * not a provider-less alternative.
 	 *
 	 * Renders the patched `Sidebar.Provider` as its own wrapper element, with `children` directly
