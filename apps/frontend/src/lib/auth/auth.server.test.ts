@@ -4,7 +4,9 @@ import type { Handle } from '@sveltejs/kit';
 const state = vi.hoisted(() => ({
 	building: false,
 	env: {} as Record<string, string>,
-	getSession: vi.fn()
+	getSession: vi.fn(),
+	handler: vi.fn(),
+	providers: [{ id: 'oidc' }]
 }));
 vi.mock('$app/environment', () => ({
 	get building() {
@@ -14,7 +16,12 @@ vi.mock('$app/environment', () => ({
 vi.mock('$env/dynamic/private', () => ({ env: state.env }));
 vi.mock('$app/server', () => ({ getRequestEvent: vi.fn() }));
 vi.mock('better-auth', () => ({
-	betterAuth: (options: unknown) => ({ options, api: { getSession: state.getSession } })
+	betterAuth: (options: unknown) => ({
+		options,
+		api: { getSession: state.getSession },
+		handler: state.handler,
+		$context: Promise.resolve({ socialProviders: state.providers })
+	})
 }));
 
 beforeEach(() => {
@@ -22,6 +29,8 @@ beforeEach(() => {
 	for (const key of Object.keys(state.env)) delete state.env[key];
 	state.building = false;
 	state.getSession.mockReset().mockResolvedValue(null);
+	state.handler.mockReset().mockResolvedValue(new Response('auth'));
+	state.providers = [{ id: 'oidc' }];
 });
 function configured() {
 	Object.assign(state.env, {
@@ -32,14 +41,13 @@ function configured() {
 		AUTH_OIDC_CLIENT_SECRET: 'secret'
 	});
 }
-async function call(resolve = vi.fn().mockResolvedValue(new Response('page'))) {
+async function call(
+	resolve = vi.fn().mockResolvedValue(new Response('page')),
+	url = 'https://frontend.test/chat'
+) {
 	const { handle } = await import('./index');
 	return handle({
-		event: {
-			request: new Request('https://frontend.test/chat'),
-			url: new URL('https://frontend.test/chat'),
-			locals: {}
-		},
+		event: { request: new Request(url), url: new URL(url), locals: {} },
 		resolve
 	} as unknown as Parameters<Handle>[0]);
 }
@@ -68,6 +76,32 @@ describe('runtime auth hook', () => {
 		const failure = new Error('application failure');
 		await expect(call(vi.fn().mockRejectedValue(failure))).rejects.toBe(failure);
 	});
+	test('serves auth paths by path, even when the request origin differs from the base URL', async () => {
+		configured();
+		const resolve = vi.fn();
+		const response = await call(resolve, 'http://frontend.internal:3000/api/auth/sign-in/social');
+		expect(await response.text()).toBe('auth');
+		expect(resolve).not.toHaveBeenCalled();
+		expect(state.getSession).not.toHaveBeenCalled();
+	});
+});
+
+describe('auth instance', () => {
+	test('is reused once the OIDC provider is discovered', async () => {
+		configured();
+		const { getAuth } = await import('./index');
+		const first = getAuth();
+		await first.$context;
+		expect(getAuth()).toBe(first);
+	});
+	test('is recreated when discovery failed, so sign-in recovers without a restart', async () => {
+		configured();
+		state.providers = [];
+		const { getAuth } = await import('./index');
+		const first = getAuth();
+		await first.$context;
+		expect(getAuth()).not.toBe(first);
+	});
 });
 
 describe('auth configuration', () => {
@@ -78,6 +112,7 @@ describe('auth configuration', () => {
 			options: {
 				database?: unknown;
 				disabledPaths: string[];
+				rateLimit: unknown;
 				account: { storeStateStrategy: string; storeAccountCookie: boolean };
 				plugins: { id: string; options?: { config: Record<string, unknown>[] } }[];
 			};
@@ -85,6 +120,8 @@ describe('auth configuration', () => {
 
 		expect(options.database).toBeUndefined();
 		expect(options.disabledPaths).toContain('/refresh-token');
+		// Only the credential-free sign-in redirect is exempt; the rest keeps the default limits.
+		expect(options.rateLimit).toEqual({ customRules: { '/sign-in/social': false } });
 		expect(options.account).toEqual({ storeStateStrategy: 'cookie', storeAccountCookie: true });
 		const oauth = options.plugins.find((plugin) => plugin.id === 'generic-oauth');
 		expect(oauth?.options?.config[0]).toMatchObject({

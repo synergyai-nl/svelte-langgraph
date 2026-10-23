@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { betterAuth } from 'better-auth';
 import { genericOAuth } from 'better-auth/plugins';
-import { svelteKitHandler, sveltekitCookies } from 'better-auth/svelte-kit';
+import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { error, type Handle } from '@sveltejs/kit';
 
 const WEEK = 7 * 24 * 60 * 60;
@@ -20,7 +20,11 @@ function createAuth() {
 		baseURL: required('BETTER_AUTH_URL'),
 		secret: required('BETTER_AUTH_SECRET'),
 		disabledPaths: ['/refresh-token'],
+		// Sign-in only redirects to the provider, which checks credentials; without a client IP
+		// header the default limit (3 per 10 s per IP) would be one bucket shared by all users.
+		rateLimit: { customRules: { '/sign-in/social': false } },
 		session: {
+			// Stateless sessions end a week after sign-in; refreshCache only re-issues the cookie.
 			expiresIn: WEEK,
 			cookieCache: { enabled: true, maxAge: WEEK, strategy: 'jwe', refreshCache: true }
 		},
@@ -51,7 +55,17 @@ function createAuth() {
 // Configuration is process-wide; sessions and token lookups remain request-local.
 let auth: ReturnType<typeof createAuth> | undefined;
 export function getAuth() {
-	return (auth ??= createAuth());
+	if (auth) return auth;
+	const created = (auth = createAuth());
+	// OIDC discovery runs once, at init, and Better Auth skips a provider it could not reach.
+	// Forget such an instance so a later request retries instead of sign-in staying broken.
+	const forget = () => {
+		if (auth === created) auth = undefined;
+	};
+	created.$context.then((ctx) => {
+		if (!ctx.socialProviders.some((provider) => provider.id === 'oidc')) forget();
+	}, forget);
+	return created;
 }
 export type Auth = ReturnType<typeof getAuth>;
 
@@ -64,21 +78,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 		console.error('Authentication configuration is unavailable');
 		error(503, 'Authentication is temporarily unavailable');
 	}
-	return svelteKitHandler({
-		auth,
-		event,
-		building,
-		resolve: async (event) => {
-			let session: Auth['$Infer']['Session'] | null;
-			try {
-				session = await auth.api.getSession({ headers: event.request.headers });
-			} catch {
-				console.error('Authentication session lookup is unavailable');
-				error(503, 'Authentication is temporarily unavailable');
-			}
-			event.locals.session = session?.session ?? null;
-			event.locals.user = session?.user ?? null;
-			return resolve(event);
-		}
-	});
+	// Route on the path alone: behind a proxy, event.url may not carry the BETTER_AUTH_URL origin.
+	if (event.url.pathname.startsWith('/api/auth/')) return auth.handler(event.request);
+	let session: Auth['$Infer']['Session'] | null;
+	try {
+		session = await auth.api.getSession({ headers: event.request.headers });
+	} catch {
+		console.error('Authentication session lookup is unavailable');
+		error(503, 'Authentication is temporarily unavailable');
+	}
+	event.locals.session = session?.session ?? null;
+	event.locals.user = session?.user ?? null;
+	return resolve(event);
 };
