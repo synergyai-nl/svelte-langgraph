@@ -6,12 +6,12 @@ import registry from '../registry.json';
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url));
 const chatDir = 'src/lib/components/chat';
 
-/** Every shippable file under `chat/`: tests and their `__tests__` helpers are excluded. */
-function chatSourceFiles(): string[] {
-	return readdirSync(`${frontendRoot}/${chatDir}`, { recursive: true, encoding: 'utf8' })
+/** Every shippable file under `root/dir`, as `dir/file`: tests and `__tests__` helpers excluded. */
+function sourceFiles(root: string, dir: string): string[] {
+	return readdirSync(`${root}/${dir}`, { recursive: true, encoding: 'utf8' })
 		.filter((file) => /\.(svelte|ts|js)$/.test(file))
 		.filter((file) => !file.includes('__tests__') && !/\.(test|spec)\./.test(file))
-		.map((file) => `${chatDir}/${file}`)
+		.map((file) => `${dir}/${file}`)
 		.sort();
 }
 
@@ -19,13 +19,9 @@ function chatSourceFiles(): string[] {
 const patchedUiDirs = ['sidebar', 'spinner', 'copy-button'];
 const uiDir = 'src/lib/components/ui';
 
-function uiSourceFiles(dir: string): string[] {
-	return readdirSync(`${frontendRoot}/${uiDir}/${dir}`, { recursive: true, encoding: 'utf8' })
-		.filter((file) => /\.(svelte|ts|js)$/.test(file))
-		.filter((file) => !file.includes('__tests__') && !/\.(test|spec)\./.test(file))
-		.map((file) => `${uiDir}/${dir}/${file}`)
-		.sort();
-}
+/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `$lib`. */
+const clientDir = '../../packages/client/src';
+const clientTarget = 'svelte-langgraph-client';
 
 describe('shadcn-svelte registry', () => {
 	const chat = registry.items.find((item) => item.name === 'chat')!;
@@ -33,7 +29,7 @@ describe('shadcn-svelte registry', () => {
 
 	test('ships every chat component and no tests', () => {
 		const shipped = paths.filter((path) => path.startsWith(`${chatDir}/`)).sort();
-		expect(shipped).toEqual(chatSourceFiles());
+		expect(shipped).toEqual(sourceFiles(frontendRoot, chatDir));
 	});
 
 	test('installs chat components under chat/, preserving their layout', () => {
@@ -55,7 +51,7 @@ describe('shadcn-svelte registry', () => {
 
 	test.each(patchedUiDirs)('ships every file of the patched ui/%s and no tests', (dir) => {
 		const shipped = paths.filter((path) => path.startsWith(`${uiDir}/${dir}/`)).sort();
-		expect(shipped).toEqual(uiSourceFiles(dir));
+		expect(shipped).toEqual(sourceFiles(frontendRoot, `${uiDir}/${dir}`));
 	});
 
 	test('installs patched ui files into the consumer ui directory', () => {
@@ -72,5 +68,24 @@ describe('shadcn-svelte registry', () => {
 			expect(chat.registryDependencies).not.toContain(dir);
 		}
 		expect(chat.registryDependencies.join()).not.toContain('copy-button');
+	});
+
+	test('ships every client library file as registry:lib under svelte-langgraph-client/', () => {
+		const expected = sourceFiles(frontendRoot, clientDir).map((path) => ({
+			path,
+			type: 'registry:lib',
+			target: path.replace(`${clientDir}/`, `${clientTarget}/`)
+		}));
+		const shipped = chat.files
+			.filter((file) => file.target.startsWith(`${clientTarget}/`))
+			.sort((a, b) => (a.path < b.path ? -1 : 1));
+		expect(shipped).toEqual(expected);
+	});
+
+	test('does not depend on the unpublished client package', () => {
+		// Keep the explicit `dependencies` key: without it the CLI re-infers it from imports.
+		expect(chat.dependencies.filter((dep) => dep.startsWith('@svelte-langgraph/client'))).toEqual(
+			[]
+		);
 	});
 });
