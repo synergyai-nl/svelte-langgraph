@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SignIn } from '@auth/sveltekit/components';
+	import { authClient } from '$lib/auth/client';
 	import { buttonVariants, type ButtonVariant } from '$lib/components/ui/button';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -10,10 +10,26 @@
 	}
 
 	let { label = m.auth_sign_in(), size = 'sm', variant = 'default' }: Props = $props();
+	let busy = $state(false);
+	let failed = $state(false);
+	async function signIn() {
+		busy = true;
+		failed = false;
+		try {
+			const result = await authClient.signIn.social({
+				provider: 'oidc',
+				callbackURL: `${location.pathname}${location.search}${location.hash}`
+			});
+			failed = Boolean(result.error);
+		} catch {
+			failed = true;
+		} finally {
+			busy = false;
+		}
+	}
 </script>
 
-<SignIn provider="oidc">
-	<span slot="submitButton" class={buttonVariants({ variant, size })}>
-		{label}
-	</span>
-</SignIn>
+<button type="button" class={buttonVariants({ variant, size })} disabled={busy} onclick={signIn}>
+	{label}
+</button>
+{#if failed}<p role="alert">{m.auth_unavailable()}</p>{/if}

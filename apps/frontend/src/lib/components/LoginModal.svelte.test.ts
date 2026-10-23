@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/svelte';
+import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import LoginModal from './LoginModal.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -7,6 +7,9 @@ const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
 	goto: (...args: unknown[]) => goto(...args)
 }));
+
+const signIn = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
+vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: signIn } } }));
 
 afterEach(async () => {
 	// The dialog's body scroll lock is restored on a 24ms timer (bits-ui
@@ -33,10 +36,12 @@ describe('LoginModal', () => {
 			expect(screen.queryByText(m.auth_sign_in())).not.toBeInTheDocument();
 		});
 
-		test('renders the sign-in form targeting the OIDC provider', () => {
-			const { baseElement } = render(LoginModal, { open: true });
+		test('signs in with the OIDC provider', async () => {
+			render(LoginModal, { open: true });
 
-			expect(baseElement.querySelector('input[value="oidc"]')).toBeInTheDocument();
+			await fireEvent.click(screen.getByRole('button', { name: m.auth_continue_sso() }));
+
+			expect(signIn).toHaveBeenCalledWith(expect.objectContaining({ provider: 'oidc' }));
 		});
 	});
 
