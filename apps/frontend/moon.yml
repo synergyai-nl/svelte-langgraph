@@ -17,6 +17,19 @@ fileGroups:
   messages:
     - 'project.inlang'
     - 'messages'
+  # Everything the `chat` registry item ships (see registry.json).
+  registry:
+    # Chat block
+    - 'src/lib/components/chat/**/*'
+    - 'src/lib/components/ChatLoader.svelte'
+    # Message catalogue
+    - 'messages/chat/**/*'
+    # Patched upstream shadcn-svelte ui
+    - 'src/lib/components/ui/sidebar/**/*'
+    - 'src/lib/components/ui/spinner/**/*'
+    - 'src/lib/components/ui/copy-button/**/*'
+    # Client library (unpublished, shipped as source); leading `/` = workspace root
+    - '/packages/client/src/**/*'
 
 tags: ['vite', 'vitest', 'sveltekit']
 
@@ -39,17 +52,13 @@ tasks:
 
   # Builds the shadcn-svelte registry (`registry.json`) into `static/r`, so the app serves
   # it at `/r/chat.json` for `shadcn-svelte add`. Generated output: gitignored.
+  # Must run with cwd `apps/frontend` (moon's default): registry file paths are cwd-relative.
   registry-build:
     command: 'shadcn-svelte registry build --output static/r'
     inputs:
       - 'registry.json'
-      - 'src/lib/components/chat/**/*'
-      - 'src/lib/components/ChatLoader.svelte'
-      - 'messages/chat/**/*'
-      - 'src/lib/components/ui/sidebar/**/*'
-      - 'src/lib/components/ui/spinner/**/*'
-      - 'src/lib/components/ui/copy-button/**/*'
       - 'package.json'
+      - '@group(registry)'
     outputs:
       - 'static/r'
 
@@ -142,6 +151,8 @@ tasks:
     preset: 'server'
 
   dev:
+    deps:
+      - registry-build
     options:
       envFile: '/.env'
 
