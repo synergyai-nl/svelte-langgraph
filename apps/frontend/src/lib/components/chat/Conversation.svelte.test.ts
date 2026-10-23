@@ -1,12 +1,22 @@
 import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/svelte';
+import { screen, waitFor, within, render } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { renderWithProviders } from '../__tests__/render';
-import Chat from './Conversation.svelte';
-import type { AppClient } from '@svelte-langgraph/client';
-import type { ChatSuggestion } from './Suggestions.svelte';
+import { createRawSnippet } from 'svelte';
+import LangGraphHost from './__tests__/LangGraphHost.svelte';
+import Conversation, { type ConversationApi } from './Conversation.svelte';
+import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
 import * as m from '$lib/paraglide/messages.js';
+
+/**
+ * Ported from the deleted `Chat.svelte.test.ts` (see git history at `906acf6`) onto `Conversation`,
+ * the headless successor to `Chat.svelte` — see SLG-133 PR 3. `Conversation`'s default composition
+ * renders only the mechanics (history-loading skeleton / MessagesList / MessageComposer), not the
+ * suggestions empty state — that moved to `ChatSurface`, which fills `Conversation`'s `empty`
+ * render-prop with `Suggestions`. Assertions about the suggestions screen itself
+ * (`heading`, "switches from suggestions to messages") were ported onto `ChatSurface.svelte.test.ts`
+ * instead; everything else here is a mechanical 1:1 port.
+ */
 
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
@@ -14,114 +24,44 @@ vi.mock('@langchain/svelte', async () => {
 	return { useStream: vi.fn(() => mod.mockStream) };
 });
 
-// Provide assistants.getSchemas so createStateSync degrades gracefully (returns null schema).
-// `threads` backs the titler's metadata reads and writes.
+// `threads` backs the titler's metadata reads and writes; `submitFeedback` backs ratings.
 const submitFeedbackMock = vi.fn();
-const mockClient = {
-	assistants: { getSchemas: vi.fn().mockResolvedValue({ state_schema: null }) },
-	threads: {
-		get: vi.fn().mockResolvedValue({ metadata: {} }),
-		update: vi.fn().mockResolvedValue({})
-	},
-	submitFeedback: submitFeedbackMock
-} as unknown as AppClient;
+const threadsGetMock: Mock = vi.fn();
+const threadsUpdateMock: Mock = vi.fn();
 
-/** The `threads` mock, typed for assertions. */
-const mockThreads = (mockClient as unknown as { threads: { get: Mock; update: Mock } }).threads;
-
-const suggestions: ChatSuggestion[] = [
-	{ title: 'Suggestion 1', description: 'Desc 1', suggestedText: 'Tell me about AI' },
-	{ title: 'Suggestion 2', description: 'Desc 2', suggestedText: 'Help me code' }
-];
-
-function renderChat(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(Chat, {
-		langGraphClient: mockClient,
-		assistantId: 'assistant-1',
-		threadId: 'test-123',
-		suggestions,
-		introTitle: 'Welcome',
-		intro: 'How can I help?',
-		...overrides
+function renderConversation(overrides: Record<string, unknown> = {}) {
+	const client = makeMockClient({
+		threads: { get: threadsGetMock, update: threadsUpdateMock },
+		submitFeedback: submitFeedbackMock
+	});
+	const ctx = makeContext({ client, assistantId: 'assistant-1' });
+	return render(LangGraphHost, {
+		props: { ctx, component: Conversation, threadId: 'test-123', ...overrides }
 	});
 }
 
 beforeEach(() => {
 	mockModule.resetMock();
-	mockThreads.get.mockReset().mockResolvedValue({ metadata: {} });
-	mockThreads.update.mockReset().mockResolvedValue({});
+	threadsGetMock.mockReset().mockResolvedValue({ metadata: {} });
+	threadsUpdateMock.mockReset().mockResolvedValue({});
 	submitFeedbackMock.mockReset().mockResolvedValue(undefined);
 });
 
-describe('Chat', () => {
-	describe('when rendered with empty thread', () => {
-		test('displays suggestions view', () => {
-			renderChat();
-			expect(screen.getByRole('heading', { name: 'Welcome' })).toBeInTheDocument();
-			expect(screen.getByText('How can I help?')).toBeInTheDocument();
-		});
+describe('Conversation', () => {
+	test('throws when rendered outside a <LangGraph> provider', () => {
+		expect(() => render(Conversation, { props: { threadId: 'test-123' } })).toThrow(
+			/<Conversation> must be rendered inside <LangGraph>/
+		);
+	});
 
-		test('displays chat input', () => {
-			renderChat();
+	describe('when rendered with an empty thread', () => {
+		test('displays the composer', () => {
+			renderConversation();
 			expect(screen.getByPlaceholderText('Ask your agent…')).toBeInTheDocument();
 		});
 	});
 
-	describe('when a suggestion is clicked', () => {
-		test('switches from suggestions to messages view', async () => {
-			const user = userEvent.setup();
-			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
-				mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
-			});
-			renderChat();
-
-			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
-
-			await waitFor(() => {
-				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
-			});
-		});
-
-		test('calls stream.submit with correct args', async () => {
-			const user = userEvent.setup();
-			const mockSubmit = vi.fn();
-			mockModule.mockStreamCallbacks.submit = mockSubmit;
-			renderChat();
-
-			await user.click(screen.getByRole('button', { name: /Suggestion 1/i }));
-
-			await waitFor(() => {
-				expect(mockSubmit).toHaveBeenCalledWith(
-					expect.objectContaining({
-						messages: [
-							expect.objectContaining({
-								type: 'human',
-								content: 'Tell me about AI'
-							})
-						]
-					})
-				);
-			});
-		});
-	});
-
 	describe('when a message is submitted', () => {
-		test('switches to messages view', async () => {
-			const user = userEvent.setup();
-			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
-				mockModule.setMessages([{ type: 'ai', content: 'Hello!', id: 'ai-1' }]);
-			});
-			renderChat();
-
-			const textbox = screen.getByPlaceholderText('Ask your agent…');
-			await user.type(textbox, 'Hello');
-			await user.keyboard('{Enter}');
-
-			await waitFor(() => {
-				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
-			});
-		});
-
 		test('displays the user message', async () => {
 			const user = userEvent.setup();
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
@@ -130,7 +70,7 @@ describe('Chat', () => {
 					{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
 				]);
 			});
-			renderChat();
+			renderConversation();
 
 			const textbox = screen.getByPlaceholderText('Ask your agent…');
 			await user.type(textbox, 'Hello');
@@ -149,7 +89,7 @@ describe('Chat', () => {
 					{ type: 'ai', content: 'Hi there!', id: 'ai-1' }
 				]);
 			});
-			renderChat();
+			renderConversation();
 
 			const textbox = screen.getByPlaceholderText('Ask your agent…');
 			await user.type(textbox, 'Hello');
@@ -172,7 +112,7 @@ describe('Chat', () => {
 				}
 			]);
 
-			renderChat();
+			renderConversation();
 
 			await waitFor(() => {
 				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
@@ -189,7 +129,7 @@ describe('Chat', () => {
 				}
 			]);
 
-			renderChat();
+			renderConversation();
 
 			await waitFor(() => {
 				expect(screen.getByRole('button', { name: /thinking/i })).toBeInTheDocument();
@@ -205,7 +145,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.stop = mockStop;
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 
-			renderChat();
+			renderConversation();
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -221,7 +161,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
-			renderChat();
+			renderConversation();
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -243,7 +183,7 @@ describe('Chat', () => {
 			});
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
-			renderChat();
+			renderConversation();
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -261,7 +201,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
-			renderChat();
+			renderConversation();
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -274,16 +214,16 @@ describe('Chat', () => {
 	});
 
 	describe('when rendered with existing thread messages', () => {
-		test('displays messages view immediately', async () => {
+		test('displays the messages immediately, without the history-loading skeleton', async () => {
 			mockModule.setMessages([
 				{ type: 'human', content: 'Previous question', id: 'msg-1' },
 				{ type: 'ai', content: 'Previous answer', id: 'msg-2' }
 			]);
 
-			renderChat();
+			renderConversation();
 
 			await waitFor(() => {
-				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
+				expect(screen.queryByTestId('chat-history-loading')).not.toBeInTheDocument();
 				expect(screen.getByText('Previous answer')).toBeInTheDocument();
 			});
 		});
@@ -294,7 +234,7 @@ describe('Chat', () => {
 			const user = userEvent.setup();
 			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
 
-			renderChat();
+			renderConversation();
 
 			const messageCard = await screen.findByText('Original message');
 			await user.hover(messageCard);
@@ -310,7 +250,7 @@ describe('Chat', () => {
 			const user = userEvent.setup();
 			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
 
-			renderChat();
+			renderConversation();
 
 			const messageCard = await screen.findByText('Original message');
 			await user.hover(messageCard);
@@ -332,7 +272,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
 			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
 
-			renderChat();
+			renderConversation();
 
 			const messageCard = await screen.findByText('Original message');
 			await user.hover(messageCard);
@@ -361,7 +301,7 @@ describe('Chat', () => {
 			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
 			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
 
-			renderChat();
+			renderConversation();
 
 			const aiMessage = await screen.findByText('AI response');
 			await user.hover(aiMessage);
@@ -375,13 +315,12 @@ describe('Chat', () => {
 	});
 
 	describe('when stream errors before any messages arrive', () => {
-		test('shows the error instead of the suggestions screen', async () => {
+		test('shows the error', async () => {
 			mockModule.setError(new Error('Connection failed'));
 
-			renderChat();
+			renderConversation();
 
 			await waitFor(() => {
-				expect(screen.queryByRole('heading', { name: 'Welcome' })).not.toBeInTheDocument();
 				expect(screen.getByText('Connection failed')).toBeInTheDocument();
 			});
 		});
@@ -403,7 +342,7 @@ describe('Chat', () => {
 				}
 			});
 
-			renderChat();
+			renderConversation();
 
 			// Submit a message — this sets last_user_message, which retryGenerationAfterError() requires.
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
@@ -418,6 +357,84 @@ describe('Chat', () => {
 			await waitFor(() => {
 				expect(screen.getByRole('status')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('empty render-prop', () => {
+		function renderWithEmpty() {
+			const client = makeMockClient();
+			const ctx = makeContext({ client, assistantId: 'assistant-1' });
+			const empty = createRawSnippet<[ConversationApi]>((getApi) => ({
+				render: () => `<div data-testid="custom-empty">chatStarted=${getApi().chatStarted}</div>`
+			}));
+			return render(LangGraphHost, {
+				props: { ctx, component: Conversation, threadId: 'test-123', empty }
+			});
+		}
+
+		test('renders inside the default composition for a bare thread, receiving the ConversationApi', () => {
+			renderWithEmpty();
+
+			expect(screen.getByTestId('custom-empty')).toHaveTextContent('chatStarted=false');
+			// It replaces only the message list — the rest of the default composition stays.
+			expect(screen.getByPlaceholderText('Ask your agent…')).toBeInTheDocument();
+		});
+
+		test('does not render once the chat has started', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'Previous answer', id: 'ai-1' }]);
+			renderWithEmpty();
+
+			expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+			expect(screen.getByText('Previous answer')).toBeInTheDocument();
+		});
+
+		test('does not render while the thread history is loading', () => {
+			mockModule.setIsThreadLoading(true);
+			renderWithEmpty();
+
+			expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+			expect(screen.getByTestId('chat-history-loading')).toBeInTheDocument();
+		});
+
+		test('switches to the message list once a message is submitted', async () => {
+			const user = userEvent.setup();
+			mockModule.mockStreamCallbacks.submit = vi.fn(() => {
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+			});
+			renderWithEmpty();
+
+			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(screen.queryByTestId('custom-empty')).not.toBeInTheDocument();
+				expect(screen.getByText('Hello')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('children render-prop', () => {
+		test('replaces the default composition and receives the ConversationApi', () => {
+			mockModule.setMessages([{ type: 'ai', content: 'From api', id: 'ai-1' }]);
+
+			const client = makeMockClient();
+			const ctx = makeContext({ client, assistantId: 'assistant-1' });
+			const children = createRawSnippet<[ConversationApi]>((getApi) => ({
+				render: () => {
+					const api = getApi();
+					return `<div data-testid="custom-children">${api.messages.length} messages, isLoading=${api.isLoading}</div>`;
+				}
+			}));
+
+			render(LangGraphHost, {
+				props: { ctx, component: Conversation, threadId: 'test-123', children }
+			});
+
+			expect(screen.getByTestId('custom-children')).toHaveTextContent(
+				'1 messages, isLoading=false'
+			);
+			// The default composition (MessageComposer/MessagesList) must not render at all.
+			expect(screen.queryByPlaceholderText('Ask your agent…')).not.toBeInTheDocument();
 		});
 	});
 
@@ -481,14 +498,14 @@ describe('Chat', () => {
 		}
 
 		const metadataKeys = () =>
-			mockThreads.update.mock.calls.flatMap(([, body]) =>
+			threadsUpdateMock.mock.calls.flatMap(([, body]) =>
 				Object.keys((body as { metadata?: object }).metadata ?? {})
 			);
 
 		test('rates through the client by message id, and stores nothing', async () => {
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
-			renderChat();
+			renderConversation();
 			await rate(/good response/i);
 
 			// The run is resolved server-side, so the client can't point a rating
@@ -511,7 +528,7 @@ describe('Chat', () => {
 				{ ...stampedAnswer('ai-2', 'Second answer'), response_metadata: { run_id: 'same' } }
 			]);
 
-			renderChat();
+			renderConversation();
 			await rate(/good response/i, 'First answer');
 			await rate(/bad response/i, 'Second answer');
 
@@ -528,7 +545,7 @@ describe('Chat', () => {
 		test('a pre-stamp answer cannot be rated', async () => {
 			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
 
-			renderChat();
+			renderConversation();
 			const group = (await screen.findByText('AI response')).closest('[role="group"]');
 
 			expect(within(group as HTMLElement).getByTitle(/good response/i)).toBeDisabled();
@@ -538,12 +555,12 @@ describe('Chat', () => {
 		test('a remount forgets the submitted state, so the answer can be rated again', async () => {
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
-			const { unmount } = renderChat();
+			const { unmount } = renderConversation();
 			await rate(/good response/i);
 			await waitFor(() => expect(screen.getByTitle(/good response/i)).toBeDisabled());
 			unmount();
 
-			renderChat();
+			renderConversation();
 			expect(await screen.findByTitle(/good response/i)).toBeEnabled();
 		});
 
@@ -551,13 +568,13 @@ describe('Chat', () => {
 			submitFeedbackMock.mockReturnValue(new Promise(() => {}));
 			mockModule.setMessages([stampedAnswer('ai-1', 'AI response')]);
 
-			const { unmount } = renderChat();
+			const { unmount } = renderConversation();
 			await rate(/good response/i);
 			expect(await screen.findByTestId('feedback-pending')).toBeInTheDocument();
 			unmount();
 
-			// The route remounts Chat per thread via {#key threadId}.
-			renderChat({ threadId: 'other-thread' });
+			// The route remounts Conversation per thread via {#key threadId}.
+			renderConversation({ threadId: 'other-thread' });
 			expect(await screen.findByTitle(/good response/i)).toBeEnabled();
 			expect(screen.queryByTestId('feedback-pending')).not.toBeInTheDocument();
 		});
