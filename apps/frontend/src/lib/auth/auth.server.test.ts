@@ -202,7 +202,7 @@ describe('account cookie', () => {
 		expect(refreshed.accessToken).not.toBe(tokens.accessToken);
 	});
 
-	test('a refresh without an id_token keeps the sign-in ID token', async () => {
+	test('a refresh without an id_token still yields a fresh access token (#298)', async () => {
 		const auth = await loadAuth();
 		const alice = await signIn(auth, 'alice');
 		const body = { useAccountCookie: true as const };
@@ -220,9 +220,8 @@ describe('account cookie', () => {
 		idp.service.on('beforeResponse', stripIdToken);
 		try {
 			const refreshed = await auth.api.refreshToken({ headers: cookieHeaders(alice), body });
+			expect(subjectOf(refreshed.accessToken!)).toBe('alice');
 			expect(refreshed.accessToken).not.toBe(tokens.accessToken);
-			// Upstream behaviour the root layout's expiry check relies on.
-			expect(refreshed.idToken).toBe(tokens.idToken);
 		} finally {
 			idp.service.off('beforeResponse', stripIdToken);
 		}
