@@ -88,16 +88,22 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
 
-2. Point `@svelte-langgraph/client` at the installed library: in `svelte.config.js`, add to
-   your existing `kit.alias` object (or create one):
+2. Point `@svelte-langgraph/client` at the installed library with a SvelteKit `alias` entry,
+   wherever your Kit config lives. Apps from `sv create` 0.17 or newer have no
+   `svelte.config.js`: pass it to `sveltekit()` in `vite.config.ts`:
 
-   ```js
-   kit: {
+   ```ts
+   sveltekit({
+   	// ...your existing options
    	alias: {
    		'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'
    	}
-   }
+   });
    ```
+
+   With a `svelte.config.js`, add it to your existing `kit.alias` object (or create one)
+   instead. Kit ignores `svelte.config.js` once `sveltekit()` receives options, so put it in
+   only one place.
 
    The path must match your shadcn-svelte `lib` alias if you customised it. The chat
    components import the client by its package name; this alias is temporary until the client
@@ -120,6 +126,9 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    }
    ```
 
+   Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
+   are compiled before you run `svelte-check`.
+
 5. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
    there and to `locales` in the settings.
 
@@ -128,7 +137,9 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
 A bounded-height container holding the provider, and a child that creates the first thread and
 renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
 client only when `token` is truthy; pass a pre-built `client` instead otherwise. `graph`
-defaults to `'chat'`.
+defaults to `'chat'`. The token is sent as a bearer token, so it must be whatever your backend's
+auth validates: with this repo's backend, that is the OIDC **id_token** (a JWT checked against
+the issuer's JWKS), not an opaque access token.
 
 ```svelte
 <!-- +page.svelte -->
@@ -137,7 +148,7 @@ defaults to `'chat'`.
 	import LangGraph from '$lib/components/chat/LangGraph.svelte';
 	import Chat from './Chat.svelte';
 
-	let { data } = $props(); // however your app exposes the user's access token
+	let { data } = $props(); // however your app exposes the token your backend validates
 </script>
 
 <div class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border">
