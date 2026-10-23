@@ -303,9 +303,8 @@ test.describe('Cancellation', () => {
 		await chat.textInput.press('Enter');
 
 		// Wait for the stop button to appear — confirms streaming is active.
-		// The stop button (type="button") only renders when isStreaming=true;
-		// the submit button (type="submit") renders otherwise.
-		const stopButton = page.locator('#input_form button[type="button"]');
+		// The stop button only renders when isStreaming=true; the send button renders otherwise.
+		const stopButton = chat.stopButton;
 		await expect(stopButton).toBeVisible();
 
 		// Also confirm partial content has started arriving
@@ -352,7 +351,7 @@ test.describe('Cancellation', () => {
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 
-		const stopButton = page.locator('#input_form button[type="button"]');
+		const stopButton = chat.stopButton;
 		await expect(stopButton).toBeVisible();
 		await expect(page.getByText(partialEcho, { exact: false }).first()).toBeVisible();
 

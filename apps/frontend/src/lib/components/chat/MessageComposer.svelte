@@ -66,7 +66,13 @@
 
 				<!-- Submit button -->
 				<div class="flex shrink-0 items-end pb-1">
-					<SubmitButton {isStreaming} disabled={isStreaming || isEmpty} {onStop} />
+					<SubmitButton
+						{isStreaming}
+						disabled={isStreaming || isEmpty}
+						{onStop}
+						sendLabel={m.chat_input_send()}
+						stopLabel={m.chat_input_stop()}
+					/>
 				</div>
 			</div>
 		</form>
