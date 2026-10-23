@@ -31,13 +31,33 @@ export class AppPage {
 		this.userMenuButton = this.header.getByRole('button', { name: 'User' });
 
 		// Using this.header instead of .page here gives errors.
-		this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+		this.signOutButton = page.getByRole('menuitem', { name: 'Sign out' });
 
 		this.main = this.page.getByRole('main');
 	}
 
-	async signIn() {
-		await this.signInButton.click();
+	async signIn(button: Locator = this.signInButton) {
+		// The button is wired up on hydration; an earlier click would do nothing.
+		await this.waitForHydration();
+		// Better Auth rate-limits sign-in per client IP (3 per 10s) and, with no forwarded
+		// address, uses one bucket for every client. Give each sign-in its own address so the
+		// limiter stays enabled but a fast serial suite does not trip it.
+		const forwardedFor = Array.from({ length: 4 }, () => Math.floor(Math.random() * 254) + 1).join(
+			'.'
+		);
+		await this.page.route('**/api/auth/sign-in/social', (route) =>
+			route.continue({ headers: { ...route.request().headers(), 'x-forwarded-for': forwardedFor } })
+		);
+		const [response] = await Promise.all([
+			this.page.waitForResponse(
+				(response) =>
+					new URL(response.url()).pathname === '/api/auth/sign-in/social' &&
+					response.request().method() === 'POST',
+				{ timeout: 10_000 }
+			),
+			button.click()
+		]);
+		if (!response.ok()) throw new Error(`Sign-in failed with HTTP ${response.status()}`);
 	}
 
 	/**

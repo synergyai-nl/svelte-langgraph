@@ -80,10 +80,11 @@ The `.env` file is organized into sections:
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
-- `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
+- `BETTER_AUTH_URL` - Frontend origin (`http://localhost:5173` for development, `http://localhost:3000` for Compose)
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
-- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
+- `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
+- `AUTH_OIDC_SCOPES` - Optional space-separated scopes; defaults to `openid profile email offline_access`
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
@@ -182,6 +183,10 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
    - **Frontend** at `http://localhost:5173`
    - **Backend** LangGraph server at `http://localhost:2024`
    - **OIDC mock provider** at `http://localhost:8080`
+
+### OIDC redirect URI
+
+The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token.
 
 ### Local Development with OIDC Mock Provider
 
