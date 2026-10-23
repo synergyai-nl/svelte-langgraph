@@ -15,11 +15,12 @@ services:
     # must not reach the public-facing frontend process. Values interpolate
     # from the compose shell / project .env.
     environment:
-      AUTH_TRUST_HOST: "${AUTH_TRUST_HOST:-}"
+      BETTER_AUTH_URL: "${BETTER_AUTH_URL:-http://localhost:3000}"
       AUTH_OIDC_CLIENT_ID: "${AUTH_OIDC_CLIENT_ID:-}"
       AUTH_OIDC_CLIENT_SECRET: "${AUTH_OIDC_CLIENT_SECRET:-}"
       AUTH_OIDC_ISSUER: "${AUTH_OIDC_ISSUER:-}"
-      AUTH_SECRET: "${AUTH_SECRET:-}"
+      AUTH_OIDC_SCOPES: "${AUTH_OIDC_SCOPES:-openid profile email offline_access}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:-}"
       PUBLIC_SENTRY_DSN: "${PUBLIC_SENTRY_DSN:-}"
       # Consumed by the browser (client.ts), not the container, so the
       # default must be resolvable from where the browser runs: localhost
