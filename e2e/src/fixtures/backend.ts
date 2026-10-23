@@ -54,7 +54,7 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 }
 
 /**
- * The bearer the app sends to the backend: `session.accessToken` from the root layout's data,
+ * The bearer the app sends to the backend: `session.accessToken` (the OIDC access token) from the root layout's data,
  * fetched the way client navigation does. `data` is devalue's flattened form, where an object's
  * fields hold the indices of their values.
  */
