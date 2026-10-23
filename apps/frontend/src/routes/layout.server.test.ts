@@ -24,8 +24,8 @@ beforeEach(() => {
 });
 
 describe('root layout load', () => {
-	test('exposes the ID token as session.accessToken, without leaking other fields', async () => {
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken: 'id-token' });
+	test('exposes the access token as session.accessToken, without leaking other fields', async () => {
+		getAccessToken.mockResolvedValue({ accessToken: 'access-token', idToken: 'id-token' });
 
 		const { session } = await run({ session: { id: 's' }, user });
 
@@ -34,12 +34,12 @@ describe('root layout load', () => {
 		);
 		expect(session).toEqual({
 			user: { name: 'Ada', email: 'ada@example.com', image: null },
-			accessToken: 'id-token'
+			accessToken: 'access-token'
 		});
 	});
 
 	test('reports a missing name as undefined so the UI falls back', async () => {
-		getAccessToken.mockResolvedValue({ idToken: 'id-token' });
+		getAccessToken.mockResolvedValue({ accessToken: 'access-token' });
 
 		const { session } = (await run({ session: { id: 's' }, user: { ...user, name: '' } })) as {
 			session: { user: { name?: string } };
@@ -64,8 +64,8 @@ describe('root layout load', () => {
 		expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain('secret-token');
 	});
 
-	test('treats a missing ID token as signed out', async () => {
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque' });
+	test('treats a missing access token as signed out', async () => {
+		getAccessToken.mockResolvedValue({ idToken: 'id-token' });
 
 		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
 	});

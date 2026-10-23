@@ -3,7 +3,7 @@ import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * The backend verifies the OIDC ID token, so that is the bearer exposed to the chat client as
+ * The backend verifies the OIDC access token (a JWT for the API audience), so that is the bearer exposed to the chat client as
  * `session.accessToken`. Better Auth refreshes it when needed and rewrites its cookies via
  * `sveltekitCookies`.
  */
@@ -13,7 +13,7 @@ async function loadBearer(event: Parameters<LayoutServerLoad>[0]): Promise<strin
 			headers: event.request.headers,
 			body: { useAccountCookie: true }
 		});
-		return tokens.idToken ?? null;
+		return tokens.accessToken ?? null;
 	} catch {
 		// Never log the error object: it may carry token material.
 		console.error('Authentication token lookup failed; treating the request as signed out');

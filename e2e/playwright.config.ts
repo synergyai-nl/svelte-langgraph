@@ -48,7 +48,7 @@ export default defineConfig({
 		},
 		{
 			name: 'oidc',
-			command: 'moon backend:oidc-mock',
+			command: 'moon backend:oidc-mock-e2e',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
