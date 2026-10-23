@@ -39,12 +39,12 @@ function captureToken(page: Page): () => string | undefined {
  *  counts opacity: 0 as visible), so its visibility is asserted on the CSS. */
 const actionsRow = (message: Locator) => message.getByTestId('message-actions');
 
-/** Send `text` and wait until `expectedCount` AI replies have rendered. */
-async function sendAndAwaitReply(chat: ChatPage, text: string, expectedCount: number) {
+/** Send `text` and wait until the run's AI reply (the ai-mock echoes the input) has
+ *  rendered and the composer is idle again. */
+async function sendAndAwaitReply(chat: ChatPage, text: string) {
 	await chat.textInput.fill(text);
 	await chat.textInput.press('Enter');
-	await expect(chat.aiMessages).toHaveCount(expectedCount, { timeout: 30_000 });
-	await expect(chat.aiMessages.nth(expectedCount - 1)).not.toBeEmpty();
+	await chat.expectAiReply(text);
 }
 
 /** Hover, click a rating, resolve the comment box it opens, and return the
@@ -89,7 +89,7 @@ test.beforeEach(async ({ page }) => {
 test('rating buttons are enabled on an AI message', async ({ chat }) => {
 	// Regression guard: these shipped disabled behind a "coming soon" tooltip
 	// before the feature landed, which makes the whole flow unreachable.
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	const aiMessage = chat.aiMessages.first();
 	await aiMessage.hover();
@@ -105,7 +105,7 @@ test('rating buttons are enabled on an AI message', async ({ chat }) => {
 
 test('rating a reply posts the score for that message, authenticated', async ({ page, chat }) => {
 	const bodies = captureScores(page);
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	// Cancelling the comment box still records the rating that opened it.
 	const aiMessage = chat.aiMessages.first();
@@ -129,7 +129,7 @@ test('rating a reply posts the score for that message, authenticated', async ({ 
  *  scored plus the credentials it was scored with. */
 async function scoreOwnReply(page: Page, chat: ChatPage) {
 	await gotoFreshThread(page);
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	const request = (await rate(chat, chat.aiMessages.first(), 'up')).request();
 
@@ -187,7 +187,7 @@ test('past the live checkpoint window, each answer is scored as its own message'
 	// over ten. The run must come from the answer itself, not that window.
 	const token = captureToken(page);
 	const turns = 4;
-	for (let i = 1; i <= turns; i++) await sendAndAwaitReply(chat, `Question ${i}`, i);
+	for (let i = 1; i <= turns; i++) await sendAndAwaitReply(chat, `Question ${i}`);
 
 	await page.reload();
 	await expect(chat.aiMessages).toHaveCount(turns, { timeout: 30_000 });
@@ -230,7 +230,7 @@ test('a submitted rating is acknowledged and not resubmittable until reload', as
 	chat
 }) => {
 	const bodies = captureScores(page);
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	const aiMessage = chat.aiMessages.first();
 	expect((await rate(chat, aiMessage, 'up')).ok()).toBe(true);
@@ -251,7 +251,7 @@ test('a submitted rating is acknowledged and not resubmittable until reload', as
 });
 
 test('a comment is sent with its rating, in the same request', async ({ page, chat }) => {
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 	const bodies = captureScores(page);
 
 	await rate(chat, chat.aiMessages.first(), 'down', 'lost the thread halfway');
@@ -272,7 +272,7 @@ test('message actions are visible on a touch device without hovering', async ({ 
 		await authenticateUser(touchPage);
 		const chat = new ChatPage(new AppPage(touchPage));
 		await gotoFreshThread(touchPage);
-		await sendAndAwaitReply(chat, 'Hello', 1);
+		await sendAndAwaitReply(chat, 'Hello');
 
 		const aiMessage = chat.aiMessages.first();
 		await expect(actionsRow(aiMessage)).toHaveCSS('opacity', '1');
@@ -283,7 +283,7 @@ test('message actions are visible on a touch device without hovering', async ({ 
 });
 
 test('message actions are revealed by keyboard focus, not just hover', async ({ chat }) => {
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	const aiMessage = chat.aiMessages.first();
 	const regenerate = aiMessage.getByTitle(/regenerate/i);
@@ -303,7 +303,7 @@ test('a failed rating marker stays visible after the pointer leaves', async ({ p
 	await page.route(`${LANGGRAPH_CONFIG.apiUrl}/feedback`, (route) =>
 		route.fulfill({ status: 500, body: '{}' })
 	);
-	await sendAndAwaitReply(chat, 'Hello', 1);
+	await sendAndAwaitReply(chat, 'Hello');
 
 	const aiMessage = chat.aiMessages.first();
 	expect((await rate(chat, aiMessage, 'up')).status()).toBe(500);
