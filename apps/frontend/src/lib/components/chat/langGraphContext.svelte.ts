@@ -2,7 +2,12 @@
  * `<LangGraph>` provider context (SLG-133 PR 3).
  *
  * One stable `LangGraphContext` instance per provider, constructed and set into context by
- * `LangGraph.svelte`, read by descendants via `useLangGraph()`/`useLangGraphOptional()`.
+ * `LangGraph.svelte`, read by descendants via `useLangGraph()`.
+ *
+ * The provider is mandatory: chat components that read this context (`ThreadList`, ...) call
+ * `useLangGraph('<Name>')` once at init and throw, naming themselves, when rendered outside a
+ * `<LangGraph>`. There is no silent "no provider" mode — their props are overrides of the
+ * context's values, not an alternative to it.
  *
  * House pattern (same as `ThreadListState`, see `threadListState.svelte.ts`): private `$state`
  * fields + public getters/setters, no `$effect` inside the class. `LangGraph.svelte` owns every
@@ -16,7 +21,7 @@ import {
 	ThreadListState,
 	createThread as createThreadRemote,
 	type ThreadSummary,
-	type TitleClient
+	type AppClient
 } from '@svelte-langgraph/client';
 
 export interface LangGraphContextOptions {
@@ -25,7 +30,7 @@ export interface LangGraphContextOptions {
 }
 
 export class LangGraphContext {
-	#client = $state<TitleClient | undefined>(undefined);
+	#client = $state<AppClient | undefined>(undefined);
 	#assistantId = $state<string | undefined>(undefined);
 	/** Assistant-resolution failure surface. `undefined` when nothing has gone wrong. */
 	#error = $state<unknown>(undefined);
@@ -57,12 +62,12 @@ export class LangGraphContext {
 
 	// --- client ----------------------------------------------------------------------------
 
-	get client(): TitleClient | undefined {
+	get client(): AppClient | undefined {
 		return this.#client;
 	}
 
 	/** Pushed by `LangGraph.svelte`'s wiring effect whenever the derived client changes. */
-	setClient(client: TitleClient | undefined): void {
+	setClient(client: AppClient | undefined): void {
 		this.#client = client;
 	}
 
@@ -249,16 +254,27 @@ export function setLangGraphContext(ctx: LangGraphContext): LangGraphContext {
 	return setContext(KEY, ctx);
 }
 
-/** Read the `<LangGraph>` context. Throws when called outside a provider. */
-export function useLangGraph(): LangGraphContext {
+/**
+ * Read the `<LangGraph>` context. Throws when called outside a provider; pass the calling
+ * component's name so the error says which component is missing its `<LangGraph>` ancestor.
+ * Call once at component init, never inside a `$derived` or a branch.
+ */
+export function useLangGraph(componentName?: string): LangGraphContext {
 	const ctx = getContext<LangGraphContext | undefined>(KEY);
 	if (!ctx) {
-		throw new Error('useLangGraph() must be called within a <LangGraph> provider.');
+		throw new Error(
+			componentName
+				? `<${componentName}> must be rendered inside <LangGraph>.`
+				: 'useLangGraph() must be called within a <LangGraph> provider.'
+		);
 	}
 	return ctx;
 }
 
-/** Read the `<LangGraph>` context, or `undefined` outside a provider. */
+/**
+ * Read the `<LangGraph>` context, or `undefined` outside a provider. Transitional: components
+ * must use `useLangGraph()`; this goes away once the remaining callers are migrated.
+ */
 export function useLangGraphOptional(): LangGraphContext | undefined {
 	return getContext<LangGraphContext | undefined>(KEY);
 }
