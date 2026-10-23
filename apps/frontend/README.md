@@ -137,9 +137,9 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
 A bounded-height container holding the provider, and a child that creates the first thread and
 renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
 client only when `token` is truthy; pass a pre-built `client` instead otherwise. `graph`
-defaults to `'chat'`. The token is sent as a bearer token, so it must be whatever your backend's
-auth validates: with this repo's backend, that is the OIDC **id_token** (a JWT checked against
-the issuer's JWKS), not an opaque access token.
+defaults to `'chat'`. The token is sent as a bearer token: send whatever your backend validates,
+normally an access token for your API's audience. This repo's demo backend currently checks the
+OIDC id_token.
 
 ```svelte
 <!-- +page.svelte -->
