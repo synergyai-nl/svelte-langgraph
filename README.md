@@ -70,6 +70,7 @@ The `.env` file is organized into sections:
 
 **Common Variables:**
 - `AUTH_OIDC_ISSUER` - Your OIDC provider's issuer URL (e.g., `http://localhost:8080` for local mock)
+- `AUTH_OIDC_AUDIENCE` - The API audience (`aud`) the backend requires in access tokens (e.g., `svelte-langgraph-api`)
 
 **Backend Variables:**
 - `OPENAI_API_KEY` - Your OpenAI-compatible API key (e.g., OpenAI, OpenRouter)
@@ -186,17 +187,23 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
 
 ### OIDC redirect URI
 
-The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). A session lasts 30 days from sign-in; it is not extended by activity, because a stateless session cannot be renewed. The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token. Better Auth's rate limiter is off: rate limiting belongs at your reverse proxy, which knows the client IP.
+The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). A session lasts 30 days from sign-in; it is not extended by activity, because a stateless session cannot be renewed. The local mock provider accepts any redirect URI, so it needs no registration. Better Auth's rate limiter is off: rate limiting belongs at your reverse proxy, which knows the client IP.
+
+### Authentication: the bearer is the access token
+
+The chat client sends the OIDC **access token** as `Authorization: Bearer ...` (not the ID token). The backend verifies it as a JWT against the issuer's JWKS and requires a matching issuer (`iss`), `aud` equal to `AUTH_OIDC_AUDIENCE`, plus `sub` and `exp`. Refreshing the token never needs an `id_token` in the provider's response.
+
+Your IdP must therefore issue **JWT access tokens whose audience is `AUTH_OIDC_AUDIENCE`** for this client, and the client needs the `offline_access` scope (a default) to get refresh tokens. How to get the audience in is provider-specific: define an API/resource server with that identifier (Auth0: an API with that Identifier, and `audience` in the authorization request; Keycloak: an Audience mapper or client scope; Okta: set the authorization server's audience; Entra ID: expose an API and use its Application ID URI or client ID). Opaque (non-JWT) access tokens are rejected. The bundled mock provider issues API-audience JWTs by itself.
 
 ### Local Development with OIDC Mock Provider
 
-For local development and testing, the project includes a mock OIDC provider using `oidc-provider-mock`. This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
+For local development and testing, the project includes a mock OIDC provider built on `oidc-provider-mock` (`apps/backend/scripts/oidc_mock.py`). This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
 
 The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (as above) or run `moon backend:oidc-mock` in a separate terminal alongside `moon :dev`.
 
 **What it does:**
 - Provides a complete OIDC discovery endpoint (`.well-known/openid-configuration`)
-- Issues JWT tokens with configurable user claims
+- Issues RS256 JWT access tokens for the `AUTH_OIDC_AUDIENCE` audience, and rotates refresh tokens without returning an `id_token` on refresh (as many real providers do)
 - Supports the authorization code flow with PKCE
 - No client registration required - accepts any client ID/secret
 - Started alongside the other dev servers via the `:oidc-mock` target (see below)
