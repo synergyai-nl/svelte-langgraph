@@ -50,6 +50,160 @@ You can preview the production build with `npm run preview`.
 
 ---
 
+## Installing the chat UI from the registry
+
+The chat components (`src/lib/components/chat/`) are published as a
+[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) item, `chat`.
+`moon frontend:registry-build` builds `registry.json` into `static/r/` (gitignored; `build`
+and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
+
+### Requirements
+
+- SvelteKit **2**. SvelteKit 3 is not supported yet
+  ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+- Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
+- Paraglide.
+
+### Steps
+
+1. Install the item:
+
+   ```bash
+   pnpm dlx shadcn-svelte@latest add https://svelte-langgraph-demo.synergyai.nl/r/chat.json
+   ```
+
+   That URL serves the item built from `main`; re-run `add` to update, and review the overwrite
+   prompts.
+
+   This copies the components into `$lib/components/chat/`, the client library into
+   `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
+   use, and writes the chat strings to `messages/chat/{locale}.json`.
+
+   The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
+   which **overwrite** your own versions of those: the chat components rely on the
+   container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
+   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. The CLI prompts before
+   overwriting existing files; review the diff if you customized any of them.
+
+   `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
+   at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
+
+2. Point `@svelte-langgraph/client` at the installed library with a SvelteKit `alias` entry,
+   wherever your Kit config lives. Apps from `sv create` 0.17 or newer have no
+   `svelte.config.js`: pass it to `sveltekit()` in `vite.config.ts`:
+
+   ```ts
+   sveltekit({
+   	// ...your existing options
+   	alias: {
+   		'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'
+   	}
+   });
+   ```
+
+   With a `svelte.config.js`, add it to your existing `kit.alias` object (or create one)
+   instead. Kit ignores `svelte.config.js` once `sveltekit()` receives options, so put it in
+   only one place.
+
+   The path must match your shadcn-svelte `lib` alias if you customised it. The chat
+   components import the client by its package name; this alias is temporary until the client
+   is published to npm (after 1.0, see
+   [#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+
+3. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
+   which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
+
+   ```css
+   @plugin '@tailwindcss/typography';
+   ```
+
+4. Load those messages alongside your own: in `project.inlang/settings.json`, make
+   `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
+
+   ```json
+   "plugin.inlang.messageFormat": {
+   	"pathPattern": ["./messages/{locale}.json", "./messages/chat/{locale}.json"]
+   }
+   ```
+
+   Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
+   are compiled before you run `svelte-check`.
+
+5. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
+   there and to `locales` in the settings.
+
+### Minimal usage
+
+A bounded-height container holding the provider, and a child that creates the first thread and
+renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
+client only when `token` is truthy; pass a pre-built `client` instead otherwise. `graph`
+defaults to `'chat'`. The token is sent as a bearer token: send whatever your backend validates,
+normally an access token for your API's audience. This repo's demo backend currently checks the
+OIDC id_token.
+
+```svelte
+<!-- +page.svelte -->
+<script lang="ts">
+	import { env } from '$env/dynamic/public';
+	import LangGraph from '$lib/components/chat/LangGraph.svelte';
+	import Chat from './Chat.svelte';
+
+	let { data } = $props(); // however your app exposes the token your backend validates
+</script>
+
+<div class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border">
+	<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
+		<Chat />
+	</LangGraph>
+</div>
+```
+
+```svelte
+<!-- Chat.svelte: must be a child of <LangGraph> to read its context -->
+<script lang="ts">
+	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
+	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+
+	const ctx = useLangGraph();
+
+	// Without a router, nothing selects a thread: create the first one. The error gate stops a
+	// failed creation from retrying forever.
+	$effect(() => {
+		if (ctx.client && !ctx.activeThreadId && !ctx.creatingThread && !ctx.createThreadError) {
+			ctx.createThread();
+		}
+	});
+</script>
+
+{#if ctx.error}
+	<p role="alert">
+		Could not connect. <button onclick={() => ctx.retryResolution()}>Try again</button>
+	</p>
+{:else if ctx.createThreadError}
+	<p role="alert">
+		Could not start a chat. <button onclick={() => ctx.createThread()}>Try again</button>
+	</p>
+{:else}
+	<ChatSurface />
+{/if}
+```
+
+Full reference: [`+page.svelte`](src/routes/demo/embedded/+page.svelte) and
+[`EmbeddedChatSurface.svelte`](src/routes/demo/embedded/EmbeddedChatSurface.svelte) of the
+embedded demo.
+
+### Test-install from a local checkout
+
+`moon frontend:dev` builds the item first, so with it running, in the consumer project run:
+
+```bash
+pnpm dlx shadcn-svelte@latest add http://localhost:5173/r/chat.json
+```
+
+The CLI only accepts URLs, not file paths.
+
+---
+
 ## Generic state synchronisation (`createStateSync`)
 
 `@svelte-langgraph/client` (`packages/client/`) contains a runtime-schema-driven state-sync

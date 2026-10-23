@@ -38,7 +38,10 @@
 		busy?: boolean;
 		/** No client / signed out; disables the "New chat" button. */
 		disabled?: boolean;
-		/** When given, rows render as real `<a href>`s instead of `<button>`s. */
+		/**
+		 * When given, rows render as real `<a href>`s instead of `<button>`s. Must return a
+		 * resolved path (e.g. via `resolve()` from `$app/paths`): it is used as the `href` as is.
+		 */
 		hrefFor?: (t: ThreadSummary) => string;
 		/** Side-effect only; the mobile drawer close is handled internally. */
 		onSelect?: (id: string) => void;

@@ -46,6 +46,7 @@
 		/** Controlled active thread id. Omit for uncontrolled (internal) mode; pass `null`/a string to control it. */
 		activeThreadId?: string | null;
 		onThreadChange?: (id: string | null) => void;
+		/** Thread row links for `ThreadList`; must return a resolved path (see `ThreadList`). */
 		hrefFor?: (t: ThreadSummary) => string;
 		sidebarOpen?: boolean;
 		class?: string;
