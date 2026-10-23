@@ -13,7 +13,7 @@
 			"name": "chat",
 			"type": "registry:block",
 			"title": "Chat",
-			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/chat/{locale}.json). TODO: @svelte-langgraph/client is a private workspace package (packages/client) that is not published to npm yet.",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/chat/{locale}.json). Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
 			"registryDependencies": [
 				"button",
 				"card",
@@ -32,7 +32,6 @@
 				"@langchain/langgraph-sdk@^1.8.3",
 				"@langchain/svelte@^0.3.1",
 				"@lucide/svelte@^0.562.0",
-				"@svelte-langgraph/client",
 				"@tailwindcss/typography@^0.5.15",
 				"bits-ui@^2.15.4",
 				"svelte-exmarkdown@^5.0.1",
@@ -349,6 +348,66 @@
 					"path": "messages/chat/hi.json",
 					"type": "registry:file",
 					"target": "~/messages/chat/hi.json"
+				},
+				{
+					"path": "../../packages/client/src/apiUrl.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/apiUrl.ts"
+				},
+				{
+					"path": "../../packages/client/src/client.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/client.ts"
+				},
+				{
+					"path": "../../packages/client/src/errors.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/errors.ts"
+				},
+				{
+					"path": "../../packages/client/src/feedbackLimits.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/feedbackLimits.ts"
+				},
+				{
+					"path": "../../packages/client/src/index.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/index.ts"
+				},
+				{
+					"path": "../../packages/client/src/schema.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/schema.ts"
+				},
+				{
+					"path": "../../packages/client/src/stateSync.svelte.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/stateSync.svelte.ts"
+				},
+				{
+					"path": "../../packages/client/src/threadListState.svelte.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threadListState.svelte.ts"
+				},
+				{
+					"path": "../../packages/client/src/threads.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threads.ts"
+				},
+				{
+					"path": "../../packages/client/src/threadTitle.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threadTitle.ts"
+				},
+				{
+					"path": "../../packages/client/src/types.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/types.ts"
+				},
+				{
+					"path": "../../packages/client/src/utils.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/utils.ts"
 				}
 			]
 		}
