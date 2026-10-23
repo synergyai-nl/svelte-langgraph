@@ -14,7 +14,8 @@
 	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
 	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-	import SignOutButton from '$lib/auth/components/SignOutButton.svelte';
+	import { authClient } from '$lib/auth/client';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
 	import { cn } from '$lib/utils';
 
@@ -28,6 +29,19 @@
 
 	const GITHUB_URL = 'https://github.com/synergyai-nl/svelte-langgraph';
 	const DOCS_URL = `${GITHUB_URL}#readme`;
+
+	let signOutFailed = $state(false);
+
+	async function signOut() {
+		signOutFailed = false;
+		try {
+			const result = await authClient.signOut();
+			if (result.error) signOutFailed = true;
+			else location.assign('/');
+		} catch {
+			signOutFailed = true;
+		}
+	}
 </script>
 
 <header
@@ -144,12 +158,10 @@
 
 						<DropdownMenu.Separator />
 
-						<SignOutButton>
-							<DropdownMenu.Item class="cursor-pointer justify-between">
-								<span>{m.auth_sign_out()}</span>
-								<LogOut class="text-primary-500 dark:text-primary-600 h-4 w-4" />
-							</DropdownMenu.Item>
-						</SignOutButton>
+						<DropdownMenu.Item onclick={signOut} class="cursor-pointer justify-between">
+							<span>{m.auth_sign_out()}</span>
+							<LogOut class="text-primary-500 dark:text-primary-600 h-4 w-4" />
+						</DropdownMenu.Item>
 					{:else}
 						<div class="p-2">
 							<SignInButton variant={isMarketing ? 'outline' : 'default'} />
@@ -203,16 +215,14 @@
 
 						<DropdownMenu.Separator />
 
-						<SignOutButton>
-							<DropdownMenu.Item class="justify-between">
-								<div>{m.auth_sign_out()}</div>
-								<div class="flex items-center">
-									<LogOut
-										class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
-									/>
-								</div>
-							</DropdownMenu.Item>
-						</SignOutButton>
+						<DropdownMenu.Item onclick={signOut} class="justify-between">
+							<div>{m.auth_sign_out()}</div>
+							<div class="flex items-center">
+								<LogOut
+									class="text-primary-500 dark:text-primary-600 pointer-events-none h-5 w-5 shrink-0"
+								/>
+							</div>
+						</DropdownMenu.Item>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			{:else}
@@ -226,3 +236,12 @@
 		</div>
 	</div>
 </header>
+
+<Dialog.Root bind:open={signOutFailed}>
+	<Dialog.Content class="bg-card rounded-card-lg shadow-popover border">
+		<Dialog.Header>
+			<Dialog.Title>{m.auth_sign_out_failed_title()}</Dialog.Title>
+			<Dialog.Description>{m.auth_sign_out_failed_message()}</Dialog.Description>
+		</Dialog.Header>
+	</Dialog.Content>
+</Dialog.Root>

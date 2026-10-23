@@ -62,7 +62,7 @@ test.describe('When unauthenticated', () => {
 
 		test.describe('Clicking sign-in button', () => {
 			test.beforeEach(async ({ chat }) => {
-				await chat.modalSignInButton.click();
+				await chat.app.signIn(chat.modalSignInButton);
 			});
 
 			test('should redirect to login page', async ({ page }) => {

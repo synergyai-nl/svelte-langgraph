@@ -36,11 +36,7 @@ export const LANGGRAPH_CONFIG = {
  * asserting on a specific row) don't have to re-derive it from the URL.
  */
 export async function gotoFreshThread(page: Page): Promise<string> {
-	const sessionRes = await page.request.get('/auth/session');
-	expect(sessionRes.ok()).toBeTruthy();
-	const session = await sessionRes.json();
-	const accessToken = session?.accessToken as string | undefined;
-	expect(accessToken, 'expected an accessToken on the Auth.js session').toBeTruthy();
+	const accessToken = await getBearerToken(page);
 
 	const threadRes = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads`, {
 		headers: {
@@ -55,6 +51,21 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 	await page.goto(`/chat/${thread.thread_id}`);
 
 	return thread.thread_id;
+}
+
+/**
+ * The bearer the app sends to the backend: the OIDC ID token, via Better Auth's
+ * get-access-token endpoint (the same lookup the root layout performs).
+ */
+async function getBearerToken(page: Page): Promise<string> {
+	const response = await page.request.post('/api/auth/get-access-token', {
+		headers: { Origin: new URL(page.url()).origin },
+		data: { useAccountCookie: true }
+	});
+	expect(response.ok()).toBeTruthy();
+	const { idToken } = (await response.json()) as { idToken?: string };
+	expect(idToken, 'expected an idToken from the Better Auth session').toBeTruthy();
+	return idToken as string;
 }
 
 /**
