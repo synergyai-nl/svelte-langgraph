@@ -75,7 +75,7 @@
 
 	// Captured once, from the *initial* props: whether the owned `ThreadListState` should start
 	// in the loading state (SSR — see `ThreadListOptions.initialLoading`, and `+layout.svelte`'s
-	// existing `Boolean(page.data.session?.accessToken)` precedent).
+	// existing `Boolean(page.data.session)` precedent).
 	const ctx = new LangGraphContext({ initialLoading: Boolean(token || clientProp) });
 	setLangGraphContext(ctx);
 

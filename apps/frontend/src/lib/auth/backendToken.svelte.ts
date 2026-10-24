@@ -22,22 +22,6 @@ let inFlight: Promise<string> | null = null;
 const isFresh = (entry: CachedToken | null): entry is CachedToken =>
 	entry?.expiresAt != null && entry.expiresAt - Date.now() > SKEW_MS;
 
-/**
- * Seed the cache from the root layout's session, so the first request after a page load needs no
- * round-trip. A session older than the cached token is ignored; no session clears the cache.
- */
-export function seedBackendToken(
-	session: { accessToken: string; accessTokenExpiresAt: number | null } | null | undefined
-) {
-	if (!session) {
-		cached = null;
-		return;
-	}
-	if (!cached || (session.accessTokenExpiresAt ?? 0) > (cached.expiresAt ?? 0)) {
-		cached = { token: session.accessToken, expiresAt: session.accessTokenExpiresAt };
-	}
-}
-
 async function fetchToken(): Promise<string> {
 	const request = () => fetch('/api/backend-token', { method: 'POST' });
 	// Across tabs: the second tab's request then sees the first tab's rotated cookie, so the
