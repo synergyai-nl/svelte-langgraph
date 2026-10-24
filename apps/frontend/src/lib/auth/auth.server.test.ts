@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import type { Handle } from '@sveltejs/kit';
+import { cookieHeaders, mockIdp, signIn } from './__tests__/mock-idp';
 
 const state = vi.hoisted(() => ({
 	building: false,
 	env: {} as Record<string, string>,
 	getSession: vi.fn(),
 	handler: vi.fn(),
-	providers: [{ id: 'oidc' }],
+	context: Promise.resolve({}) as Promise<unknown>,
 	real: false
 }));
 vi.mock('$app/environment', () => ({
@@ -26,7 +27,7 @@ vi.mock('better-auth', async (importActual) => {
 						options,
 						api: { getSession: state.getSession },
 						handler: state.handler,
-						$context: Promise.resolve({ socialProviders: state.providers })
+						$context: state.context
 					}
 	};
 });
@@ -37,9 +38,10 @@ beforeEach(() => {
 	state.building = false;
 	state.getSession.mockReset().mockResolvedValue(null);
 	state.handler.mockReset().mockResolvedValue(new Response('auth'));
-	state.providers = [{ id: 'oidc' }];
+	state.context = Promise.resolve({});
 	state.real = false;
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
 function configured() {
 	Object.assign(state.env, {
@@ -80,6 +82,12 @@ describe('runtime auth hook', () => {
 			body: { message: 'Authentication is temporarily unavailable' }
 		});
 	});
+	test('renders pages while the OIDC provider is unreachable', async () => {
+		configured();
+		state.real = true;
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+		expect(await (await call()).text()).toBe('page');
+	});
 	test('does not reclassify failures in application routes', async () => {
 		configured();
 		const failure = new Error('application failure');
@@ -96,19 +104,21 @@ describe('runtime auth hook', () => {
 });
 
 describe('auth instance', () => {
-	test('is reused once the OIDC provider is discovered', async () => {
+	test('is reused once initialised', async () => {
 		configured();
 		const { getAuth } = await import('./index');
-		const first = getAuth();
-		await first.$context;
-		expect(getAuth()).toBe(first);
+		const first = await getAuth();
+		expect(await getAuth()).toBe(first);
 	});
-	test('is recreated when discovery failed, so sign-in recovers without a restart', async () => {
+	test('is recreated when init stalls, so a slow provider cannot block requests for good', async () => {
 		configured();
-		state.providers = [];
+		state.context = new Promise(() => {});
+		vi.useFakeTimers();
 		const { getAuth } = await import('./index');
 		const first = getAuth();
-		await first.$context;
+		const failed = expect(first).rejects.toThrow('Auth init timed out');
+		await vi.advanceTimersByTimeAsync(10_000);
+		await failed;
 		expect(getAuth()).not.toBe(first);
 	});
 });
@@ -117,9 +127,10 @@ describe('auth configuration', () => {
 	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
 		configured();
 		const { getAuth } = await import('./index');
-		const { options } = getAuth() as unknown as {
+		const { options } = (await getAuth()) as unknown as {
 			options: {
 				database?: unknown;
+				session: { expiresIn: number; cookieCache: { maxAge: number } };
 				disabledPaths: string[];
 				rateLimit: unknown;
 				account: { storeStateStrategy: string; storeAccountCookie: boolean };
@@ -128,6 +139,9 @@ describe('auth configuration', () => {
 		};
 
 		expect(options.database).toBeUndefined();
+		// Not rolling: a stateless session ends 30 days after sign-in, with all its cookies.
+		expect(options.session.expiresIn).toBe(30 * 24 * 60 * 60);
+		expect(options.session.cookieCache.maxAge).toBe(options.session.expiresIn);
 		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token']);
 		// Left to the proxy: without a trusted client IP, Better Auth shares one bucket for all.
 		expect(options.rateLimit).toEqual({ enabled: false });
@@ -167,4 +181,29 @@ describe('auth HTTP routes', () => {
 			expect(response.status).toBe(404);
 		}
 	);
+});
+
+describe('account cookie', () => {
+	test('is refused when it belongs to another user than the session', async () => {
+		configured();
+		state.real = true;
+		const idp = await mockIdp();
+		const { getAuth } = await import('./index');
+		const auth = await getAuth();
+		const alice = await signIn(auth, idp, 'alice');
+		const bob = await signIn(auth, idp, 'bob');
+		const mixed = new Map(bob);
+		for (const [name, value] of alice) if (name.includes('account_data')) mixed.set(name, value);
+		expect([...mixed.keys()].some((name) => name.includes('account_data'))).toBe(true);
+		const body = { useAccountCookie: true as const };
+
+		const own = await auth.api.getAccessToken({ headers: cookieHeaders(bob), body });
+		expect(own.accessToken).toBe('access-bob');
+		await expect(
+			auth.api.getAccessToken({ headers: cookieHeaders(mixed), body })
+		).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
+		await expect(
+			auth.api.refreshToken({ headers: cookieHeaders(mixed), body })
+		).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
+	});
 });
