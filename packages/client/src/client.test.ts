@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -147,10 +147,10 @@ describe('function token', () => {
 	const ok = () =>
 		new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
 	const authorization = (init: RequestInit) => new Headers(init.headers).get('Authorization');
+	let fetchMock: ReturnType<typeof vi.fn>;
+	beforeEach(() => vi.stubGlobal('fetch', (fetchMock = vi.fn(async () => ok()))));
 
 	it('reads the token before every request, keeping custom headers', async () => {
-		const fetchMock = vi.fn().mockImplementation(async () => ok());
-		vi.stubGlobal('fetch', fetchMock);
 		let n = 0;
 		const client = createClient('https://backend.test/api/', async () => `tok-${++n}`, {
 			'X-Org': 'acme'
@@ -169,8 +169,6 @@ describe('function token', () => {
 	});
 
 	it('sends no Authorization header when the function returns null', async () => {
-		const fetchMock = vi.fn().mockImplementation(async () => ok());
-		vi.stubGlobal('fetch', fetchMock);
 		const client = createClient('https://backend.test/api/', async () => null, {
 			authorization: 'Bearer stale'
 		});
@@ -182,8 +180,6 @@ describe('function token', () => {
 	});
 
 	it('fails the request when the token cannot be read', async () => {
-		const fetchMock = vi.fn();
-		vi.stubGlobal('fetch', fetchMock);
 		const client = createClient('https://backend.test/api/', async () => {
 			throw new Error('signed out');
 		});
@@ -193,9 +189,6 @@ describe('function token', () => {
 	});
 
 	it('sends a string token on SDK requests as before', async () => {
-		const fetchMock = vi.fn().mockImplementation(async () => ok());
-		vi.stubGlobal('fetch', fetchMock);
-
 		await createClient('https://backend.test/api/', 'test-token').threads.search({ limit: 1 });
 
 		expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer test-token');

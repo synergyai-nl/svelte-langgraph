@@ -35,12 +35,14 @@ const expiryOf = (date: Date | string | number | null | undefined) =>
  * when it is within SKEW_MS of expiry. Better Auth writes the rotated cookie through
  * `sveltekitCookies`. The refresh and ID tokens never leave the server.
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	// Direct auth.api calls skip Better Auth's origin check. Compare with the configured public
 	// origin, not the request URL, which is the internal one behind a TLS-terminating proxy.
 	const allowed = env.BETTER_AUTH_URL && new URL(env.BETTER_AUTH_URL).origin;
 	if (!allowed || request.headers.get('origin') !== allowed)
 		return failure(403, 'ORIGIN_NOT_ALLOWED');
+	const userId = locals.user?.id;
+	if (!userId) return failure(401, 'AUTH_REQUIRED');
 	try {
 		const auth = await getAuth();
 		const options = { headers: request.headers, body: { useAccountCookie: true as const } };
@@ -58,7 +60,8 @@ export const POST: RequestHandler = async ({ request }) => {
 					})
 				: current;
 		if (!accessToken) return failure(401, 'AUTH_REQUIRED');
-		return json({ accessToken, expiresAt: expiryOf(accessTokenExpiresAt) }, { headers });
+		// The user id lets the browser notice that another tab switched accounts.
+		return json({ accessToken, expiresAt: expiryOf(accessTokenExpiresAt), userId }, { headers });
 	} catch (error) {
 		return lookupFailure(error);
 	}
