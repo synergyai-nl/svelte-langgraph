@@ -6,7 +6,8 @@ const state = vi.hoisted(() => ({
 	env: {} as Record<string, string>,
 	getSession: vi.fn(),
 	handler: vi.fn(),
-	providers: [{ id: 'oidc' }]
+	providers: [{ id: 'oidc' }],
+	real: false
 }));
 vi.mock('$app/environment', () => ({
 	get building() {
@@ -15,14 +16,20 @@ vi.mock('$app/environment', () => ({
 }));
 vi.mock('$env/dynamic/private', () => ({ env: state.env }));
 vi.mock('$app/server', () => ({ getRequestEvent: vi.fn() }));
-vi.mock('better-auth', () => ({
-	betterAuth: (options: unknown) => ({
-		options,
-		api: { getSession: state.getSession },
-		handler: state.handler,
-		$context: Promise.resolve({ socialProviders: state.providers })
-	})
-}));
+vi.mock('better-auth', async (importActual) => {
+	const actual = await importActual<typeof import('better-auth')>();
+	return {
+		betterAuth: (options: Parameters<typeof actual.betterAuth>[0]) =>
+			state.real
+				? actual.betterAuth(options)
+				: {
+						options,
+						api: { getSession: state.getSession },
+						handler: state.handler,
+						$context: Promise.resolve({ socialProviders: state.providers })
+					}
+	};
+});
 
 beforeEach(() => {
 	vi.resetModules();
@@ -31,6 +38,8 @@ beforeEach(() => {
 	state.getSession.mockReset().mockResolvedValue(null);
 	state.handler.mockReset().mockResolvedValue(new Response('auth'));
 	state.providers = [{ id: 'oidc' }];
+	state.real = false;
+	vi.unstubAllGlobals();
 });
 function configured() {
 	Object.assign(state.env, {
@@ -105,7 +114,7 @@ describe('auth instance', () => {
 });
 
 describe('auth configuration', () => {
-	test('is stateless, ends only the local session on sign-out, and disables token refresh route', async () => {
+	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
 		configured();
 		const { getAuth } = await import('./index');
 		const { options } = getAuth() as unknown as {
@@ -119,18 +128,43 @@ describe('auth configuration', () => {
 		};
 
 		expect(options.database).toBeUndefined();
-		expect(options.disabledPaths).toContain('/refresh-token');
-		// Only the credential-free sign-in redirect is exempt; the rest keeps the default limits.
-		expect(options.rateLimit).toEqual({ customRules: { '/sign-in/social': false } });
+		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token']);
+		// Left to the proxy: without a trusted client IP, Better Auth shares one bucket for all.
+		expect(options.rateLimit).toEqual({ enabled: false });
 		expect(options.account).toEqual({ storeStateStrategy: 'cookie', storeAccountCookie: true });
 		const oauth = options.plugins.find((plugin) => plugin.id === 'generic-oauth');
 		expect(oauth?.options?.config[0]).toMatchObject({
 			providerId: 'oidc',
 			pkce: true,
 			requireIdTokenVerification: true,
-			disableProviderLogout: true
+			disableProviderLogout: true,
+			authentication: 'basic'
 		});
 		// sveltekitCookies must come last so it sees every Set-Cookie.
 		expect(options.plugins.at(-1)?.id).toBe('sveltekit-cookies');
 	});
+});
+
+describe('auth HTTP routes', () => {
+	test.each(['/api/auth/get-access-token', '/api/auth/refresh-token'])(
+		'%s is not served over HTTP',
+		async (path) => {
+			configured();
+			state.real = true;
+			// OIDC discovery fails fast; the disabled-path check does not depend on it.
+			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+			const { handle } = await import('./index');
+			const url = `https://frontend.test${path}`;
+			const request = new Request(url, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', origin: 'https://frontend.test' },
+				body: JSON.stringify({ providerId: 'oidc' })
+			});
+			const response = await handle({
+				event: { request, url: new URL(url), locals: {} },
+				resolve: vi.fn()
+			} as unknown as Parameters<Handle>[0]);
+			expect(response.status).toBe(404);
+		}
+	);
 });
