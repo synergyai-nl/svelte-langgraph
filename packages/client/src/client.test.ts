@@ -142,3 +142,69 @@ describe('createClient', () => {
 		expect(init.headers).toEqual({ 'X-Org': 'acme', 'Content-Type': 'application/json' });
 	});
 });
+
+describe('function token', () => {
+	const ok = () =>
+		new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
+	const authorization = (init: RequestInit) => new Headers(init.headers).get('Authorization');
+
+	it('reads the token before every SDK request and route', async () => {
+		const fetchMock = vi.fn().mockImplementation(async () => ok());
+		vi.stubGlobal('fetch', fetchMock);
+		let n = 0;
+		const client = createClient('https://backend.test/api/', async () => `tok-${++n}`);
+
+		await client.threads.search({ limit: 1 });
+		await client.threads.search({ limit: 1 });
+		await client.submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock.mock.calls.map(([, init]) => authorization(init))).toEqual([
+			'Bearer tok-1',
+			'Bearer tok-2',
+			'Bearer tok-3'
+		]);
+	});
+
+	it('keeps custom headers alongside the token', async () => {
+		const fetchMock = vi.fn().mockImplementation(async () => ok());
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createClient('https://backend.test/api/', () => 'tok', { 'X-Org': 'acme' });
+
+		await client.threads.search({ limit: 1 });
+
+		const headers = new Headers(fetchMock.mock.calls[0][1].headers);
+		expect(headers.get('X-Org')).toBe('acme');
+		expect(headers.get('Authorization')).toBe('Bearer tok');
+	});
+
+	it('sends no Authorization header when the function returns null', async () => {
+		const fetchMock = vi.fn().mockImplementation(async () => ok());
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createClient('https://backend.test/api/', async () => null);
+
+		await client.threads.search({ limit: 1 });
+		await client.submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock.mock.calls.map(([, init]) => authorization(init))).toEqual([null, null]);
+	});
+
+	it('fails the request when the token cannot be read', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const client = createClient('https://backend.test/api/', async () => {
+			throw new Error('signed out');
+		});
+
+		await expect(client.submitFeedback('thread-1', 'ai-1', 'up')).rejects.toThrow('signed out');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('sends a string token on SDK requests as before', async () => {
+		const fetchMock = vi.fn().mockImplementation(async () => ok());
+		vi.stubGlobal('fetch', fetchMock);
+
+		await createClient('https://backend.test/api/', 'test-token').threads.search({ limit: 1 });
+
+		expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer test-token');
+	});
+});
