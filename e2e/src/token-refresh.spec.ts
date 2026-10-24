@@ -14,7 +14,7 @@ import { OIDC_CONFIG, OidcPage } from './pages';
  *
  * Expiry is real time: the backend checks `exp`, and a mocked browser clock cannot expire a JWT.
  * Tokens live just above the app's 30 s skew (`SKEW_MS`), so each test acts as soon as the token
- * is inside that window, except the first, which waits for a token to really expire.
+ * is inside that window, except the first two, which wait for a token to really expire.
  */
 test.describe.configure({ mode: 'default' });
 
@@ -120,6 +120,7 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 	chat,
 	request
 }) => {
+	test.setTimeout(LIFETIME * 1000 + 60_000);
 	await authenticateUser(page);
 	const threadId = await gotoFreshThread(page);
 	await expect(chat.textInput).toBeEnabled();
@@ -127,7 +128,8 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 	await configure(request, { refresh_error: 'invalid_grant' });
 	const runs = countRuns(page);
 
-	await waitUntil(expiresAt - SKEW_MS + 500);
+	// Until it expires, the endpoint keeps serving the token whose refresh failed.
+	await waitUntil(expiresAt + 1000);
 	await chat.textInput.fill('Do not replay this');
 	await chat.textInput.press('Enter');
 

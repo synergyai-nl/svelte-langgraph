@@ -49,7 +49,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Use the refresh result itself: re-reading would see the old cookie in these headers.
 		const { accessToken, accessTokenExpiresAt } =
 			expiresAt !== null && expiresAt - Date.now() < SKEW_MS
-				? await auth.api.refreshToken(options)
+				? await auth.api.refreshToken(options).catch((error) => {
+						// Better Auth reports a revoked refresh token and a provider outage alike, so
+						// keep serving a token that has not expired; the browser asks again next request.
+						if (expiresAt <= Date.now()) throw error;
+						console.warn('Token refresh failed; serving the unexpired access token');
+						return current;
+					})
 				: current;
 		if (!accessToken) return failure(401, 'AUTH_REQUIRED');
 		return json({ accessToken, expiresAt: expiryOf(accessTokenExpiresAt) }, { headers });
