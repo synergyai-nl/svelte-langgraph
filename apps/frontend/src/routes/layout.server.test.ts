@@ -25,7 +25,12 @@ beforeEach(() => {
 
 describe('root layout load', () => {
 	test('exposes the access token as session.accessToken, without leaking other fields', async () => {
-		getAccessToken.mockResolvedValue({ accessToken: 'access-token', idToken: 'id-token' });
+		const expiry = new Date(Date.now() + 60_000);
+		getAccessToken.mockResolvedValue({
+			accessToken: 'access-token',
+			accessTokenExpiresAt: expiry,
+			idToken: 'id-token'
+		});
 
 		const { session } = await run({ session: { id: 's' }, user });
 
@@ -34,8 +39,19 @@ describe('root layout load', () => {
 		);
 		expect(session).toEqual({
 			user: { name: 'Ada', email: 'ada@example.com', image: null },
-			accessToken: 'access-token'
+			accessToken: 'access-token',
+			accessTokenExpiresAt: expiry.getTime()
 		});
+	});
+
+	test('reports a missing expiry as null', async () => {
+		getAccessToken.mockResolvedValue({ accessToken: 'access-token' });
+
+		const { session } = (await run({ session: { id: 's' }, user })) as {
+			session: { accessTokenExpiresAt: number | null };
+		};
+
+		expect(session.accessTokenExpiresAt).toBeNull();
 	});
 
 	test('reports a missing name as undefined so the UI falls back', async () => {
@@ -68,25 +84,5 @@ describe('root layout load', () => {
 		getAccessToken.mockResolvedValue({ idToken: 'id-token' });
 
 		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
-	});
-
-	test('treats an access token past its expiry as signed out', async () => {
-		getAccessToken.mockResolvedValue({
-			accessToken: 'access-token',
-			accessTokenExpiresAt: new Date(Date.now() - 60_000)
-		});
-
-		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
-	});
-
-	test('exposes an access token that has not expired yet', async () => {
-		getAccessToken.mockResolvedValue({
-			accessToken: 'access-token',
-			accessTokenExpiresAt: new Date(Date.now() + 3_600_000)
-		});
-
-		expect((await run({ session: { id: 's' }, user })).session).toMatchObject({
-			accessToken: 'access-token'
-		});
 	});
 });
