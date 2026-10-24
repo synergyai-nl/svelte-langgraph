@@ -53,23 +53,29 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 	return thread.thread_id;
 }
 
-/**
- * The bearer the app sends to the backend, from the same endpoint the browser uses. Its
- * origin check needs the app's `Origin`, which Playwright's request context does not send.
- */
+/** The bearer the app sends to the backend, from the same endpoint the browser uses. */
 export async function getBearerToken(page: Page): Promise<string> {
-	return (await fetchBackendToken(page)).accessToken;
+	return (await fetchAccessToken(page)).accessToken;
 }
 
-/** `POST /api/backend-token` as the signed-in page; refreshes when the token is near expiry. */
-export async function fetchBackendToken(
+/**
+ * Better Auth's `POST /api/auth/get-access-token` as the signed-in page; it refreshes the token
+ * when fewer than 5 s remain. Its origin check needs the app's `Origin`, which Playwright's
+ * request context does not send.
+ */
+export async function fetchAccessToken(
 	page: Page
-): Promise<{ accessToken: string; expiresAt: number }> {
-	const response = await page.request.post('/api/backend-token', {
-		headers: { Origin: new URL(page.url()).origin }
-	});
-	expect(response.ok(), 'expected a backend token for the signed-in page').toBeTruthy();
+): Promise<{ accessToken: string; accessTokenExpiresAt: string }> {
+	const response = await postAccessToken(page);
+	expect(response.ok(), 'expected an access token for the signed-in page').toBeTruthy();
 	return response.json();
+}
+
+export function postAccessToken(page: Page): Promise<APIResponse> {
+	return page.request.post('/api/auth/get-access-token', {
+		headers: { Origin: new URL(page.url()).origin },
+		data: { useAccountCookie: true }
+	});
 }
 
 /**
