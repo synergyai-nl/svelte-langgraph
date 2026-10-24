@@ -10,6 +10,8 @@ export const load: LayoutServerLoad = async (event) => {
 		event.locals.session && event.locals.user
 			? {
 					user: {
+						// The id binds the browser's backend token to this user (see backendToken.svelte.ts).
+						id: event.locals.user.id,
 						// Better Auth stores '' for a missing name; consumers fall back on undefined.
 						name: event.locals.user.name || undefined,
 						email: event.locals.user.email,
