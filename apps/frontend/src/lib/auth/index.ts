@@ -57,7 +57,11 @@ const createAuth = () =>
 						pkce: true,
 						// Without a database users live in an in-process memory adapter, so a returning
 						// user would keep their first sign-in's profile until the server restarts.
-						overrideUserInfo: true
+						overrideUserInfo: true,
+						// Auth0 only issues an API-audience access token when asked for one; other IdPs ignore it.
+						...(env.AUTH_OIDC_AUDIENCE && {
+							authorizationUrlParams: { audience: env.AUTH_OIDC_AUDIENCE }
+						})
 					}
 				]
 			}),
