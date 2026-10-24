@@ -46,26 +46,17 @@ describe('LoginModal', () => {
 		});
 	});
 
-	describe('closing', () => {
-		test('goes home when signed out', async () => {
-			const onclose = vi.fn();
-			render(LoginModal, { open: true, onclose });
+	test.each([
+		['goes home when signed out', false, [['/']]],
+		['stays on the page when the session expired', true, []]
+	])('closing %s', async (_, expired, navigations) => {
+		const onclose = vi.fn();
+		render(LoginModal, { open: true, expired, onclose });
 
-			await fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+		await fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
-			await vi.waitFor(() => expect(onclose).toHaveBeenCalled());
-			expect(goto).toHaveBeenCalledWith('/');
-		});
-
-		test('stays on the page when the session expired', async () => {
-			const onclose = vi.fn();
-			render(LoginModal, { open: true, expired: true, onclose });
-
-			await fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
-
-			await vi.waitFor(() => expect(onclose).toHaveBeenCalled());
-			expect(goto).not.toHaveBeenCalled();
-		});
+		await vi.waitFor(() => expect(onclose).toHaveBeenCalled());
+		expect(goto.mock.calls).toEqual(navigations);
 	});
 
 	describe('when the session expired', () => {
