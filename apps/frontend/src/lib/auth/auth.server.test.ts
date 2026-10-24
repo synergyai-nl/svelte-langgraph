@@ -38,7 +38,7 @@ beforeEach(() => {
 	state.building = false;
 	state.getSession.mockReset().mockResolvedValue(null);
 	state.handler.mockReset().mockResolvedValue(new Response('auth'));
-	state.context = Promise.resolve({});
+	state.context = Promise.resolve({ socialProviders: [{ id: 'oidc' }] });
 	state.real = false;
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
@@ -82,11 +82,21 @@ describe('runtime auth hook', () => {
 			body: { message: 'Authentication is temporarily unavailable' }
 		});
 	});
-	test('renders pages while the OIDC provider is unreachable', async () => {
+	test('renders pages while the OIDC provider is unreachable, and recovers without a sign-in', async () => {
 		configured();
 		state.real = true;
+		const idp = await mockIdp();
+		const idpFetch = globalThis.fetch;
+		const alice = await signIn(await (await import('./index')).getAuth(), idp, 'alice');
+		// A restart while the provider is down: discovery fails at startup.
+		vi.resetModules();
 		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
 		expect(await (await call()).text()).toBe('page');
+		vi.stubGlobal('fetch', idpFetch);
+		const auth = await (await import('./index')).getAuth();
+		const body = { useAccountCookie: true as const };
+		const token = await auth.api.getAccessToken({ headers: cookieHeaders(alice), body });
+		expect(token.accessToken).toBe('access-alice');
 	});
 	test('does not reclassify failures in application routes', async () => {
 		configured();
@@ -142,7 +152,7 @@ describe('auth configuration', () => {
 		// Not rolling: a stateless session ends 30 days after sign-in, with all its cookies.
 		expect(options.session.expiresIn).toBe(30 * 24 * 60 * 60);
 		expect(options.session.cookieCache.maxAge).toBe(options.session.expiresIn);
-		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token']);
+		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token', '/account-info']);
 		// Left to the proxy: without a trusted client IP, Better Auth shares one bucket for all.
 		expect(options.rateLimit).toEqual({ enabled: false });
 		expect(options.account).toEqual({ storeStateStrategy: 'cookie', storeAccountCookie: true });
@@ -160,7 +170,7 @@ describe('auth configuration', () => {
 });
 
 describe('auth HTTP routes', () => {
-	test.each(['/api/auth/get-access-token', '/api/auth/refresh-token'])(
+	test.each(['get-access-token', 'refresh-token', 'account-info?useAccountCookie=true'])(
 		'%s is not served over HTTP',
 		async (path) => {
 			configured();
@@ -168,11 +178,12 @@ describe('auth HTTP routes', () => {
 			// OIDC discovery fails fast; the disabled-path check does not depend on it.
 			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
 			const { handle } = await import('./index');
-			const url = `https://frontend.test${path}`;
+			const url = `https://frontend.test/api/auth/${path}`;
+			const post = !path.startsWith('account-info');
 			const request = new Request(url, {
-				method: 'POST',
+				method: post ? 'POST' : 'GET',
 				headers: { 'content-type': 'application/json', origin: 'https://frontend.test' },
-				body: JSON.stringify({ providerId: 'oidc' })
+				body: post ? JSON.stringify({ providerId: 'oidc' }) : undefined
 			});
 			const response = await handle({
 				event: { request, url: new URL(url), locals: {} },
