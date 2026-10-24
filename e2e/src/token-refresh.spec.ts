@@ -2,10 +2,11 @@ import type { APIRequestContext, Page, Request } from '@playwright/test';
 import { test, expect } from './fixtures/test';
 import { authenticateUser, expectOIDCProviderURL } from './fixtures/auth';
 import {
-	fetchBackendToken,
+	fetchAccessToken,
 	getBearerToken,
 	gotoFreshThread,
-	LANGGRAPH_CONFIG
+	LANGGRAPH_CONFIG,
+	postAccessToken
 } from './fixtures/backend';
 import { OIDC_CONFIG, OidcPage } from './pages';
 
@@ -13,15 +14,15 @@ import { OIDC_CONFIG, OidcPage } from './pages';
  * Issue #303: the backend token is refreshed in the page, without a reload.
  *
  * Expiry is real time: the backend checks `exp`, and a mocked browser clock cannot expire a JWT.
- * Tokens live just above the app's 30 s skew (`SKEW_MS`), so each test acts as soon as the token
- * is inside that window, except the first two, which wait for a token to really expire.
+ * Tokens live just above Better Auth's 5 s refresh buffer, so they expire within seconds.
  */
-test.describe.configure({ mode: 'default' });
+// Each test waits up to one token lifetime on top of its usual work.
+test.describe.configure({ mode: 'default', timeout: 60_000 });
 
-/** `SKEW_MS` in apps/frontend/src/lib/auth/tokenSkew.ts. */
-const SKEW_MS = 30_000;
-/** Token lifetime in seconds: 10 s outside the skew window, room for sign-in and setup. */
-const LIFETIME = 40;
+/** Token lifetime in seconds. */
+const LIFETIME = 12;
+/** Better Auth refreshes, and the browser asks for a new token, when fewer than 5 s remain. */
+const REFRESH_BUFFER_MS = 5_000;
 
 async function configure(request: APIRequestContext, settings: Record<string, unknown>) {
 	const response = await request.post(`${OIDC_CONFIG.issuer}/__test__/settings`, {
@@ -36,9 +37,15 @@ async function refreshes(request: APIRequestContext) {
 		.refreshes;
 }
 
+/** The current token and its expiry (epoch ms). */
+async function currentToken(page: Page) {
+	const { accessToken, accessTokenExpiresAt } = await fetchAccessToken(page);
+	return { accessToken, expiresAt: Date.parse(accessTokenExpiresAt) };
+}
+
 async function waitUntil(epochMs: number) {
 	await expect
-		.poll(() => Date.now(), { timeout: LIFETIME * 1000 + 15_000, intervals: [250] })
+		.poll(() => Date.now(), { timeout: LIFETIME * 1000 + 5_000, intervals: [100] })
 		.toBeGreaterThan(epochMs);
 }
 
@@ -74,7 +81,6 @@ test('after the token expires, chat, threads and feedback keep working without a
 	sidebar,
 	request
 }) => {
-	test.setTimeout(LIFETIME * 1000 + 60_000);
 	await authenticateUser(page);
 	const other = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads`, {
 		headers: { Authorization: `Bearer ${await getBearerToken(page)}` },
@@ -84,7 +90,7 @@ test('after the token expires, chat, threads and feedback keep working without a
 	const otherId = ((await other.json()) as { thread_id: string }).thread_id;
 	const threadId = await gotoFreshThread(page);
 	await expect(chat.textInput).toBeEnabled();
-	const { accessToken, expiresAt } = await fetchBackendToken(page);
+	const { accessToken, expiresAt } = await currentToken(page);
 	const sameDocument = await markDocument(page);
 
 	await waitUntil(expiresAt + 1000);
@@ -106,7 +112,7 @@ test('after the token expires, chat, threads and feedback keep working without a
 	await chat.feedbackCancel.click();
 	expect((await scored).ok()).toBe(true);
 
-	expect((await fetchBackendToken(page)).accessToken).not.toBe(accessToken);
+	expect((await currentToken(page)).accessToken).not.toBe(accessToken);
 	const attempts = await refreshes(request);
 	expect(attempts.length).toBeGreaterThan(0);
 	// Each refresh spent a live refresh token: the rotated cookie reached the browser every time.
@@ -120,15 +126,24 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 	chat,
 	request
 }) => {
-	test.setTimeout(LIFETIME * 1000 + 60_000);
 	await authenticateUser(page);
 	const threadId = await gotoFreshThread(page);
 	await expect(chat.textInput).toBeEnabled();
-	const { expiresAt } = await fetchBackendToken(page);
+	let { expiresAt } = await currentToken(page);
 	await configure(request, { refresh_error: 'invalid_grant' });
 	const runs = countRuns(page);
 
-	// Until it expires, the endpoint keeps serving the token whose refresh failed.
+	// Until the refresh buffer, Better Auth serves the token as is; then its refresh fails.
+	await expect
+		.poll(
+			async () => {
+				const response = await postAccessToken(page);
+				if (response.ok()) expiresAt = Date.parse((await response.json()).accessTokenExpiresAt);
+				return response.status();
+			},
+			{ timeout: LIFETIME * 1000 + 5_000, intervals: [500] }
+		)
+		.toBe(400);
 	await waitUntil(expiresAt + 1000);
 	await chat.textInput.fill('Do not replay this');
 	await chat.textInput.press('Enter');
@@ -152,25 +167,25 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 test('a draft in the composer survives a token refresh', async ({ page, chat, request }) => {
 	await authenticateUser(page);
 	await gotoFreshThread(page);
-	const { expiresAt } = await fetchBackendToken(page);
 	await chat.textInput.fill('Hello');
 	await chat.textInput.press('Enter');
 	const reply = await chat.expectAiReply('Hello');
-	expect(await refreshes(request), 'the reply should land before the skew window').toHaveLength(0);
 
 	const draft = 'A half-written thought';
 	await chat.textInput.fill(draft);
 	const composer = await chat.textInput.elementHandle();
-	await waitUntil(expiresAt - SKEW_MS + 500);
+	const { expiresAt } = await currentToken(page);
+	const before = (await refreshes(request)).length;
+	await waitUntil(expiresAt - REFRESH_BUFFER_MS + 500);
 
-	// A background request inside the skew window: rating the reply refreshes the token.
+	// A background request inside the refresh buffer: rating the reply refreshes the token.
 	const scored = page.waitForResponse((res) => /\/feedback$/.test(new URL(res.url()).pathname));
 	await reply.hover();
 	await chat.feedbackButtons(reply).up.click();
 	await chat.feedbackCancel.click();
 	expect((await scored).ok()).toBe(true);
 
-	expect(await refreshes(request)).toHaveLength(1);
+	expect((await refreshes(request)).length).toBeGreaterThan(before);
 	expect(await composer?.evaluate((element) => element.isConnected)).toBe(true);
 	await expect(chat.textInput).toHaveValue(draft);
 	await expect(chat.loginModal).toBeHidden();
