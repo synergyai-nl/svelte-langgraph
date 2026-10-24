@@ -149,6 +149,18 @@ describe('backend token endpoint', () => {
 		expect(await response.json()).toEqual({ code: expectedCode });
 	});
 
+	test('serves the current token when a refresh fails before it expires', async () => {
+		const expiry = inMs(SKEW_MS - 1000);
+		api.getAccessToken.mockResolvedValue({ accessToken: 'old', accessTokenExpiresAt: expiry });
+		api.refreshToken.mockRejectedValue(new APIError('BAD_REQUEST', { message: 'secret' }));
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		const response = await post();
+
+		expect(await response.json()).toEqual({ accessToken: 'old', expiresAt: expiry.getTime() });
+		expect(warn).toHaveBeenCalledExactlyOnceWith(expect.not.stringContaining('secret'));
+	});
+
 	test('maps an unexpected failure to 503 without logging the error', async () => {
 		api.getAccessToken.mockRejectedValue(new Error('secret-token-material'));
 
