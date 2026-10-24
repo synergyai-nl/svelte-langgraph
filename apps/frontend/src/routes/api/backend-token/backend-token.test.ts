@@ -10,11 +10,13 @@ const env = vi.hoisted(
 );
 vi.mock('$env/dynamic/private', () => ({ env }));
 
+const locals = { user: { id: 'user-a' } as { id: string } | null };
+
 function post(origin: string | null = 'https://public.test', at = 'https://public.test') {
 	const headers: Record<string, string> = { cookie: 'opaque=session' };
 	if (origin) headers.origin = origin;
 	const request = new Request(`${at}/api/backend-token`, { method: 'POST', headers });
-	return POST({ request, url: new URL(request.url) } as Parameters<typeof POST>[0]);
+	return POST({ request, locals } as unknown as Parameters<typeof POST>[0]);
 }
 
 const inMs = (ms: number) => new Date(Date.now() + ms);
@@ -23,6 +25,8 @@ beforeEach(() => {
 	api.getAccessToken.mockReset();
 	api.refreshToken.mockReset();
 	env.BETTER_AUTH_URL = 'https://public.test';
+	locals.user = { id: 'user-a' };
+	api.getAccessToken.mockResolvedValue({ accessToken: 'a', accessTokenExpiresAt: inMs(3_600_000) });
 	vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -40,7 +44,8 @@ describe('backend token endpoint', () => {
 
 		expect(await response.json()).toEqual({
 			accessToken: 'api-token',
-			expiresAt: expiry.getTime()
+			expiresAt: expiry.getTime(),
+			userId: 'user-a'
 		});
 		expect(response.headers.get('cache-control')).toBe('no-store');
 		expect(api.getAccessToken).toHaveBeenCalledWith({
@@ -66,7 +71,7 @@ describe('backend token endpoint', () => {
 		const response = await post();
 		const body = await response.json();
 
-		expect(body).toEqual({ accessToken: 'new', expiresAt: expiry.getTime() });
+		expect(body).toEqual({ accessToken: 'new', expiresAt: expiry.getTime(), userId: 'user-a' });
 		expect(JSON.stringify(body)).not.toContain('private');
 		expect(api.refreshToken).toHaveBeenCalledExactlyOnceWith({
 			headers: expect.any(Headers),
@@ -83,9 +88,9 @@ describe('backend token endpoint', () => {
 	});
 
 	test('passes on a token without an expiry, which the browser then does not cache', async () => {
-		api.getAccessToken.mockResolvedValue({ accessToken: 'api-token' });
+		api.getAccessToken.mockResolvedValue({ accessToken: 'a' });
 
-		expect(await (await post()).json()).toEqual({ accessToken: 'api-token', expiresAt: null });
+		expect(await (await post()).json()).toMatchObject({ accessToken: 'a', expiresAt: null });
 		expect(api.refreshToken).not.toHaveBeenCalled();
 	});
 
@@ -100,25 +105,20 @@ describe('backend token endpoint', () => {
 		);
 
 		test('accepts the public origin behind a TLS proxy that forwards to an internal URL', async () => {
-			api.getAccessToken.mockResolvedValue({
-				accessToken: 'api-token',
-				accessTokenExpiresAt: inMs(3_600_000)
-			});
-
-			const response = await post('https://public.test', 'http://internal:3000');
-
-			expect(response.status).toBe(200);
+			expect((await post('https://public.test', 'http://internal:3000')).status).toBe(200);
 		});
 
 		test('compares origins, not the configured path', async () => {
 			env.BETTER_AUTH_URL = 'https://public.test/app/';
-			api.getAccessToken.mockResolvedValue({
-				accessToken: 'a',
-				accessTokenExpiresAt: inMs(3_600_000)
-			});
-
 			expect((await post()).status).toBe(200);
 		});
+	});
+
+	test('refuses a request without a signed-in user before reading the account', async () => {
+		locals.user = null;
+		const response = await post();
+		expect(await response.json()).toEqual({ code: 'AUTH_REQUIRED' });
+		expect(api.getAccessToken).not.toHaveBeenCalled();
 	});
 
 	test.each([
@@ -157,7 +157,10 @@ describe('backend token endpoint', () => {
 
 		const response = await post();
 
-		expect(await response.json()).toEqual({ accessToken: 'old', expiresAt: expiry.getTime() });
+		expect(await response.json()).toMatchObject({
+			accessToken: 'old',
+			expiresAt: expiry.getTime()
+		});
 		expect(warn).toHaveBeenCalledExactlyOnceWith(expect.not.stringContaining('secret'));
 	});
 

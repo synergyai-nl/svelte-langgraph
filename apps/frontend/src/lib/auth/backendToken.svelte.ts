@@ -18,6 +18,9 @@ export const backendAuth = $state({ expired: false });
 
 let cached: CachedToken | null = null;
 let inFlight: Promise<string> | null = null;
+/** The account of the first token; a token for another account means another tab switched users. */
+let account: string | null = null;
+let reload = () => location.reload();
 
 const isFresh = (entry: CachedToken | null): entry is CachedToken =>
 	entry?.expiresAt != null && entry.expiresAt - Date.now() > SKEW_MS;
@@ -34,10 +37,17 @@ async function fetchToken(): Promise<string> {
 		throw new Error('Your session has expired. Sign in again to continue.');
 	}
 	if (!response.ok) throw new Error(`Backend token request failed: ${response.status}`);
-	const { accessToken, expiresAt } = (await response.json()) as {
+	const { accessToken, expiresAt, userId } = (await response.json()) as {
 		accessToken: string;
 		expiresAt: number | null;
+		userId: string;
 	};
+	if (account !== null && userId !== account) {
+		// Never act as the new account under the old one's page: re-render as the new account.
+		reload();
+		throw new Error('The signed-in account changed. Reloading.');
+	}
+	account = userId;
 	cached = { token: accessToken, expiresAt };
 	backendAuth.expired = false;
 	return accessToken;
@@ -55,9 +65,11 @@ export function getToken(): Promise<string> {
 	return inFlight;
 }
 
-/** Test seam: forget the cached token and any request in flight. */
-export function resetBackendToken() {
+/** Test seam: forget the cached token, request in flight and account; replace the reload. */
+export function resetBackendToken(onAccountChange = () => location.reload()) {
 	cached = null;
 	inFlight = null;
+	account = null;
+	reload = onAccountChange;
 	backendAuth.expired = false;
 }
