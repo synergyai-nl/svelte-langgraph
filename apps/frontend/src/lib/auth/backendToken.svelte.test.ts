@@ -1,101 +1,115 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte';
-import { SKEW_MS } from './tokenSkew';
 
-const inMs = (ms: number) => Date.now() + ms;
-const tokenResponse = (
-	accessToken: string,
-	expiresAt: number | null = inMs(3_600_000),
-	userId = 'user-a'
-) => new Response(JSON.stringify({ accessToken, expiresAt, userId }), { status: 200 });
+const getAccessToken = vi.hoisted(() => vi.fn());
+vi.mock('./client', () => ({ authClient: { getAccessToken } }));
 
-let fetchMock: ReturnType<typeof vi.fn>;
+const base64url = (value: string) =>
+	btoa(value).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+/** A JWT-shaped token; only the payload's `sub` matters to the browser. */
+const jwt = (sub: string, nonce = '') => `h.${base64url(JSON.stringify({ sub, nonce }))}.s`;
+const inMs = (ms: number) => new Date(Date.now() + ms);
+const ok = (accessToken: string, accessTokenExpiresAt: Date | null = inMs(3_600_000)) => ({
+	data: { accessToken, accessTokenExpiresAt, scopes: [], idToken: 'private-id' },
+	error: null
+});
+const failed = (status: number) => ({ data: null, error: { status, statusText: 'x' } });
+
 const reload = vi.fn();
+const token = jwt('user-a');
 
 beforeEach(() => {
 	reload.mockReset();
 	resetBackendToken(reload);
-	fetchMock = vi.fn().mockImplementation(async () => tokenResponse('fetched'));
-	vi.stubGlobal('fetch', fetchMock);
+	getAccessToken.mockReset().mockResolvedValue(ok(token));
 });
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('getToken', () => {
-	test('caches a fetched token until it enters the skew window', async () => {
-		expect(await getToken()).toBe('fetched');
-		expect(await getToken()).toBe('fetched');
+	test('caches a token until it enters Better Auth’s refresh buffer', async () => {
+		expect(await getToken()).toBe(token);
+		expect(await getToken()).toBe(token);
 
-		expect(fetchMock).toHaveBeenCalledExactlyOnceWith('/api/backend-token', { method: 'POST' });
+		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith({ useAccountCookie: true });
 	});
 
 	test.each([
-		['inside the skew window', SKEW_MS - 1000],
+		['inside the 5 s refresh buffer', inMs(4_000)],
 		['without an expiry', null]
-	])('asks again, once per call, for a token %s', async (_, lifetime) => {
-		fetchMock.mockImplementation(async () => tokenResponse('t', lifetime && inMs(lifetime)));
+	])('asks again, once per call, for a token %s', async (_, expiry) => {
+		getAccessToken.mockResolvedValue(ok(token, expiry));
 
 		await getToken();
 		await getToken();
 
-		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
 		expect(reload).not.toHaveBeenCalled();
 	});
 
 	test('concurrent callers share one request, which carries no abort signal', async () => {
-		let release!: (response: Response) => void;
-		fetchMock.mockReturnValue(new Promise((resolve) => (release = resolve)));
+		let release!: (value: ReturnType<typeof ok>) => void;
+		getAccessToken.mockReturnValue(new Promise((resolve) => (release = resolve)));
 
 		const calls = [getToken(), getToken(), getToken()];
-		release(tokenResponse('shared'));
+		release(ok(token));
 
-		expect(await Promise.all(calls)).toEqual(['shared', 'shared', 'shared']);
-		expect(fetchMock).toHaveBeenCalledOnce();
-		expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('signal');
+		expect(await Promise.all(calls)).toEqual([token, token, token]);
+		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith({ useAccountCookie: true });
 	});
 
 	test('holds a cross-tab lock around the request when available', async () => {
-		const request = vi.fn((_name: string, callback: () => Promise<Response>) => callback());
+		const request = vi.fn((_name: string, callback: () => Promise<unknown>) => callback());
 		vi.stubGlobal('navigator', { locks: { request } });
 
-		expect(await getToken()).toBe('fetched');
+		expect(await getToken()).toBe(token);
 		expect(request).toHaveBeenCalledWith('slg-backend-token', expect.any(Function));
 	});
 
-	test.each(['AUTH_REQUIRED', 'AUTH_REFRESH_FAILED'])(
-		'a 401 (%s) flags the session as expired and fails the request',
-		async (code) => {
-			fetchMock.mockImplementation(
-				async () => new Response(JSON.stringify({ code }), { status: 401 })
-			);
+	test.each([400, 401])(
+		'a %s flags the session as expired and fails the request',
+		async (status) => {
+			getAccessToken.mockResolvedValue(failed(status));
 
 			await expect(getToken()).rejects.toThrow(/session has expired/);
 			expect(backendAuth.expired).toBe(true);
 
-			fetchMock.mockImplementation(async () => tokenResponse('again'));
-			expect(await getToken()).toBe('again');
+			getAccessToken.mockResolvedValue(ok(token));
+			expect(await getToken()).toBe(token);
 			expect(backendAuth.expired).toBe(false);
 		}
 	);
 
-	test('a token for another account reloads the page and is neither returned nor cached', async () => {
-		fetchMock.mockImplementation(async () => tokenResponse('a', null));
-		await getToken();
-		fetchMock.mockImplementation(async () => tokenResponse('b', inMs(3_600_000), 'user-b'));
-
-		await expect(getToken()).rejects.toThrow(/account changed/);
-		await expect(getToken()).rejects.toThrow(/account changed/);
-		expect(fetchMock).toHaveBeenCalledTimes(3);
-		expect(reload).toHaveBeenCalledTimes(2);
-	});
-
-	test('a 503 or network error fails the request without flagging the session', async () => {
-		fetchMock.mockImplementation(async () => new Response('{}', { status: 503 }));
+	test('a 5xx or network error fails the request without flagging the session', async () => {
+		getAccessToken.mockResolvedValue(failed(503));
 		await expect(getToken()).rejects.toThrow('503');
 
-		fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+		getAccessToken.mockRejectedValue(new TypeError('Failed to fetch'));
 		await expect(getToken()).rejects.toThrow('Failed to fetch');
 
 		expect(backendAuth.expired).toBe(false);
+	});
+
+	test('a token for another subject reloads the page and is neither returned nor cached', async () => {
+		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
+		await getToken();
+		getAccessToken.mockResolvedValue(ok(jwt('user-b')));
+
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		expect(getAccessToken).toHaveBeenCalledTimes(3);
+		expect(reload).toHaveBeenCalledTimes(2);
+	});
+
+	test('a refreshed token for the same subject replaces the cached one without a reload', async () => {
+		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
+		await getToken();
+		const refreshed = jwt('user-a', 'refreshed');
+		getAccessToken.mockResolvedValue(ok(refreshed));
+
+		expect(await getToken()).toBe(refreshed);
+		expect(await getToken()).toBe(refreshed);
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(reload).not.toHaveBeenCalled();
 	});
 });

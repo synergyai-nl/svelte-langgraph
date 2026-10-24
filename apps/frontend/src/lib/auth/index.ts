@@ -32,8 +32,9 @@ const bindAccountCookie = createAuthMiddleware(async (ctx) => {
 const createAuth = () =>
 	betterAuth({
 		secret: required('BETTER_AUTH_SECRET'),
-		// Provider tokens stay server-side: the root layout reads them via auth.api, not HTTP.
-		disabledPaths: ['/get-access-token', '/refresh-token', '/account-info'],
+		// The browser gets its access token from /get-access-token, which refreshes it when due.
+		// The other token routes stay closed: nothing needs the refresh token over HTTP.
+		disabledPaths: ['/refresh-token', '/account-info'],
 		// Stateless sessions cannot slide, by design since https://github.com/better-auth/better-auth/pull/8817.
 		session: { expiresIn: SESSION_MAX_AGE },
 		// Unset keeps Better Auth's default (on in production). E2E signs in more often than the
