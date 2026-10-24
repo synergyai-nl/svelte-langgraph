@@ -53,20 +53,29 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 	return thread.thread_id;
 }
 
+/** The bearer the app sends to the backend, from the same endpoint the browser uses. */
+export async function getBearerToken(page: Page): Promise<string> {
+	return (await fetchAccessToken(page)).accessToken;
+}
+
 /**
- * The bearer the app sends to the backend: `session.accessToken` (the OIDC access token) from the root layout's data,
- * fetched the way client navigation does. `data` is devalue's flattened form, where an object's
- * fields hold the indices of their values.
+ * Better Auth's `POST /api/auth/get-access-token` as the signed-in page; it refreshes the token
+ * when fewer than 5 s remain. Its origin check needs the app's `Origin`, which Playwright's
+ * request context does not send.
  */
-async function getBearerToken(page: Page): Promise<string> {
-	const response = await page.request.get('/__data.json');
-	expect(response.ok()).toBeTruthy();
-	const { nodes } = (await response.json()) as { nodes: { data: unknown[] }[] };
-	const data = nodes[0].data as [{ session: number }, ...unknown[]];
-	const session = data[data[0].session] as { accessToken: number } | null;
-	const token = session ? data[session.accessToken] : undefined;
-	expect(typeof token, 'expected a bearer in the layout session').toBe('string');
-	return token as string;
+export async function fetchAccessToken(
+	page: Page
+): Promise<{ accessToken: string; accessTokenExpiresAt: string }> {
+	const response = await postAccessToken(page);
+	expect(response.ok(), 'expected an access token for the signed-in page').toBeTruthy();
+	return response.json();
+}
+
+export function postAccessToken(page: Page): Promise<APIResponse> {
+	return page.request.post('/api/auth/get-access-token', {
+		headers: { Origin: new URL(page.url()).origin },
+		data: { useAccountCookie: true }
+	});
 }
 
 /**
@@ -100,17 +109,7 @@ export async function makeAuthenticatedRequest(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<APIResponse> {
-	// Extract session data from the page
-	const sessionData = await page.evaluate(() => {
-		// Access the page data which should contain the session
-		// @ts-expect-error - accessing window.__sveltekit_data
-		const data = window.__sveltekit_data;
-		return data?.nodes?.[0]?.data?.[0]?.session || null;
-	});
-
-	if (!sessionData?.accessToken) {
-		throw new Error('No access token found in session');
-	}
+	const accessToken = await getBearerToken(page);
 
 	// Convert HeadersInit to a plain object
 	const baseHeaders: Record<string, string> = {};
@@ -127,7 +126,7 @@ export async function makeAuthenticatedRequest(
 		...options,
 		headers: {
 			...baseHeaders,
-			Authorization: `Bearer ${sessionData.accessToken}`,
+			Authorization: `Bearer ${accessToken}`,
 			'Content-Type': 'application/json'
 		}
 	});

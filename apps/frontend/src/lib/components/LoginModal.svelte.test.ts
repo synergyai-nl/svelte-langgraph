@@ -12,6 +12,7 @@ const signIn = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
 vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: signIn } } }));
 
 afterEach(async () => {
+	goto.mockReset();
 	// The dialog's body scroll lock is restored on a 24ms timer (bits-ui
 	// body-scroll-lock). Unmount and let it fire while jsdom still exists — otherwise
 	// it runs after teardown and throws "document is not defined".
@@ -42,6 +43,30 @@ describe('LoginModal', () => {
 			await fireEvent.click(screen.getByRole('button', { name: m.auth_continue_sso() }));
 
 			expect(signIn).toHaveBeenCalledWith(expect.objectContaining({ provider: 'oidc' }));
+		});
+	});
+
+	test.each([
+		['goes home when signed out', false, [['/']]],
+		['stays on the page when the session expired', true, []]
+	])('closing %s', async (_, expired, navigations) => {
+		const onclose = vi.fn();
+		render(LoginModal, { open: true, expired, onclose });
+
+		await fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+
+		await vi.waitFor(() => expect(onclose).toHaveBeenCalled());
+		expect(goto.mock.calls).toEqual(navigations);
+	});
+
+	describe('when the session expired', () => {
+		test('explains the expiry and offers sign-in', () => {
+			render(LoginModal, { open: true, expired: true });
+
+			expect(screen.getByText(m.auth_session_expired_title())).toBeInTheDocument();
+			expect(screen.getByText(m.auth_session_expired_message())).toBeInTheDocument();
+			expect(screen.queryByText(m.login_modal_title())).not.toBeInTheDocument();
+			expect(screen.getByRole('button', { name: m.auth_continue_sso() })).toBeInTheDocument();
 		});
 	});
 

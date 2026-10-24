@@ -134,7 +134,7 @@ describe('auth instance', () => {
 });
 
 describe('auth configuration', () => {
-	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
+	test('is stateless, ends only the local session on sign-out, and keeps the refresh token off HTTP', async () => {
 		configured();
 		const { getAuth } = await import('./index');
 		const { options } = (await getAuth()) as unknown as {
@@ -152,7 +152,7 @@ describe('auth configuration', () => {
 		// Not rolling: a stateless session ends 30 days after sign-in, with all its cookies.
 		expect(options.session.expiresIn).toBe(30 * 24 * 60 * 60);
 		expect(options.session.cookieCache.maxAge).toBe(options.session.expiresIn);
-		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token', '/account-info']);
+		expect(options.disabledPaths).toEqual(['/refresh-token', '/account-info']);
 		// Left to the proxy: without a trusted client IP, Better Auth shares one bucket for all.
 		expect(options.rateLimit).toEqual({ enabled: false });
 		expect(options.account).toEqual({ storeStateStrategy: 'cookie', storeAccountCookie: true });
@@ -191,7 +191,7 @@ describe('authorization audience', () => {
 });
 
 describe('auth HTTP routes', () => {
-	test.each(['get-access-token', 'refresh-token', 'account-info?useAccountCookie=true'])(
+	test.each(['refresh-token', 'account-info?useAccountCookie=true'])(
 		'%s is not served over HTTP',
 		async (path) => {
 			configured();
@@ -200,7 +200,7 @@ describe('auth HTTP routes', () => {
 			vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
 			const { handle } = await import('./index');
 			const url = `https://frontend.test/api/auth/${path}`;
-			const post = !path.startsWith('account-info');
+			const post = path === 'refresh-token';
 			const request = new Request(url, {
 				method: post ? 'POST' : 'GET',
 				headers: { 'content-type': 'application/json', origin: 'https://frontend.test' },

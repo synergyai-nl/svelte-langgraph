@@ -20,22 +20,21 @@
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import SignInButton from '$lib/auth/components/SignInButton.svelte';
+	import { getToken } from '$lib/auth/backendToken.svelte';
 	import LangGraph from '$lib/components/chat/LangGraph.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmbeddedChatSurface from './EmbeddedChatSurface.svelte';
-
-	let accessToken = $derived(page.data.session?.accessToken ?? null);
 </script>
 
 <div class="flex flex-col items-center gap-6 p-8">
 	<h1 class="text-2xl font-semibold tracking-tight">{m.demo_embedded_title()}</h1>
 
-	{#if accessToken}
+	{#if page.data.session}
 		<div
 			data-testid="embedded-chat-card"
 			class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border shadow-lg"
 		>
-			<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL ?? ''} token={accessToken}>
+			<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL ?? ''} token={getToken}>
 				<EmbeddedChatSurface />
 			</LangGraph>
 		</div>
