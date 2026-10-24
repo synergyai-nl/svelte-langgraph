@@ -8,6 +8,8 @@
 	"auth_sign_out_failed_title": "Uitloggen mislukt",
 	"auth_sign_out_failed_message": "Je bent nog steeds ingelogd. Probeer het opnieuw.",
 	"auth_unavailable": "Inloggen is tijdelijk niet beschikbaar. Probeer het opnieuw.",
+	"auth_session_expired_title": "Je sessie is verlopen",
+	"auth_session_expired_message": "Log opnieuw in om verder te gaan waar je gebleven was.",
 	"user_fallback": "Gebruiker",
 	"email_fallback": "email@voorbeeld.com",
 	"chat_greeting_hello": "Probeer je LangGraph-agent, {name}",
