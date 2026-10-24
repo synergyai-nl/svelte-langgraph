@@ -2,17 +2,31 @@ import { building } from '$app/environment';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { betterAuth } from 'better-auth';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { getAccountCookie } from 'better-auth/cookies';
 import { genericOAuth } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { error, type Handle } from '@sveltejs/kit';
 
-const WEEK = 7 * 24 * 60 * 60;
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+// Every auth call waits for init, and init fetches OIDC discovery without a timeout.
+const INIT_TIMEOUT_MS = 10_000;
 
 function required(name: string): string {
 	const value = env[name];
 	if (!value) throw new Error(`Required environment variable '${name}' not defined.`);
 	return value;
 }
+
+// Without a database Better Auth does not check that the account cookie belongs to the session's
+// user, so a stray account cookie would hand one user another user's provider tokens.
+const bindAccountCookie = createAuthMiddleware(async (ctx) => {
+	if (ctx.path !== '/get-access-token' && ctx.path !== '/refresh-token') return;
+	const [account, session] = await Promise.all([getAccountCookie(ctx), getSessionFromCtx(ctx)]);
+	if (account && account.userId !== session?.user.id) {
+		throw APIError.from('BAD_REQUEST', { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+	}
+});
 
 function createAuth() {
 	const issuer = required('AUTH_OIDC_ISSUER');
@@ -24,11 +38,14 @@ function createAuth() {
 		// Rate limiting belongs at the proxy, which knows the client IP.
 		rateLimit: { enabled: false },
 		session: {
-			// Stateless sessions end a week after sign-in; refreshCache only re-issues the cookie.
-			expiresIn: WEEK,
-			cookieCache: { enabled: true, maxAge: WEEK, strategy: 'jwe', refreshCache: true }
+			// Sessions end 30 days after sign-in, not 30 days after last use: a stateless session
+			// cannot be extended, as refreshCache re-issues the cookies with the same expiry. Keep both
+			// ages equal so the session and account cookies expire together.
+			expiresIn: SESSION_MAX_AGE,
+			cookieCache: { enabled: true, maxAge: SESSION_MAX_AGE, strategy: 'jwe', refreshCache: true }
 		},
 		account: { storeStateStrategy: 'cookie', storeAccountCookie: true },
+		hooks: { before: bindAccountCookie },
 		plugins: [
 			genericOAuth({
 				config: [
@@ -54,28 +71,42 @@ function createAuth() {
 	});
 }
 
-// Configuration is process-wide; sessions and token lookups remain request-local.
-let auth: ReturnType<typeof createAuth> | undefined;
-export function getAuth() {
-	if (auth) return auth;
-	const created = (auth = createAuth());
-	// OIDC discovery runs once, at init, and Better Auth skips a provider it could not reach.
-	// Forget such an instance so a later request retries instead of sign-in staying broken.
-	const forget = () => {
-		if (auth === created) auth = undefined;
-	};
-	created.$context.then((ctx) => {
-		if (!ctx.socialProviders.some((provider) => provider.id === 'oidc')) forget();
-	}, forget);
+async function initAuth() {
+	const created = createAuth();
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		await Promise.race([
+			created.$context,
+			new Promise<never>((_, reject) => {
+				timer = setTimeout(reject, INIT_TIMEOUT_MS, new Error('Auth init timed out'));
+			})
+		]);
+	} finally {
+		clearTimeout(timer);
+	}
 	return created;
 }
-export type Auth = ReturnType<typeof getAuth>;
+
+// Configuration is process-wide; sessions and token lookups remain request-local. A failed or
+// stalled init is dropped so the next request starts over. Better Auth retries an unreachable
+// provider's discovery itself on the next sign-in.
+let auth: Promise<ReturnType<typeof createAuth>> | undefined;
+export function getAuth() {
+	if (!auth) {
+		const pending = (auth = initAuth());
+		pending.catch(() => {
+			if (auth === pending) auth = undefined;
+		});
+	}
+	return auth;
+}
+export type Auth = Awaited<ReturnType<typeof getAuth>>;
 
 export const handle: Handle = async ({ event, resolve }) => {
 	if (building) return resolve(event);
 	let auth: Auth;
 	try {
-		auth = getAuth();
+		auth = await getAuth();
 	} catch {
 		console.error('Authentication configuration is unavailable');
 		error(503, 'Authentication is temporarily unavailable');
