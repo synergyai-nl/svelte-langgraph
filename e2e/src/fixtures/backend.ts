@@ -103,17 +103,7 @@ export async function makeAuthenticatedRequest(
 	endpoint: string,
 	options: RequestInit = {}
 ): Promise<APIResponse> {
-	// Extract session data from the page
-	const sessionData = await page.evaluate(() => {
-		// Access the page data which should contain the session
-		// @ts-expect-error - accessing window.__sveltekit_data
-		const data = window.__sveltekit_data;
-		return data?.nodes?.[0]?.data?.[0]?.session || null;
-	});
-
-	if (!sessionData?.accessToken) {
-		throw new Error('No access token found in session');
-	}
+	const accessToken = await getBearerToken(page);
 
 	// Convert HeadersInit to a plain object
 	const baseHeaders: Record<string, string> = {};
@@ -130,7 +120,7 @@ export async function makeAuthenticatedRequest(
 		...options,
 		headers: {
 			...baseHeaders,
-			Authorization: `Bearer ${sessionData.accessToken}`,
+			Authorization: `Bearer ${accessToken}`,
 			'Content-Type': 'application/json'
 		}
 	});

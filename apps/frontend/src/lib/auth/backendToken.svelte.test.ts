@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { backendAuth, getToken, resetBackendToken, seedBackendToken } from './backendToken.svelte';
+import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte';
 import { SKEW_MS } from './tokenSkew';
 
 const inMs = (ms: number) => Date.now() + ms;
@@ -17,13 +17,6 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('getToken', () => {
-	test('uses a seeded token without a round-trip', async () => {
-		seedBackendToken({ accessToken: 'seeded', accessTokenExpiresAt: inMs(SKEW_MS + 60_000) });
-
-		expect(await getToken()).toBe('seeded');
-		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
 	test('caches a fetched token until it enters the skew window', async () => {
 		expect(await getToken()).toBe('fetched');
 		expect(await getToken()).toBe('fetched');
@@ -31,30 +24,16 @@ describe('getToken', () => {
 		expect(fetchMock).toHaveBeenCalledExactlyOnceWith('/api/backend-token', { method: 'POST' });
 	});
 
-	test('fetches a new token once the cached one is inside the skew window', async () => {
-		seedBackendToken({ accessToken: 'seeded', accessTokenExpiresAt: inMs(SKEW_MS - 1000) });
-
-		expect(await getToken()).toBe('fetched');
-		expect(fetchMock).toHaveBeenCalledOnce();
-	});
-
-	test('never caches a token without an expiry', async () => {
-		fetchMock.mockImplementation(async () => tokenResponse('no-expiry', null));
+	test.each([
+		['inside the skew window', SKEW_MS - 1000],
+		['without an expiry', null]
+	])('asks again, once per call, for a token %s', async (_, lifetime) => {
+		fetchMock.mockImplementation(async () => tokenResponse('t', lifetime && inMs(lifetime)));
 
 		await getToken();
 		await getToken();
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-	});
-
-	test('ignores a seed older than the cached token, and clears on sign-out', async () => {
-		await getToken();
-		seedBackendToken({ accessToken: 'stale', accessTokenExpiresAt: inMs(SKEW_MS + 1000) });
-		expect(await getToken()).toBe('fetched');
-
-		seedBackendToken(null);
-		fetchMock.mockImplementation(async () => tokenResponse('after-sign-out'));
-		expect(await getToken()).toBe('after-sign-out');
 	});
 
 	test('concurrent callers share one request, which carries no abort signal', async () => {
