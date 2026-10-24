@@ -3,7 +3,7 @@ import type { LayoutServerLoad } from './$types';
 
 /**
  * Only the signed-in user, never provider tokens: the browser gets its backend token from
- * `/api/backend-token`, so every refresh runs there, under the browser's cross-tab lock.
+ * Better Auth's `/get-access-token`, so every refresh runs there, under the browser's cross-tab lock.
  */
 export const load: LayoutServerLoad = async (event) => {
 	const session =

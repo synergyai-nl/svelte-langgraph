@@ -33,8 +33,9 @@ function createAuth() {
 	return betterAuth({
 		baseURL: required('BETTER_AUTH_URL'),
 		secret: required('BETTER_AUTH_SECRET'),
-		// Provider tokens stay server-side: the root layout reads them via auth.api, not HTTP.
-		disabledPaths: ['/get-access-token', '/refresh-token', '/account-info'],
+		// The browser gets its access token from /get-access-token, which refreshes it when due.
+		// The other token routes stay closed: nothing needs the refresh token over HTTP.
+		disabledPaths: ['/refresh-token', '/account-info'],
 		// Rate limiting belongs at the proxy, which knows the client IP.
 		rateLimit: { enabled: false },
 		session: {
