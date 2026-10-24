@@ -2,20 +2,13 @@
 	import { page } from '$app/state';
 	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
-	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
 	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
 	import * as m from '$lib/paraglide/messages.js';
 
-	let show_login_dialog = $state(!page.data.session);
-
 	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
 	// page only reads the result.
 	const ctx = useLangGraph();
-
-	$effect.pre(() => {
-		if (!page.data.session) show_login_dialog = true;
-	});
 
 	const suggestions = [
 		{
@@ -63,5 +56,3 @@
 {:else}
 	<ChatLoader />
 {/if}
-
-<LoginModal bind:open={show_login_dialog} />
