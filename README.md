@@ -186,7 +186,7 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
 
 ### OIDC redirect URI
 
-The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token.
+The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token. Better Auth's rate limiter is off: rate limiting belongs at your reverse proxy, which knows the client IP.
 
 ### Local Development with OIDC Mock Provider
 
