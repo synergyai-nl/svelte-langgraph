@@ -43,6 +43,9 @@ export function createClient(
 
 	// The SDK keeps its headers protected, so our routes share this instead.
 	const defaultHeaders: Record<string, string> = { ...headers };
+	for (const key of Object.keys(defaultHeaders)) {
+		if (readToken && key.toLowerCase() === 'authorization') delete defaultHeaders[key];
+	}
 	if (typeof token === 'string' && token) {
 		defaultHeaders.Authorization = `Bearer ${token}`;
 	}
