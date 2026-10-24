@@ -18,8 +18,6 @@
 		"test:e2e": "playwright test"
 	},
 	"devDependencies": {
-		"@auth/core": "^0.41.0",
-		"@auth/sveltekit": "^1.9.2",
 		"@eslint/compat": "^1.2.5",
 		"@eslint/js": "^9.18.0",
 		"@inlang/paraglide-js": "^2.25.4",
@@ -68,6 +66,7 @@
 		"@langchain/svelte": "^0.3.1",
 		"@sentry/sveltekit": "^10.0.0",
 		"@svelte-langgraph/client": "workspace:*",
+		"better-auth": "1.7.12",
 		"mode-watcher": "^1.1.0"
 	}
 }
