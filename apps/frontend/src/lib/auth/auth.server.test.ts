@@ -169,6 +169,27 @@ describe('auth configuration', () => {
 	});
 });
 
+describe('authorization audience', () => {
+	async function providerConfig() {
+		const { getAuth } = await import('./index');
+		const { options } = (await getAuth()) as unknown as {
+			options: { plugins: { id: string; options?: { config: Record<string, unknown>[] } }[] };
+		};
+		return options.plugins.find((plugin) => plugin.id === 'generic-oauth')?.options?.config[0];
+	}
+	test('is sent to the provider when AUTH_OIDC_AUDIENCE is set', async () => {
+		configured();
+		state.env.AUTH_OIDC_AUDIENCE = 'svelte-langgraph-api';
+		expect(await providerConfig()).toMatchObject({
+			authorizationUrlParams: { audience: 'svelte-langgraph-api' }
+		});
+	});
+	test('is left out when AUTH_OIDC_AUDIENCE is unset', async () => {
+		configured();
+		expect(await providerConfig()).not.toHaveProperty('authorizationUrlParams');
+	});
+});
+
 describe('auth HTTP routes', () => {
 	test.each(['get-access-token', 'refresh-token', 'account-info?useAccountCookie=true'])(
 		'%s is not served over HTTP',

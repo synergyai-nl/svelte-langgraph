@@ -62,7 +62,11 @@ function createAuth() {
 						requireIdTokenVerification: true,
 						pkce: true,
 						// Send the client secret as HTTP Basic, as Auth.js did.
-						authentication: 'basic'
+						authentication: 'basic',
+						// Auth0 only issues an API-audience access token when asked for one; other IdPs ignore it.
+						...(env.AUTH_OIDC_AUDIENCE && {
+							authorizationUrlParams: { audience: env.AUTH_OIDC_AUDIENCE }
+						})
 					}
 				]
 			}),

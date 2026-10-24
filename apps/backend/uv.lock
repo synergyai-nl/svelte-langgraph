@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = "==3.12.*"
 
 [[package]]
@@ -1802,7 +1802,7 @@ requires-dist = [
 dev = [
     { name = "ai-mock", specifier = ">=0.3.1,<0.4" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "oidc-provider-mock", specifier = ">=0.3.2" },
+    { name = "oidc-provider-mock", specifier = "==0.3.3" },
     { name = "pyright", specifier = ">=1.1.403" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
