@@ -127,7 +127,7 @@ The monorepo uses a single `.env` file at the root:
 
 ## Pull requests
 
-- Keep each PR under ~1000 reviewable lines; check locally with `.github/scripts/pr-size.sh origin/<base-branch>`. Same rule as the "PR size" CI check: `git diff -M` additions + deletions; lockfiles, Paraglide output, snapshots and registry output excluded; pure renames count 0; tests count (reported separately). CI warns above 1000 and fails above 1500 unless the PR carries the `size/override` label (mechanical changes only).
+- Keep each PR under ~1000 reviewable lines; check locally with `.github/scripts/pr-size.sh origin/<base-branch>`. Same rule as the "PR size" CI check: net `git diff -M` lines (additions − deletions, so removed code offsets added code); lockfiles, Paraglide output, snapshots and registry output excluded; pure renames count 0; tests count (reported separately). CI warns above 1000 and fails above 1500 unless the PR carries the `size/override` label (mechanical changes only).
 - Split bigger work into a stack with linear history: update child branches with `git rebase --onto`, never by merging the parent in. Put moves/renames in their own commit or PR with no content edits so rename detection keeps them near zero.
 
 ## Notes
