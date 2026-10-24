@@ -25,7 +25,8 @@
 		createClient,
 		getOrCreateAssistant,
 		type ThreadSummary,
-		type AppClient
+		type AppClient,
+		type TokenSource
 	} from '@svelte-langgraph/client';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { LangGraphContext, setLangGraphContext } from './langGraphContext.svelte.js';
@@ -33,8 +34,13 @@
 	interface Props {
 		/** LangGraph server API URL. Ignored when the `client` escape hatch is given. */
 		url?: string;
-		/** Bearer token. Derived on the token *string* so unrelated re-renders don't mint a new client. */
-		token?: string | null;
+		/**
+		 * Bearer token, or a function returning the current one before every request. A string is
+		 * derived on its value, a function on its identity, so unrelated re-renders don't mint a new
+		 * client. Pass a function defined once (not an inline arrow) to refresh tokens without ever
+		 * re-minting the client, which would remount the conversation.
+		 */
+		token?: TokenSource;
 		/** Extra request headers. Derived on their serialized *contents*, like `token`, so an inline object literal doesn't mint a new client on every re-render. */
 		headers?: Record<string, string>;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
@@ -75,7 +81,9 @@
 
 	// Derive the client on the token *string* (not a session object) so navigations that keep the
 	// same token don't mint a new `Client` and restart the thread fetch — see `+layout.svelte`'s
-	// existing discipline, preserved here. `client` is a pure escape hatch and always wins.
+	// existing discipline, preserved here. A token *function* is read per request by the client
+	// itself, so the derivation keys on its identity and a refresh never mints a new client.
+	// `client` is a pure escape hatch and always wins.
 	//
 	// `headers` gets the same treatment via `headersKey`: read by object identity, an inline
 	// `headers={{ 'X-Org': id }}` is a fresh object on every parent re-render and would mint a
