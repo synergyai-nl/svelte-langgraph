@@ -72,6 +72,13 @@ tasks:
     args: "--test-controls"
     options:
       envFile: '/.env.e2e'
+  langgraph-e2e:
+    # LangGraph Server runtime (in-memory), used only by the runtime contract
+    # suite to prove the shared auth handler also works outside Aegra.
+    command: "uv run --group langgraph-test langgraph dev --config langgraph.json --host localhost --port 2027 --no-browser 2>&1"
+    preset: "server"
+    options:
+      envFile: '/.env.e2e'
   docker-postgres:
     # Optional helper: provides the PostgreSQL server via Docker Compose for
     # those not running their own (mirrors oidc-mock). The backend only needs

@@ -127,3 +127,16 @@ Both are started automatically by `moon e2e:test` via the `webServer` entries in
 - **Flaky under load** → Stress test: `moon -u e2e:test -- --workers=8 --repeat-each 5`
 - **Debug a single test** → `moon e2e:test-ui` or `moon e2e:test -- --debug`
 - **Traces** → On first retry, traces are saved automatically (`trace: 'on-first-retry'`). View with `npx playwright show-trace`.
+
+# Runtime contracts
+
+`moon e2e:test-runtime-contract` runs the API authentication, owner isolation,
+SDK chat/stream/reconnect and CORS scenarios in `contracts/` against both Aegra
+(2026) and the LangGraph development server (2027), using access tokens for
+`AUTH_OIDC_AUDIENCE` minted by the mock's `/__test__/token` control. The
+LangGraph runtime packages live in the development-only `langgraph-test`
+dependency group, which the task syncs first.
+
+The task is opt-in: it is not a dependency of `e2e:test`, so `moon check` does
+not run it. It shares ports and the test database with `e2e:test`; run the two
+sequentially.

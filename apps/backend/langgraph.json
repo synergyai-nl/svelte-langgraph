@@ -1,0 +1,17 @@
+{
+	"dependencies": ["."],
+	"graphs": {
+		"chat": "./src/svelte_langgraph/graph.py:make_graph"
+	},
+	"auth": {
+		"path": "svelte_langgraph.auth:auth"
+	},
+	"http": {
+		"cors": {
+			"allow_origins": ["*"],
+			"allow_methods": ["*"],
+			"allow_headers": ["*"],
+			"expose_headers": ["x-pagination-total", "x-pagination-next", "content-location"]
+		}
+	}
+}

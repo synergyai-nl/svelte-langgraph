@@ -2,7 +2,8 @@
 
 Access tokens are RS256 JWTs for the API audience (AUTH_OIDC_AUDIENCE); refresh
 responses carry no id_token, as with many real providers. `--test-controls` adds
-/__test__/settings to shorten the token lifetime or fail refreshes in E2E runs.
+/__test__/settings to shorten the token lifetime or fail refreshes, and
+/__test__/token to mint access tokens with arbitrary claims, in E2E runs.
 
 The private imports are intentionally confined here and pinned to mock 0.3.3.
 No part of this launcher is imported by the production application.
@@ -74,8 +75,15 @@ class MockState:
             "jti": secrets.token_hex(16),
             **claims,
         }
+        # A null override removes the claim, to forge tokens missing a claim.
+        payload = {name: value for name, value in payload.items() if value is not None}
         key = storage.jwk.as_dict(is_private=True)
         return jwt.encode({"alg": "RS256", "kid": key["kid"]}, payload, key).decode()
+
+    def issue(self):
+        """Mint an access token with arbitrary claims; a null claim is omitted."""
+        claims = flask.request.get_json(silent=True) or {}
+        return flask.jsonify(accessToken=self.signed_token(claims))
 
     def access_token(self, *, user: User, scope: str, **_kwargs: Any):
         return self.signed_token({"sub": user.sub, "scope": scope})
@@ -174,6 +182,12 @@ def register_test_controls(app, state: MockState):
         endpoint="test_settings",
         view_func=state.controls,
         methods=["GET", "POST"],
+    )
+    app.add_url_rule(
+        "/__test__/token",
+        endpoint="test_token",
+        view_func=state.issue,
+        methods=["POST"],
     )
 
 
