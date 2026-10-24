@@ -15,17 +15,26 @@
 
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import LangGraph from '$lib/components/chat/LangGraph.svelte';
+	import LoginModal from '$lib/components/LoginModal.svelte';
+	import { backendAuth, getToken } from '$lib/auth/backendToken.svelte';
 	import ThreadListSidebar from './ThreadListSidebar.svelte';
 	import { parseSidebarCookie } from '$lib/sidebarCookie';
 	import * as m from '$lib/paraglide/messages.js';
 
 	let { children } = $props();
 
-	// Derive from the token *string*, not from `page.data.session`: SvelteKit hands out a fresh
-	// data object on every navigation, so keying on the object would mint a new Client — and
-	// restart the thread fetch — on every thread click. `<LangGraph>` preserves this same
-	// discipline internally.
-	let accessToken = $derived(page.data.session?.accessToken ?? null);
+	// `getToken` is one stable function the client calls before every request, refreshing the
+	// token when it nears expiry. A session change therefore never mints a new Client, which
+	// would restart the thread fetch and remount the conversation.
+	let signedOut = $derived(!page.data.session);
+
+	// One sign-in prompt for the whole chat: when signed out, or when the session expired and
+	// could not be refreshed. Closing it signed out goes home; closing an expired prompt stays,
+	// and the next failed request reopens it.
+	let loginOpen = $state(!page.data.session);
+	$effect.pre(() => {
+		if (signedOut || backendAuth.expired) loginOpen = true;
+	});
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
 	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`, via `<LangGraph>`). The
@@ -43,7 +52,7 @@
      see `LangGraph.svelte`'s header comment for why nothing may wrap them. -->
 <LangGraph
 	url={env.PUBLIC_LANGGRAPH_API_URL ?? ''}
-	token={accessToken}
+	token={signedOut ? null : getToken}
 	{activeThreadId}
 	onThreadChange={(id) => {
 		if (id) void goto(`/chat/${id}`);
@@ -62,3 +71,9 @@
 		</div>
 	</div>
 </LangGraph>
+
+<LoginModal
+	bind:open={loginOpen}
+	expired={!signedOut && backendAuth.expired}
+	onclose={() => (backendAuth.expired = false)}
+/>
