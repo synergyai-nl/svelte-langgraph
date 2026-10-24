@@ -148,11 +148,13 @@ describe('function token', () => {
 		new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
 	const authorization = (init: RequestInit) => new Headers(init.headers).get('Authorization');
 
-	it('reads the token before every SDK request and route', async () => {
+	it('reads the token before every request, keeping custom headers', async () => {
 		const fetchMock = vi.fn().mockImplementation(async () => ok());
 		vi.stubGlobal('fetch', fetchMock);
 		let n = 0;
-		const client = createClient('https://backend.test/api/', async () => `tok-${++n}`);
+		const client = createClient('https://backend.test/api/', async () => `tok-${++n}`, {
+			'X-Org': 'acme'
+		});
 
 		await client.threads.search({ limit: 1 });
 		await client.threads.search({ limit: 1 });
@@ -163,24 +165,15 @@ describe('function token', () => {
 			'Bearer tok-2',
 			'Bearer tok-3'
 		]);
-	});
-
-	it('keeps custom headers alongside the token', async () => {
-		const fetchMock = vi.fn().mockImplementation(async () => ok());
-		vi.stubGlobal('fetch', fetchMock);
-		const client = createClient('https://backend.test/api/', () => 'tok', { 'X-Org': 'acme' });
-
-		await client.threads.search({ limit: 1 });
-
-		const headers = new Headers(fetchMock.mock.calls[0][1].headers);
-		expect(headers.get('X-Org')).toBe('acme');
-		expect(headers.get('Authorization')).toBe('Bearer tok');
+		expect(new Headers(fetchMock.mock.calls[2][1].headers).get('X-Org')).toBe('acme');
 	});
 
 	it('sends no Authorization header when the function returns null', async () => {
 		const fetchMock = vi.fn().mockImplementation(async () => ok());
 		vi.stubGlobal('fetch', fetchMock);
-		const client = createClient('https://backend.test/api/', async () => null);
+		const client = createClient('https://backend.test/api/', async () => null, {
+			authorization: 'Bearer stale'
+		});
 
 		await client.threads.search({ limit: 1 });
 		await client.submitFeedback('thread-1', 'ai-1', 'up');
