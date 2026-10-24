@@ -9,7 +9,8 @@ import type { LayoutServerLoad } from './$types';
  */
 async function loadBearer(event: Parameters<LayoutServerLoad>[0]): Promise<string | null> {
 	try {
-		const tokens = await getAuth().api.getAccessToken({
+		const auth = await getAuth();
+		const tokens = await auth.api.getAccessToken({
 			headers: event.request.headers,
 			body: { useAccountCookie: true }
 		});

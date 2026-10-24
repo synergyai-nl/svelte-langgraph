@@ -80,7 +80,7 @@ The `.env` file is organized into sections:
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
-- `BETTER_AUTH_URL` - Frontend origin (`http://localhost:5173` for development, `http://localhost:3000` for Compose)
+- `BETTER_AUTH_URL` - Frontend origin (`http://localhost:5173` for development; Compose uses `COMPOSE_BETTER_AUTH_URL` instead, see [Production](#production))
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
 - `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
@@ -186,7 +186,7 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
 
 ### OIDC redirect URI
 
-The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token. Better Auth's rate limiter is off: rate limiting belongs at your reverse proxy, which knows the client IP.
+The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). A session lasts 30 days from sign-in; it is not extended by activity, because a stateless session cannot be renewed. The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token. Better Auth's rate limiter is off: rate limiting belongs at your reverse proxy, which knows the client IP.
 
 ### Local Development with OIDC Mock Provider
 
@@ -311,6 +311,12 @@ The frontend container receives an allowlisted set of variables interpolated fro
 
 ```
 PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
+```
+
+The frontend's origin comes from `COMPOSE_BETTER_AUTH_URL`, not `BETTER_AUTH_URL` (which the root `.env` sets to the development server). It defaults to `http://localhost:3000`, so register `http://localhost:3000/api/auth/callback/oidc` with your OIDC provider; set it to your public origin for any other setup:
+
+```
+COMPOSE_BETTER_AUTH_URL=https://app.example.com docker compose up --build
 ```
 
 `DATABASE_URL` can be overridden the same way, to point the backend at an external or managed Postgres server instead of the bundled `postgres` service. It must be reachable _from inside the backend container_ — a `localhost` URL there means the container itself, not your host.
