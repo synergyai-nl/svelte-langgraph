@@ -66,7 +66,7 @@
 		"@langchain/svelte": "^0.3.1",
 		"@sentry/sveltekit": "^10.0.0",
 		"@svelte-langgraph/client": "workspace:*",
-		"better-auth": "1.7.5",
+		"better-auth": "1.7.12",
 		"mode-watcher": "^1.1.0"
 	}
 }

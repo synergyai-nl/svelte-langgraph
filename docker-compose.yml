@@ -15,7 +15,9 @@ services:
     # must not reach the public-facing frontend process. Values interpolate
     # from the compose shell / project .env.
     environment:
-      BETTER_AUTH_URL: "${BETTER_AUTH_URL:-http://localhost:3000}"
+      # Not BETTER_AUTH_URL: the root .env sets that to the dev server origin
+      # (:5173), which would break sign-in against this container.
+      BETTER_AUTH_URL: "${COMPOSE_BETTER_AUTH_URL:-http://localhost:3000}"
       AUTH_OIDC_CLIENT_ID: "${AUTH_OIDC_CLIENT_ID:-}"
       AUTH_OIDC_CLIENT_SECRET: "${AUTH_OIDC_CLIENT_SECRET:-}"
       AUTH_OIDC_ISSUER: "${AUTH_OIDC_ISSUER:-}"
