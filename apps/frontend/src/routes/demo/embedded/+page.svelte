@@ -24,14 +24,12 @@
 	import LangGraph from '$lib/components/chat/LangGraph.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmbeddedChatSurface from './EmbeddedChatSurface.svelte';
-
-	let accessToken = $derived(page.data.session?.accessToken ?? null);
 </script>
 
 <div class="flex flex-col items-center gap-6 p-8">
 	<h1 class="text-2xl font-semibold tracking-tight">{m.demo_embedded_title()}</h1>
 
-	{#if accessToken}
+	{#if page.data.session}
 		<div
 			data-testid="embedded-chat-card"
 			class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border shadow-lg"
