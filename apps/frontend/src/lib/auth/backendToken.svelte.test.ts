@@ -3,13 +3,18 @@ import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte'
 import { SKEW_MS } from './tokenSkew';
 
 const inMs = (ms: number) => Date.now() + ms;
-const tokenResponse = (accessToken: string, expiresAt: number | null = inMs(3_600_000)) =>
-	new Response(JSON.stringify({ accessToken, expiresAt }), { status: 200 });
+const tokenResponse = (
+	accessToken: string,
+	expiresAt: number | null = inMs(3_600_000),
+	userId = 'user-a'
+) => new Response(JSON.stringify({ accessToken, expiresAt, userId }), { status: 200 });
 
 let fetchMock: ReturnType<typeof vi.fn>;
+const reload = vi.fn();
 
 beforeEach(() => {
-	resetBackendToken();
+	reload.mockReset();
+	resetBackendToken(reload);
 	fetchMock = vi.fn().mockImplementation(async () => tokenResponse('fetched'));
 	vi.stubGlobal('fetch', fetchMock);
 });
@@ -34,6 +39,7 @@ describe('getToken', () => {
 		await getToken();
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(reload).not.toHaveBeenCalled();
 	});
 
 	test('concurrent callers share one request, which carries no abort signal', async () => {
@@ -71,6 +77,17 @@ describe('getToken', () => {
 			expect(backendAuth.expired).toBe(false);
 		}
 	);
+
+	test('a token for another account reloads the page and is neither returned nor cached', async () => {
+		fetchMock.mockImplementation(async () => tokenResponse('a', null));
+		await getToken();
+		fetchMock.mockImplementation(async () => tokenResponse('b', inMs(3_600_000), 'user-b'));
+
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(reload).toHaveBeenCalledTimes(2);
+	});
 
 	test('a 503 or network error fails the request without flagging the session', async () => {
 		fetchMock.mockImplementation(async () => new Response('{}', { status: 503 }));
