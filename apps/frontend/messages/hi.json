@@ -8,6 +8,8 @@
 	"auth_sign_out_failed_title": "साइन आउट विफल रहा",
 	"auth_sign_out_failed_message": "आप अभी भी साइन इन हैं। कृपया पुनः प्रयास करें।",
 	"auth_unavailable": "प्रमाणीकरण अस्थायी रूप से उपलब्ध नहीं है। कृपया पुनः प्रयास करें।",
+	"auth_session_expired_title": "आपका सत्र समाप्त हो गया है",
+	"auth_session_expired_message": "जहाँ आपने छोड़ा था वहीं से जारी रखने के लिए फिर से साइन इन करें।",
 	"user_fallback": "उपयोगकर्ता",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "अपने LangGraph एजेंट को आज़माएँ, {name}",
