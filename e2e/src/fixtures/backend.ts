@@ -54,19 +54,22 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 }
 
 /**
- * The bearer the app sends to the backend: `session.accessToken` (the OIDC access token) from the root layout's data,
- * fetched the way client navigation does. `data` is devalue's flattened form, where an object's
- * fields hold the indices of their values.
+ * The bearer the app sends to the backend, from the same endpoint the browser uses. Its
+ * origin check needs the app's `Origin`, which Playwright's request context does not send.
  */
-async function getBearerToken(page: Page): Promise<string> {
-	const response = await page.request.get('/__data.json');
-	expect(response.ok()).toBeTruthy();
-	const { nodes } = (await response.json()) as { nodes: { data: unknown[] }[] };
-	const data = nodes[0].data as [{ session: number }, ...unknown[]];
-	const session = data[data[0].session] as { accessToken: number } | null;
-	const token = session ? data[session.accessToken] : undefined;
-	expect(typeof token, 'expected a bearer in the layout session').toBe('string');
-	return token as string;
+export async function getBearerToken(page: Page): Promise<string> {
+	return (await fetchBackendToken(page)).accessToken;
+}
+
+/** `POST /api/backend-token` as the signed-in page; refreshes when the token is near expiry. */
+export async function fetchBackendToken(
+	page: Page
+): Promise<{ accessToken: string; expiresAt: number }> {
+	const response = await page.request.post('/api/backend-token', {
+		headers: { Origin: new URL(page.url()).origin }
+	});
+	expect(response.ok(), 'expected a backend token for the signed-in page').toBeTruthy();
+	return response.json();
 }
 
 /**
