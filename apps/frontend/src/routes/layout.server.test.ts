@@ -17,7 +17,9 @@ describe('root layout load', () => {
 	test('exposes only the user, never provider tokens', async () => {
 		const { session } = await run({ session: { id: 's' }, user });
 
-		expect(session).toEqual({ user: { name: 'Ada', email: 'ada@example.com', image: null } });
+		expect(session).toEqual({
+			user: { id: 'u1', name: 'Ada', email: 'ada@example.com', image: null }
+		});
 	});
 
 	test('reports a missing name as undefined so the UI falls back', async () => {

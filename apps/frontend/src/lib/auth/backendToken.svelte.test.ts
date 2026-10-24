@@ -1,27 +1,30 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte';
 
-const getAccessToken = vi.hoisted(() => vi.fn());
-vi.mock('./client', () => ({ authClient: { getAccessToken } }));
+const { getAccessToken, getSession } = vi.hoisted(() => ({
+	getAccessToken: vi.fn(),
+	getSession: vi.fn()
+}));
+vi.mock('./client', () => ({ authClient: { getAccessToken, getSession } }));
+// The page was rendered for user-a.
+vi.mock('$app/state', () => ({ page: { data: { session: { user: { id: 'user-a' } } } } }));
 
-const base64url = (value: string) =>
-	btoa(value).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
-/** A JWT-shaped token; only the payload's `sub` matters to the browser. */
-const jwt = (sub: string, nonce = '') => `h.${base64url(JSON.stringify({ sub, nonce }))}.s`;
 const inMs = (ms: number) => new Date(Date.now() + ms);
 const ok = (accessToken: string, accessTokenExpiresAt: Date | null = inMs(3_600_000)) => ({
 	data: { accessToken, accessTokenExpiresAt, scopes: [], idToken: 'private-id' },
 	error: null
 });
 const failed = (status: number) => ({ data: null, error: { status, statusText: 'x' } });
+const signedInAs = (id: string) => ({ data: { session: {}, user: { id } }, error: null });
 
 const reload = vi.fn();
-const token = jwt('user-a');
+const token = 'token-a';
 
 beforeEach(() => {
 	reload.mockReset();
 	resetBackendToken(reload);
 	getAccessToken.mockReset().mockResolvedValue(ok(token));
+	getSession.mockReset().mockResolvedValue(signedInAs('user-a'));
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -90,25 +93,57 @@ describe('getToken', () => {
 		expect(backendAuth.expired).toBe(false);
 	});
 
-	test('a token for another subject reloads the page and is neither returned nor cached', async () => {
-		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
-		await getToken();
-		getAccessToken.mockResolvedValue(ok(jwt('user-b')));
+	test('a session for the page’s user returns and caches the token', async () => {
+		expect(await getToken()).toBe(token);
+		expect(await getToken()).toBe(token);
 
-		await expect(getToken()).rejects.toThrow(/account changed/);
-		await expect(getToken()).rejects.toThrow(/account changed/);
-		expect(getAccessToken).toHaveBeenCalledTimes(3);
-		expect(reload).toHaveBeenCalledTimes(2);
+		expect(getSession).toHaveBeenCalledOnce();
+		expect(reload).not.toHaveBeenCalled();
 	});
 
-	test('a refreshed token for the same subject replaces the cached one without a reload', async () => {
+	test.each([
+		['another user', signedInAs('user-b')],
+		['no session', { data: null, error: null }]
+	])(
+		'%s on the first fetch reloads the page and neither returns nor caches the token',
+		async (_, session) => {
+			getSession.mockResolvedValue(session);
+
+			await expect(getToken()).rejects.toThrow(/account changed/);
+			await expect(getToken()).rejects.toThrow(/account changed/);
+			expect(getAccessToken).toHaveBeenCalledTimes(2);
+			expect(reload).toHaveBeenCalledTimes(2);
+		}
+	);
+
+	test('another user on a later refresh reloads the page', async () => {
 		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
 		await getToken();
-		const refreshed = jwt('user-a', 'refreshed');
-		getAccessToken.mockResolvedValue(ok(refreshed));
+		getAccessToken.mockResolvedValue(ok('token-b'));
+		getSession.mockResolvedValue(signedInAs('user-b'));
 
-		expect(await getToken()).toBe(refreshed);
-		expect(await getToken()).toBe(refreshed);
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		expect(reload).toHaveBeenCalledOnce();
+	});
+
+	test('a failed session request fails the request without flagging the session', async () => {
+		getSession.mockResolvedValue(failed(502));
+		await expect(getToken()).rejects.toThrow('502');
+
+		getSession.mockRejectedValue(new TypeError('Failed to fetch'));
+		await expect(getToken()).rejects.toThrow('Failed to fetch');
+
+		expect(backendAuth.expired).toBe(false);
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	test('a refreshed token for the same user replaces the cached one without a reload', async () => {
+		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
+		await getToken();
+		getAccessToken.mockResolvedValue(ok('token-a-refreshed'));
+
+		expect(await getToken()).toBe('token-a-refreshed');
+		expect(await getToken()).toBe('token-a-refreshed');
 		expect(getAccessToken).toHaveBeenCalledTimes(2);
 		expect(reload).not.toHaveBeenCalled();
 	});
