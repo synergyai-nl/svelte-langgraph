@@ -130,15 +130,23 @@ auth = Auth()
 
 
 @auth.authenticate
-async def get_current_user(headers: dict[str, str] | None) -> MinimalUserDict:
+async def get_current_user(
+    headers: dict[str, str] | dict[bytes, bytes] | None,
+) -> MinimalUserDict:
     """Check if the user's token is valid.
 
-    Aegra calls this handler with the request headers as a dict with
-    lowercase keys (unlike langgraph-api, which injected individual
-    parameters by name).
+    Aegra passes the request headers as a dict with lowercase str keys; the
+    LangGraph Server runtime passes bytes keys and values. Both are accepted.
     """
 
-    authorization = (headers or {}).get("authorization")
+    authorization = None
+    for key, value in (headers or {}).items():
+        name = key.decode("latin-1") if isinstance(key, bytes) else key
+        if name.lower() == "authorization":
+            authorization = (
+                value.decode("latin-1") if isinstance(value, bytes) else value
+            )
+            break
 
     if not authorization:
         logger.error("No authorization header provided.")

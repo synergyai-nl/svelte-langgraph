@@ -84,3 +84,17 @@ tasks:
     preset: server
     args:
       - '--ui'
+
+  # Opt-in: not a dependency of `test`, so `moon e2e:test` and `moon check` do
+  # not run it. It shares ports and the test database with `test`, so run the
+  # two sequentially.
+  test-runtime-contract:
+    script: 'uv sync --project ../apps/backend --group langgraph-test && playwright test --config playwright.runtime.config.ts'
+    deps:
+      - backend:setup
+    inputs:
+      - '@group(sources)'
+      - 'contracts/**/*'
+      - '/apps/backend/pyproject.toml'
+      - '/apps/backend/uv.lock'
+      - '$CI'
