@@ -54,18 +54,19 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 }
 
 /**
- * The bearer the app sends to the backend: the OIDC ID token, via Better Auth's
- * get-access-token endpoint (the same lookup the root layout performs).
+ * The bearer the app sends to the backend: `session.accessToken` from the root layout's data,
+ * fetched the way client navigation does. `data` is devalue's flattened form, where an object's
+ * fields hold the indices of their values.
  */
 async function getBearerToken(page: Page): Promise<string> {
-	const response = await page.request.post('/api/auth/get-access-token', {
-		headers: { Origin: new URL(page.url()).origin },
-		data: { useAccountCookie: true }
-	});
+	const response = await page.request.get('/__data.json');
 	expect(response.ok()).toBeTruthy();
-	const { idToken } = (await response.json()) as { idToken?: string };
-	expect(idToken, 'expected an idToken from the Better Auth session').toBeTruthy();
-	return idToken as string;
+	const { nodes } = (await response.json()) as { nodes: { data: unknown[] }[] };
+	const data = nodes[0].data as [{ session: number }, ...unknown[]];
+	const session = data[data[0].session] as { accessToken: number } | null;
+	const token = session ? data[session.accessToken] : undefined;
+	expect(typeof token, 'expected a bearer in the layout session').toBe('string');
+	return token as string;
 }
 
 /**

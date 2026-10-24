@@ -19,10 +19,10 @@ function createAuth() {
 	return betterAuth({
 		baseURL: required('BETTER_AUTH_URL'),
 		secret: required('BETTER_AUTH_SECRET'),
-		disabledPaths: ['/refresh-token'],
-		// Sign-in only redirects to the provider, which checks credentials; without a client IP
-		// header the default limit (3 per 10 s per IP) would be one bucket shared by all users.
-		rateLimit: { customRules: { '/sign-in/social': false } },
+		// Provider tokens stay server-side: the root layout reads them via auth.api, not HTTP.
+		disabledPaths: ['/get-access-token', '/refresh-token'],
+		// Rate limiting belongs at the proxy, which knows the client IP.
+		rateLimit: { enabled: false },
 		session: {
 			// Stateless sessions end a week after sign-in; refreshCache only re-issues the cookie.
 			expiresIn: WEEK,
@@ -43,7 +43,9 @@ function createAuth() {
 						// Sign-out ends the local session only, as before; no redirect to the provider.
 						disableProviderLogout: true,
 						requireIdTokenVerification: true,
-						pkce: true
+						pkce: true,
+						// Send the client secret as HTTP Basic, as Auth.js did.
+						authentication: 'basic'
 					}
 				]
 			}),
