@@ -34,7 +34,7 @@ function createAuth() {
 		baseURL: required('BETTER_AUTH_URL'),
 		secret: required('BETTER_AUTH_SECRET'),
 		// Provider tokens stay server-side: the root layout reads them via auth.api, not HTTP.
-		disabledPaths: ['/get-access-token', '/refresh-token'],
+		disabledPaths: ['/get-access-token', '/refresh-token', '/account-info'],
 		// Rate limiting belongs at the proxy, which knows the client IP.
 		rateLimit: { enabled: false },
 		session: {
@@ -88,15 +88,18 @@ async function initAuth() {
 }
 
 // Configuration is process-wide; sessions and token lookups remain request-local. A failed or
-// stalled init is dropped so the next request starts over. Better Auth retries an unreachable
-// provider's discovery itself on the next sign-in.
+// stalled init is dropped so the next request starts over, as is one whose OIDC discovery failed:
+// Better Auth then starts without the provider, and token lookups would fail until a sign-in.
 let auth: Promise<ReturnType<typeof createAuth>> | undefined;
 export function getAuth() {
 	if (!auth) {
 		const pending = (auth = initAuth());
-		pending.catch(() => {
+		const forget = () => {
 			if (auth === pending) auth = undefined;
-		});
+		};
+		pending.then(async ({ $context }) => {
+			if (!(await $context).socialProviders.some((provider) => provider.id === 'oidc')) forget();
+		}, forget);
 	}
 	return auth;
 }
