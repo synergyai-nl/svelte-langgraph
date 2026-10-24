@@ -129,6 +129,25 @@ describe('auth configuration', () => {
 	});
 });
 
+describe('authorization audience', () => {
+	async function providerConfig() {
+		const { options } = (await loadAuth()) as unknown as {
+			options: { plugins: { id: string; options?: { config: Record<string, unknown>[] } }[] };
+		};
+		return options.plugins.find((plugin) => plugin.id === 'generic-oauth')?.options?.config[0];
+	}
+	test('is sent to the provider when AUTH_OIDC_AUDIENCE is set', async () => {
+		vi.stubEnv('AUTH_OIDC_AUDIENCE', 'svelte-langgraph-api');
+		expect(await providerConfig()).toMatchObject({
+			authorizationUrlParams: { audience: 'svelte-langgraph-api' }
+		});
+	});
+	test('is left out when AUTH_OIDC_AUDIENCE is unset', async () => {
+		vi.stubEnv('AUTH_OIDC_AUDIENCE', undefined);
+		expect(await providerConfig()).not.toHaveProperty('authorizationUrlParams');
+	});
+});
+
 describe('auth HTTP routes', () => {
 	test('are routed by path, even when the request origin differs from BETTER_AUTH_URL', async () => {
 		const auth = await loadAuth();
