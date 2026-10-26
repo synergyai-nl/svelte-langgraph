@@ -31,6 +31,12 @@ beforeAll(async () => {
 });
 afterAll(() => idp.stop());
 
+// Warm the better-auth module graph once, so no single test pays the cold load (CI timed out at 5 s).
+beforeAll(async () => {
+	state.building = true;
+	await import('./index');
+}, 60_000);
+
 beforeEach(() => {
 	vi.resetModules();
 	state.building = false;
