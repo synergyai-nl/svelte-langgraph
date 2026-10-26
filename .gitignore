@@ -12,7 +12,8 @@ __pycache__/
 
 node_modules/
 
-.claude/
+.claude/*
+!.claude/skills/
 .eslintcache
 
 *.lcov
