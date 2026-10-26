@@ -1,6 +1,6 @@
 # langgraph
 
-> **Monorepo note:** For the full local stack (frontend, backend, and OIDC mock), run `moon :dev :oidc-mock` from the [repo root](../../README.md). To run only the OIDC mock provider: `moon backend:oidc-mock`.
+> **Monorepo note:** For the full local stack (frontend, backend, and OIDC mock), run `moon :dev :oidc-mock` from the [repo root](../../README.md). To run only the OIDC mock provider: `moon e2e:oidc-mock`.
 
 Langgraph server project.
 
@@ -33,10 +33,10 @@ For local auth testing, start the full stack including the OIDC mock provider:
 moon :dev :oidc-mock
 ```
 
-Or run the OIDC mock in a separate terminal:
+Or run the OIDC mock (`e2e/mocks/oidc.ts`) in a separate terminal:
 
 ```sh
-moon backend:oidc-mock
+moon e2e:oidc-mock
 ```
 
 ### CLI

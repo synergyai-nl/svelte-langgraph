@@ -12,7 +12,7 @@ export async function expectOIDCProviderURL(page: Page) {
 
 /**
  * Complete OIDC authentication flow.
- * The oidc-provider-mock automatically authenticates the test-user.
+ * The OIDC mock (mocks/oidc.ts) asks which subject to sign in as; this picks `username`.
  */
 export async function authenticateUser(page: Page, username: string = OIDC_CONFIG.username) {
 	const app = new AppPage(page);

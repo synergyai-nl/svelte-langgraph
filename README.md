@@ -197,14 +197,15 @@ Your IdP must therefore issue **JWT access tokens whose audience is `AUTH_OIDC_A
 
 ### Local Development with OIDC Mock Provider
 
-For local development and testing, the project includes a mock OIDC provider built on `oidc-provider-mock` (`apps/backend/scripts/oidc_mock.py`). This lightweight Python-based mock server simulates a real OIDC provider, allowing you to develop and test authentication flows without needing to set up a full OAuth2/OIDC provider.
+For local development and testing, the project includes a mock OIDC provider (`e2e/mocks/oidc.ts`, built on [`oauth2-mock-server`](https://github.com/axa-group/oauth2-mock-server)). It simulates a real OIDC provider, so you can develop and test authentication flows without setting up a real one. The E2E suite signs in through the same mock.
 
-The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (as above) or run `moon backend:oidc-mock` in a separate terminal alongside `moon :dev`.
+The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (as above) or run `moon e2e:oidc-mock` in a separate terminal alongside `moon :dev`.
 
 **What it does:**
 - Provides a complete OIDC discovery endpoint (`.well-known/openid-configuration`)
+- Shows a sign-in page with one button per subject (`test-user`, `other-user`)
 - Issues RS256 JWT access tokens for the `AUTH_OIDC_AUDIENCE` audience, and rotates refresh tokens without returning an `id_token` on refresh (as many real providers do)
-- Supports the authorization code flow with PKCE
+- Supports the authorization code flow and requires S256 PKCE
 - No client registration required - accepts any client ID/secret
 - Started alongside the other dev servers via the `:oidc-mock` target (see below)
 
@@ -212,7 +213,7 @@ The OIDC mock is **not** started by `moon :dev` alone — include `:oidc-mock` (
 - **Issuer**: `http://localhost:8080`
 - **Client ID**: Any value (e.g., `svelte-langgraph`)
 - **Client Secret**: Any value (e.g., `secret`)
-- **Test User**: `test-user` (subject claim in JWT)
+- **Test users**: `test-user` and `other-user` (the `sub` claim), picked on the sign-in page
 
 ### Start dev servers
 
