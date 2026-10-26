@@ -112,7 +112,12 @@ tasks:
       - '@group(tests)'
     options:
       outputStyle: "stream"
+      # CI runs test-cov, which runs the same tests plus coverage.
+      runInCI: skip
   test-cov:
     extends: test
+    options:
+      # Extends test, so opt back in explicitly or it inherits the skip.
+      runInCI: true
     args: 
       - "--cov=svelte_langgraph --cov-branch --cov-report lcov --cov-report term --cov-report html"
