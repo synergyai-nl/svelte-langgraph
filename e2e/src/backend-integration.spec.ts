@@ -1,6 +1,17 @@
-import { authenticateUser } from './fixtures/auth';
+import { Client } from '@langchain/langgraph-sdk';
+import type { APIRequestContext } from '@playwright/test';
+import { authenticateUser, OIDC_CONFIG } from './fixtures/auth';
 import { LANGGRAPH_CONFIG } from './fixtures/backend';
 import { expect, test } from './fixtures/test';
+
+const API_AUDIENCE = 'svelte-langgraph-api';
+
+/** An access token minted by the OIDC mock: test-user's by default; a `null` claim is left out. */
+async function mintToken(request: APIRequestContext, claims: Record<string, unknown> = {}) {
+	const response = await request.post(`${OIDC_CONFIG.issuer}/__test__/token`, { data: claims });
+	expect(response.ok()).toBeTruthy();
+	return ((await response.json()) as { accessToken: string }).accessToken;
+}
 
 function toBase64Url(value: string): string {
 	return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -74,7 +85,7 @@ test.describe('Backend Integration', () => {
 			const claims = JSON.parse(
 				Buffer.from(String(capturedToken).split('.')[1], 'base64url').toString()
 			);
-			expect(claims.aud, 'the bearer is an access token for the API').toBe('svelte-langgraph-api');
+			expect(claims.aud, 'the bearer is an access token for the API').toBe(API_AUDIENCE);
 
 			// Now use the captured token to make a direct request to verify it works
 			const response = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
@@ -130,6 +141,136 @@ test.describe('Backend Integration', () => {
 			});
 
 			expect(response.status()).toBe(401);
+		});
+
+		test('should reject a request without credentials', async ({ request }) => {
+			const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+				data: {}
+			});
+			expect(response.status()).toBe(401);
+		});
+
+		const invalidClaims: [string, Record<string, unknown>][] = [
+			['an expired token', { exp: Math.floor(Date.now() / 1000) - 100 }],
+			['a token from another issuer', { iss: 'https://wrong.example.test' }],
+			['an id token (client id audience)', { aud: OIDC_CONFIG.clientId }],
+			['a token without exp', { exp: null }],
+			['a token with an empty sub', { sub: '' }]
+		];
+		for (const [name, claims] of invalidClaims) {
+			test(`should reject ${name}`, async ({ request }) => {
+				const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+					headers: { Authorization: `Bearer ${await mintToken(request, claims)}` },
+					data: {}
+				});
+				expect(response.status()).toBe(401);
+			});
+		}
+
+		for (const aud of [API_AUDIENCE, ['another-api', API_AUDIENCE]]) {
+			test(`should accept the API audience as ${typeof aud === 'string' ? 'a string' : 'a list'}`, async ({
+				request
+			}) => {
+				const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+					headers: { Authorization: `Bearer ${await mintToken(request, { aud })}` },
+					data: {}
+				});
+				expect(response.ok()).toBeTruthy();
+			});
+		}
+	});
+
+	test.describe('SDK', () => {
+		test('should create assistants, stream and rejoin runs, and isolate threads by owner', async ({
+			request
+		}) => {
+			const otherToken = await mintToken(request, { sub: OIDC_CONFIG.otherUsername });
+			const client = (token: string) =>
+				new Client({
+					apiUrl: LANGGRAPH_CONFIG.apiUrl,
+					defaultHeaders: { Authorization: `Bearer ${token}` }
+				});
+			const owner = client(await mintToken(request));
+			const other = client(otherToken);
+			// Aegra keeps one assistant per user, graph and config; earlier specs may have made it.
+			const chatAssistant = (user: Client) =>
+				user.assistants.create({ graphId: 'chat', ifExists: 'do_nothing' });
+			const assistant = await chatAssistant(owner);
+			const otherAssistant = await chatAssistant(other);
+			const thread = await owner.threads.create({ metadata: { owner: OIDC_CONFIG.otherUsername } });
+			expect(thread.metadata?.owner, 'the backend sets the owner').toBe(OIDC_CONFIG.username);
+
+			const events: string[] = [];
+			let runId: string | undefined;
+			for await (const chunk of owner.runs.stream(thread.thread_id, assistant.assistant_id, {
+				input: { messages: [{ type: 'human', content: 'Hello' }] },
+				streamMode: ['values', 'messages-tuple'],
+				streamResumable: true
+			})) {
+				events.push(chunk.event);
+				if (chunk.event === 'metadata') runId = (chunk.data as { run_id: string }).run_id;
+			}
+			expect(events).toContain('values');
+			expect(events.some((event) => event.startsWith('messages'))).toBe(true);
+			expect(runId).toBeTruthy();
+			// Rejoining the finished resumable stream is a separately authenticated request that
+			// carries the SDK's Last-Event-ID header.
+			for await (const chunk of owner.runs.joinStream(thread.thread_id, runId!, {
+				lastEventId: '0'
+			})) {
+				expect(chunk.event).not.toBe('error');
+			}
+
+			expect(await other.threads.search({ ids: [thread.thread_id] })).toEqual([]);
+			const threadUrl = `${LANGGRAPH_CONFIG.apiUrl}/threads/${thread.thread_id}`;
+			for (const [method, url, data] of [
+				['GET', threadUrl, undefined],
+				['PATCH', threadUrl, { metadata: { owner: OIDC_CONFIG.otherUsername } }],
+				[
+					'POST',
+					`${threadUrl}/runs`,
+					{
+						// other-user owns this assistant, so a rejection is the thread's boundary.
+						assistant_id: otherAssistant.assistant_id,
+						input: { messages: [{ type: 'human', content: 'Unauthorized run' }] }
+					}
+				],
+				['DELETE', threadUrl, undefined]
+			] as const) {
+				const response = await request.fetch(url, {
+					method,
+					headers: { Authorization: `Bearer ${otherToken}` },
+					data
+				});
+				expect(
+					[403, 404],
+					`${method} ${url} returned ${response.status()}: ${await response.text()}`
+				).toContain(response.status());
+			}
+			expect((await owner.threads.get(thread.thread_id)).thread_id).toBe(thread.thread_id);
+			await owner.threads.delete(thread.thread_id);
+		});
+	});
+
+	test.describe('CORS', () => {
+		test('should allow the bearer and reconnect headers in a preflight', async ({
+			request,
+			baseURL
+		}) => {
+			const response = await request.fetch(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+				method: 'OPTIONS',
+				headers: {
+					Origin: baseURL!,
+					'Access-Control-Request-Method': 'POST',
+					'Access-Control-Request-Headers': 'authorization,content-type,last-event-id'
+				}
+			});
+			expect(response.ok()).toBeTruthy();
+			expect(['*', baseURL]).toContain(response.headers()['access-control-allow-origin']);
+			const allowed = response.headers()['access-control-allow-headers'].toLowerCase();
+			for (const name of ['authorization', 'content-type', 'last-event-id']) {
+				expect(allowed === '*' || allowed.includes(name), `${name} is allowed`).toBe(true);
+			}
 		});
 	});
 });

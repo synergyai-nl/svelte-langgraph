@@ -121,7 +121,7 @@ UI that depends on server data (e.g. session) should be initialized from `page.d
 | ai-mock   | 8100 | OpenAI-compatible mock (chat completions) | `moon backend:ai-mock` |
 | oidc-mock | 8080 | OIDC provider mock with a subject picker  | `moon e2e:oidc-mock`   |
 
-Both are started automatically by `moon e2e:test` via the `webServer` entries in `playwright.config.ts`. The E2E run starts the OIDC mock as `e2e:oidc-mock-e2e`, which adds `--test-controls`: `token-refresh.spec.ts` uses its `/__test__/settings` endpoint to shorten the token lifetime, fail refreshes and read back the refresh attempts. The backend is configured to use the ai-mock via `OPENAI_BASE_URL=http://localhost:8100/openai` in `.env.e2e`.
+Both are started automatically by `moon e2e:test` via the `webServer` entries in `playwright.config.ts`. The E2E run starts the OIDC mock as `e2e:oidc-mock-e2e`, which adds `--test-controls`: `token-refresh.spec.ts` uses its `/__test__/settings` endpoint to shorten the token lifetime, fail refreshes and read back the refresh attempts. Its `/__test__/token` endpoint mints access tokens with arbitrary claims, which `backend-integration.spec.ts` uses to check Aegra's auth and protocol contracts: token validation, the LangGraph SDK's assistant, stream and reconnect calls, owner isolation and CORS. The backend is configured to use the ai-mock via `OPENAI_BASE_URL=http://localhost:8100/openai` in `.env.e2e`.
 
 ## Troubleshooting
 
