@@ -75,6 +75,14 @@ describe('root layout', () => {
 
 			expect(screen.getByRole('banner')).not.toHaveClass('bg-transparent');
 		});
+
+		test('uses the app variant on the demos overview', () => {
+			renderLayout('/demo');
+
+			const banner = screen.getByRole('banner');
+			expect(banner).not.toHaveClass('bg-transparent');
+			expect(banner).toHaveClass('border-b');
+		});
 	});
 
 	test('marks the body as started once mounted', () => {

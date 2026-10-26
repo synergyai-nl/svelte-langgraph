@@ -24,6 +24,10 @@ describe('ChatMessage', () => {
 			expect(screen.getByRole('group')).toBeInTheDocument();
 		});
 
+		test('marks the group as an AI message for styling-independent selection', () => {
+			expect(screen.getByRole('group')).toHaveAttribute('data-message-type', 'ai');
+		});
+
 		test('displays the message text', () => {
 			expect(screen.getByText('Hello from AI')).toBeInTheDocument();
 		});
@@ -36,6 +40,10 @@ describe('ChatMessage', () => {
 
 		test('renders the message group container', () => {
 			expect(screen.getByRole('group')).toBeInTheDocument();
+		});
+
+		test('marks the group as a user message for styling-independent selection', () => {
+			expect(screen.getByRole('group')).toHaveAttribute('data-message-type', 'user');
 		});
 
 		test('displays the message text', () => {

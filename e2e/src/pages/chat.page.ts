@@ -1,16 +1,13 @@
 import type { Locator } from '@playwright/test';
 import { AppPage } from './app.page';
+import { ChatSurfacePage } from './chat-surface.page';
 
 /**
- * ChatPage encapsulates elements specific to the /chat route.
+ * ChatPage encapsulates elements specific to the /chat route: the chat surface mounted in
+ * `app.main` (composer + messages, inherited from ChatSurfacePage) plus route chrome.
  */
-export class ChatPage {
+export class ChatPage extends ChatSurfacePage {
 	readonly app: AppPage;
-
-	// Chat elements
-	readonly textInput: Locator;
-	// Icon-only submit button inside the composer form (has no accessible name)
-	readonly sendButton: Locator;
 
 	// Phase state field (data-testid="state-field-phase")
 	readonly phaseWrapper: Locator;
@@ -23,15 +20,9 @@ export class ChatPage {
 	readonly loginModal: Locator;
 	readonly modalSignInButton: Locator;
 
-	/** Every rendered AI message (data-testid="message-ai"). Rating buttons are
-	 *  scoped per-message, so pass one of these to `feedbackButtons`. */
-	readonly aiMessages: Locator;
-
 	constructor(app: AppPage) {
+		super(app.main);
 		this.app = app;
-
-		this.textInput = app.main.getByRole('textbox', { name: 'Ask your agent…' });
-		this.sendButton = app.main.locator('#input_form button[type="submit"]');
 
 		// Phase dropdown — rendered by StateField when schema includes a 'phase' enum field
 		this.phaseWrapper = app.page.locator('[data-testid="state-field-phase"]');
@@ -41,8 +32,6 @@ export class ChatPage {
 
 		this.loginModal = app.page.getByRole('dialog').filter({ hasText: /sign in/i });
 		this.modalSignInButton = this.loginModal.getByText('Continue with SSO', { exact: true });
-
-		this.aiMessages = app.page.locator('[data-testid="message-ai"]');
 	}
 
 	/** The comment box a rating click opens. The rating is not sent until this
@@ -63,7 +52,8 @@ export class ChatPage {
 		return this.app.page.getByTestId('feedback-cancel');
 	}
 
-	/** The thumbs-up / thumbs-down buttons belonging to one AI message.
+	/** The thumbs-up / thumbs-down buttons belonging to one AI message (pass one of the
+	 *  inherited `aiMessages` / `aiMessage()` locators).
 	 *  Actions only become visible on hover, so hover before clicking. */
 	feedbackButtons(aiMessage: Locator): { up: Locator; down: Locator } {
 		return {

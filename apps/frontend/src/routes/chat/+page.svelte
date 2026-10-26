@@ -1,35 +1,40 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
-	import { createClient, getOrCreateThread, getThreadListRefresh } from '@svelte-langgraph/client';
+	import { getOrCreateThread } from '@svelte-langgraph/client';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
+	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
 
 	let show_login_dialog = $state(!page.data.session);
-	let client = $derived(
-		page.data.session
-			? createClient(env.PUBLIC_LANGGRAPH_API_URL ?? '', page.data.session.accessToken)
-			: null
-	);
 	let redirect_error = $state<Error | null>(null);
 
-	// `/chat` sits under `chat/+layout.svelte`, so the refresh context is in scope. The layout's
-	// `ThreadListState` has usually already resolved its first page by the time `getOrCreateThread`
-	// creates a brand-new thread, and the redirect below keeps the same layout/client (so
-	// `setClient` doesn't rerun) — without this nudge the new thread stays invisible in the
-	// sidebar until the user sends a message or reloads.
-	const threadListRefresh = getThreadListRefresh();
+	// `/chat` sits under `chat/+layout.svelte`'s `<LangGraph>`, so `ctx` is in scope — and its
+	// `client` is the one, shared client for the whole `/chat` subtree (no separate derivation
+	// here anymore). Its owned `ThreadList` has usually already resolved its first page by the
+	// time `getOrCreateThread` creates a brand-new thread, and the redirect below keeps the same
+	// layout/client (so the derived client doesn't change) — without the `refresh()` nudge below
+	// the new thread stays invisible in the sidebar until the user sends a message or reloads.
+	const ctx = useLangGraph();
 
-	async function redirectToThread() {
+	async function redirectToThread(isCancelled: () => boolean) {
+		const client = ctx.client;
 		if (!client) return;
 
 		try {
 			const thread = await getOrCreateThread(client);
+			// A navigation away from this page (e.g. the user clicking an existing thread in the
+			// sidebar) while the fetch above was in flight must win — otherwise this stale
+			// resolution would yank them back to the reused/created thread they no longer asked
+			// for. Mirrors the selection-epoch guard in `LangGraphContext#createThread`; `isCancelled`
+			// flips true from the effect's cleanup below, which runs on unmount (this component is
+			// swapped out entirely once `goto` lands on `/chat/[threadID]`).
+			if (isCancelled()) return;
 			await goto(`/chat/${thread.thread_id}`);
-			threadListRefresh?.refresh();
+			ctx.threadList.refresh();
 		} catch (err) {
+			if (isCancelled()) return;
 			if (err instanceof Error) redirect_error = err;
 			console.error('Error creating or fetching thread:', err);
 		}
@@ -37,8 +42,12 @@
 
 	// Trigger redirect when client is ready
 	$effect(() => {
-		if (client && !redirect_error) {
-			redirectToThread();
+		if (ctx.client && !redirect_error) {
+			let cancelled = false;
+			redirectToThread(() => cancelled);
+			return () => {
+				cancelled = true;
+			};
 		}
 	});
 

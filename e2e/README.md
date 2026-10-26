@@ -81,12 +81,12 @@ Prefer `getByRole`, `getByLabel`, and `getByText` over CSS/XPath selectors.
 import { test, expect } from './fixtures/test';
 import { authenticateUser, expectAuthenticated } from './fixtures/auth';
 
-test('user can sign in and see the chat page', async ({ app, page }) => {
+test('user can sign in and discover the demos', async ({ app, page }) => {
 	await authenticateUser(page);
 	await expectAuthenticated(page);
 
-	await app.navigateToChat();
-	await expect(page).toHaveURL('/chat');
+	await app.navigateToDemos();
+	await expect(page).toHaveURL('/demo');
 });
 ```
 

@@ -7,6 +7,8 @@ function renderComponent(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(SubmitButton, {
 		isStreaming: false,
 		disabled: false,
+		sendLabel: 'Send message',
+		stopLabel: 'Stop generating',
 		...overrides
 	});
 }
@@ -18,7 +20,7 @@ describe('SubmitButton', () => {
 		});
 
 		test('renders the submit button', () => {
-			expect(screen.getByRole('button')).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
 		});
 	});
 
@@ -28,7 +30,7 @@ describe('SubmitButton', () => {
 		});
 
 		test('shows stop button instead of submit button', () => {
-			const button = screen.getByRole('button');
+			const button = screen.getByRole('button', { name: 'Stop generating' });
 			expect(button).toBeInTheDocument();
 			expect(button).toHaveAttribute('type', 'button');
 		});

@@ -153,10 +153,9 @@ test.describe('Sidebar - real backend', () => {
 		const newId = new URL(page.url()).pathname.split('/').at(-1)!;
 		expect(newId).not.toBe(originalId);
 
-		// Empty state (suggestions view): no AI message cards, proving this is a genuinely
+		// Empty state (suggestions view): no message cards, proving this is a genuinely
 		// fresh thread and not a redirect back to the idle thread we started on.
-		const aiMessage = page.getByRole('group').filter({ has: page.locator('.prose') });
-		await expect(aiMessage).toHaveCount(0);
+		await expect(chat.messages).toHaveCount(0);
 	});
 
 	test('active row highlight survives a page reload', async ({ page, sidebar }) => {
@@ -191,7 +190,9 @@ test.describe('Sidebar - real backend', () => {
 		await app.navigateToHome();
 		await page.waitForURL('/');
 
-		await app.navigateToChat();
+		await app.navigateToDemos();
+		await page.waitForURL('/demo');
+		await page.locator('a[href="/chat"]').click();
 		await page.waitForURL(/\/chat\/[\w-]+/);
 
 		await expect(sidebar.collapsedRoot).toBeVisible();

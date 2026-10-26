@@ -60,12 +60,11 @@
 			{#if message.type === 'user' && isEditing}
 				<UserMessageEdit bind:value={editText} onConfirm={confirmEdit} onCancel={cancelEditing} />
 			{:else}
-				<!-- data-testid carries the sender because nothing else in the rendered
-				     markup distinguishes an AI card from a user card except its Tailwind
-				     colour classes, which E2E must not depend on. -->
+				<!-- `data-message-type` is the stable, styling-independent hook E2E page objects use to
+				     tell AI replies from the user's own bubbles (see e2e/src/pages/chat-surface.page.ts). -->
 				<div
 					role="group"
-					data-testid="message-{message.type}"
+					data-message-type={message.type}
 					onmouseenter={() => (isHovered = true)}
 					onmouseleave={() => (isHovered = false)}
 					class="relative w-full"
