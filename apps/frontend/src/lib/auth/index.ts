@@ -51,7 +51,11 @@ const createAuth = () =>
 						// Sign-out ends the local session only; no redirect to the provider.
 						disableProviderLogout: true,
 						requireIdTokenVerification: true,
-						pkce: true
+						pkce: true,
+						// Auth0 only issues an API-audience access token when asked for one; other IdPs ignore it.
+						...(env.AUTH_OIDC_AUDIENCE && {
+							authorizationUrlParams: { audience: env.AUTH_OIDC_AUDIENCE }
+						})
 					}
 				]
 			}),

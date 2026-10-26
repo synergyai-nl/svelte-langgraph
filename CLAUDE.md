@@ -10,7 +10,7 @@ Opinionated SvelteKit-based LLM frontend for LangGraph server. This is a monorep
 
 - **Backend** (apps/backend/): Python 3.12 + [Aegra](https://docs.aegra.dev) (open-source Agent Protocol server) running LangGraph workflows, backed by PostgreSQL (Docker Compose helper or your own server)
 - **Frontend** (apps/frontend/): SvelteKit + TypeScript with Tailwind CSS and shadcn/bits-ui components
-- **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`.
+- **End to end tests** (e2e/): Playwright + TypeScript. Run with `moon e2e:test`. Also home to the OIDC provider mock (`e2e/mocks/oidc.ts`, `moon e2e:oidc-mock`) used by dev and E2E.
 - **Build System**: [moonrepo](https://moonrepo.dev/docs) for task orchestration and dependency management
 
 ## Essential Commands

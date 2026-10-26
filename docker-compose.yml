@@ -21,6 +21,8 @@ services:
       AUTH_OIDC_CLIENT_ID: "${AUTH_OIDC_CLIENT_ID:-}"
       AUTH_OIDC_CLIENT_SECRET: "${AUTH_OIDC_CLIENT_SECRET:-}"
       AUTH_OIDC_ISSUER: "${AUTH_OIDC_ISSUER:-}"
+      # Also sent as the `audience` authorization parameter (Auth0 needs it).
+      AUTH_OIDC_AUDIENCE: "${AUTH_OIDC_AUDIENCE:-}"
       AUTH_OIDC_SCOPES: "${AUTH_OIDC_SCOPES:-openid profile email offline_access}"
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:-}"
       PUBLIC_SENTRY_DSN: "${PUBLIC_SENTRY_DSN:-}"
@@ -43,6 +45,8 @@ services:
       # container itself, not your host.
       DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/aegra}"
       AUTH_TYPE: "custom"
+      # The API audience required in access tokens (see README, Authentication).
+      AUTH_OIDC_AUDIENCE: "${AUTH_OIDC_AUDIENCE:-}"
     extra_hosts:
       # Lets OPENAI_BASE_URL reach a provider running on the Docker host
       # (e.g. Ollama at http://host.docker.internal:11434/v1).
