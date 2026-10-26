@@ -17,6 +17,8 @@ Moon automatically builds the frontend, sets up the backend, and starts ai-mock,
 ## Project structure
 
 ```
+mocks/
+└── oidc.ts              # OIDC provider mock (dev and E2E), on oauth2-mock-server
 src/
 ├── fixtures/
 │   ├── test.ts          # Custom test fixture (app, chat, oidc)
@@ -114,10 +116,10 @@ UI that depends on server data (e.g. session) should be initialized from `page.d
 
 ## Mock servers
 
-| Server    | Port | Purpose                                      | Started by               |
-| --------- | ---- | -------------------------------------------- | ------------------------ |
-| ai-mock   | 8100 | OpenAI-compatible mock (chat completions)    | `moon backend:ai-mock`   |
-| oidc-mock | 8080 | OIDC provider mock (auto-authenticates user) | `moon backend:oidc-mock` |
+| Server    | Port | Purpose                                   | Started by             |
+| --------- | ---- | ----------------------------------------- | ---------------------- |
+| ai-mock   | 8100 | OpenAI-compatible mock (chat completions) | `moon backend:ai-mock` |
+| oidc-mock | 8080 | OIDC provider mock with a subject picker  | `moon e2e:oidc-mock`   |
 
 Both are started automatically by `moon e2e:test` via the `webServer` entries in `playwright.config.ts`. The backend is configured to use the ai-mock via `OPENAI_BASE_URL=http://localhost:8100/openai` in `.env.e2e`.
 
