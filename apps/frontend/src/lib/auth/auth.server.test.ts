@@ -187,12 +187,12 @@ describe('account cookie', () => {
 		const own = await auth.api.getAccessToken({ headers: cookieHeaders(bob), body });
 		expect(subjectOf(own.accessToken)).toBe('bob');
 		const headers = cookieHeaders(mixed);
-		for (const refused of [
-			auth.api.getAccessToken({ headers, body }),
-			auth.api.refreshToken({ headers, body }),
-			auth.api.accountInfo({ headers, query: body })
+		for (const call of [
+			() => auth.api.getAccessToken({ headers, body }),
+			() => auth.api.refreshToken({ headers, body }),
+			() => auth.api.accountInfo({ headers, query: body })
 		]) {
-			await expect(refused).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
+			await expect(call()).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
 		}
 	});
 });
