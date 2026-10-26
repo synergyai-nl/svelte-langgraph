@@ -129,3 +129,9 @@ Both are started automatically by `moon e2e:test` via the `webServer` entries in
 - **Flaky under load** → Stress test: `moon -u e2e:test -- --workers=8 --repeat-each 5`
 - **Debug a single test** → `moon e2e:test-ui` or `moon e2e:test -- --debug`
 - **Traces** → On first retry, traces are saved automatically (`trace: 'on-first-retry'`). View with `npx playwright show-trace`.
+
+# Runtime contracts
+
+`moon e2e:test-runtime-contract` runs the API-level checks in `backend-integration.spec.ts` (token validation, the LangGraph SDK's assistant, stream and reconnect calls, owner isolation and CORS) against both Aegra (2026) and the LangGraph development server, `langgraph dev` (2027), as the Playwright projects `aegra` and `langgraph` in `playwright.runtime.config.ts`. Those checks are tagged `@runtime-contract` and call the API through the `apiUrl` test option, which defaults to Aegra in `moon e2e:test` and is set per project here. Checks that drive the app are tagged `@frontend` and left out, since this suite starts no frontend. The LangGraph runtime packages live in the backend's development-only `langgraph-test` dependency group, which the task syncs first.
+
+The task is opt-in: it is a `local` task and not a dependency of `e2e:test`, so neither `moon e2e:test` nor `moon check` runs it. It shares ports and the test database with `e2e:test`; run the two one after the other.

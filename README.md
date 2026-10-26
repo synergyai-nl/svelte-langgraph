@@ -295,6 +295,12 @@ Or, interactively, with:
 moon e2e:test-ui
 ```
 
+The API-level checks can also run against the LangGraph development server (`langgraph dev`) as well as Aegra, to show the backend's auth handler and graph work on both runtimes. This suite is opt-in and not part of `moon check`; see [`e2e/README.md`](e2e/README.md#runtime-contracts):
+
+```
+moon e2e:test-runtime-contract
+```
+
 ## Production
 
 To run a Docker build of the project, use Docker Compose:

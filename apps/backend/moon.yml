@@ -85,6 +85,14 @@ tasks:
     preset: "server"
     options:
       envFile: '/.env.e2e'
+  langgraph-e2e:
+    # LangGraph Server runtime (in-memory), used only by the opt-in runtime
+    # contract suite (`moon e2e:test-runtime-contract`) to prove the shared
+    # auth handler also works outside Aegra.
+    command: "uv run --group langgraph-test langgraph dev --config langgraph.json --host localhost --port 2027 --no-browser 2>&1"
+    preset: "server"
+    options:
+      envFile: '/.env.e2e'
   build:
     command: "docker build -t svelte-langgraph-backend --pull ."
     deps:
