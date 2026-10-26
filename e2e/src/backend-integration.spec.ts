@@ -71,6 +71,10 @@ test.describe('Backend Integration', () => {
 			await responsePromise;
 
 			expect(capturedToken).toBeTruthy();
+			const claims = JSON.parse(
+				Buffer.from(String(capturedToken).split('.')[1], 'base64url').toString()
+			);
+			expect(claims.aud, 'the bearer is an access token for the API').toBe('svelte-langgraph-api');
 
 			// Now use the captured token to make a direct request to verify it works
 			const response = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
