@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { ButtonSize, ButtonVariant } from '../button';
-import type { UseClipboard } from '../../../hooks/use-clipboard.svelte';
+import type { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
 
 export type CopyButtonProps = {
 	ref?: HTMLButtonElement | null;
