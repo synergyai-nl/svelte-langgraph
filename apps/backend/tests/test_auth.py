@@ -510,6 +510,17 @@ class TestGetCurrentUser:
         assert "No token provided" in exc_info.value.detail
 
     @pytest.mark.asyncio
+    async def test_accepts_bytes_headers_from_langgraph_server(self) -> None:
+        """The LangGraph Server runtime passes bytes keys and values."""
+        with patch.object(
+            auth, "_validate_token", AsyncMock(return_value={"sub": "u1"})
+        ) as validate:
+            user = await auth.get_current_user({b"Authorization": b"Bearer abc"})
+
+        validate.assert_awaited_once_with("abc")
+        assert user["identity"] == "u1"
+
+    @pytest.mark.asyncio
     async def test_raises_401_when_no_authorization(self) -> None:
         """Test that get_current_user raises 401 when no authorization header."""
         with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:

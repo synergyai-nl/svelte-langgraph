@@ -1,5 +1,14 @@
 import { test as base } from '@playwright/test';
 import { AppPage, ChatPage, OidcPage, SidebarPage } from '../pages';
+import { LANGGRAPH_CONFIG } from './backend';
+
+export type Options = {
+	/**
+	 * The LangGraph API that API-level specs call: Aegra by default. The runtime contract config
+	 * (playwright.runtime.config.ts) sets it per project to run them against each runtime.
+	 */
+	apiUrl: string;
+};
 
 type Fixtures = {
 	app: AppPage;
@@ -8,7 +17,8 @@ type Fixtures = {
 	sidebar: SidebarPage;
 };
 
-export const test = base.extend<Fixtures>({
+export const test = base.extend<Fixtures & Options>({
+	apiUrl: [LANGGRAPH_CONFIG.apiUrl, { option: true }],
 	page: async ({ page }, use) => {
 		const waitForHydration = () => page.waitForSelector('body.started', { timeout: 15000 });
 

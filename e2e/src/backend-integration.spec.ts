@@ -5,6 +5,11 @@ import { LANGGRAPH_CONFIG } from './fixtures/backend';
 import { expect, test } from './fixtures/test';
 
 const API_AUDIENCE = 'svelte-langgraph-api';
+/**
+ * API-level checks that need only the API and the OIDC mock. `moon e2e:test-runtime-contract`
+ * runs them against Aegra and the LangGraph Server runtime through the `apiUrl` option.
+ */
+const RUNTIME_CONTRACT = { tag: '@runtime-contract' };
 
 /** An access token minted by the OIDC mock: test-user's by default; a `null` claim is left out. */
 async function mintToken(request: APIRequestContext, claims: Record<string, unknown> = {}) {
@@ -57,8 +62,9 @@ test.describe('Backend Integration', () => {
 		});
 	});
 
-	test.describe('JWT Security', () => {
-		test('should accept valid token from OIDC provider', async ({ page }) => {
+	test.describe('JWT Security', RUNTIME_CONTRACT, () => {
+		// Drives the app, so the runtime contract suite, which starts no frontend, leaves it out.
+		test('should accept valid token from OIDC provider', { tag: '@frontend' }, async ({ page }) => {
 			// Authenticate via OIDC to get a valid token
 			await authenticateUser(page);
 
@@ -100,10 +106,10 @@ test.describe('Backend Integration', () => {
 			expect(response.status()).toBe(200);
 		});
 
-		test('should reject forged JWT with alg:none', async ({ page }) => {
+		test('should reject forged JWT with alg:none', async ({ request, apiUrl }) => {
 			const forgedToken = createForgedJWT({ sub: 'attacker' });
 
-			const response = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+			const response = await request.post(`${apiUrl}/threads/search`, {
 				headers: {
 					Authorization: `Bearer ${forgedToken}`,
 					'Content-Type': 'application/json'
@@ -114,13 +120,13 @@ test.describe('Backend Integration', () => {
 			expect(response.status()).toBe(401);
 		});
 
-		test('should reject JWT with tampered payload', async ({ page }) => {
+		test('should reject JWT with tampered payload', async ({ request, apiUrl }) => {
 			const tamperedToken = createTamperedJWT({
 				sub: 'admin',
 				iss: 'http://localhost:8080'
 			});
 
-			const response = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+			const response = await request.post(`${apiUrl}/threads/search`, {
 				headers: {
 					Authorization: `Bearer ${tamperedToken}`,
 					'Content-Type': 'application/json'
@@ -131,8 +137,8 @@ test.describe('Backend Integration', () => {
 			expect(response.status()).toBe(401);
 		});
 
-		test('should reject malformed token', async ({ page }) => {
-			const response = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+		test('should reject malformed token', async ({ request, apiUrl }) => {
+			const response = await request.post(`${apiUrl}/threads/search`, {
 				headers: {
 					Authorization: 'Bearer not.a.valid.jwt',
 					'Content-Type': 'application/json'
@@ -143,8 +149,8 @@ test.describe('Backend Integration', () => {
 			expect(response.status()).toBe(401);
 		});
 
-		test('should reject a request without credentials', async ({ request }) => {
-			const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+		test('should reject a request without credentials', async ({ request, apiUrl }) => {
+			const response = await request.post(`${apiUrl}/threads/search`, {
 				data: {}
 			});
 			expect(response.status()).toBe(401);
@@ -158,8 +164,8 @@ test.describe('Backend Integration', () => {
 			['a token with an empty sub', { sub: '' }]
 		];
 		for (const [name, claims] of invalidClaims) {
-			test(`should reject ${name}`, async ({ request }) => {
-				const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+			test(`should reject ${name}`, async ({ request, apiUrl }) => {
+				const response = await request.post(`${apiUrl}/threads/search`, {
 					headers: { Authorization: `Bearer ${await mintToken(request, claims)}` },
 					data: {}
 				});
@@ -169,9 +175,10 @@ test.describe('Backend Integration', () => {
 
 		for (const aud of [API_AUDIENCE, ['another-api', API_AUDIENCE]]) {
 			test(`should accept the API audience as ${typeof aud === 'string' ? 'a string' : 'a list'}`, async ({
-				request
+				request,
+				apiUrl
 			}) => {
-				const response = await request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+				const response = await request.post(`${apiUrl}/threads/search`, {
 					headers: { Authorization: `Bearer ${await mintToken(request, { aud })}` },
 					data: {}
 				});
@@ -180,14 +187,15 @@ test.describe('Backend Integration', () => {
 		}
 	});
 
-	test.describe('SDK', () => {
+	test.describe('SDK', RUNTIME_CONTRACT, () => {
 		test('should create assistants, stream and rejoin runs, and isolate threads by owner', async ({
-			request
+			request,
+			apiUrl
 		}) => {
 			const otherToken = await mintToken(request, { sub: OIDC_CONFIG.otherUsername });
 			const client = (token: string) =>
 				new Client({
-					apiUrl: LANGGRAPH_CONFIG.apiUrl,
+					apiUrl,
 					defaultHeaders: { Authorization: `Bearer ${token}` }
 				});
 			const owner = client(await mintToken(request));
@@ -222,7 +230,7 @@ test.describe('Backend Integration', () => {
 			}
 
 			expect(await other.threads.search({ ids: [thread.thread_id] })).toEqual([]);
-			const threadUrl = `${LANGGRAPH_CONFIG.apiUrl}/threads/${thread.thread_id}`;
+			const threadUrl = `${apiUrl}/threads/${thread.thread_id}`;
 			for (const [method, url, data] of [
 				['GET', threadUrl, undefined],
 				['PATCH', threadUrl, { metadata: { owner: OIDC_CONFIG.otherUsername } }],
@@ -252,12 +260,13 @@ test.describe('Backend Integration', () => {
 		});
 	});
 
-	test.describe('CORS', () => {
+	test.describe('CORS', RUNTIME_CONTRACT, () => {
 		test('should allow the bearer and reconnect headers in a preflight', async ({
 			request,
-			baseURL
+			baseURL,
+			apiUrl
 		}) => {
-			const response = await request.fetch(`${LANGGRAPH_CONFIG.apiUrl}/threads/search`, {
+			const response = await request.fetch(`${apiUrl}/threads/search`, {
 				method: 'OPTIONS',
 				headers: {
 					Origin: baseURL!,

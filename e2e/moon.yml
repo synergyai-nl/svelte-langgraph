@@ -100,3 +100,12 @@ tasks:
     preset: server
     args:
       - '--ui'
+
+  # Opt-in: `local` makes it a run task, so `moon check` skips it (as it does in CI), and it is not
+  # a dependency of `test`. It shares ports and the test database with `test`: run the two one
+  # after the other.
+  test-runtime-contract:
+    script: 'uv sync --project ../apps/backend --group langgraph-test && playwright test --config playwright.runtime.config.ts'
+    deps:
+      - backend:setup
+    local: true

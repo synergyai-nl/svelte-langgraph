@@ -16,6 +16,10 @@ dependencies = [
 ]
 
 [dependency-groups]
+langgraph-test = [
+    "langgraph-cli[inmem]==0.4.31",
+    "langgraph-api==0.14.1",
+]
 dev = [
     "ai-mock>=0.3.1,<0.4",
     "httpx>=0.28.1",
