@@ -1,4 +1,4 @@
-import { getAuth } from '$lib/auth';
+import { auth } from '$lib/auth';
 import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
 import type { LayoutServerLoad } from './$types';
 
@@ -9,7 +9,6 @@ import type { LayoutServerLoad } from './$types';
  */
 async function loadBearer(event: Parameters<LayoutServerLoad>[0]): Promise<string | null> {
 	try {
-		const auth = await getAuth();
 		const tokens = await auth.api.getAccessToken({
 			headers: event.request.headers,
 			body: { useAccountCookie: true }

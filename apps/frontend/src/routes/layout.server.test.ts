@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 const getAccessToken = vi.hoisted(() => vi.fn());
-vi.mock('$lib/auth', () => ({ getAuth: async () => ({ api: { getAccessToken } }) }));
+vi.mock('$lib/auth', () => ({ auth: { api: { getAccessToken } } }));
 
 import { load } from './+layout.server';
 
