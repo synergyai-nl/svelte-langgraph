@@ -31,13 +31,25 @@ export class AppPage {
 		this.userMenuButton = this.header.getByRole('button', { name: 'User' });
 
 		// Using this.header instead of .page here gives errors.
-		this.signOutButton = page.getByRole('button', { name: 'Sign out' });
+		this.signOutButton = page.getByRole('menuitem', { name: 'Sign out' });
 
 		this.main = this.page.getByRole('main');
 	}
 
-	async signIn() {
-		await this.signInButton.click();
+	async signIn(button: Locator = this.signInButton) {
+		// The button is wired up on hydration; an earlier click would do nothing.
+		await this.waitForHydration();
+		// Fail here, with the status, if the sign-in request is refused.
+		const [response] = await Promise.all([
+			this.page.waitForResponse(
+				(response) =>
+					new URL(response.url()).pathname === '/api/auth/sign-in/social' &&
+					response.request().method() === 'POST',
+				{ timeout: 10_000 }
+			),
+			button.click()
+		]);
+		if (!response.ok()) throw new Error(`Sign-in failed with HTTP ${response.status()}`);
 	}
 
 	/**

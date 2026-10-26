@@ -80,10 +80,11 @@ The `.env` file is organized into sections:
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
-- `AUTH_TRUST_HOST` - Enable auth trust host (set to `true` for development)
+- `BETTER_AUTH_URL` - Frontend origin (`http://localhost:5173` for development; Compose uses `COMPOSE_BETTER_AUTH_URL` instead, see [Production](#production))
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
-- `AUTH_SECRET` - Random string for session encryption (generate with `npx auth secret`)
+- `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
+- `AUTH_OIDC_SCOPES` - Optional space-separated scopes; defaults to `openid profile email offline_access`
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
 
@@ -182,6 +183,10 @@ CHAT_MODEL_KWARGS="{\"reasoning\": {\"effort\": \"medium\"}}"
    - **Frontend** at `http://localhost:5173`
    - **Backend** LangGraph server at `http://localhost:2024`
    - **OIDC mock provider** at `http://localhost:8080`
+
+### OIDC redirect URI
+
+The frontend authenticates with [Better Auth](https://www.better-auth.com) (stateless: sessions and the provider's tokens live in encrypted cookies, there is no auth database). Register `<BETTER_AUTH_URL>/api/auth/callback/oidc` as the redirect URI of your OIDC client (for development `http://localhost:5173/api/auth/callback/oidc`). A session lasts 30 days from sign-in; it is not extended by activity, because a stateless session cannot be renewed. The local mock provider accepts any redirect URI, so it needs no registration. The backend continues to verify the OIDC ID token as the bearer token. The frontend fetches the provider's discovery document at startup; if the provider is down then, signed-in users appear signed out until the next sign-in, which retries discovery.
 
 ### Local Development with OIDC Mock Provider
 
@@ -308,6 +313,12 @@ The frontend container receives an allowlisted set of variables interpolated fro
 PUBLIC_LANGGRAPH_API_URL=https://backend.example.com docker compose up --build
 ```
 
+The frontend's origin comes from `COMPOSE_BETTER_AUTH_URL`, not `BETTER_AUTH_URL` (which the root `.env` sets to the development server). It defaults to `http://localhost:3000`, so register `http://localhost:3000/api/auth/callback/oidc` with your OIDC provider; set it to your public origin for any other setup:
+
+```
+COMPOSE_BETTER_AUTH_URL=https://app.example.com docker compose up --build
+```
+
 `DATABASE_URL` can be overridden the same way, to point the backend at an external or managed Postgres server instead of the bundled `postgres` service. It must be reachable _from inside the backend container_ — a `localhost` URL there means the container itself, not your host.
 
 A host-local Ollama (or other OpenAI-compatible provider bound to the Docker host) must be addressed as `OPENAI_BASE_URL=http://host.docker.internal:11434/v1`. Compose wires `extra_hosts: host.docker.internal:host-gateway`, so this resolves on Linux Docker Engine too (>= 20.10) — Docker Desktop provides it natively.
@@ -315,6 +326,8 @@ A host-local Ollama (or other OpenAI-compatible provider bound to the Docker hos
 **Caveat:** if your root `.env` already sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aegra` (the old shipped default), `docker compose up` now honors it instead of silently overriding it — and that `localhost` resolves to the container itself, not Postgres. Comment out the line, or change the host to `postgres`, to fix it.
 
 ### Security notes
+
+The frontend runs Better Auth's default rate limiter in production (100 requests per 10 seconds per client IP, 3 per 10 seconds for sign-in; only E2E turns it off, with `AUTH_RATE_LIMIT=false`). It takes the client IP from `X-Forwarded-For` and trusts that header only when it holds a single address, so the reverse proxy in front of the frontend must overwrite it with the client's address (e.g. nginx `proxy_set_header X-Forwarded-For $remote_addr;`). If a chain of proxies appends to it instead, list them in `advanced.ipAddress.trustedProxies` in `apps/frontend/src/lib/auth/index.ts`. Without a usable client IP, all clients share one bucket. Behind a TLS-terminating proxy, also set adapter-node's `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER`) so SvelteKit sees the public URL.
 
 The backend image bakes in `AUTH_TYPE=custom`, so it always requires OIDC bearer tokens — it cannot silently fall back to Aegra's unauthenticated `noop` mode. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
 
