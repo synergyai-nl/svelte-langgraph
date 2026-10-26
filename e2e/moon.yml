@@ -80,6 +80,8 @@ tasks:
 
   oidc-mock-e2e:
     extends: oidc-mock
+    # The refresh specs drive the mock through /__test__/settings; only this task exposes it.
+    args: ['--test-controls']
     options:
       envFile: '/.env.e2e'
 

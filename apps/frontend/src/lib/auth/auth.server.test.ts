@@ -101,7 +101,7 @@ describe('while building', () => {
 });
 
 describe('auth configuration', () => {
-	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
+	test('is stateless, ends only the local session on sign-out, and keeps the refresh token off HTTP', async () => {
 		const { options } = (await loadAuth()) as unknown as {
 			options: {
 				database?: unknown;
@@ -114,7 +114,7 @@ describe('auth configuration', () => {
 
 		expect(options.database).toBeUndefined();
 		expect(options.session.expiresIn).toBe(30 * 24 * 60 * 60);
-		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token', '/account-info']);
+		expect(options.disabledPaths).toEqual(['/refresh-token', '/account-info']);
 		// Better Auth's default: on in production.
 		expect(options.rateLimit.enabled).toBeUndefined();
 		const oauth = options.plugins.find((plugin) => plugin.id === 'generic-oauth');
@@ -163,7 +163,7 @@ describe('auth HTTP routes', () => {
 		expect(resolve).not.toHaveBeenCalled();
 	});
 
-	test.each(['get-access-token', 'refresh-token', 'account-info?useAccountCookie=true'])(
+	test.each(['refresh-token', 'account-info?useAccountCookie=true'])(
 		'%s is not served over HTTP',
 		async (path) => {
 			const auth = await loadAuth();

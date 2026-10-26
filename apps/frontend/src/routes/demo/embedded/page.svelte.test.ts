@@ -7,7 +7,7 @@ import { m } from '$lib/paraglide/messages.js';
 
 const pageState = {
 	url: new URL('http://localhost/demo/embedded'),
-	data: { session: null as { accessToken?: string } | null }
+	data: { session: null as { user: { email: string } } | null }
 };
 vi.mock('$app/state', () => ({
 	get page() {
@@ -33,7 +33,7 @@ describe('/demo/embedded', () => {
 	});
 
 	it('mounts the provider-wrapped surface inside the fixed card when signed in', () => {
-		pageState.data.session = { accessToken: 'token-1' };
+		pageState.data.session = { user: { email: 'ada@example.com' } };
 		render(EmbeddedDemoPage);
 
 		// The real <LangGraph> mounts here; its assistant resolution fails against the fake URL

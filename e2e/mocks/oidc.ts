@@ -6,9 +6,14 @@
  * providers do), and RS256 JWT access tokens for the API audience (AUTH_OIDC_AUDIENCE).
  * Any client id and secret are accepted, as are any redirect URIs.
  *
+ * `--test-controls` (set by `e2e:oidc-mock-e2e`) adds `/__test__/settings`: POST
+ * `{ reset?, lifetime?, refresh_error? }` to shorten the token lifetime or fail refreshes, and GET
+ * the settings plus every refresh attempt since the last reset.
+ *
  * Run with `node mocks/oidc.ts` (moon: `e2e:oidc-mock`, or `e2e:oidc-mock-e2e` for the E2E env).
  */
-import { createServer, type IncomingMessage } from 'node:http';
+import { createHash } from 'node:crypto';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import {
 	OAuth2Server,
 	type MutableRedirectUri,
@@ -22,13 +27,19 @@ const ISSUER = 'http://localhost:8080';
 const AUDIENCE = process.env.AUTH_OIDC_AUDIENCE || 'svelte-langgraph-api';
 /** `other-user` lets the E2E suite prove that one user cannot act on another's runs. */
 const SUBJECTS = ['test-user', 'other-user'];
+const TEST_CONTROLS = process.argv.includes('--test-controls');
+const DEFAULT_LIFETIME = 3600;
 
 type Grant = { sub: string; scope: string };
 
 /** Everything the provider remembers; kept in one place so test controls can adjust it. */
 const state = {
 	/** Access token (and id_token) lifetime in seconds. */
-	lifetime: 3600,
+	lifetime: DEFAULT_LIFETIME,
+	/** With test controls: the error every refresh fails with, if any. */
+	refreshError: null as string | null,
+	/** With test controls: each refresh attempt, by the refresh token's sha256 and whether it was live. */
+	refreshes: [] as { credential: string; known: boolean }[],
 	/** Authorization code -> the grant it was issued for; each code is used once. */
 	codes: new Map<string, Grant>(),
 	/** Refresh token -> the grant it continues; each refresh replaces it with a new token. */
@@ -89,6 +100,17 @@ idp.service.on('beforeTokenSigning', (token: MutableToken, req: TokenRequestInco
 
 idp.service.on('beforeResponse', (response: MutableResponse, req: TokenRequestIncomingMessage) => {
 	const body: TokenBody = req.body;
+	if (TEST_CONTROLS && body.grant_type === 'refresh_token') {
+		const token = body.refresh_token ?? '';
+		const credential = createHash('sha256').update(token).digest('hex');
+		state.refreshes.push({ credential, known: state.refreshTokens.has(token) });
+		if (state.refreshError) {
+			// Fail before the grant is spent, so the refresh token stays valid.
+			const statusCode = state.refreshError === 'temporarily_unavailable' ? 503 : 400;
+			Object.assign(response, { statusCode, body: { error: state.refreshError } });
+			return;
+		}
+	}
 	const grant = grantOf(body);
 	state.codes.delete(body.code ?? '');
 	state.refreshTokens.delete(body.refresh_token ?? '');
@@ -119,6 +141,26 @@ idp.service.on('beforeWellKnownOpenIdConfiguration', (response: MutableResponse)
 		code_challenge_methods_supported: ['S256']
 	});
 });
+
+if (TEST_CONTROLS) {
+	type Settings = { reset?: boolean; lifetime?: number; refresh_error?: string | null };
+	const controls = (req: { method?: string; body?: unknown }, res: ServerResponse) => {
+		const body = (req.method === 'POST' ? req.body : undefined) as Settings | undefined;
+		if (body?.reset)
+			Object.assign(state, { lifetime: DEFAULT_LIFETIME, refreshError: null, refreshes: [] });
+		if (body?.lifetime !== undefined) state.lifetime = body.lifetime;
+		if (body?.refresh_error !== undefined) state.refreshError = body.refresh_error;
+		res.setHeader('Content-Type', 'application/json');
+		res.end(
+			JSON.stringify({
+				settings: { lifetime: state.lifetime, refresh_error: state.refreshError },
+				refreshes: state.refreshes
+			})
+		);
+	};
+	idp.service.addRoute('GET', '/__test__/settings', controls);
+	idp.service.addRoute('POST', '/__test__/settings', controls);
+}
 
 async function main() {
 	await idp.issuer.keys.generate('RS256');

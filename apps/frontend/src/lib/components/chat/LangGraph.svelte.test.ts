@@ -77,6 +77,25 @@ describe('<LangGraph> client identity', () => {
 		expect(getCtx()?.client).not.toBe(first);
 	});
 
+	// A token function is read per request, so a refreshed token must never re-mint the client:
+	// `ChatSurface` keys `Conversation` on the client, and a new one would remount the chat.
+	test('a token function keeps the same client across re-renders', async () => {
+		let current = 'tok-a';
+		const getToken = async () => current;
+		const base = { url: 'http://localhost:8000', token: getToken, assistantId: 'assistant-1' };
+		const { rerender, getCtx } = renderProbe(base);
+		await tick();
+		const first = getCtx()?.client;
+		expect(first).toBeDefined();
+
+		current = 'tok-b';
+		await rerender({ ...base, activeThreadId: 't-1' });
+		await rerender({ ...base, activeThreadId: 't-2' });
+		await tick();
+
+		expect(getCtx()?.client).toBe(first);
+	});
+
 	test('no token and no client prop leaves the client undefined', async () => {
 		const { getCtx } = renderProbe({ url: 'http://localhost:8000' });
 		await tick();

@@ -7,15 +7,19 @@
 
 	interface Props {
 		open: boolean;
+		/** The session expired while signed in: explain that, and stay on the page when closed. */
+		expired?: boolean;
 		onclose?: () => void;
 	}
 
-	let { open = $bindable(), onclose }: Props = $props();
+	let { open = $bindable(), expired = false, onclose }: Props = $props();
 
 	function handleOpenChange(open_state: boolean) {
 		if (!open_state) {
+			// Read first: `onclose` may clear the state `expired` derives from.
+			const stay = expired;
 			onclose?.();
-			goto('/');
+			if (!stay) goto('/');
 		}
 	}
 </script>
@@ -24,14 +28,14 @@
 	<Dialog.Content class="bg-card rounded-card-lg shadow-popover border">
 		<Dialog.Header>
 			<Dialog.Title class="text-center">
-				{m.login_modal_title()}
+				{expired ? m.auth_session_expired_title() : m.login_modal_title()}
 			</Dialog.Title>
 		</Dialog.Header>
 
 		<div class="text-center">
 			<CircleAlert class="text-foreground mx-auto mb-4 h-12 w-12" />
 			<h3 class="text-foreground-alt mb-5 text-sm font-normal">
-				{m.login_modal_message()}
+				{expired ? m.auth_session_expired_message() : m.login_modal_message()}
 			</h3>
 		</div>
 
