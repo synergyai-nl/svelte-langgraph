@@ -8,7 +8,8 @@
  *
  * `--test-controls` (set by `e2e:oidc-mock-e2e`) adds `/__test__/settings`: POST
  * `{ reset?, lifetime?, refresh_error? }` to shorten the token lifetime or fail refreshes, and GET
- * the settings plus every refresh attempt since the last reset.
+ * the settings plus every refresh attempt since the last reset. It also adds `/__test__/token`:
+ * POST claims to mint an access token for `test-user` with them; a `null` claim is left out.
  *
  * Run with `node mocks/oidc.ts` (moon: `e2e:oidc-mock`, or `e2e:oidc-mock-e2e` for the E2E env).
  */
@@ -160,6 +161,20 @@ if (TEST_CONTROLS) {
 	};
 	idp.service.addRoute('GET', '/__test__/settings', controls);
 	idp.service.addRoute('POST', '/__test__/settings', controls);
+	idp.service.addRoute('POST', '/__test__/token', async (req, res) => {
+		const claims = { sub: 'test-user', aud: AUDIENCE, scope: 'openid', jti: crypto.randomUUID() };
+		const accessToken = await idp.issuer.buildToken({
+			expiresIn: state.lifetime,
+			scopesOrTransform: (_header, payload) => {
+				Object.assign(payload, claims, req.body);
+				for (const [name, value] of Object.entries(payload)) {
+					if (value === null) delete payload[name];
+				}
+			}
+		});
+		res.setHeader('Content-Type', 'application/json');
+		res.end(JSON.stringify({ accessToken }));
+	});
 }
 
 async function main() {
