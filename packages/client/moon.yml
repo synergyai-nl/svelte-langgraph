@@ -34,3 +34,9 @@ tasks:
     inputs: ['@group(sources)', 'tsconfig.json']
   check:
     deps: [lint, format, typecheck, test]
+  test:
+    # CI runs test-cov, which runs the same tests plus coverage.
+    options: { runInCI: 'skip' }
+  test-cov:
+    # Extends test, so opt back in explicitly or it inherits the skip.
+    options: { runInCI: true }
