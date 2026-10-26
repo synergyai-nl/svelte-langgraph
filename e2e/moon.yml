@@ -7,6 +7,7 @@ type: automation
 fileGroups:
   sources:
     - 'src/**/*'
+    - 'mocks/**/*'
     # Configs
     - '**/*.config.*'
     # Other files
@@ -68,6 +69,19 @@ tasks:
       - '@group(sources)'
       - 'tsconfig.json'
     outputs:
+
+  oidc-mock:
+    # The OIDC provider for local development (`moon :dev :oidc-mock`); see mocks/oidc.ts.
+    # AUTH_OIDC_AUDIENCE comes from the root .env, as for the backend.
+    command: 'node mocks/oidc.ts'
+    preset: server
+    options:
+      envFile: '/.env'
+
+  oidc-mock-e2e:
+    extends: oidc-mock
+    options:
+      envFile: '/.env.e2e'
 
   test:
     command: playwright test
