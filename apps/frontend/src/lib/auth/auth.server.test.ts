@@ -284,4 +284,30 @@ describe('account cookie', () => {
 			auth.api.getAccessToken({ headers: withHeader('someone-else'), body })
 		).rejects.toMatchObject({ statusCode: 409, body: { code: 'ACCOUNT_CHANGED' } });
 	});
+	test('over HTTP, the expected-user header is checked against the session', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+		const call = (expectedUser: string) =>
+			auth.handler(
+				new Request('https://frontend.test/api/auth/get-access-token', {
+					method: 'POST',
+					headers: {
+						...Object.fromEntries(cookieHeaders(alice)),
+						origin: 'https://frontend.test',
+						'content-type': 'application/json',
+						'x-slg-expected-user': expectedUser
+					},
+					body: JSON.stringify({ useAccountCookie: true })
+				})
+			);
+		const { user } = (await auth.api.getSession({ headers: cookieHeaders(alice) }))!;
+
+		const mismatch = await call('someone-else');
+		expect(mismatch.status).toBe(409);
+		expect(await mismatch.json()).toMatchObject({ code: 'ACCOUNT_CHANGED' });
+
+		const own = await call(user.id);
+		expect(own.status).toBe(200);
+		expect(subjectOf((await own.json()).accessToken)).toBe('alice');
+	});
 });
