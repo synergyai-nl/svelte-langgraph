@@ -8,7 +8,7 @@ import {
 	LANGGRAPH_CONFIG,
 	postAccessToken
 } from './fixtures/backend';
-import { OIDC_CONFIG, OidcPage } from './pages';
+import { AppPage, ChatSurfacePage, OIDC_CONFIG, OidcPage } from './pages';
 
 /**
  * Issue #303: the backend token is refreshed in the page, without a reload.
@@ -162,6 +162,41 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 	await expect(chat.textInput).toBeEnabled();
 	await expect(chat.userMessage('Do not replay this')).toHaveCount(0);
 	expect(runs).toHaveLength(0);
+});
+
+test('the embedded demo offers sign-in when the refresh credential is gone, then recovers', async ({
+	page,
+	request
+}) => {
+	await authenticateUser(page);
+	await configure(request, { refresh_error: 'invalid_grant' });
+	// Until the refresh buffer, Better Auth serves the token as is; then its refresh fails.
+	await expect
+		.poll(async () => (await postAccessToken(page)).status(), {
+			timeout: LIFETIME * 1000 + 5_000,
+			intervals: [500]
+		})
+		.toBe(400);
+
+	await page.goto('/demo/embedded');
+	const card = page.locator('[data-testid="embedded-chat-card"]');
+	const signIn = page.getByRole('button', { name: 'Sign in to try this demo' });
+	await expect(page.getByText('Your session has expired')).toBeVisible();
+	await expect(signIn).toBeVisible();
+	await expect(card).toHaveCount(0);
+
+	await configure(request, { refresh_error: null });
+	await new AppPage(page).signIn(signIn);
+	await expectOIDCProviderURL(page);
+	await new OidcPage(page).authorize();
+	await page.waitForURL('/demo/embedded');
+	// The card renders before any token check, so prove the chat works: send and get a reply.
+	const surface = new ChatSurfacePage(card);
+	await expect(surface.textInput).toBeEnabled();
+	await surface.textInput.fill('Hello after re-sign-in');
+	await surface.textInput.press('Enter');
+	await surface.expectAiReply('Hello after re-sign-in');
+	await expect(page.getByText('Your session has expired')).toBeHidden();
 });
 
 test('a draft in the composer survives a token refresh', async ({ page, chat, request }) => {
