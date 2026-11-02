@@ -83,9 +83,12 @@ describe('getToken', () => {
 		}
 	);
 
-	test('a 5xx or network error fails the request without flagging the session', async () => {
+	test('a 5xx, 429 or network error fails the request without flagging the session', async () => {
 		getAccessToken.mockResolvedValue(failed(503));
 		await expect(getToken()).rejects.toThrow('503');
+
+		getAccessToken.mockResolvedValue(failed(429));
+		await expect(getToken()).rejects.toThrow('429');
 
 		getAccessToken.mockRejectedValue(new TypeError('Failed to fetch'));
 		await expect(getToken()).rejects.toThrow('Failed to fetch');
