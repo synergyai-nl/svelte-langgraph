@@ -16,7 +16,10 @@ const failed = (status: number, code?: string) => ({
 	error: { status, statusText: 'x', code }
 });
 const accountChanged = failed(409, 'ACCOUNT_CHANGED');
-const expectedUser = { headers: { 'x-slg-expected-user': 'user-a' } };
+const expectedUser = {
+	headers: { 'x-slg-expected-user': 'user-a' },
+	onResponse: expect.any(Function)
+};
 
 const reload = vi.fn();
 const token = 'token-a';
@@ -24,12 +27,61 @@ const token = 'token-a';
 beforeEach(() => {
 	reload.mockReset();
 	resetBackendToken(reload);
-	getAccessToken.mockReset().mockResolvedValue(ok(token));
+	getAccessToken.mockReset().mockImplementation(withServerDate(ok(token), 0));
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+	vi.useRealTimers();
+	vi.unstubAllGlobals();
+});
+
+/**
+ * A mocked getAccessToken whose response carries a server `Date` taken `serverAheadMs` from the
+ * local clock at send time (none when undefined), delivered after `delayMs` of fake time.
+ */
+const withServerDate = (result: ReturnType<typeof ok>, serverAheadMs?: number, delayMs = 0) =>
+	vi.fn(async (_body: unknown, options: { onResponse: (ctx: { response: Response }) => void }) => {
+		const headers = new Headers();
+		if (serverAheadMs !== undefined) headers.set('date', inMs(serverAheadMs).toUTCString());
+		if (delayMs) vi.advanceTimersByTime(delayMs);
+		options.onResponse({ response: new Response(null, { headers }) });
+		return result;
+	});
 
 describe('getToken', () => {
+	test('judges freshness by the server clock: a token valid locally but near expiry by server time is refetched', async () => {
+		vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00Z') });
+		// Server is 60 s ahead; the token has 62 s left locally, so only 2 s by server time.
+		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(62_000)), 60_000));
+
+		await getToken();
+		await getToken();
+
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+	});
+
+	test('a delayed response is not mistaken for clock skew', async () => {
+		vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00Z') });
+		// Clocks agree. The response arrives 10 s late with a Date from send time; the token
+		// really expires 12 s after sending, so 2 s remain on receipt: inside the buffer.
+		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(12_000)), 0, 10_000));
+
+		await getToken();
+		await getToken();
+
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+	});
+
+	test('without a usable Date header the token is not cached, whatever the browser clock says', async () => {
+		vi.useFakeTimers({ now: new Date('2031-06-15T12:00:00Z') });
+		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(3_600_000))));
+
+		await getToken();
+		await getToken();
+
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+	});
+
 	test('caches a token until it enters Better Auth’s refresh buffer', async () => {
 		expect(await getToken()).toBe(token);
 		expect(await getToken()).toBe(token);
@@ -149,7 +201,7 @@ describe('getToken', () => {
 	test('a refreshed token for the same user replaces the cached one without a reload', async () => {
 		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
 		await getToken();
-		getAccessToken.mockResolvedValue(ok('token-a-refreshed'));
+		getAccessToken.mockImplementation(withServerDate(ok('token-a-refreshed'), 0));
 
 		expect(await getToken()).toBe('token-a-refreshed');
 		expect(await getToken()).toBe('token-a-refreshed');
