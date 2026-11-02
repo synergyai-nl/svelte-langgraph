@@ -51,7 +51,10 @@ const createAuth = () =>
 						// Sign-out ends the local session only; no redirect to the provider.
 						disableProviderLogout: true,
 						requireIdTokenVerification: true,
-						pkce: true
+						pkce: true,
+						// Without a database users live in an in-process memory adapter, so a returning
+						// user would keep their first sign-in's profile until the server restarts.
+						overrideUserInfo: true
 					}
 				]
 			}),
