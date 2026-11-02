@@ -30,11 +30,10 @@
 
 	// One sign-in prompt for the whole chat: when signed out, or when the session expired and
 	// could not be refreshed. Closing it signed out goes home; closing an expired prompt stays,
-	// and the next failed request reopens it.
-	let loginOpen = $state(!page.data.session);
-	$effect.pre(() => {
-		if (signedOut || backendAuth.expired) loginOpen = true;
-	});
+	// and the next failed request reopens it. A later token success clears `expired` and closes
+	// the prompt here; bits-ui reports only its own closes to `onOpenChange`, so that close never
+	// reaches the modal's go-home handler.
+	let loginOpen = $derived(signedOut || backendAuth.expired);
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
 	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`, via `<LangGraph>`). The

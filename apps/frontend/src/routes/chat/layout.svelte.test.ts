@@ -69,4 +69,20 @@ describe('chat layout sign-in prompt', () => {
 		await vi.waitFor(() => expect(backendAuth.expired).toBe(false));
 		expect(goto).not.toHaveBeenCalled();
 	});
+
+	test('closes in place, without going home, once the session recovers', async () => {
+		pageState.data.session = { user: {} };
+		render(ChatLayout, { children });
+
+		backendAuth.expired = true;
+		flushSync();
+		expect(await screen.findByText(m.auth_session_expired_title())).toBeInTheDocument();
+
+		backendAuth.expired = false;
+		flushSync();
+
+		await vi.waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+		expect(screen.getByText('routed content')).toBeInTheDocument();
+		expect(goto).not.toHaveBeenCalled();
+	});
 });
