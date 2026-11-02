@@ -44,8 +44,10 @@ async function fetchToken(): Promise<string> {
 		? navigator.locks.request('slg-backend-token', request)
 		: request());
 	if (error) {
-		// 4xx: no session or account, or the refresh failed. A 5xx may pass; the next request retries.
-		if (error.status >= 500) throw new Error(`Access token request failed: ${error.status}`);
+		// 4xx: no session or account, or the refresh failed. A 5xx or 429 (rate limit) may pass; the
+		// next request retries.
+		if (error.status >= 500 || error.status === 429)
+			throw new Error(`Access token request failed: ${error.status}`);
 		backendAuth.expired = true;
 		throw new Error('Your session has expired. Sign in again to continue.');
 	}
