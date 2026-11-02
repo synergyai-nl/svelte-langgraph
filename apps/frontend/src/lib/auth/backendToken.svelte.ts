@@ -1,6 +1,9 @@
 /**
  * The browser's backend bearer: the OIDC access token from Better Auth's `/get-access-token`,
- * which refreshes it with the provider when fewer than 5 s remain. Cached until then.
+ * which refreshes it with the provider when fewer than 5 s remain. Cached until then. Freshness
+ * follows the server's clock: the expiry is shifted by the largest clock offset the response's
+ * `Date` header allows (measured from send time), so the cache can only expire early. No `Date`,
+ * no caching.
  *
  * Pass `getToken` itself (one stable function) as the chat client's token; the client calls it
  * before every request. State is module-wide, so it outlives component remounts.
@@ -42,11 +45,22 @@ async function fetchToken(): Promise<string> {
 	if (!expectedUserId) return accountChanged();
 	// The server checks the signed-in user against the header in the same request that yields the
 	// token, so another tab's sign-in cannot slip in between.
-	const request = () =>
-		authClient.getAccessToken(
+	let sentAt = 0;
+	let skew: number | null = null; // upper bound of server clock minus local clock, ms
+	const request = () => {
+		sentAt = Date.now();
+		return authClient.getAccessToken(
 			{ useAccountCookie: true },
-			{ headers: { 'x-slg-expected-user': expectedUserId } }
+			{
+				headers: { 'x-slg-expected-user': expectedUserId },
+				onResponse: ({ response }) => {
+					// `Date` is floored to the second and was stamped after we sent the request.
+					const serverDate = Date.parse(response.headers.get('date') ?? '');
+					if (!Number.isNaN(serverDate)) skew = serverDate + 1_000 - sentAt;
+				}
+			}
 		);
+	};
 	// Across tabs: the second tab's request then sees the first tab's rotated cookie, so the
 	// server does not spend the same refresh token twice.
 	const { data, error } = await (navigator.locks
@@ -62,7 +76,10 @@ async function fetchToken(): Promise<string> {
 		throw new Error('Your session has expired. Sign in again to continue.');
 	}
 	const expiresAt = data.accessTokenExpiresAt;
-	cached = { token: data.accessToken, expiresAt: expiresAt ? +new Date(expiresAt) : null };
+	cached = {
+		token: data.accessToken,
+		expiresAt: expiresAt && skew !== null ? +new Date(expiresAt) - skew : null
+	};
 	backendAuth.expired = false;
 	return data.accessToken;
 }
