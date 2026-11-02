@@ -97,6 +97,9 @@ tasks:
       mergeArgs: 'replace'
 
   test:
+    # CI runs test-cov, which runs the same tests plus coverage.
+    options:
+      runInCI: skip
     deps:
       - build
     args:
@@ -104,6 +107,9 @@ tasks:
       - 'passed-only'
 
   test-cov:
+    # Extends test, so opt back in explicitly or it inherits the skip.
+    options:
+      runInCI: true
     deps:
       - build
     args:
