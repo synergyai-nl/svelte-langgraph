@@ -193,4 +193,84 @@ describe('function token', () => {
 
 		expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer test-token');
 	});
+
+	describe('a token that never arrives', () => {
+		const pending = () => new Promise<string>(() => {});
+		afterEach(() => vi.restoreAllMocks());
+
+		it('lets a caller abort our own routes, with the signal’s reason', async () => {
+			const controller = new AbortController();
+			const request = createClient('https://backend.test/api/', pending).generateTitle(
+				messages,
+				controller.signal
+			);
+			controller.abort(new Error('stopped'));
+
+			await expect(request).rejects.toThrow('stopped');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects at once when the signal is already aborted', async () => {
+			const request = createClient('https://backend.test/api/', pending).generateTitle(
+				messages,
+				AbortSignal.abort(new Error('already'))
+			);
+
+			await expect(request).rejects.toThrow('already');
+		});
+
+		it('does not leave a later token failure unhandled after an early abort', async () => {
+			let fail!: (error: Error) => void;
+			const token = new Promise<string>((_, reject) => (fail = reject));
+			const request = createClient('https://backend.test/api/', () => token).generateTitle(
+				messages,
+				AbortSignal.abort(new Error('already'))
+			);
+
+			await expect(request).rejects.toThrow('already');
+			fail(new Error('token failed'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+
+		it('times out our own routes', async () => {
+			const timeout = new AbortController();
+			vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+			const request = createClient('https://backend.test/api/', pending).submitFeedback(
+				'thread-1',
+				'ai-1',
+				'up'
+			);
+			timeout.abort(new DOMException('timed out', 'TimeoutError'));
+
+			await expect(request).rejects.toThrow('timed out');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('lets a caller abort an SDK request, which the SDK hands to onRequest', async () => {
+			const controller = new AbortController();
+			const request = createClient('https://backend.test/api/', pending).threads.search({
+				limit: 1,
+				signal: controller.signal
+			});
+			controller.abort(new Error('stopped'));
+
+			await expect(request).rejects.toThrow('stopped');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('does not cancel the token request for other callers', async () => {
+			let release!: (token: string) => void;
+			const shared = new Promise<string>((resolve) => (release = resolve));
+			const client = createClient('https://backend.test/api/', () => shared);
+			const controller = new AbortController();
+			const aborted = client.generateTitle(messages, controller.signal);
+			const patient = client.submitFeedback('thread-1', 'ai-1', 'up');
+			controller.abort(new Error('stopped'));
+			release('late');
+
+			await expect(aborted).rejects.toThrow('stopped');
+			await patient;
+			expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer late');
+		});
+	});
 });
