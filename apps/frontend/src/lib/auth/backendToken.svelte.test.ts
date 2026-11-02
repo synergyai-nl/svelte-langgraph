@@ -1,11 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte';
 
-const { getAccessToken, getSession } = vi.hoisted(() => ({
-	getAccessToken: vi.fn(),
-	getSession: vi.fn()
-}));
-vi.mock('./client', () => ({ authClient: { getAccessToken, getSession } }));
+const { getAccessToken } = vi.hoisted(() => ({ getAccessToken: vi.fn() }));
+vi.mock('./client', () => ({ authClient: { getAccessToken } }));
 // The page was rendered for user-a.
 vi.mock('$app/state', () => ({ page: { data: { session: { user: { id: 'user-a' } } } } }));
 
@@ -14,8 +11,12 @@ const ok = (accessToken: string, accessTokenExpiresAt: Date | null = inMs(3_600_
 	data: { accessToken, accessTokenExpiresAt, scopes: [], idToken: 'private-id' },
 	error: null
 });
-const failed = (status: number) => ({ data: null, error: { status, statusText: 'x' } });
-const signedInAs = (id: string) => ({ data: { session: {}, user: { id } }, error: null });
+const failed = (status: number, code?: string) => ({
+	data: null,
+	error: { status, statusText: 'x', code }
+});
+const accountChanged = failed(409, 'ACCOUNT_CHANGED');
+const expectedUser = { headers: { 'x-slg-expected-user': 'user-a' } };
 
 const reload = vi.fn();
 const token = 'token-a';
@@ -24,7 +25,6 @@ beforeEach(() => {
 	reload.mockReset();
 	resetBackendToken(reload);
 	getAccessToken.mockReset().mockResolvedValue(ok(token));
-	getSession.mockReset().mockResolvedValue(signedInAs('user-a'));
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -34,7 +34,10 @@ describe('getToken', () => {
 		expect(await getToken()).toBe(token);
 		expect(await getToken()).toBe(token);
 
-		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith({ useAccountCookie: true });
+		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith(
+			{ useAccountCookie: true },
+			expectedUser
+		);
 	});
 
 	test.each([
@@ -58,7 +61,10 @@ describe('getToken', () => {
 		release(ok(token));
 
 		expect(await Promise.all(calls)).toEqual([token, token, token]);
-		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith({ useAccountCookie: true });
+		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith(
+			{ useAccountCookie: true },
+			expectedUser
+		);
 	});
 
 	test('holds a cross-tab lock around the request when available', async () => {
@@ -96,48 +102,48 @@ describe('getToken', () => {
 		expect(backendAuth.expired).toBe(false);
 	});
 
-	test('a session for the page’s user returns and caches the token', async () => {
+	test('asserts the page’s user to the server and caches the token', async () => {
 		expect(await getToken()).toBe(token);
 		expect(await getToken()).toBe(token);
 
-		expect(getSession).toHaveBeenCalledOnce();
+		expect(getAccessToken).toHaveBeenCalledExactlyOnceWith(
+			{ useAccountCookie: true },
+			expectedUser
+		);
 		expect(reload).not.toHaveBeenCalled();
 	});
 
-	test.each([
-		['another user', signedInAs('user-b')],
-		['no session', { data: null, error: null }]
-	])(
-		'%s on the first fetch reloads the page and neither returns nor caches the token',
-		async (_, session) => {
-			getSession.mockResolvedValue(session);
+	test('ACCOUNT_CHANGED on the first fetch reloads the page and neither returns nor caches a token', async () => {
+		getAccessToken.mockResolvedValue(accountChanged);
 
-			await expect(getToken()).rejects.toThrow(/account changed/);
-			await expect(getToken()).rejects.toThrow(/account changed/);
-			expect(getAccessToken).toHaveBeenCalledTimes(2);
-			expect(reload).toHaveBeenCalledTimes(2);
-		}
-	);
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(reload).toHaveBeenCalledTimes(2);
+		expect(backendAuth.expired).toBe(false);
+	});
 
-	test('another user on a later refresh reloads the page', async () => {
+	test('ACCOUNT_CHANGED on a later refresh reloads the page', async () => {
 		getAccessToken.mockResolvedValue(ok(token, inMs(1_000)));
 		await getToken();
-		getAccessToken.mockResolvedValue(ok('token-b'));
-		getSession.mockResolvedValue(signedInAs('user-b'));
+		getAccessToken.mockResolvedValue(accountChanged);
 
 		await expect(getToken()).rejects.toThrow(/account changed/);
 		expect(reload).toHaveBeenCalledOnce();
 	});
 
-	test('a failed session request fails the request without flagging the session', async () => {
-		getSession.mockResolvedValue(failed(502));
-		await expect(getToken()).rejects.toThrow('502');
-
-		getSession.mockRejectedValue(new TypeError('Failed to fetch'));
-		await expect(getToken()).rejects.toThrow('Failed to fetch');
-
-		expect(backendAuth.expired).toBe(false);
-		expect(reload).not.toHaveBeenCalled();
+	test('a page rendered without a user reloads without sending a request', async () => {
+		const { page } = await import('$app/state');
+		const data = page.data as { session: unknown };
+		const original = data.session;
+		data.session = null;
+		try {
+			await expect(getToken()).rejects.toThrow(/account changed/);
+		} finally {
+			data.session = original;
+		}
+		expect(getAccessToken).not.toHaveBeenCalled();
+		expect(reload).toHaveBeenCalledOnce();
 	});
 
 	test('a refreshed token for the same user replaces the cached one without a reload', async () => {
