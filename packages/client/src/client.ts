@@ -18,6 +18,25 @@ export interface AppClient extends TitleClient {
 const ROUTE_TIMEOUT_MS = 15_000;
 
 /**
+ * Waits for `promise`, but gives up with `signal.reason` once the signal aborts. The promise itself
+ * is left running: a shared token refresh must not be cancelled by one caller giving up.
+ */
+function abortable<T>(value: T | Promise<T>, signal: AbortSignal): Promise<T> {
+	return new Promise<T>((resolve, reject) => {
+		if (signal.aborted) {
+			// Still observe the value, so a later rejection is not unhandled.
+			Promise.resolve(value).catch(() => {});
+			return reject(signal.reason);
+		}
+		const onAbort = () => reject(signal.reason);
+		signal.addEventListener('abort', onAbort, { once: true });
+		Promise.resolve(value)
+			.finally(() => signal.removeEventListener('abort', onAbort))
+			.then(resolve, reject);
+	});
+}
+
+/**
  * A bearer token, or a function that returns the current one. A function is called before every
  * request (SDK requests, streams and their reconnects, and our own routes), so a token that
  * expires can be refreshed without building a new client.
@@ -58,7 +77,8 @@ export function createClient(
 		onRequest:
 			readToken &&
 			(async (_url, init) => {
-				const bearer = await readToken();
+				// The SDK has merged its timeout and the caller's signal into `init.signal`.
+				const bearer = await (init.signal ? abortable(readToken(), init.signal) : readToken());
 				const requestHeaders = new Headers(init.headers);
 				if (bearer) requestHeaders.set('Authorization', `Bearer ${bearer}`);
 				return { ...init, headers: requestHeaders };
@@ -66,8 +86,9 @@ export function createClient(
 	});
 
 	async function postJson(route: string, body: unknown, signal?: AbortSignal): Promise<Response> {
-		const bearer = await readToken?.();
 		const timeout = AbortSignal.timeout(ROUTE_TIMEOUT_MS);
+		const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
+		const bearer = await (readToken ? abortable(readToken(), combined) : undefined);
 		const response = await fetch(apiEndpoint(baseUrl, route), {
 			method: 'POST',
 			headers: {
@@ -76,7 +97,7 @@ export function createClient(
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify(body),
-			signal: signal ? AbortSignal.any([signal, timeout]) : timeout
+			signal: combined
 		});
 		if (!response.ok) throw new Error(`POST ${route} failed: ${response.status}`);
 		return response;
