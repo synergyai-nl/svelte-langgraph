@@ -17,6 +17,7 @@ vi.mock('$env/dynamic/private', () => ({ env: process.env }));
 // A real OIDC provider in-process; the subject of the tokens it issues is chosen per sign-in.
 const idp = new OAuth2Server();
 let subject = '';
+let displayName: string | undefined;
 
 beforeAll(async () => {
 	await idp.issuer.keys.generate('RS256');
@@ -26,7 +27,11 @@ beforeAll(async () => {
 		token.payload.jti = crypto.randomUUID();
 	});
 	idp.service.on('beforeUserinfo', (response) => {
-		response.body = { sub: subject, email: `${subject}@example.test`, name: subject };
+		response.body = {
+			sub: subject,
+			email: `${subject}@example.test`,
+			name: displayName ?? subject
+		};
 	});
 });
 afterAll(() => idp.stop());
@@ -49,6 +54,7 @@ beforeEach(() => {
 afterEach(() => {
 	vi.unstubAllEnvs();
 	vi.restoreAllMocks();
+	displayName = undefined;
 });
 
 const loadAuth = async () => (await import('./index')).auth;
@@ -159,6 +165,20 @@ describe('auth HTTP routes', () => {
 			expect(response.status).toBe(404);
 		}
 	);
+});
+
+describe('sign-in profile', () => {
+	test('a returning user gets the profile the provider reports now', async () => {
+		const auth = await loadAuth();
+		const first = await signIn(auth, 'alice');
+		expect((await auth.api.getSession({ headers: cookieHeaders(first) }))?.user.name).toBe('alice');
+
+		displayName = 'Alice Renamed';
+		const second = await signIn(auth, 'alice');
+		expect((await auth.api.getSession({ headers: cookieHeaders(second) }))?.user.name).toBe(
+			'Alice Renamed'
+		);
+	});
 });
 
 describe('account cookie', () => {
