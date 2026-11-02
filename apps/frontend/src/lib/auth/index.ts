@@ -7,6 +7,8 @@ import { getAccountCookie } from 'better-auth/cookies';
 import { genericOAuth } from 'better-auth/plugins';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 
+/** Set by the browser's token fetch to the user id its page was rendered for. */
+const EXPECTED_USER_HEADER = 'x-slg-expected-user';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 
 function required(name: string): string {
@@ -21,6 +23,20 @@ function required(name: string): string {
 const bindAccountCookie = createAuthMiddleware(async (ctx) => {
 	if (!['/get-access-token', '/refresh-token', '/account-info'].includes(ctx.path)) return;
 	const [account, session] = await Promise.all([getAccountCookie(ctx), getSessionFromCtx(ctx)]);
+	// The page asserts whom it was rendered for. The session, account cookie and header all come
+	// from this one request, so another tab's sign-in cannot slip in between a check and the token.
+	const expectedUser = ctx.headers?.get(EXPECTED_USER_HEADER);
+	if (
+		ctx.path === '/get-access-token' &&
+		expectedUser &&
+		session &&
+		session.user.id !== expectedUser
+	) {
+		throw APIError.from('CONFLICT', {
+			code: 'ACCOUNT_CHANGED',
+			message: 'Signed-in account changed'
+		});
+	}
 	if (account && account.userId !== session?.user.id) {
 		throw APIError.from('BAD_REQUEST', { code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
 	}

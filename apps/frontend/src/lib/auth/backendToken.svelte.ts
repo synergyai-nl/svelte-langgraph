@@ -5,8 +5,9 @@
  * Pass `getToken` itself (one stable function) as the chat client's token; the client calls it
  * before every request. State is module-wide, so it outlives component remounts.
  *
- * Every fetch is bound to the user the page was rendered for (`page.data.session.user.id`):
- * cookies are shared across tabs, so another tab may have signed in as someone else since.
+ * Every fetch asserts the user the page was rendered for (`page.data.session.user.id`) in a header
+ * the server checks: cookies are shared across tabs, so another tab may have signed in as someone
+ * else since.
  */
 import { page } from '$app/state';
 import { authClient } from './client';
@@ -30,32 +31,35 @@ let reload = () => location.reload();
 const isFresh = (entry: CachedToken | null): entry is CachedToken =>
 	entry?.expiresAt != null && entry.expiresAt - Date.now() > REFRESH_BUFFER_MS;
 
+/** Never act as another account under this page's: re-render as whoever is signed in now. */
+function accountChanged(): never {
+	reload();
+	throw new Error('The signed-in account changed. Reloading.');
+}
+
 async function fetchToken(): Promise<string> {
 	const expectedUserId: string | undefined = page.data.session?.user.id;
-	// One after the other, so the token call's cookie writes land before the session is read.
-	const request = async () =>
-		[
-			await authClient.getAccessToken({ useAccountCookie: true }),
-			await authClient.getSession()
-		] as const;
+	if (!expectedUserId) return accountChanged();
+	// The server checks the signed-in user against the header in the same request that yields the
+	// token, so another tab's sign-in cannot slip in between.
+	const request = () =>
+		authClient.getAccessToken(
+			{ useAccountCookie: true },
+			{ headers: { 'x-slg-expected-user': expectedUserId } }
+		);
 	// Across tabs: the second tab's request then sees the first tab's rotated cookie, so the
 	// server does not spend the same refresh token twice.
-	const [{ data, error }, session] = await (navigator.locks
+	const { data, error } = await (navigator.locks
 		? navigator.locks.request('slg-backend-token', request)
 		: request());
 	if (error) {
+		if (error.code === 'ACCOUNT_CHANGED') return accountChanged();
 		// 4xx: no session or account, or the refresh failed. A 5xx or 429 (rate limit) may pass; the
 		// next request retries.
 		if (error.status >= 500 || error.status === 429)
 			throw new Error(`Access token request failed: ${error.status}`);
 		backendAuth.expired = true;
 		throw new Error('Your session has expired. Sign in again to continue.');
-	}
-	if (session.error) throw new Error(`Session request failed: ${session.error.status}`);
-	if (!expectedUserId || session.data?.user.id !== expectedUserId) {
-		// Never act as another account under this page's: re-render as whoever is signed in now.
-		reload();
-		throw new Error('The signed-in account changed. Reloading.');
 	}
 	const expiresAt = data.accessTokenExpiresAt;
 	cached = { token: data.accessToken, expiresAt: expiresAt ? +new Date(expiresAt) : null };

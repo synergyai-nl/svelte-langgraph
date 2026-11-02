@@ -266,4 +266,22 @@ describe('account cookie', () => {
 			await expect(call()).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
 		}
 	});
+
+	test('the expected-user header must match the session on get-access-token', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+		const body = { useAccountCookie: true as const };
+		const withHeader = (id: string) => {
+			const headers = new Headers(cookieHeaders(alice));
+			headers.set('x-slg-expected-user', id);
+			return headers;
+		};
+		const alicesId = (await auth.api.getSession({ headers: cookieHeaders(alice) }))!.user.id;
+
+		const tokens = await auth.api.getAccessToken({ headers: withHeader(alicesId), body });
+		expect(subjectOf(tokens.accessToken)).toBe('alice');
+		await expect(
+			auth.api.getAccessToken({ headers: withHeader('someone-else'), body })
+		).rejects.toMatchObject({ statusCode: 409, body: { code: 'ACCOUNT_CHANGED' } });
+	});
 });
