@@ -72,8 +72,8 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    pnpm dlx shadcn-svelte@latest add https://svelte-langgraph-demo.synergyai.nl/r/chat.json
    ```
 
-   That URL serves the item built from `main`; re-run `add` to update, and review the overwrite
-   prompts.
+   That URL serves the item built from `main`. Re-running `add` updates it, and reverts any
+   local patches to the files it ships.
 
    This copies the components into `$lib/components/chat/`, the client library into
    `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
@@ -82,8 +82,15 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
    which **overwrite** your own versions of those: the chat components rely on the
    container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
-   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. The CLI prompts before
-   overwriting existing files; review the diff if you customized any of them.
+   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. They ride inside the
+   `chat` item, so always accept the `chat` prompt.
+
+   The CLI asks about overwriting per item: `chat`, then each stock component it depends on
+   (`button`, `card`, `input`, `separator`, `sheet`, `skeleton`, `textarea`, `tooltip`, ...).
+   Answer No to "overwrite all" to decide item by item, and decline the stock components you
+   customised: the chat only uses their stock variants and sizes. `-y` only skips the "Ready to
+   install?" confirmation and never overwrites. A non-interactive run needs `-y -o`, which
+   overwrites everything; follow it with `git restore` on the components you customised.
 
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
@@ -129,17 +136,45 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
    are compiled before you run `svelte-check`.
 
-5. Edit the chat UI's strings in `messages/chat/{locale}.json`. Add a locale by adding its file
-   there and to `locales` in the settings.
+5. Edit the chat UI's strings in `messages/chat/{locale}.json`. The item ships `en`, `nl` and
+   `hi`, and Paraglide compiles only the `locales` in your settings: delete the files for
+   locales you don't ship (the next `add` restores them), or add the locale to `locales`.
+   Add a new locale by adding its file there and to `locales`.
+
+6. Tidy up after the add:
+   - **Prettier.** `prettier-plugin-tailwindcss` re-sorts the `prose` classes once the
+     typography plugin from step 3 is registered. Run Prettier over the installed files after
+     each add.
+   - **ESLint.** `ThreadListItem` renders an `<a href>` from `hrefFor`, which must return a
+     resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
+     `src/lib/components/chat/**` (the same override you may already have for `ui/**`).
+   - **Font weights.** The components use `font-medium` (`ChatToolMessage` three times,
+     `SuggestionCard`, and the stock `dialog-title`, `sidebar-group-label`,
+     `sidebar-menu-badge` and `sidebar-menu-button`). If your app has a weight policy, patch
+     them after each add.
+   - **Dependencies.** The add lists its npm packages under `dependencies`. An adapter-node app
+     that ships without `node_modules` should move them to `devDependencies`.
+
+### Backend routes
+
+Besides the LangGraph API, the client calls `POST {url}/titles` and `POST {url}/feedback`,
+custom routes of this repo's demo backend. Without them, thread titles stay as dates, and
+the rating buttons stay disabled: a message is only rateable when its
+`response_metadata.run_id` is set, which the demo backend stamps per run.
+See "Feedback architecture and upstream migration" in
+[`apps/backend/README.md`](../backend/README.md) for what to port.
 
 ### Minimal usage
 
 A bounded-height container holding the provider, and a child that creates the first thread and
 renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
-client only when `token` is truthy; pass a pre-built `client` instead otherwise. `graph`
-defaults to `'chat'`. The token is sent as a bearer token: send whatever your backend validates,
-normally an access token for your API's audience. This repo's demo backend currently checks the
-OIDC id_token.
+client only when `token` is truthy; pass a pre-built `client` instead otherwise. Set `graph` to
+your server's graph id: the key under `graphs` in your `aegra.json` or `langgraph.json`. It
+defaults to `'chat'`, which only fits servers that use that key. A wrong id fails assistant
+resolution: `ctx.error` is set and `ChatSurface` keeps showing its loader, so render the error
+yourself (as below). The token is sent as a bearer token: send whatever your backend validates,
+normally an access token for your API's audience. Which token that is depends on your backend's
+auth handler.
 
 ```svelte
 <!-- +page.svelte -->
@@ -152,7 +187,7 @@ OIDC id_token.
 </script>
 
 <div class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border">
-	<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
+	<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} graph="chat">
 		<Chat />
 	</LangGraph>
 </div>
