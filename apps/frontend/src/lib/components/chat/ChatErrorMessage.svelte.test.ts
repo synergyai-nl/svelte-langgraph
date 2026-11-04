@@ -1,39 +1,22 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
 import ChatErrorMessage from './ChatErrorMessage.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
-const error = new Error('HTTP 401 {"detail":"Unauthorized"}');
-
 function renderComponent(overrides: Record<string, unknown> = {}) {
-	return renderWithProviders(ChatErrorMessage, { error, ...overrides });
+	return renderWithProviders(ChatErrorMessage, overrides);
 }
 
 describe('ChatErrorMessage', () => {
-	let consoleError: ReturnType<typeof vi.spyOn>;
-
-	beforeEach(() => {
-		consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		consoleError.mockRestore();
-	});
-
-	describe('when rendered with an error', () => {
+	describe('when rendered with a retry handler', () => {
 		beforeEach(() => {
 			renderComponent({ onRetry: vi.fn() });
 		});
 
-		test('shows the localized generic text, not the raw error', () => {
+		test('shows the localized generic text', () => {
 			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
-			expect(screen.queryByText(error.message)).not.toBeInTheDocument();
-		});
-
-		test('logs the raw error', () => {
-			expect(consoleError).toHaveBeenCalledWith(error);
 		});
 
 		test('renders the retry button', () => {

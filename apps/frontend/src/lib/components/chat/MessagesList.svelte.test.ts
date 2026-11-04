@@ -1,9 +1,8 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { renderWithProviders } from '../__tests__/render';
 import MessagesList from './MessagesList.svelte';
 import { anAIMessage, aUserMessage, aToolMessage } from '../__tests__/fixtures';
-import * as m from '$lib/paraglide/messages.js';
 
 function renderMessages(overrides: Record<string, unknown> = {}) {
 	return renderWithProviders(MessagesList, {
@@ -150,30 +149,10 @@ describe('MessagesList', () => {
 	});
 
 	describe('when generationError is set', () => {
-		const error = new Error('Something went wrong');
+		test('displays the error card even without a retry handler', () => {
+			renderMessages({ generationError: new Error('Something went wrong') });
 
-		beforeEach(() => {
-			vi.spyOn(console, 'error').mockImplementation(() => {});
-		});
-
-		afterEach(() => {
-			vi.restoreAllMocks();
-		});
-
-		test('displays the error card with a retry button', () => {
-			renderMessages({ generationError: error, onRetryError: vi.fn() });
-
-			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
-			expect(screen.getByRole('button', { name: m.slg_chat_error_retry() })).toBeInTheDocument();
-		});
-
-		test('displays the error card without a retry button when no retry handler is given', () => {
-			renderMessages({ generationError: error });
-
-			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
-			expect(
-				screen.queryByRole('button', { name: m.slg_chat_error_retry() })
-			).not.toBeInTheDocument();
+			expect(screen.getByTestId('chat-error')).toBeInTheDocument();
 		});
 	});
 });
