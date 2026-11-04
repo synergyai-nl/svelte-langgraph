@@ -47,6 +47,11 @@
 		onThreadChange?: (id: string | null) => void;
 		/** Thread row links for `ThreadList`; must return a resolved path (see `ThreadList`). */
 		hrefFor?: (t: ThreadSummary) => string;
+		/**
+		 * Set `false` when the backend has no `POST {url}/titles` route (the demo backend's custom
+		 * route, see the README's "Backend routes"): no thread titles are requested. Defaults to `true`.
+		 */
+		titles?: boolean;
 		children: Snippet;
 	}
 
@@ -60,13 +65,17 @@
 		activeThreadId: activeThreadIdProp,
 		onThreadChange,
 		hrefFor,
+		titles = true,
 		children
 	}: Props = $props();
 
 	// Captured once, from the *initial* props: whether the owned `ThreadListState` should start
 	// in the loading state (SSR — see `ThreadListOptions.initialLoading`, and `+layout.svelte`'s
 	// existing `Boolean(page.data.session?.accessToken)` precedent).
-	const ctx = new LangGraphContext({ initialLoading: Boolean(token || clientProp) });
+	const ctx = new LangGraphContext({
+		initialLoading: Boolean(token || clientProp),
+		titles
+	});
 	setLangGraphContext(ctx);
 
 	// Derive the client on the token *string* (not a session object) so navigations that keep the
@@ -106,6 +115,10 @@
 
 	$effect(() => {
 		ctx.setHrefFor(hrefFor);
+	});
+
+	$effect(() => {
+		ctx.setTitles(titles);
 	});
 
 	// Assistant resolution — children never do this themselves. Re-resolves whenever the
