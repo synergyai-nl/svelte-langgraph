@@ -93,14 +93,14 @@ describe('ThreadList context defaults', () => {
 	test('disables "New chat" while the context has no client', () => {
 		renderUnderContext(undefined);
 
-		expect(screen.getByRole('button', { name: m.sidebar_new_chat() })).toBeDisabled();
+		expect(screen.getByRole('button', { name: m.slg_sidebar_new_chat() })).toBeDisabled();
 	});
 
 	test('"New chat" creates a thread through the context and selects it', async () => {
 		const create = vi.fn().mockResolvedValue({ thread_id: t2.id });
 		const ctx = renderUnderContext(clientWithThreads({ create }));
 
-		await userEvent.click(screen.getByRole('button', { name: m.sidebar_new_chat() }));
+		await userEvent.click(screen.getByRole('button', { name: m.slg_sidebar_new_chat() }));
 
 		expect(create).toHaveBeenCalledOnce();
 		await waitFor(() => expect(ctx.activeThreadId).toBe(t2.id));
@@ -111,9 +111,9 @@ describe('ThreadList context defaults', () => {
 		const create = vi.fn().mockRejectedValue(new Error('HTTP 400: {"detail":"boom"}'));
 		renderUnderContext(clientWithThreads({ create }));
 
-		await userEvent.click(screen.getByRole('button', { name: m.sidebar_new_chat() }));
+		await userEvent.click(screen.getByRole('button', { name: m.slg_sidebar_new_chat() }));
 
-		expect(await screen.findByRole('alert')).toHaveTextContent(m.sidebar_new_chat_error());
+		expect(await screen.findByRole('alert')).toHaveTextContent(m.slg_sidebar_new_chat_error());
 		expect(screen.queryByText(/HTTP 400/)).not.toBeInTheDocument();
 	});
 
@@ -122,9 +122,9 @@ describe('ThreadList context defaults', () => {
 		const create = vi.fn().mockRejectedValue(new Error('boom'));
 		const ctx = renderUnderContext(clientWithThreads({ create }), { error: null });
 
-		await userEvent.click(screen.getByRole('button', { name: m.sidebar_new_chat() }));
+		await userEvent.click(screen.getByRole('button', { name: m.slg_sidebar_new_chat() }));
 
 		await waitFor(() => expect(ctx.createThreadError).not.toBeNull());
-		expect(screen.queryByText(m.sidebar_new_chat_error())).not.toBeInTheDocument();
+		expect(screen.queryByText(m.slg_sidebar_new_chat_error())).not.toBeInTheDocument();
 	});
 });

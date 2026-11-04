@@ -26,7 +26,7 @@
 		data-streaming={active ? 'true' : 'false'}
 	>
 		<Brain size={16} class="text-purple-500 dark:text-purple-400 {active ? 'animate-pulse' : ''}" />
-		<span>{m.thinking()}</span>
+		<span>{m.slg_thinking()}</span>
 		<ChevronRight class="h-3 w-3" style={collapsed ? '' : 'transform: rotate(90deg)'} />
 	</button>
 

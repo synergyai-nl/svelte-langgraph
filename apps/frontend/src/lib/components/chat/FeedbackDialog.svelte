@@ -48,13 +48,13 @@
 		<Dialog.Header>
 			<Dialog.Title>
 				{rating === 'down'
-					? m.message_feedback_dialog_title_negative()
-					: m.message_feedback_dialog_title_positive()}
+					? m.slg_message_feedback_dialog_title_negative()
+					: m.slg_message_feedback_dialog_title_positive()}
 			</Dialog.Title>
 		</Dialog.Header>
 
 		<label class="text-foreground-alt text-sm" for="feedback-comment">
-			{m.message_feedback_dialog_details()}
+			{m.slg_message_feedback_dialog_details()}
 		</label>
 		<Textarea
 			id="feedback-comment"
@@ -63,16 +63,16 @@
 			rows={4}
 			maxlength={COMMENT_MAX_LENGTH}
 			placeholder={rating === 'down'
-				? m.message_feedback_dialog_placeholder_negative()
-				: m.message_feedback_dialog_placeholder_positive()}
+				? m.slg_message_feedback_dialog_placeholder_negative()
+				: m.slg_message_feedback_dialog_placeholder_positive()}
 		/>
 
 		<Dialog.Footer>
 			<Button variant="secondary" onclick={() => resolve()} data-testid="feedback-cancel">
-				{m.message_feedback_dialog_cancel()}
+				{m.slg_message_feedback_dialog_cancel()}
 			</Button>
 			<Button onclick={submit} data-testid="feedback-submit">
-				{m.message_feedback_dialog_submit()}
+				{m.slg_message_feedback_dialog_submit()}
 			</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

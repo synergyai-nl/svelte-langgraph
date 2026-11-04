@@ -143,6 +143,8 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `hi`, and Paraglide compiles only the `locales` in your settings: delete the files for
    locales you don't ship (the next `add` restores them), or add the locale to `locales`.
    Add a new locale by adding its file there and to `locales`.
+   Every chat key is prefixed `slg_` (`m.slg_cancel()`), so it cannot collide with your own keys.
+   If you overrode strings under the old unprefixed names, rename those keys.
 
 6. Tidy up after the add:
    - **Prettier.** `prettier-plugin-tailwindcss` re-sorts the `prose` classes once the
