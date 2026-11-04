@@ -320,7 +320,7 @@
 		<div class="min-h-0 flex-1 overflow-y-auto pb-4" aria-busy={api.isThreadLoading}>
 			{#if api.isThreadLoading}
 				<div data-testid="chat-history-loading" class="mx-auto w-full max-w-4xl space-y-4 p-4">
-					<p class="sr-only" role="status" aria-live="polite">{m.chat_history_loading()}</p>
+					<p class="sr-only" role="status" aria-live="polite">{m.slg_chat_history_loading()}</p>
 					<div class="bg-muted h-16 w-3/4 animate-pulse rounded-lg"></div>
 					<div class="bg-muted h-16 w-full animate-pulse rounded-lg"></div>
 					<div class="bg-muted h-16 w-1/2 animate-pulse rounded-lg"></div>

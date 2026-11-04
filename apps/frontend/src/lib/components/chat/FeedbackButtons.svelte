@@ -30,7 +30,7 @@
 	let disabled = $derived(!available || !onSubmit || status === 'pending' || status === 'sent');
 
 	// Sent and failed need no label: the highlight and the asterisk say those.
-	let label = $derived(available ? null : m.message_feedback_unavailable());
+	let label = $derived(available ? null : m.slg_message_feedback_unavailable());
 
 	function choose(type: FeedbackScore) {
 		if (disabled || draft) return;
@@ -64,12 +64,12 @@
 				variant="ghost"
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {rating === 'up' ? 'bg-muted' : ''}"
-				title={m.message_feedback_good()}
+				title={m.slg_message_feedback_good()}
 			>
 				<ThumbsUp size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{label ?? m.message_feedback_good()}</TooltipContent>
+		<TooltipContent>{label ?? m.slg_message_feedback_good()}</TooltipContent>
 	</Tooltip>
 	<Tooltip>
 		<TooltipTrigger>
@@ -79,12 +79,12 @@
 				variant="ghost"
 				size="icon-sm"
 				class="h-6 w-6 p-1.5 {rating === 'down' ? 'bg-muted' : ''}"
-				title={m.message_feedback_bad()}
+				title={m.slg_message_feedback_bad()}
 			>
 				<ThumbsDown size={16} />
 			</Button>
 		</TooltipTrigger>
-		<TooltipContent>{label ?? m.message_feedback_bad()}</TooltipContent>
+		<TooltipContent>{label ?? m.slg_message_feedback_bad()}</TooltipContent>
 	</Tooltip>
 
 	{#if status === 'pending'}
@@ -102,10 +102,10 @@
 					size={14}
 					class="text-destructive"
 					data-testid="feedback-failed"
-					aria-label={m.message_feedback_failed()}
+					aria-label={m.slg_message_feedback_failed()}
 				/>
 			</TooltipTrigger>
-			<TooltipContent>{m.message_feedback_failed()}</TooltipContent>
+			<TooltipContent>{m.slg_message_feedback_failed()}</TooltipContent>
 		</Tooltip>
 	{/if}
 </div>

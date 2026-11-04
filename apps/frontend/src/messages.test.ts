@@ -57,4 +57,9 @@ describe('message catalogues', () => {
 		const chatKeys = keysOf(chatEn);
 		expect(keysOf(en).filter((key) => chatKeys.includes(key))).toEqual([]);
 	});
+
+	test('prefix every chat key with slg_', () => {
+		// The chat catalogue is installed into consumer apps, whose own keys share the flat `m.*` namespace.
+		expect(keysOf(chatEn).filter((key) => !key.startsWith('slg_'))).toEqual([]);
+	});
 });

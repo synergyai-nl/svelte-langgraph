@@ -22,7 +22,7 @@
 		isStreaming = false,
 		onSubmit,
 		onStop,
-		placeholder = m.chat_input_placeholder()
+		placeholder = m.slg_chat_input_placeholder()
 	}: Props = $props();
 
 	let isEmpty = $derived(!(value ?? '').trim());
@@ -70,8 +70,8 @@
 						{isStreaming}
 						disabled={isStreaming || isEmpty}
 						{onStop}
-						sendLabel={m.chat_input_send()}
-						stopLabel={m.chat_input_stop()}
+						sendLabel={m.slg_chat_input_send()}
+						stopLabel={m.slg_chat_input_stop()}
 					/>
 				</div>
 			</div>
