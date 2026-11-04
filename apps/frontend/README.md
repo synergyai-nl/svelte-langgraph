@@ -268,8 +268,8 @@ renders `ChatSurface` (which fills and scrolls inside the container). `<LangGrap
 client only when `token` is truthy; pass a pre-built `client` instead otherwise. Set `graph` to
 your server's graph id: the key under `graphs` in your `aegra.json` or `langgraph.json`. It
 defaults to `'chat'`, which only fits servers that use that key. A wrong id fails assistant
-resolution: `ctx.error` is set and `ChatSurface` keeps showing its loader, so render the error
-yourself (as below). The token is sent as a bearer token: send whatever your backend validates,
+resolution, so pass `graph` explicitly: `ChatSurface` then shows an error with a Retry button
+instead of its loader (`ctx.error` is set, and Retry calls `ctx.retryResolution()`). The token is sent as a bearer token: send whatever your backend validates,
 normally an access token for your API's audience. Which token that is depends on your backend's
 auth handler.
 

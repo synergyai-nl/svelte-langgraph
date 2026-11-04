@@ -11,6 +11,8 @@
 	 * holding `<ThreadList />` and a pane with your own `<Sidebar.Trigger />` and `<ChatSurface />`.
 	 */
 	import ChatLoader from './ChatLoader.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as m from '$lib/paraglide/messages.js';
 	import Conversation from './Conversation.svelte';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
@@ -64,6 +66,20 @@
 				{/key}
 			{/key}
 		{/key}
+	{:else if ctx.error}
+		<!-- A failed assistant resolution (e.g. a wrong `graph`) would otherwise leave the loader up
+		     forever. Resolution also retries on thread navigation, but a router-free embed has none,
+		     so the explicit `retryResolution()` lever is offered here. -->
+		<div
+			role="alert"
+			data-testid="chat-connect-error"
+			class="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-sm"
+		>
+			<p class="text-muted-foreground">{m.slg_connect_error()}</p>
+			<Button variant="outline" size="sm" onclick={() => ctx.retryResolution()}>
+				{m.slg_connect_retry()}
+			</Button>
+		</div>
 	{:else}
 		<ChatLoader />
 	{/if}

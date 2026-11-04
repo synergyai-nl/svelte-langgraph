@@ -161,6 +161,31 @@ describe('ChatSurface', () => {
 		});
 	});
 
+	describe('assistant resolution failure', () => {
+		test('shows an error with Retry instead of the loader, and Retry calls retryResolution', async () => {
+			const user = userEvent.setup();
+			const client = makeMockClient();
+			const ctx = makeContext({ client });
+			ctx.setError(new Error('boom'));
+			const retryResolution = vi.spyOn(ctx, 'retryResolution');
+			render(LangGraphHost, { props: { ctx, component: ChatSurface, threadId: 'test-123' } });
+
+			const alert = screen.getByRole('alert');
+			expect(alert).toHaveAttribute('data-testid', 'chat-connect-error');
+			expect(alert).toHaveTextContent("Couldn't connect to the chat.");
+			expect(screen.queryByPlaceholderText('Ask your agent…')).not.toBeInTheDocument();
+
+			await user.click(screen.getByRole('button', { name: 'Retry' }));
+			expect(retryResolution).toHaveBeenCalledTimes(1);
+			expect(ctx.resolutionNonce).toBe(1);
+		});
+
+		test('renders no error block while resolution has not failed', () => {
+			renderChatSurface();
+			expect(screen.queryByTestId('chat-connect-error')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('{#key} remount on threadId change', () => {
 		test('remounts Conversation (re-initializes useStream) when threadId changes', async () => {
 			const streamMock = vi.mocked(useStream);
