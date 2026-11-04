@@ -28,21 +28,7 @@
 	});
 </script>
 
-{#if ctx.error}
-	<!-- A failed assistant resolution only auto-retries on thread navigation, which this
-	     router-free embed never performs — without the explicit retryResolution() lever a
-	     transient failure here would strand the embed until a full page reload. -->
-	<div class="flex h-full flex-col items-center justify-center gap-2 p-4 text-sm">
-		<p class="text-destructive" role="alert">
-			{m.demo_embedded_error({
-				message: ctx.error instanceof Error ? ctx.error.message : String(ctx.error)
-			})}
-		</p>
-		<button type="button" class="underline" onclick={() => ctx.retryResolution()}
-			>{m.demo_embedded_try_again()}</button
-		>
-	</div>
-{:else if ctx.createThreadError}
+{#if ctx.createThreadError}
 	<div class="flex h-full flex-col items-center justify-center gap-2 p-4 text-sm">
 		<p class="text-destructive" role="alert">{m.demo_embedded_new_chat_error()}</p>
 		<button

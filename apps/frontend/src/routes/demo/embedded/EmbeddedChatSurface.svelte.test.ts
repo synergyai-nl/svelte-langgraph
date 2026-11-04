@@ -43,17 +43,4 @@ describe('EmbeddedChatSurface', () => {
 		await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
 		await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
 	});
-
-	it('offers a retry when assistant resolution failed', async () => {
-		const ctx = makeContext({ client: makeMockClient(), assistantId: 'asst-1' });
-		ctx.setError(new Error('resolution timed out'));
-		vi.spyOn(ctx, 'createThread').mockResolvedValue(false);
-		const retryResolution = vi.spyOn(ctx, 'retryResolution');
-
-		render(LangGraphHost, { ctx, component: EmbeddedChatSurface });
-
-		expect(screen.getByRole('alert')).toHaveTextContent('resolution timed out');
-		await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-		expect(retryResolution).toHaveBeenCalledTimes(1);
-	});
 });
