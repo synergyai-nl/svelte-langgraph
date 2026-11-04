@@ -25,12 +25,12 @@ const threadsGetMock = vi.fn().mockResolvedValue({ metadata: {} });
 const threadsUpdateMock = vi.fn().mockResolvedValue({});
 const generateTitleMock = vi.fn().mockResolvedValue({ title: 'Generated Title' });
 
-function renderConversationWithRefresh() {
+function renderConversationWithRefresh(options: { titles?: boolean } = {}) {
 	const client = makeMockClient({
 		threads: { get: threadsGetMock, update: threadsUpdateMock },
 		generateTitle: generateTitleMock
 	});
-	const ctx = makeContext({ client, assistantId: 'assistant-1' });
+	const ctx = makeContext({ client, assistantId: 'assistant-1', titles: options.titles });
 	const refresh = vi.spyOn(ctx.threadList, 'refresh').mockImplementation(() => {});
 	render(LangGraphHost, {
 		props: { ctx, component: Conversation, threadId: 'test-123' }
@@ -366,5 +366,38 @@ describe('Frontend-driven thread titling (SLG-117)', () => {
 
 		resolveWait({ title: 'Generated Title' });
 		await waitFor(() => expect(threadsUpdateMock).toHaveBeenCalledTimes(1));
+	});
+});
+
+describe('Conversation with titles disabled', () => {
+	test('requests no title on a settled run, nor reads thread metadata', async () => {
+		threadsGetMock.mockResolvedValue({ metadata: {} });
+		const refresh = renderConversationWithRefresh({ titles: false });
+		await tick();
+
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(false);
+		await tick();
+
+		// The thread list still refreshes on settle; only titling is off.
+		expect(refresh).toHaveBeenCalledTimes(1);
+		await tick();
+		expect(generateTitleMock).not.toHaveBeenCalled();
+		expect(threadsGetMock).not.toHaveBeenCalled();
+		expect(threadsUpdateMock).not.toHaveBeenCalled();
+	});
+
+	test('does not backfill an untitled thread on mount', async () => {
+		threadsGetMock.mockResolvedValue({ metadata: {} });
+		mockModule.setMessages(openingExchange);
+
+		renderConversationWithRefresh({ titles: false });
+		await tick();
+		await tick();
+
+		expect(generateTitleMock).not.toHaveBeenCalled();
+		expect(threadsGetMock).not.toHaveBeenCalled();
 	});
 });

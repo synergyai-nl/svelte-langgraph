@@ -227,12 +227,15 @@
 	// success-only check.
 	let wasLoading = false;
 
-	const titler = createThreadTitler({
-		client: langGraphClient,
-		threadId,
-		onTitled: () => ctx.threadList.refresh()
-	});
-	onDestroy(() => titler.dispose());
+	// No titler when the backend has no `/titles` route (`<LangGraph titles={false}>`).
+	const titler = ctx.titles
+		? createThreadTitler({
+				client: langGraphClient,
+				threadId,
+				onTitled: () => ctx.threadList.refresh()
+			})
+		: undefined;
+	onDestroy(() => titler?.dispose());
 
 	$effect(() => {
 		const loading = stream.isLoading;
@@ -242,7 +245,7 @@
 		untrack(() => {
 			ctx.threadList.refresh();
 			// The titler awaits the response and cancels its request on unmount.
-			void titler.ensureThreadTitle(stream.messages);
+			void titler?.ensureThreadTitle(stream.messages);
 		});
 	});
 
@@ -253,7 +256,7 @@
 	$effect(() => {
 		if (stream.isThreadLoading || backfillAttempted) return;
 		backfillAttempted = true;
-		untrack(() => void titler.ensureThreadTitle(stream.messages));
+		untrack(() => void titler?.ensureThreadTitle(stream.messages));
 	});
 
 	// Report history-loading state up so the sidebar can mark this thread's row as pending.

@@ -255,11 +255,23 @@ When a release needs a stock component you don't have yet, its release notes say
 ### Backend routes
 
 Besides the LangGraph API, the client calls `POST {url}/titles` and `POST {url}/feedback`,
-custom routes of this repo's demo backend. Without them, thread titles stay as dates, and
-the rating buttons stay disabled: a message is only rateable when its
-`response_metadata.run_id` is set, which the demo backend stamps per run.
+custom routes of this repo's demo backend. A backend that lacks them gets a failed request per
+settled run and per page load unless you opt out:
+
+- **Titles.** `<LangGraph titles={false}>` creates no titler, so `/titles` is never called and
+  thread titles stay as dates. The default is `true`. With titles on, the backend must accept
+  `POST {url}/titles` with `{ messages: [{ type, content }] }` (the opening exchange) and answer
+  `{ title: string | null }`; the client then stores the title in the thread's `metadata.title`
+  itself.
+- **Feedback.** `POST {url}/feedback` takes `{ thread_id, message_id, score, comment? }`. A
+  message is only rateable when its `response_metadata.run_id` is set, which the demo backend
+  stamps per run; without it the rating buttons stay disabled and `/feedback` is never called.
+  There is no prop for this, so a backend without the route and with `run_id` set would get
+  failed rating requests.
+
 See "Feedback architecture and upstream migration" in
-[`apps/backend/README.md`](../backend/README.md) for what to port.
+[`apps/backend/README.md`](../backend/README.md#feedback-architecture-and-upstream-migration)
+for what to port.
 
 ### Minimal usage
 
