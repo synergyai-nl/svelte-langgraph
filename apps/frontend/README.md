@@ -60,7 +60,8 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
 ### Requirements
 
 - SvelteKit **2**. SvelteKit 3 is not supported yet
-  ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+  ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)). Current `sv create`
+  (1.x) scaffolds Kit 3; scaffold a new consumer with `pnpm dlx sv@0.17.1 create` until then.
 - Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
 - Paraglide.
 
@@ -89,9 +90,10 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `textarea`,
    `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
    Answer No to "overwrite all" to decide item by item, and decline the stock components you
-   customised: the chat only uses their stock variants and sizes. `-y` only skips the "Ready to
-   install?" confirmation and never overwrites. A non-interactive run needs `-y -o`, which
-   overwrites everything; follow it with `git restore` on the components you customised.
+   customised: the chat only uses their stock variants and sizes. `-y` does not answer the
+   overwrite prompts, and they default to Yes, so read them before pressing Enter. A
+   non-interactive run needs `-y -o`, which overwrites everything; follow it with `git restore`
+   on the components you customised.
 
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
@@ -153,11 +155,11 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
      `SuggestionCard`, the stock `dialog-title`, and `sidebar-group-label`,
      `sidebar-menu-badge` and `sidebar-menu-button` in the item's sidebar copy. If your app has a
      weight policy, patch them after each add.
-   - **Dependencies.** The add writes its npm packages under `dependencies` with the item's
-     version ranges, replacing the ranges you already had, even newer ones (for example
-     `@lucide/svelte` `^1.x` becomes `^0.562.0`). Restore your ranges after each add. An
-     adapter-node app that ships without `node_modules` should also move the packages to
-     `devDependencies`.
+   - **Dependencies.** The add rewrites the version ranges of packages you already have to the
+     item's, even downgrades (`@lucide/svelte` `^1.x` becomes `^0.562.0`, `tailwind-variants`
+     `^4` becomes `^3`), and adds the missing ones, most under `dependencies`. Check
+     `package.json` after each add and restore your ranges. An adapter-node app that ships
+     without `node_modules` keeps the packages under `devDependencies`.
 
 ### Backend routes
 
