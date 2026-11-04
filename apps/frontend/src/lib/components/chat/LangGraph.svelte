@@ -72,10 +72,7 @@
 	// Captured once, from the *initial* props: whether the owned `ThreadListState` should start
 	// in the loading state (SSR — see `ThreadListOptions.initialLoading`, and `+layout.svelte`'s
 	// existing `Boolean(page.data.session?.accessToken)` precedent).
-	const ctx = new LangGraphContext({
-		initialLoading: Boolean(token || clientProp),
-		titles
-	});
+	const ctx = new LangGraphContext({ initialLoading: Boolean(token || clientProp) });
 	setLangGraphContext(ctx);
 
 	// Derive the client on the token *string* (not a session object) so navigations that keep the

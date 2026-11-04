@@ -256,11 +256,11 @@ When a release needs a stock component you don't have yet, its release notes say
 
 Besides the LangGraph API, the client calls `POST {url}/titles` and `POST {url}/feedback`,
 custom routes of this repo's demo backend. A backend that lacks them gets a failed request per
-settled run and per page load unless you opt out:
+settled run and per page load unless you opt out of titles:
 
 - **Titles.** `<LangGraph titles={false}>` creates no titler, so `/titles` is never called and
   thread titles stay as dates. The default is `true`. With titles on, the backend must accept
-  `POST {url}/titles` with `{ messages: [{ type, content }] }` (the opening exchange) and answer
+  `POST {url}/titles` with `{ messages: [{ type, content }] }` (the opening exchange; `type` is `'human' | 'ai'`) and answer
   `{ title: string | null }`; the client then stores the title in the thread's `metadata.title`
   itself.
 - **Feedback.** `POST {url}/feedback` takes `{ thread_id, message_id, score, comment? }`. A

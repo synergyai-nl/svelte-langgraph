@@ -28,8 +28,9 @@ export function makeContext(
 		titles?: boolean;
 	} = {}
 ): LangGraphContext {
-	const ctx = new LangGraphContext({ titles: options.titles });
+	const ctx = new LangGraphContext();
 	if (options.client) ctx.setClient(options.client);
 	if (options.assistantId !== undefined) ctx.setAssistantId(options.assistantId);
+	if (options.titles !== undefined) ctx.setTitles(options.titles);
 	return ctx;
 }

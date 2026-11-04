@@ -26,6 +26,10 @@ const threadsUpdateMock = vi.fn().mockResolvedValue({});
 const generateTitleMock = vi.fn().mockResolvedValue({ title: 'Generated Title' });
 
 function renderConversationWithRefresh(options: { titles?: boolean } = {}) {
+	return renderWithCtx(options).refresh;
+}
+
+function renderWithCtx(options: { titles?: boolean } = {}) {
 	const client = makeMockClient({
 		threads: { get: threadsGetMock, update: threadsUpdateMock },
 		generateTitle: generateTitleMock
@@ -35,7 +39,7 @@ function renderConversationWithRefresh(options: { titles?: boolean } = {}) {
 	render(LangGraphHost, {
 		props: { ctx, component: Conversation, threadId: 'test-123' }
 	});
-	return refresh;
+	return { refresh, ctx };
 }
 
 beforeEach(() => {
@@ -399,5 +403,23 @@ describe('Conversation with titles disabled', () => {
 
 		expect(generateTitleMock).not.toHaveBeenCalled();
 		expect(threadsGetMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('Conversation titles toggled after mount', () => {
+	test('setTitles(false) before the run settles suppresses the title request', async () => {
+		threadsGetMock.mockResolvedValue({ metadata: {} });
+		const { ctx } = renderWithCtx();
+		await tick();
+
+		ctx.setTitles(false);
+		mockModule.setIsLoading(true);
+		await tick();
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(false);
+		await tick();
+		await tick();
+
+		expect(generateTitleMock).not.toHaveBeenCalled();
 	});
 });

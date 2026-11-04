@@ -27,8 +27,6 @@ import {
 export interface LangGraphContextOptions {
 	/** Start the owned `ThreadListState` in the loading state — see `ThreadListOptions.initialLoading`. */
 	initialLoading?: boolean;
-	/** Initial value of `titles`; see `LangGraphContext.titles`. Defaults to `true`. */
-	titles?: boolean;
 }
 
 export class LangGraphContext {
@@ -62,7 +60,6 @@ export class LangGraphContext {
 
 	constructor(options?: LangGraphContextOptions) {
 		this.threadList = new ThreadListState({ initialLoading: options?.initialLoading });
-		this.#titles = options?.titles ?? true;
 	}
 
 	// --- client ----------------------------------------------------------------------------
@@ -239,11 +236,7 @@ export class LangGraphContext {
 
 	// --- pass-through props ------------------------------------------------------------------
 
-	/**
-	 * Whether the backend provides the demo's `POST /titles` route. `Conversation` reads it once,
-	 * when it creates its titler, so it is seeded through the constructor as well as pushed by
-	 * `LangGraph.svelte`'s wiring effect.
-	 */
+	/** Whether the backend has the demo's `POST /titles` route; `false` means `Conversation` never requests titles. */
 	get titles(): boolean {
 		return this.#titles;
 	}
