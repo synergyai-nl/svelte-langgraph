@@ -86,7 +86,8 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `chat` item, so always accept the `chat` prompt.
 
    The CLI asks about overwriting per item: `chat`, then each stock component it depends on
-   (`button`, `card`, `input`, `separator`, `sheet`, `skeleton`, `textarea`, `tooltip`, ...).
+   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `textarea`,
+   `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
    Answer No to "overwrite all" to decide item by item, and decline the stock components you
    customised: the chat only uses their stock variants and sizes. `-y` only skips the "Ready to
    install?" confirmation and never overwrites. A non-interactive run needs `-y -o`, which
@@ -148,12 +149,15 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    - **ESLint.** `ThreadListItem` renders an `<a href>` from `hrefFor`, which must return a
      resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
      `src/lib/components/chat/**` (the same override you may already have for `ui/**`).
-   - **Font weights.** The components use `font-medium` (`ChatToolMessage` three times,
-     `SuggestionCard`, and the stock `dialog-title`, `sidebar-group-label`,
-     `sidebar-menu-badge` and `sidebar-menu-button`). If your app has a weight policy, patch
-     them after each add.
-   - **Dependencies.** The add lists its npm packages under `dependencies`. An adapter-node app
-     that ships without `node_modules` should move them to `devDependencies`.
+   - **Font weights.** The components use `font-medium`: `ChatToolMessage` (three times),
+     `SuggestionCard`, the stock `dialog-title`, and `sidebar-group-label`,
+     `sidebar-menu-badge` and `sidebar-menu-button` in the item's sidebar copy. If your app has a
+     weight policy, patch them after each add.
+   - **Dependencies.** The add writes its npm packages under `dependencies` with the item's
+     version ranges, replacing the ranges you already had, even newer ones (for example
+     `@lucide/svelte` `^1.x` becomes `^0.562.0`). Restore your ranges after each add. An
+     adapter-node app that ships without `node_modules` should also move the packages to
+     `devDependencies`.
 
 ### Backend routes
 
@@ -236,6 +240,10 @@ pnpm dlx shadcn-svelte@latest add http://localhost:5173/r/chat.json
 ```
 
 The CLI only accepts URLs, not file paths.
+
+Without the dev server, build and serve only the item: `moon frontend:registry-build`, then
+`python3 -m http.server 4877 -d apps/frontend/static/r`, and add
+`http://localhost:4877/chat.json`.
 
 ---
 
