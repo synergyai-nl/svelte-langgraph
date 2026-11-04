@@ -95,7 +95,7 @@
 			transition:fly={{ y: 20, duration: revealFrom === 0 ? 800 : 0 }}
 		>
 			{#if generationError}
-				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
+				<ChatErrorMessage onRetry={onRetryError} />
 			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}

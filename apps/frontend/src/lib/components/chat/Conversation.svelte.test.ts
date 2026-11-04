@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
 import { screen, waitFor, within, render } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
@@ -316,7 +316,6 @@ describe('Conversation', () => {
 
 	describe('when stream errors before any messages arrive', () => {
 		test('shows the error', async () => {
-			vi.spyOn(console, 'error').mockImplementation(() => {});
 			mockModule.setError(new Error('Connection failed'));
 
 			renderConversation();
@@ -324,7 +323,6 @@ describe('Conversation', () => {
 			await waitFor(() => {
 				expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
 			});
-			vi.restoreAllMocks();
 		});
 	});
 
@@ -336,14 +334,6 @@ describe('Conversation', () => {
 				mockModule.setError(new Error('HTTP 401 {"detail":"Unauthorized"}'));
 			});
 		}
-
-		beforeEach(() => {
-			vi.spyOn(console, 'error').mockImplementation(() => {});
-		});
-
-		afterEach(() => {
-			vi.restoreAllMocks();
-		});
 
 		test('puts the text back in the composer', async () => {
 			const user = userEvent.setup();

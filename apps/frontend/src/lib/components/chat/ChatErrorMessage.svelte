@@ -4,19 +4,14 @@
 	import { CircleAlert, RefreshCw } from '@lucide/svelte';
 	import * as m from '$lib/paraglide/messages.js';
 
+	// Takes no error: the raw text (e.g. `HTTP 401 {...}`) is for developers, and the stream
+	// already logs it to the console. The reader gets a localized generic text.
 	interface Props {
-		error: Error;
 		/** Shows a Retry button when given; without it the card only reports the error. */
 		onRetry?: () => void;
 	}
 
-	let { error, onRetry }: Props = $props();
-
-	// The raw error (e.g. `HTTP 401 {...}`) is for developers, not for the reader: log it and
-	// show a localized generic text instead.
-	$effect(() => {
-		console.error(error);
-	});
+	let { onRetry }: Props = $props();
 </script>
 
 <div class="mb-6 flex w-full justify-start" data-testid="chat-error">
