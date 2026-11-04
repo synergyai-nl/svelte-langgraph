@@ -11,7 +11,7 @@
 	interface Props {
 		message: Message;
 		isHovered: boolean;
-		onRegenerate: (message: Message) => void;
+		onRegenerate?: (message: Message) => void;
 		onFeedback?: (type: FeedbackScore, comment?: string) => Promise<void>;
 		feedbackAvailable?: boolean;
 	}
@@ -76,22 +76,24 @@
 		</TooltipContent>
 	</Tooltip>
 
-	<Tooltip>
-		<TooltipTrigger>
-			<Button
-				onclick={() => onRegenerate(message)}
-				class="h-6 w-6"
-				variant="ghost"
-				size="icon-sm"
-				title={m.slg_message_regenerate()}
-			>
-				<RefreshCw size={16} />
-			</Button>
-		</TooltipTrigger>
-		<TooltipContent>
-			{m.slg_message_regenerate()}
-		</TooltipContent>
-	</Tooltip>
+	{#if onRegenerate}
+		<Tooltip>
+			<TooltipTrigger>
+				<Button
+					onclick={() => onRegenerate(message)}
+					class="h-6 w-6"
+					variant="ghost"
+					size="icon-sm"
+					title={m.slg_message_regenerate()}
+				>
+					<RefreshCw size={16} />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent>
+				{m.slg_message_regenerate()}
+			</TooltipContent>
+		</Tooltip>
+	{/if}
 
 	<FeedbackButtons
 		onSubmit={onFeedback}

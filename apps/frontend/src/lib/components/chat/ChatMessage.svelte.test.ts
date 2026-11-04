@@ -134,4 +134,31 @@ describe('ChatMessage', () => {
 			);
 		});
 	});
+
+	describe('with edit and regenerate handlers', () => {
+		test('offers Edit on a user message', () => {
+			renderUserComponent();
+			expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+		});
+
+		test('offers Regenerate on an AI message', () => {
+			renderAIComponent();
+			expect(screen.getByRole('button', { name: 'Regenerate' })).toBeInTheDocument();
+		});
+	});
+
+	describe('without edit and regenerate handlers (read-only)', () => {
+		test('offers no Edit on a user message', () => {
+			renderWithProviders(ChatMessage, { message: aUserMessage() });
+			expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+		});
+
+		test('offers no Regenerate on an AI message but keeps Copy', () => {
+			renderWithProviders(ChatMessage, { message: anAIMessage() });
+			expect(screen.queryByRole('button', { name: 'Regenerate' })).not.toBeInTheDocument();
+			expect(screen.getAllByRole('button').some((b) => b.getAttribute('name') === 'copy')).toBe(
+				true
+			);
+		});
+	});
 });

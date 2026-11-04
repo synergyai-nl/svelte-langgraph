@@ -14,8 +14,10 @@
 		isStreaming?: boolean;
 		generationError?: Error | null;
 		onRetryError?: () => void;
-		onEdit: (message: Message, newText: string) => boolean;
-		onRegenerate: (message: Message) => void;
+		/** Omit for a read-only conversation: user messages then have no Edit action. */
+		onEdit?: (message: Message, newText: string) => boolean;
+		/** Omit for a read-only conversation: AI messages then have no Regenerate action. */
+		onRegenerate?: (message: Message) => void;
 		onFeedback?: (message: Message, type: FeedbackScore, comment?: string) => Promise<void>;
 	}
 
