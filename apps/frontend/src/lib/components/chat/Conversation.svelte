@@ -26,7 +26,10 @@
 		finalAnswerStarted: boolean;
 		/** Current (non-cancellation) generation error, if any. */
 		error: Error | null;
-		/** Submit a new user message. No-op while `isLoading` or given only whitespace. */
+		/**
+		 * Submit a new user message. No-op while `isLoading` or given only whitespace. Clears
+		 * `input`, and puts the text back when the send fails before the message reaches the thread.
+		 */
 		submit: (text: string) => void;
 		/** Resubmit the last user message after a generation error. */
 		retry: () => void;
@@ -158,18 +161,32 @@
 		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
 	);
 
+	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
+	// `stream.error`. A send refused before the run starts (e.g. a 401) settles with an error
+	// and no new human message in the thread, so the text would be lost: put it back in the
+	// composer, unless the user has started typing something else meanwhile.
+	async function submitHumanMessage(text: string) {
+		const humanCountAtSubmit = messages.filter((m) => m.type === 'user').length;
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		await stream.submit({ messages: [{ type: 'human', content: text }] });
+		const humanCount = messages.filter((m) => m.type === 'user').length;
+		if (generationError && humanCount === humanCountAtSubmit && current_input === '') {
+			current_input = text;
+		}
+	}
+
 	function submitInput(text: string) {
 		if (!text.trim() || stream.isLoading) return;
 		last_user_message = text;
 		current_input = '';
-		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit({ messages: [{ type: 'human', content: text }] });
+		void submitHumanMessage(text);
 	}
 
 	function retryGenerationAfterError() {
 		if (!last_user_message) return;
-		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit({ messages: [{ type: 'human', content: last_user_message }] });
+		// A refused send put the text back in the composer; retrying sends it, so clear it.
+		if (current_input === last_user_message) current_input = '';
+		void submitHumanMessage(last_user_message);
 	}
 
 	function stopGeneration() {

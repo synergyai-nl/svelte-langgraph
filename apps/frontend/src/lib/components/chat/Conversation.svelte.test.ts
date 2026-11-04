@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
 import { screen, waitFor, within, render } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
@@ -316,13 +316,83 @@ describe('Conversation', () => {
 
 	describe('when stream errors before any messages arrive', () => {
 		test('shows the error', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
 			mockModule.setError(new Error('Connection failed'));
 
 			renderConversation();
 
 			await waitFor(() => {
-				expect(screen.getByText('Connection failed')).toBeInTheDocument();
+				expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
 			});
+			vi.restoreAllMocks();
+		});
+	});
+
+	describe('when a send is refused before the run starts', () => {
+		// Like the real stream: `submit` resolves once the run settles, with the error in
+		// `stream.error` and no new human message in the thread.
+		function refuseSubmit() {
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				mockModule.setError(new Error('HTTP 401 {"detail":"Unauthorized"}'));
+			});
+		}
+
+		beforeEach(() => {
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		test('puts the text back in the composer', async () => {
+			const user = userEvent.setup();
+			refuseSubmit();
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() => expect(textbox).toHaveValue('Hello'));
+			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
+		});
+
+		test('keeps the composer empty when the human message reached the thread', async () => {
+			const user = userEvent.setup();
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+				mockModule.setError(new Error('Generation failed'));
+			});
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello');
+			await user.keyboard('{Enter}');
+
+			await screen.findByTestId('chat-error');
+			expect(textbox).toHaveValue('');
+		});
+
+		test('retry sends the restored text and clears the composer', async () => {
+			const user = userEvent.setup();
+			refuseSubmit();
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello');
+			await user.keyboard('{Enter}');
+			await waitFor(() => expect(textbox).toHaveValue('Hello'));
+
+			const submit = vi.fn(async () => {
+				mockModule.setError(null);
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+			});
+			mockModule.mockStreamCallbacks.submit = submit;
+			await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
+
+			expect(submit).toHaveBeenCalledWith({ messages: [{ type: 'human', content: 'Hello' }] });
+			await waitFor(() => expect(textbox).toHaveValue(''));
 		});
 	});
 

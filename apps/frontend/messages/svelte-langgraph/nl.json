@@ -18,6 +18,7 @@
 	"slg_message_edit": "Bewerken",
 	"slg_message_copied": "Gekopieerd",
 	"slg_message_copy_failed": "Kopiëren mislukt",
+	"slg_error_generic": "Er ging iets mis. Probeer het opnieuw.",
 	"slg_chat_error_retry": "Opnieuw proberen",
 	"slg_cancel": "Annuleren",
 	"slg_save_and_send": "Opslaan & Verzenden",

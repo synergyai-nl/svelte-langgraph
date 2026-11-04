@@ -46,6 +46,40 @@ test.describe('Sending', () => {
 		// The form must not fall through to a native GET submission (?message=...).
 		await expect(page).not.toHaveURL(/[?&]message=/);
 	});
+
+	test('a send refused before the run starts keeps the text and shows the error card', async ({
+		page,
+		chat
+	}) => {
+		await page.route(
+			'**/runs/stream',
+			(route) =>
+				route.fulfill({
+					status: 401,
+					contentType: 'application/json',
+					body: JSON.stringify({ detail: 'Unauthorized' })
+				}),
+			{ times: 1 }
+		);
+
+		const message = `Refused ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+
+		// The localized default text, never the raw `HTTP 401 {...}`.
+		const errorCard = page.getByTestId('chat-error');
+		await expect(errorCard).toContainText('Something went wrong. Try again.');
+		await expect(errorCard).not.toContainText('401');
+		await expect(chat.textInput).toHaveValue(message);
+		await expect(chat.userMessage(message)).toHaveCount(0);
+
+		// The default `Conversation` composition passes a retry handler, so Retry shows. The
+		// route refuses only once, so a retry gets through and the restored text leaves the composer.
+		await errorCard.getByRole('button', { name: 'Retry' }).click();
+		await chat.expectAiReply(message);
+		await expect(errorCard).toHaveCount(0);
+		await expect(chat.textInput).toHaveValue('');
+	});
 });
 
 test.describe('Streaming', () => {
