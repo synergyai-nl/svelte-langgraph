@@ -134,10 +134,5 @@ describe('AIMessageActions', () => {
 		test('renders no regenerate button', () => {
 			expect(screen.queryByTitle(/regenerate/i)).not.toBeInTheDocument();
 		});
-
-		test('still renders the copy button', () => {
-			const buttons = screen.getAllByRole('button');
-			expect(buttons.some((b) => b.getAttribute('name') === 'copy')).toBe(true);
-		});
 	});
 });

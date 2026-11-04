@@ -387,9 +387,8 @@ starts (a 401, say), `Conversation` puts the text back in the composer.
 ### Composing your own conversation
 
 `Conversation` hands its `children` snippet the reactive `api` (messages, input, `submit`, `stop`,
-`error`, ...), so you can build the layout yourself. This one is read-only: `MessagesList` gets no
-`onEdit` or `onRegenerate`, so user messages have no Edit and AI messages no Regenerate (Copy
-stays), and the composer is still there.
+`error`, ...), so you can build the layout yourself. This one omits `onEdit`/`onRegenerate`, so user
+messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte
 <script lang="ts">
@@ -401,28 +400,36 @@ stays), and the composer is still there.
 	const ctx = useLangGraph();
 </script>
 
-{#if ctx.activeThreadId}
-	<Conversation threadId={ctx.activeThreadId}>
-		{#snippet children(api)}
-			<div class="flex h-full min-h-0 flex-col">
-				<div class="min-h-0 flex-1 overflow-y-auto pb-4">
-					<MessagesList
-						messages={api.messages}
-						finalAnswerStarted={api.finalAnswerStarted}
-						isStreaming={api.isLoading}
-						generationError={api.error}
-						onRetryError={api.retry}
-					/>
-				</div>
-				<MessageComposer
-					bind:value={() => api.input, (v) => api.setInput(v)}
-					isStreaming={api.isLoading}
-					onSubmit={() => api.submit(api.input)}
-					onStop={api.stop}
-				/>
-			</div>
-		{/snippet}
-	</Conversation>
+<!-- Conversation reads threadId, the client and the assistant once, at init, and throws if the
+     provider has not resolved the latter two yet. Gate and key it like ChatSurface does. -->
+{#if ctx.client && ctx.assistantId && ctx.activeThreadId}
+	{#key ctx.activeThreadId}
+		{#key ctx.client}
+			{#key ctx.assistantId}
+				<Conversation threadId={ctx.activeThreadId}>
+					{#snippet children(api)}
+						<div class="flex h-full min-h-0 flex-col">
+							<div class="min-h-0 flex-1 overflow-y-auto pb-4">
+								<MessagesList
+									messages={api.messages}
+									finalAnswerStarted={api.finalAnswerStarted}
+									isStreaming={api.isLoading}
+									generationError={api.error}
+									onRetryError={api.retry}
+								/>
+							</div>
+							<MessageComposer
+								bind:value={() => api.input, (v) => api.setInput(v)}
+								isStreaming={api.isLoading}
+								onSubmit={() => api.submit(api.input)}
+								onStop={api.stop}
+							/>
+						</div>
+					{/snippet}
+				</Conversation>
+			{/key}
+		{/key}
+	{/key}
 {/if}
 ```
 
