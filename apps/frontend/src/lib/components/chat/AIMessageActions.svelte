@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { CopyButton } from '$lib/components/ui/copy-button';
 	import { Button } from '$lib/components/ui/button';
-	import { RefreshCw } from '@lucide/svelte';
+	import { Check, Copy, RefreshCw, X } from '@lucide/svelte';
+	import { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
 	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
@@ -19,6 +19,18 @@
 	let feedbackStatus = $state<FeedbackStatus>(null);
 	let copySuccess = $state(false);
 	let copyTimeoutId: ReturnType<typeof setTimeout> | null = null;
+	const clipboard = new UseClipboard();
+
+	async function handleCopy() {
+		copySuccess = (await clipboard.copy(message.text)) === 'success';
+
+		if (copySuccess) {
+			if (copyTimeoutId) clearTimeout(copyTimeoutId);
+			copyTimeoutId = setTimeout(() => {
+				copySuccess = false;
+			}, 1500);
+		}
+	}
 
 	// A pending/failed rating must stay legible after the pointer leaves — see
 	// the focus-within/touch classes below for the other two visibility gaps
@@ -33,22 +45,26 @@
 >
 	<Tooltip disableCloseOnTriggerClick>
 		<TooltipTrigger>
-			<CopyButton
-				text={message.text}
+			<Button
+				type="button"
+				name="copy"
+				tabindex={-1}
 				variant="ghost"
 				size="icon-sm"
-				class="h-6 w-6"
-				onCopy={(status) => {
-					copySuccess = status === 'success';
-
-					if (copySuccess) {
-						if (copyTimeoutId) clearTimeout(copyTimeoutId);
-						copyTimeoutId = setTimeout(() => {
-							copySuccess = false;
-						}, 1500);
-					}
-				}}
-			/>
+				class="flex h-6 w-6 items-center gap-2"
+				onclick={handleCopy}
+			>
+				{#if clipboard.status === 'success'}
+					<Check tabindex={-1} />
+					<span class="sr-only">{m.slg_message_copied()}</span>
+				{:else if clipboard.status === 'failure'}
+					<X tabindex={-1} />
+					<span class="sr-only">{m.slg_message_copy_failed()}</span>
+				{:else}
+					<Copy tabindex={-1} />
+					<span class="sr-only">{m.slg_message_copy()}</span>
+				{/if}
+			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
 			{copySuccess ? m.slg_message_copied() : m.slg_message_copy()}

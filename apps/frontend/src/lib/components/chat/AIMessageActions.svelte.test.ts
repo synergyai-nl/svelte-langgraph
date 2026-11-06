@@ -1,9 +1,14 @@
-import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { screen } from '@testing-library/svelte';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
 import AIMessageActions from './AIMessageActions.svelte';
 import { anAIMessage } from '../__tests__/fixtures';
+
+const copyButton = () =>
+	screen.getAllByRole('button').find((b) => b.getAttribute('name') === 'copy')!;
+
+const tooltip = () => document.querySelector('[data-tooltip-content]');
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
 	const message = anAIMessage();
@@ -19,6 +24,10 @@ describe('AIMessageActions', () => {
 		test('renders the copy button', () => {
 			const buttons = screen.getAllByRole('button');
 			expect(buttons.some((b) => b.getAttribute('name') === 'copy')).toBe(true);
+		});
+
+		test('copy button is not focusable by tabbing', () => {
+			expect(copyButton()).toHaveAttribute('tabindex', '-1');
 		});
 
 		test('renders the regenerate button', () => {
@@ -62,6 +71,53 @@ describe('AIMessageActions', () => {
 
 			await screen.findByTestId(marker);
 			expect(screen.getByTitle(/regenerate/i)).toBeVisible();
+		});
+	});
+
+	describe('copying', () => {
+		afterEach(() => vi.unstubAllGlobals());
+
+		function stubClipboard(writeText: (text: string) => Promise<void>) {
+			// The tooltip positions itself with this, and jsdom has none.
+			vi.stubGlobal(
+				'ResizeObserver',
+				class {
+					observe() {}
+					unobserve() {}
+					disconnect() {}
+				}
+			);
+			Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+			vi.stubGlobal('isSecureContext', true);
+		}
+
+		test('copies the message text and confirms it in the button and the tooltip', async () => {
+			const user = userEvent.setup({ delay: null });
+			const writeText = vi.fn().mockResolvedValue(undefined);
+			stubClipboard(writeText);
+			const message = anAIMessage();
+			renderComponent({ message, isHovered: true });
+
+			await user.hover(copyButton().closest('[data-slot="tooltip-trigger"]')!);
+			await waitFor(() => expect(tooltip()).toHaveTextContent('Copy to clipboard'), {
+				timeout: 3000
+			});
+			await user.click(copyButton());
+
+			expect(writeText).toHaveBeenCalledWith(message.text);
+			await waitFor(() => expect(copyButton()).toHaveTextContent('Copied'));
+			await waitFor(() => expect(tooltip()).toHaveTextContent('Copied'));
+		});
+
+		test('announces a failed copy and shows no success tooltip', async () => {
+			const user = userEvent.setup({ delay: null });
+			stubClipboard(vi.fn().mockRejectedValue(new Error('denied')));
+			renderComponent({ isHovered: true });
+
+			await user.click(copyButton());
+
+			await waitFor(() => expect(copyButton()).toHaveTextContent('Failed to copy'));
+			expect(screen.queryByText('Copied')).not.toBeInTheDocument();
 		});
 	});
 });
