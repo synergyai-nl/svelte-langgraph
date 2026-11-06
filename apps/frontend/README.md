@@ -50,6 +50,205 @@ You can preview the production build with `npm run preview`.
 
 ---
 
+## Installing the chat UI from the registry
+
+The chat components (`src/lib/components/chat/`) are published as a
+[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) item, `chat`.
+`moon frontend:registry-build` builds `registry.json` into `static/r/` (gitignored; `build`
+and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
+
+### Requirements
+
+- SvelteKit **2**. SvelteKit 3 is not supported yet
+  ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)). Current `sv create`
+  (1.x) scaffolds Kit 3; scaffold a new consumer with `pnpm dlx sv@0.17.1 create` until then.
+- Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
+- Paraglide.
+
+### Steps
+
+1. Install the item:
+
+   ```bash
+   pnpm dlx shadcn-svelte@latest add https://svelte-langgraph-demo.synergyai.nl/r/chat.json
+   ```
+
+   That URL serves the item built from `main`. Re-running `add` updates it, and reverts any
+   local patches to the files it ships.
+
+   This copies the components into `$lib/components/chat/`, the client library into
+   `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
+   use, and writes the chat strings to `messages/chat/{locale}.json`.
+
+   The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
+   which **overwrite** your own versions of those: the chat components rely on the
+   container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
+   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. They ride inside the
+   `chat` item, so always accept the `chat` prompt.
+
+   The CLI asks about overwriting per item: `chat`, then each stock component it depends on
+   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `textarea`,
+   `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
+   Answer No to "overwrite all" to decide item by item, and decline the stock components you
+   customised: the chat only uses their stock variants and sizes. `-y` does not answer the
+   overwrite prompts, and they default to Yes, so read them before pressing Enter. A
+   non-interactive run needs `-y -o`, which overwrites everything; follow it with `git restore`
+   on the components you customised.
+
+   `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
+   at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
+
+2. Point `@svelte-langgraph/client` at the installed library with a SvelteKit `alias` entry,
+   wherever your Kit config lives. Apps from `sv create` 0.17 or newer have no
+   `svelte.config.js`: pass it to `sveltekit()` in `vite.config.ts`:
+
+   ```ts
+   sveltekit({
+   	// ...your existing options
+   	alias: {
+   		'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'
+   	}
+   });
+   ```
+
+   With a `svelte.config.js`, add it to your existing `kit.alias` object (or create one)
+   instead. Kit ignores `svelte.config.js` once `sveltekit()` receives options, so put it in
+   only one place.
+
+   The path must match your shadcn-svelte `lib` alias if you customised it. The chat
+   components import the client by its package name; this alias is temporary until the client
+   is published to npm (after 1.0, see
+   [#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+
+3. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
+   which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
+
+   ```css
+   @plugin '@tailwindcss/typography';
+   ```
+
+4. Load those messages alongside your own: in `project.inlang/settings.json`, make
+   `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
+
+   ```json
+   "plugin.inlang.messageFormat": {
+   	"pathPattern": ["./messages/{locale}.json", "./messages/chat/{locale}.json"]
+   }
+   ```
+
+   Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
+   are compiled before you run `svelte-check`.
+
+5. Edit the chat UI's strings in `messages/chat/{locale}.json`. The item ships `en`, `nl` and
+   `hi`, and Paraglide compiles only the `locales` in your settings: delete the files for
+   locales you don't ship (the next `add` restores them), or add the locale to `locales`.
+   Add a new locale by adding its file there and to `locales`.
+
+6. Tidy up after the add:
+   - **Prettier.** `prettier-plugin-tailwindcss` re-sorts the `prose` classes once the
+     typography plugin from step 3 is registered. Run Prettier over the installed files after
+     each add.
+   - **ESLint.** `ThreadListItem` renders an `<a href>` from `hrefFor`, which must return a
+     resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
+     `src/lib/components/chat/**` (the same override you may already have for `ui/**`).
+   - **Font weights.** The components use `font-medium`: `ChatToolMessage` (three times),
+     `SuggestionCard`, the stock `dialog-title`, and `sidebar-group-label`,
+     `sidebar-menu-badge` and `sidebar-menu-button` in the item's sidebar copy. If your app has a
+     weight policy, patch them after each add.
+   - **Dependencies.** The add rewrites the version ranges of packages you already have to the
+     item's, even downgrades (`@lucide/svelte` `^1.x` becomes `^0.562.0`, `tailwind-variants`
+     `^4` becomes `^3`), and adds the missing ones, most under `dependencies`. Check
+     `package.json` after each add and restore your ranges. An adapter-node app that ships
+     without `node_modules` keeps the packages under `devDependencies`.
+
+### Backend routes
+
+Besides the LangGraph API, the client calls `POST {url}/titles` and `POST {url}/feedback`,
+custom routes of this repo's demo backend. Without them, thread titles stay as dates, and
+the rating buttons stay disabled: a message is only rateable when its
+`response_metadata.run_id` is set, which the demo backend stamps per run.
+See "Feedback architecture and upstream migration" in
+[`apps/backend/README.md`](../backend/README.md) for what to port.
+
+### Minimal usage
+
+A bounded-height container holding the provider, and a child that creates the first thread and
+renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
+client only when `token` is truthy; pass a pre-built `client` instead otherwise. Set `graph` to
+your server's graph id: the key under `graphs` in your `aegra.json` or `langgraph.json`. It
+defaults to `'chat'`, which only fits servers that use that key. A wrong id fails assistant
+resolution: `ctx.error` is set and `ChatSurface` keeps showing its loader, so render the error
+yourself (as below). The token is sent as a bearer token: send whatever your backend validates,
+normally an access token for your API's audience. Which token that is depends on your backend's
+auth handler.
+
+```svelte
+<!-- +page.svelte -->
+<script lang="ts">
+	import { env } from '$env/dynamic/public';
+	import LangGraph from '$lib/components/chat/LangGraph.svelte';
+	import Chat from './Chat.svelte';
+
+	let { data } = $props(); // however your app exposes the token your backend validates
+</script>
+
+<div class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border">
+	<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} graph="chat">
+		<Chat />
+	</LangGraph>
+</div>
+```
+
+```svelte
+<!-- Chat.svelte: must be a child of <LangGraph> to read its context -->
+<script lang="ts">
+	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
+	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+
+	const ctx = useLangGraph();
+
+	// Without a router, nothing selects a thread: create the first one. The error gate stops a
+	// failed creation from retrying forever.
+	$effect(() => {
+		if (ctx.client && !ctx.activeThreadId && !ctx.creatingThread && !ctx.createThreadError) {
+			ctx.createThread();
+		}
+	});
+</script>
+
+{#if ctx.error}
+	<p role="alert">
+		Could not connect. <button onclick={() => ctx.retryResolution()}>Try again</button>
+	</p>
+{:else if ctx.createThreadError}
+	<p role="alert">
+		Could not start a chat. <button onclick={() => ctx.createThread()}>Try again</button>
+	</p>
+{:else}
+	<ChatSurface />
+{/if}
+```
+
+Full reference: [`+page.svelte`](src/routes/demo/embedded/+page.svelte) and
+[`EmbeddedChatSurface.svelte`](src/routes/demo/embedded/EmbeddedChatSurface.svelte) of the
+embedded demo.
+
+### Test-install from a local checkout
+
+`moon frontend:dev` builds the item first, so with it running, in the consumer project run:
+
+```bash
+pnpm dlx shadcn-svelte@latest add http://localhost:5173/r/chat.json
+```
+
+The CLI only accepts URLs, not file paths.
+
+Without the dev server, build and serve only the item: `moon frontend:registry-build`, then
+`python3 -m http.server 4877 -d apps/frontend/static/r`, and add
+`http://localhost:4877/chat.json`.
+
+---
+
 ## Generic state synchronisation (`createStateSync`)
 
 `@svelte-langgraph/client` (`packages/client/`) contains a runtime-schema-driven state-sync

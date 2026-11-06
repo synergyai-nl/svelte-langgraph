@@ -1,0 +1,415 @@
+{
+	"$schema": "https://shadcn-svelte.com/schema/registry.json",
+	"name": "svelte-langgraph",
+	"homepage": "https://github.com/synergyai-nl/svelte-langgraph",
+	"aliases": {
+		"lib": "$lib",
+		"ui": "$lib/components/ui",
+		"utils": "$lib/utils",
+		"hooks": "$lib/hooks"
+	},
+	"items": [
+		{
+			"name": "chat",
+			"type": "registry:block",
+			"title": "Chat",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/chat/{locale}.json). Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
+			"registryDependencies": [
+				"button",
+				"card",
+				"dialog",
+				"input",
+				"is-mobile",
+				"separator",
+				"sheet",
+				"skeleton",
+				"textarea",
+				"tooltip",
+				"https://shadcn-svelte-extras.com/r/use-clipboard.json"
+			],
+			"dependencies": [
+				"@inlang/paraglide-js@^2.25.4",
+				"@langchain/langgraph-sdk@^1.8.3",
+				"@langchain/svelte@^0.3.1",
+				"@lucide/svelte@^0.562.0",
+				"@tailwindcss/typography@^0.5.15",
+				"bits-ui@^2.15.4",
+				"svelte-exmarkdown@^5.0.1",
+				"tailwind-variants@^3.2.2"
+			],
+			"devDependencies": [],
+			"files": [
+				{
+					"path": "src/lib/components/chat/AIMessageActions.svelte",
+					"type": "registry:component",
+					"target": "chat/AIMessageActions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatErrorMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatErrorMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatSurface.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatSurface.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatToolMessage.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatToolMessage.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ChatWaiting.svelte",
+					"type": "registry:component",
+					"target": "chat/ChatWaiting.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/MessageComposer.svelte",
+					"type": "registry:component",
+					"target": "chat/MessageComposer.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/Conversation.svelte",
+					"type": "registry:component",
+					"target": "chat/Conversation.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/FeedbackButtons.svelte",
+					"type": "registry:component",
+					"target": "chat/FeedbackButtons.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/FeedbackDialog.svelte",
+					"type": "registry:component",
+					"target": "chat/FeedbackDialog.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/LangGraph.svelte",
+					"type": "registry:component",
+					"target": "chat/LangGraph.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/langGraphContext.svelte.ts",
+					"type": "registry:component",
+					"target": "chat/langGraphContext.svelte.ts"
+				},
+				{
+					"path": "src/lib/components/chat/MessagesList.svelte",
+					"type": "registry:component",
+					"target": "chat/MessagesList.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/index.js",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/index.js"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/ScrollableContainer.svelte",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/ScrollableContainer.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/scrollControls.ts",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/scrollControls.ts"
+				},
+				{
+					"path": "src/lib/components/chat/ScrollableContainer/scrollListener.ts",
+					"type": "registry:component",
+					"target": "chat/ScrollableContainer/scrollListener.ts"
+				},
+				{
+					"path": "src/lib/components/chat/StateField.svelte",
+					"type": "registry:component",
+					"target": "chat/StateField.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/SubmitButton.svelte",
+					"type": "registry:component",
+					"target": "chat/SubmitButton.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/SuggestionCard.svelte",
+					"type": "registry:component",
+					"target": "chat/SuggestionCard.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/Suggestions.svelte",
+					"type": "registry:component",
+					"target": "chat/Suggestions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThinkingBlock.svelte",
+					"type": "registry:component",
+					"target": "chat/ThinkingBlock.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/index.ts",
+					"type": "registry:component",
+					"target": "chat/ThreadList/index.ts"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/ThreadList.svelte",
+					"type": "registry:component",
+					"target": "chat/ThreadList/ThreadList.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/ThreadList/ThreadListItem.svelte",
+					"type": "registry:component",
+					"target": "chat/ThreadList/ThreadListItem.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/UserMessageActions.svelte",
+					"type": "registry:component",
+					"target": "chat/UserMessageActions.svelte"
+				},
+				{
+					"path": "src/lib/components/chat/UserMessageEdit.svelte",
+					"type": "registry:component",
+					"target": "chat/UserMessageEdit.svelte"
+				},
+				{
+					"path": "src/lib/components/ChatLoader.svelte",
+					"type": "registry:component",
+					"target": "ChatLoader.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/constants.ts",
+					"type": "registry:ui",
+					"target": "sidebar/constants.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/context.svelte.ts",
+					"type": "registry:ui",
+					"target": "sidebar/context.svelte.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/index.ts",
+					"type": "registry:ui",
+					"target": "sidebar/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-content.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-content.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-footer.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-footer.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-action.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-action.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-content.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-content.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group-label.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group-label.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-group.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-group.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-header.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-header.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-input.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-input.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-inset.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-inset.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-action.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-action.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-badge.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-badge.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-button.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-item.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-item.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-skeleton.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-skeleton.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub-button.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub-item.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub-item.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu-sub.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu-sub.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-menu.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-menu.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-provider.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-provider.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-rail.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-rail.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-separator.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-separator.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar-trigger.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar-trigger.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/sidebar/sidebar.svelte",
+					"type": "registry:ui",
+					"target": "sidebar/sidebar.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/spinner/index.ts",
+					"type": "registry:ui",
+					"target": "spinner/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/spinner/spinner.svelte",
+					"type": "registry:ui",
+					"target": "spinner/spinner.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/copy-button.svelte",
+					"type": "registry:ui",
+					"target": "copy-button/copy-button.svelte"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/index.ts",
+					"type": "registry:ui",
+					"target": "copy-button/index.ts"
+				},
+				{
+					"path": "src/lib/components/ui/copy-button/types.ts",
+					"type": "registry:ui",
+					"target": "copy-button/types.ts"
+				},
+				{
+					"path": "messages/chat/en.json",
+					"type": "registry:file",
+					"target": "~/messages/chat/en.json"
+				},
+				{
+					"path": "messages/chat/nl.json",
+					"type": "registry:file",
+					"target": "~/messages/chat/nl.json"
+				},
+				{
+					"path": "messages/chat/hi.json",
+					"type": "registry:file",
+					"target": "~/messages/chat/hi.json"
+				},
+				{
+					"path": "../../packages/client/src/apiUrl.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/apiUrl.ts"
+				},
+				{
+					"path": "../../packages/client/src/client.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/client.ts"
+				},
+				{
+					"path": "../../packages/client/src/errors.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/errors.ts"
+				},
+				{
+					"path": "../../packages/client/src/feedbackLimits.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/feedbackLimits.ts"
+				},
+				{
+					"path": "../../packages/client/src/index.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/index.ts"
+				},
+				{
+					"path": "../../packages/client/src/schema.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/schema.ts"
+				},
+				{
+					"path": "../../packages/client/src/stateSync.svelte.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/stateSync.svelte.ts"
+				},
+				{
+					"path": "../../packages/client/src/threadListState.svelte.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threadListState.svelte.ts"
+				},
+				{
+					"path": "../../packages/client/src/threads.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threads.ts"
+				},
+				{
+					"path": "../../packages/client/src/threadTitle.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/threadTitle.ts"
+				},
+				{
+					"path": "../../packages/client/src/types.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/types.ts"
+				},
+				{
+					"path": "../../packages/client/src/utils.ts",
+					"type": "registry:lib",
+					"target": "svelte-langgraph-client/utils.ts"
+				}
+			]
+		}
+	]
+}
