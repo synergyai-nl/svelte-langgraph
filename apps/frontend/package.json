@@ -27,7 +27,7 @@
 		"@langchain/core": "^1.1.31",
 		"@langchain/langgraph-sdk": "^1.8.3",
 		"@lucide/svelte": "^0.562.0",
-		"@playwright/test": "^1.49.1",
+		"@playwright/test": "^1.64.1",
 		"@sveltejs/adapter-node": "^5.2.12",
 		"@sveltejs/kit": "^2.49.3",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
