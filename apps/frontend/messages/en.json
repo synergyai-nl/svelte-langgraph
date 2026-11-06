@@ -8,6 +8,8 @@
 	"auth_sign_out_failed_title": "Sign out failed",
 	"auth_sign_out_failed_message": "You're still signed in. Please try again.",
 	"auth_unavailable": "Authentication is temporarily unavailable. Please retry.",
+	"auth_session_expired_title": "Your session has expired",
+	"auth_session_expired_message": "Sign in again to continue where you left off.",
 	"user_fallback": "User",
 	"email_fallback": "email@example.com",
 	"chat_greeting_hello": "Try your LangGraph agent, {name}",
