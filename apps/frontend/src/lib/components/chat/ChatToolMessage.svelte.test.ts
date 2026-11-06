@@ -22,7 +22,7 @@ describe('ChatToolMessage', () => {
 		});
 
 		test('shows the "using tools" label', () => {
-			expect(screen.getByText(m.tools_using())).toBeInTheDocument();
+			expect(screen.getByText(m.slg_tools_using())).toBeInTheDocument();
 		});
 
 		test('button is collapsed by default', () => {
@@ -43,7 +43,7 @@ describe('ChatToolMessage', () => {
 		});
 
 		test('does not show payload or result by default', () => {
-			expect(screen.queryByText(m.tool_label())).not.toBeInTheDocument();
+			expect(screen.queryByText(m.slg_tool_label())).not.toBeInTheDocument();
 		});
 	});
 
@@ -80,7 +80,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_parameters())).toBeInTheDocument();
+				expect(screen.getByText(m.slg_tool_parameters())).toBeInTheDocument();
 			});
 		});
 
@@ -91,7 +91,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_result())).toBeInTheDocument();
+				expect(screen.getByText(m.slg_tool_result())).toBeInTheDocument();
 			});
 		});
 	});
@@ -104,7 +104,7 @@ describe('ChatToolMessage', () => {
 			await user.click(button);
 
 			await waitFor(() => {
-				expect(screen.getByText(m.tool_no_parameters())).toBeInTheDocument();
+				expect(screen.getByText(m.slg_tool_no_parameters())).toBeInTheDocument();
 			});
 		});
 	});

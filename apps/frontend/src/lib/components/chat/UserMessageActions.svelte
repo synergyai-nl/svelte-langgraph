@@ -23,13 +23,13 @@
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
-				title={m.message_edit()}
+				title={m.slg_message_edit()}
 			>
 				<Pencil size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.message_edit()}
+			{m.slg_message_edit()}
 		</TooltipContent>
 	</Tooltip>
 </div>

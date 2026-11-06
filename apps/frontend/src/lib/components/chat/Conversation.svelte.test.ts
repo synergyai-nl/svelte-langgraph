@@ -349,7 +349,7 @@ describe('Conversation', () => {
 			await user.keyboard('{Enter}');
 
 			// Wait for the retry button to appear
-			const retryButton = await screen.findByRole('button', { name: m.chat_error_retry() });
+			const retryButton = await screen.findByRole('button', { name: m.slg_chat_error_retry() });
 
 			// Click retry — should transition to loading/waiting state
 			await user.click(retryButton);

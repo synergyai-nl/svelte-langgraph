@@ -25,7 +25,7 @@ describe('ChatErrorMessage', () => {
 		});
 
 		test('renders the retry button', () => {
-			expect(screen.getByRole('button', { name: m.chat_error_retry() })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: m.slg_chat_error_retry() })).toBeInTheDocument();
 		});
 	});
 
@@ -34,7 +34,7 @@ describe('ChatErrorMessage', () => {
 		const onRetry = vi.fn();
 		renderComponent({ onRetry });
 
-		await user.click(screen.getByRole('button', { name: m.chat_error_retry() }));
+		await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
 		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 });
