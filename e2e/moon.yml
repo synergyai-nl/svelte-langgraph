@@ -55,7 +55,9 @@ tasks:
     options:
       internal: true
       cache: true
-    inputs: []
+    inputs:
+      # Re-run when the Playwright version changes so the matching browser build is installed.
+      - 'package.json'
 
   typecheck:
     command:

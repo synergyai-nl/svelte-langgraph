@@ -113,6 +113,8 @@ export async function makeAuthenticatedRequest(
 	const url = `${LANGGRAPH_CONFIG.apiUrl}${endpoint}`;
 	const response = await page.request.fetch(url, {
 		...options,
+		// Playwright's signal type rejects null (RequestInit allows it)
+		signal: options.signal ?? undefined,
 		headers: {
 			...baseHeaders,
 			Authorization: `Bearer ${sessionData.accessToken}`,
