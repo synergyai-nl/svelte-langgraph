@@ -23,6 +23,7 @@
 				"separator",
 				"sheet",
 				"skeleton",
+				"spinner",
 				"textarea",
 				"tooltip",
 				"https://shadcn-svelte-extras.com/r/use-clipboard.json"
@@ -308,31 +309,6 @@
 					"path": "src/lib/components/ui/sidebar/sidebar.svelte",
 					"type": "registry:ui",
 					"target": "sidebar/sidebar.svelte"
-				},
-				{
-					"path": "src/lib/components/ui/spinner/index.ts",
-					"type": "registry:ui",
-					"target": "spinner/index.ts"
-				},
-				{
-					"path": "src/lib/components/ui/spinner/spinner.svelte",
-					"type": "registry:ui",
-					"target": "spinner/spinner.svelte"
-				},
-				{
-					"path": "src/lib/components/ui/copy-button/copy-button.svelte",
-					"type": "registry:ui",
-					"target": "copy-button/copy-button.svelte"
-				},
-				{
-					"path": "src/lib/components/ui/copy-button/index.ts",
-					"type": "registry:ui",
-					"target": "copy-button/index.ts"
-				},
-				{
-					"path": "src/lib/components/ui/copy-button/types.ts",
-					"type": "registry:ui",
-					"target": "copy-button/types.ts"
 				},
 				{
 					"path": "messages/chat/en.json",

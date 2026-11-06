@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { User } from '@lucide/svelte';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import * as m from '$lib/paraglide/messages.js';
 </script>
 
 <div class="mb-6 flex w-full justify-start">
@@ -10,6 +11,6 @@
 		>
 			<User size={20} class="text-white dark:text-gray-900" />
 		</div>
-		<Spinner size="xl" />
+		<Spinner class="size-8" aria-label={m.slg_chat_waiting()} />
 	</div>
 </div>
