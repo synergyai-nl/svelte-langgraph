@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { userEvent } from '@testing-library/user-event';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
 import ChatSurface from './ChatSurface.svelte';
@@ -7,6 +8,7 @@ import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import type { ChatSuggestion } from './Suggestions.svelte';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
 import { useStream } from '@langchain/svelte';
+import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
 
 // Mock useStream — same idiom as the old Chat suites: Conversation (mounted inside ChatSurface)
 // depends on it directly.
@@ -183,9 +185,46 @@ describe('ChatSurface', () => {
 	});
 
 	describe('sidebar prop', () => {
+		beforeEach(() => {
+			document.cookie = `${SIDEBAR_COOKIE_NAME}=; path=/; max-age=0`;
+		});
+
+		const pressCtrlB = async () => {
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+			await tick();
+		};
+
 		test('renders no ThreadList when sidebar is not given', () => {
 			renderChatSurface();
 			expect(screen.queryByRole('button', { name: 'New chat' })).not.toBeInTheDocument();
+		});
+
+		test('without sidebar: no Sidebar.Provider, so Ctrl+B does nothing and writes no cookie', async () => {
+			const { container } = renderChatSurface();
+			expect(container.querySelector('[data-slot="sidebar-wrapper"]')).toBeNull();
+
+			await pressCtrlB();
+
+			expect(document.cookie).not.toContain(SIDEBAR_COOKIE_NAME);
+		});
+
+		test('with sidebar: its own Sidebar.Provider, so Ctrl+B collapses the list', async () => {
+			const { container } = renderChatSurface({ sidebar: true });
+			const panel = container.querySelector('[data-slot="sidebar"]');
+			expect(panel).toHaveAttribute('data-state', 'expanded');
+
+			await pressCtrlB();
+
+			expect(panel).toHaveAttribute('data-state', 'collapsed');
+			expect(document.cookie).toContain(`${SIDEBAR_COOKIE_NAME}=false`);
+		});
+
+		test('with sidebar: sidebarOpen sets the initial open state', () => {
+			const { container } = renderChatSurface({ sidebar: true, sidebarOpen: false });
+			expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
+				'data-state',
+				'collapsed'
+			);
 		});
 
 		test('renders a ThreadList beside the conversation pane when sidebar is true', () => {

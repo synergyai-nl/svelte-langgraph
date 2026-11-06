@@ -8,6 +8,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import ThreadListItem from './ThreadListItem.svelte';
+	import ThreadListPanel from './ThreadListPanel.svelte';
 	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
 	import { useLangGraph } from '../langGraphContext.svelte.js';
@@ -113,6 +114,7 @@
 		onSelectProp ?? (hrefFor ? undefined : (id: string) => ctx.selectThread(id))
 	);
 
+	// The caller's stock `Sidebar.Provider`; `ThreadListPanel` throws without one.
 	const sidebar = Sidebar.useSidebar();
 
 	async function handleNewThread() {
@@ -125,10 +127,9 @@
 	}
 </script>
 
-<Sidebar.Root
-	collapsible="offcanvas"
-	mobileTitle={m.slg_sidebar_mobile_title()}
-	mobileDescription={m.slg_sidebar_mobile_description()}
+<ThreadListPanel
+	title={m.slg_sidebar_mobile_title()}
+	description={m.slg_sidebar_mobile_description()}
 >
 	<Sidebar.Header>
 		<Button
@@ -222,4 +223,4 @@
 			{/if}
 		</Sidebar.Group>
 	</Sidebar.Content>
-</Sidebar.Root>
+</ThreadListPanel>

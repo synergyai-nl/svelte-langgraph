@@ -28,7 +28,7 @@
 	let accessToken = $derived(page.data.session?.accessToken ?? null);
 	let activeThreadId = $derived(page.params.threadID ?? null);
 
-	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open`, via `<LangGraph>`). The
+	// Seeded once at init, then owned by `Sidebar.Provider` (`bind:open` below). The
 	// root `load` only reruns on a hard navigation, so on a client-side remount
 	// `page.data.sidebarOpen` can be stale — the cookie (written on every toggle) is the source of
 	// truth once we're in the browser.
@@ -37,10 +37,10 @@
 	);
 </script>
 
-<!-- Provider is `h-full min-h-0` by default (SLG-133); this layout's own ancestry supplies the
-     viewport height (see the root layout's `h-svh` wrapper), so no override is needed here.
-     `ThreadListSidebar` and the content pane below are `<LangGraph>`'s literal flex children —
-     see `LangGraph.svelte`'s header comment for why nothing may wrap them. -->
+<!-- This layout owns the stock `Sidebar.Provider`; `<LangGraph>` renders no DOM. `h-full min-h-0`
+     makes the provider fill the root layout's `h-svh` wrapper (stock sizes it to the viewport).
+     `ThreadListSidebar` and the content pane are the provider's literal flex children: its
+     `peer`/`group` classes need nothing in between. -->
 <LangGraph
 	url={env.PUBLIC_LANGGRAPH_API_URL ?? ''}
 	token={accessToken}
@@ -49,16 +49,17 @@
 		if (id) void goto(`/chat/${id}`);
 	}}
 	hrefFor={(t) => `/chat/${t.id}`}
-	bind:sidebarOpen
 >
-	<ThreadListSidebar />
+	<Sidebar.Provider class="h-full min-h-0" bind:open={sidebarOpen}>
+		<ThreadListSidebar />
 
-	<div class="bg-background relative flex w-full min-w-0 flex-1 flex-col">
-		<div class="flex shrink-0 items-center px-2 py-1">
-			<Sidebar.Trigger label={m.sidebar_toggle()} />
+		<div class="bg-background relative flex w-full min-w-0 flex-1 flex-col">
+			<div class="flex shrink-0 items-center px-2 py-1">
+				<Sidebar.Trigger aria-label={m.sidebar_toggle()} />
+			</div>
+			<div class="min-h-0 flex-1">
+				{@render children()}
+			</div>
 		</div>
-		<div class="min-h-0 flex-1">
-			{@render children()}
-		</div>
-	</div>
+	</Sidebar.Provider>
 </LangGraph>
