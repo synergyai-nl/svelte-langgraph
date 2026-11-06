@@ -6926,7 +6926,7 @@ snapshots:
   oauth2-mock-server@9.3.0:
     dependencies:
       basic-auth: 3.0.0
-      jose: 6.2.13
+      jose: 6.2.15
 
   optionator@0.9.4:
     dependencies:
