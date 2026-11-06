@@ -134,6 +134,6 @@ The monorepo uses a single `.env` file at the root:
 
 - Always use moon commands instead of direct npm/pnpm/python commands for consistency
 - The backend (Aegra) requires a reachable PostgreSQL server (≥ 13); Docker Compose's `postgres` service, started via `moon backend:docker-postgres`, is an optional helper for it — not a requirement. E2E resets its own `aegra_e2e` database (from `TEST_DATABASE_URL` in `.env.e2e`) via `apps/backend/scripts/reset_test_db.py` on every run. Docker is still required for `moon backend:build`/`moon backend:up` and for a full `moon check --all`
-- Moon caches results across the team via remote caching
+- Moon's task cache is local only (`.moon/cache`); there is no remote cache, and CI restores only the proto toolchain, so every CI run starts with an empty moon cache
 - The `:` prefix runs tasks across all projects (e.g., `moon :dev`)
 - Specific project tasks use `project:task` format (e.g., `moon frontend:test`)
