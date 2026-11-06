@@ -80,15 +80,15 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
    use, and writes the chat strings to `messages/chat/{locale}.json`.
 
-   The item also ships patched copies of `ui/sidebar`, `ui/spinner` and `ui/copy-button`,
-   which **overwrite** your own versions of those: the chat components rely on the
-   container-relative (embeddable) sidebar with localizable `mobileTitle`/`mobileDescription`,
-   on the spinner's `sm`/`xl` sizes, and on the type-fixed copy button. They ride inside the
-   `chat` item, so always accept the `chat` prompt.
+   The item still ships a patched copy of `ui/sidebar`, which **overwrites** your own: the chat
+   components rely on the container-relative (embeddable) sidebar with localizable
+   `mobileTitle`/`mobileDescription`. It rides inside the `chat` item, so always accept the
+   `chat` prompt. The spinner and the copy button are not patched: the chat uses the stock
+   `spinner` and `button` components, and copies through the `use-clipboard` hook.
 
    The CLI asks about overwriting per item: `chat`, then each stock component it depends on
-   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `textarea`,
-   `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
+   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `spinner`,
+   `textarea`, `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
    Answer No to "overwrite all" to decide item by item, and decline the stock components you
    customised: the chat only uses their stock variants and sizes. `-y` does not answer the
    overwrite prompts, and they default to Yes, so read them before pressing Enter. A

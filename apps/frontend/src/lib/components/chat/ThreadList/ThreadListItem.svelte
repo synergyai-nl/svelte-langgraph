@@ -33,7 +33,7 @@
 				<a {href} {...props} onclick={handleClick}>
 					<span class="truncate">{threadLabel(thread, getLocale())}</span>
 					{#if isPending}
-						<Spinner size="sm" aria-hidden="true" class="ml-auto shrink-0" />
+						<Spinner aria-hidden="true" />
 					{/if}
 				</a>
 			{/snippet}
@@ -48,7 +48,7 @@
 		>
 			<span class="truncate">{threadLabel(thread, getLocale())}</span>
 			{#if isPending}
-				<Spinner size="sm" aria-hidden="true" class="ml-auto shrink-0" />
+				<Spinner aria-hidden="true" />
 			{/if}
 		</Sidebar.MenuButton>
 	{/if}

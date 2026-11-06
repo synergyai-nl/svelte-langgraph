@@ -16,7 +16,7 @@ function sourceFiles(root: string, dir: string): string[] {
 }
 
 /** Patched copies of upstream shadcn-svelte ui items that the chat components depend on. */
-const patchedUiDirs = ['sidebar', 'spinner', 'copy-button'];
+const patchedUiDirs = ['sidebar'];
 const uiDir = 'src/lib/components/ui';
 
 /** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `$lib`. */
@@ -67,7 +67,6 @@ describe('shadcn-svelte registry', () => {
 		for (const dir of patchedUiDirs) {
 			expect(chat.registryDependencies).not.toContain(dir);
 		}
-		expect(chat.registryDependencies.join()).not.toContain('copy-button');
 	});
 
 	test('ships every client library file as registry:lib under svelte-langgraph-client/', () => {
