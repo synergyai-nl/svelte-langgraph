@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from authlib.jose import JsonWebKey, jwt
 
 from svelte_langgraph import auth
 
@@ -15,6 +16,16 @@ from svelte_langgraph import auth
 def reset_jwks_cache() -> None:
     """Reset the JWKS cache before each test."""
     auth._jwks_cache = None
+
+
+API_AUDIENCE = "svelte-langgraph-api"
+ISSUER = "http://localhost:8080"
+
+
+@pytest.fixture(autouse=True)
+def configured_audience(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The verifier requires AUTH_OIDC_AUDIENCE; configure it for every test."""
+    monkeypatch.setattr(auth, "oidc_audience", API_AUDIENCE)
 
 
 @pytest.fixture
@@ -379,6 +390,111 @@ class TestValidateToken:
                         await auth._validate_token("test-token")
 
                     assert call_count == 1
+
+
+class TestAccessTokenClaims:
+    """Signed tokens: iss, aud, sub and exp are all enforced."""
+
+    @pytest.fixture(autouse=True)
+    def issuer(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(auth, "oidc_issuer", ISSUER)
+
+    @pytest.fixture
+    def key(self) -> Any:
+        return JsonWebKey.generate_key("RSA", 2048, {"kid": "k1"}, is_private=True)
+
+    @pytest.fixture
+    def jwks(self, key: Any) -> dict[str, Any]:
+        return {"keys": [key.as_dict(is_private=False)]}
+
+    def sign(self, key: Any, alg: str = "RS256", **overrides: Any) -> str:
+        now = int(time.time())
+        claims: dict[str, Any] = {
+            "iss": ISSUER,
+            "sub": "test-user",
+            "aud": API_AUDIENCE,
+            "iat": now,
+            "exp": now + 300,
+            **overrides,
+        }
+        claims = {k: v for k, v in claims.items() if v is not None}
+        return jwt.encode({"alg": alg, "kid": "k1"}, claims, key).decode()
+
+    @pytest.mark.asyncio
+    async def test_accepts_access_token_for_the_api_audience(
+        self, key: Any, jwks: dict[str, Any]
+    ) -> None:
+        auth._jwks_cache = jwks
+
+        claims = await auth._validate_token(self.sign(key))
+
+        assert claims["sub"] == "test-user"
+
+    @pytest.mark.asyncio
+    async def test_accepts_audience_list_containing_the_api_audience(
+        self, key: Any, jwks: dict[str, Any]
+    ) -> None:
+        auth._jwks_cache = jwks
+
+        token = self.sign(key, aud=["other-api", API_AUDIENCE])
+
+        assert (await auth._validate_token(token))["sub"] == "test-user"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            pytest.param({"aud": "some-client-id"}, id="id-token-style-audience"),
+            pytest.param({"aud": ["a", "b"]}, id="audience-list-without-api"),
+            pytest.param({"aud": None}, id="missing-audience"),
+            pytest.param({"sub": None}, id="missing-subject"),
+            pytest.param({"exp": None}, id="missing-expiry"),
+            pytest.param({"exp": int(time.time()) - 60}, id="expired"),
+            pytest.param({"iss": "http://evil.example"}, id="wrong-issuer"),
+        ],
+    )
+    async def test_rejects_invalid_claims(
+        self, key: Any, jwks: dict[str, Any], overrides: dict[str, Any]
+    ) -> None:
+        auth._jwks_cache = jwks
+
+        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
+            await auth.get_current_user(
+                {"authorization": f"Bearer {self.sign(key, **overrides)}"}
+            )
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_rejects_hmac_signed_token(
+        self, key: Any, jwks: dict[str, Any]
+    ) -> None:
+        auth._jwks_cache = jwks
+        token = jwt.encode(
+            {"alg": "HS256"},
+            {
+                "iss": ISSUER,
+                "sub": "x",
+                "aud": API_AUDIENCE,
+                "exp": int(time.time()) + 60,
+            },
+            "secret",
+        ).decode()
+
+        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
+            await auth.get_current_user({"authorization": f"Bearer {token}"})
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_fails_closed_when_audience_is_not_configured(
+        self, key: Any, jwks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        auth._jwks_cache = jwks
+        monkeypatch.setattr(auth, "oidc_audience", "")
+
+        with pytest.raises(ValueError, match="AUTH_OIDC_AUDIENCE"):
+            await auth._validate_token(self.sign(key))
 
 
 class TestGetCurrentUser:
