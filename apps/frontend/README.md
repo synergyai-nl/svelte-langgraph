@@ -87,8 +87,8 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `spinner` and `button` components, and copies through the `use-clipboard` hook.
 
    The CLI asks about overwriting per item: `chat`, then each stock component it depends on
-   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `textarea`,
-   `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
+   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `spinner`,
+   `textarea`, `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
    Answer No to "overwrite all" to decide item by item, and decline the stock components you
    customised: the chat only uses their stock variants and sizes. `-y` does not answer the
    overwrite prompts, and they default to Yes, so read them before pressing Enter. A

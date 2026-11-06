@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import { Check, Copy, RefreshCw, X } from '@lucide/svelte';
+	import { scale } from 'svelte/transition';
 	import { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
 	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
 	import * as m from '$lib/paraglide/messages.js';
@@ -54,16 +55,20 @@
 				class="flex h-6 w-6 items-center gap-2"
 				onclick={handleCopy}
 			>
-				{#if clipboard.status === 'success'}
-					<Check tabindex={-1} />
-					<span class="sr-only">{m.slg_message_copied()}</span>
-				{:else if clipboard.status === 'failure'}
-					<X tabindex={-1} />
-					<span class="sr-only">{m.slg_message_copy_failed()}</span>
-				{:else}
-					<Copy tabindex={-1} />
-					<span class="sr-only">{m.slg_message_copy()}</span>
-				{/if}
+				{#key clipboard.status}
+					<div in:scale={{ duration: 500, start: 0.85 }}>
+						{#if clipboard.status === 'success'}
+							<Check />
+							<span class="sr-only">{m.slg_message_copied()}</span>
+						{:else if clipboard.status === 'failure'}
+							<X />
+							<span class="sr-only">{m.slg_message_copy_failed()}</span>
+						{:else}
+							<Copy />
+							<span class="sr-only">{m.slg_message_copy()}</span>
+						{/if}
+					</div>
+				{/key}
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>

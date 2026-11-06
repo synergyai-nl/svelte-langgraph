@@ -26,7 +26,7 @@ describe('AIMessageActions', () => {
 			expect(buttons.some((b) => b.getAttribute('name') === 'copy')).toBe(true);
 		});
 
-		test('copy button is not focusable by tabbing', () => {
+		test('copy button keeps its pre-existing tabindex of -1', () => {
 			expect(copyButton()).toHaveAttribute('tabindex', '-1');
 		});
 
@@ -109,15 +109,20 @@ describe('AIMessageActions', () => {
 			await waitFor(() => expect(tooltip()).toHaveTextContent('Copied'));
 		});
 
-		test('announces a failed copy and shows no success tooltip', async () => {
+		test('announces a failed copy and the tooltip keeps the default copy text', async () => {
 			const user = userEvent.setup({ delay: null });
 			stubClipboard(vi.fn().mockRejectedValue(new Error('denied')));
 			renderComponent({ isHovered: true });
 
+			await user.hover(copyButton().closest('[data-slot="tooltip-trigger"]')!);
+			await waitFor(() => expect(tooltip()).toHaveTextContent('Copy to clipboard'), {
+				timeout: 3000
+			});
 			await user.click(copyButton());
 
 			await waitFor(() => expect(copyButton()).toHaveTextContent('Failed to copy'));
-			expect(screen.queryByText('Copied')).not.toBeInTheDocument();
+			expect(tooltip()).toHaveTextContent('Copy to clipboard');
+			expect(tooltip()).not.toHaveTextContent('Copied');
 		});
 	});
 });
