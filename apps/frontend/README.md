@@ -80,15 +80,14 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
    use, and writes the chat strings to `messages/chat/{locale}.json`.
 
-   The item still ships a patched copy of `ui/sidebar`, which **overwrites** your own: the chat
-   components rely on the container-relative (embeddable) sidebar with localizable
-   `mobileTitle`/`mobileDescription`. It rides inside the `chat` item, so always accept the
-   `chat` prompt. The spinner and the copy button are not patched: the chat uses the stock
-   `spinner` and `button` components, and copies through the `use-clipboard` hook.
+   The item ships no copies of shadcn-svelte UI components: the chat uses your stock ones,
+   including `sidebar` and `spinner`, and copies through the `use-clipboard` hook. The thread
+   list draws its own sidebar shell (`ThreadListPanel`), so it fits any container; it only needs
+   a stock `Sidebar.Provider` around it (see "Thread list layout" below).
 
    The CLI asks about overwriting per item: `chat`, then each stock component it depends on
-   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `skeleton`, `spinner`,
-   `textarea`, `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
+   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `sidebar`, `skeleton`,
+   `spinner`, `textarea`, `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
    Answer No to "overwrite all" to decide item by item, and decline the stock components you
    customised: the chat only uses their stock variants and sizes. `-y` does not answer the
    overwrite prompts, and they default to Yes, so read them before pressing Enter. A
@@ -156,9 +155,9 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
      resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
      `src/lib/components/chat/**` (the same override you may already have for `ui/**`).
    - **Font weights.** The components use `font-medium`: `ChatToolMessage` (three times),
-     `SuggestionCard`, the stock `dialog-title`, and `sidebar-group-label`,
-     `sidebar-menu-badge` and `sidebar-menu-button` in the item's sidebar copy. If your app has a
-     weight policy, patch them after each add.
+     `SuggestionCard`, and the stock `dialog-title`, `sidebar-group-label` and
+     `sidebar-menu-button` (the active row). If your app has a weight policy, patch them after
+     each add.
    - **Dependencies.** The add rewrites the version ranges of packages you already have to the
      item's, even downgrades (`@lucide/svelte` `^1.x` becomes `^0.562.0`, `tailwind-variants`
      `^4` becomes `^3`), and adds the missing ones, most under `dependencies`. Check
@@ -236,6 +235,49 @@ auth handler.
 Full reference: [`+page.svelte`](src/routes/demo/embedded/+page.svelte) and
 [`EmbeddedChatSurface.svelte`](src/routes/demo/embedded/EmbeddedChatSurface.svelte) of the
 embedded demo.
+
+`<LangGraph>` takes no layout props and renders no element of its own: its children land in
+your markup as is, inside a `Tooltip.Provider` with no delay.
+
+### Thread list layout
+
+`ThreadList` needs a stock `Sidebar.Provider` above it, which you own, as in shadcn. Either:
+
+- Set `sidebar` on `ChatSurface`: it renders its own provider around the thread list and the
+  conversation. Bind `sidebarOpen` to read or set whether the list is open. The provider brings
+  the Cmd/Ctrl+B shortcut and the `sidebar_state` cookie; without `sidebar`, `ChatSurface` has
+  neither. Inside your app's own `Sidebar.Provider` this would nest a second one: compose by hand
+  instead.
+- Or compose by hand: put `ThreadList` and your content pane side by side as the provider's
+  direct children. Stock `Sidebar.Provider` is `min-h-svh`; inside a bounded container, pass
+  `class="h-full min-h-0"` so it fills the container instead of the viewport.
+
+```svelte
+<script lang="ts">
+	import { env } from '$env/dynamic/public';
+	import * as Sidebar from '$lib/components/ui/sidebar';
+	import LangGraph from '$lib/components/chat/LangGraph.svelte';
+	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
+	import { ThreadList } from '$lib/components/chat/ThreadList';
+
+	let { data } = $props();
+	let sidebarOpen = $state(true);
+</script>
+
+<!-- Rows pick a thread and "New chat" creates one; ChatSurface follows the selection. -->
+<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
+	<Sidebar.Provider class="h-full min-h-0" bind:open={sidebarOpen}>
+		<ThreadList />
+		<div class="flex min-w-0 flex-1 flex-col">
+			<Sidebar.Trigger />
+			<ChatSurface />
+		</div>
+	</Sidebar.Provider>
+</LangGraph>
+```
+
+Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
+seeds `sidebarOpen` from the cookie.
 
 ### Test-install from a local checkout
 
