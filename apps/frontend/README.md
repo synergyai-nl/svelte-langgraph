@@ -204,9 +204,11 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    - **Dependencies.** The chat adds only `@langchain/langgraph-sdk`, `@langchain/svelte`,
      `@tailwindcss/typography` and `svelte-exmarkdown`, under `dependencies`, and leaves the
      ones you already have alone. The stock components carry their own ranges, which the CLI
-     writes whenever it installs one: in the test above, `button` set `tailwind-variants` to
-     `^3.3.1` over `^4.0.1`. Check `package.json` after a fresh install. An adapter-node app
-     that ships without `node_modules` keeps the packages under `devDependencies`.
+     writes when it installs them: in the test above, the setup's `add button sidebar` (before
+     the chat) set `tailwind-variants` to `^3.3.1` over `init`'s `^4.0.1`. The chat install that
+     followed, with `button` declined, added only the chat's own packages. Check `package.json`
+     after a fresh install. An adapter-node app that ships without `node_modules` keeps the
+     packages under `devDependencies`.
 
 ### Updating
 
@@ -239,9 +241,16 @@ When a release needs a stock component you don't have yet, its release notes say
 1. Back up your hand edits to the chat files.
 2. Install `chat.json` as in step 1, answering No for the stock components you already have.
 3. Move your imports to `$lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
-   where you use `ThreadList` (see "Thread list layout"), and delete the old
-   `components/chat/`, `components/ChatLoader.svelte`, `ui/copy-button/` and `messages/chat/`.
-   Keep `ui/sidebar/` and `ui/spinner/`: the chat now uses them as stock components.
+   where you use `ThreadList` (see "Thread list layout"), and in `project.inlang/settings.json`
+   change the `./messages/chat/{locale}.json` entry of `pathPattern` to
+   `./messages/svelte-langgraph/{locale}.json` (see [step 4](#steps)). Run `vite dev` or a build
+   once so Paraglide regenerates the `slg_` messages, then delete the old `components/chat/`,
+   `components/ChatLoader.svelte`, `ui/copy-button/` and `messages/chat/`.
+   Replace the trial's patched `ui/sidebar/` and `ui/spinner/` with stock
+   (`pnpm dlx shadcn-svelte@1.8.0 add sidebar spinner -o`), then re-apply your own brand
+   tweaks: the patched `Sidebar.Provider` only enables Cmd/Ctrl+B and writes the
+   `sidebar_state` cookie once a `Sidebar.Root` is mounted, and the thread list no longer
+   renders one, so with the patched copies both silently stop.
 
 ### Backend routes
 
