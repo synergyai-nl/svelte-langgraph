@@ -38,9 +38,9 @@ describe('shadcn-svelte registry', () => {
 	test('ships the chat message catalogue for every locale', () => {
 		for (const locale of ['en', 'nl', 'hi']) {
 			expect(chat.files).toContainEqual({
-				path: `messages/chat/${locale}.json`,
+				path: `messages/svelte-langgraph/${locale}.json`,
 				type: 'registry:file',
-				target: `~/messages/chat/${locale}.json`
+				target: `~/messages/svelte-langgraph/${locale}.json`
 			});
 		}
 	});
