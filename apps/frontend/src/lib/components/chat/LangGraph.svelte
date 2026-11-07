@@ -16,8 +16,7 @@
 	 * Renders no DOM of its own: `children` go straight into the caller's markup, inside a
 	 * `Tooltip.Provider` with no delay (Bits UI tooltips need an ancestor provider). It renders no
 	 * `Sidebar.Provider` either: the caller owns that, as in shadcn. Wrap `ThreadList` and the
-	 * content pane in your own stock `Sidebar.Provider` (see `routes/chat/+layout.svelte`), or use
-	 * `<ChatSurface sidebar>`, which renders one.
+	 * content pane in your own stock `Sidebar.Provider` (see `routes/chat/+layout.svelte`).
 	 */
 	import { onDestroy } from 'svelte';
 	import type { Snippet } from 'svelte';

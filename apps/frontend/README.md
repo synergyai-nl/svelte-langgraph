@@ -241,16 +241,13 @@ your markup as is, inside a `Tooltip.Provider` with no delay.
 
 ### Thread list layout
 
-`ThreadList` needs a stock `Sidebar.Provider` above it, which you own, as in shadcn. Either:
-
-- Set `sidebar` on `ChatSurface`: it renders its own provider around the thread list and the
-  conversation. Bind `sidebarOpen` to read or set whether the list is open. The provider brings
-  the Cmd/Ctrl+B shortcut and the `sidebar_state` cookie; without `sidebar`, `ChatSurface` has
-  neither. Inside your app's own `Sidebar.Provider` this would nest a second one: compose by hand
-  instead.
-- Or compose by hand: put `ThreadList` and your content pane side by side as the provider's
-  direct children. Stock `Sidebar.Provider` is `min-h-svh`; inside a bounded container, pass
-  `class="h-full min-h-0"` so it fills the container instead of the viewport.
+`ThreadList` needs a stock `Sidebar.Provider` above it, which you own, as in shadcn;
+`ChatSurface` is just the conversation pane and renders none. Put `ThreadList` and your content
+pane side by side as the provider's direct children, with a `Sidebar.Trigger` in the pane: on
+mobile it is the only way to open the thread list's drawer. Stock `Sidebar.Provider` is
+`min-h-svh`; inside a bounded container, pass `class="h-full min-h-0"` so it fills the container
+instead of the viewport. The provider brings the Cmd/Ctrl+B shortcut and the `sidebar_state`
+cookie.
 
 ```svelte
 <script lang="ts">
@@ -261,12 +258,11 @@ your markup as is, inside a `Tooltip.Provider` with no delay.
 	import { ThreadList } from '$lib/components/chat/ThreadList';
 
 	let { data } = $props();
-	let sidebarOpen = $state(true);
 </script>
 
 <!-- Rows pick a thread and "New chat" creates one; ChatSurface follows the selection. -->
 <LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
-	<Sidebar.Provider class="h-full min-h-0" bind:open={sidebarOpen}>
+	<Sidebar.Provider class="h-full min-h-0">
 		<ThreadList />
 		<div class="flex min-w-0 flex-1 flex-col">
 			<Sidebar.Trigger />
@@ -277,7 +273,7 @@ your markup as is, inside a `Tooltip.Provider` with no delay.
 ```
 
 Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
-seeds `sidebarOpen` from the cookie.
+seeds the provider's `open` from the cookie (`bind:open`).
 
 ### Test-install from a local checkout
 

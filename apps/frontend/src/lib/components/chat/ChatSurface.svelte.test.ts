@@ -184,71 +184,17 @@ describe('ChatSurface', () => {
 		});
 	});
 
-	describe('sidebar prop', () => {
-		beforeEach(() => {
+	describe('no sidebar', () => {
+		test('renders no ThreadList and no Sidebar.Provider: Ctrl+B does nothing and writes no cookie', async () => {
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=; path=/; max-age=0`;
-		});
-
-		const pressCtrlB = async () => {
-			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
-			await tick();
-		};
-
-		test('renders no ThreadList when sidebar is not given', () => {
-			renderChatSurface();
-			expect(screen.queryByRole('button', { name: 'New chat' })).not.toBeInTheDocument();
-		});
-
-		test('without sidebar: no Sidebar.Provider, so Ctrl+B does nothing and writes no cookie', async () => {
 			const { container } = renderChatSurface();
+			expect(screen.queryByRole('button', { name: 'New chat' })).not.toBeInTheDocument();
 			expect(container.querySelector('[data-slot="sidebar-wrapper"]')).toBeNull();
 
-			await pressCtrlB();
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+			await tick();
 
 			expect(document.cookie).not.toContain(SIDEBAR_COOKIE_NAME);
-		});
-
-		test('with sidebar: its own Sidebar.Provider, so Ctrl+B collapses the list', async () => {
-			const { container } = renderChatSurface({ sidebar: true });
-			const panel = container.querySelector('[data-slot="sidebar"]');
-			expect(panel).toHaveAttribute('data-state', 'expanded');
-
-			await pressCtrlB();
-
-			expect(panel).toHaveAttribute('data-state', 'collapsed');
-			expect(document.cookie).toContain(`${SIDEBAR_COOKIE_NAME}=false`);
-		});
-
-		test('with sidebar: sidebarOpen sets the initial open state', () => {
-			const { container } = renderChatSurface({ sidebar: true, sidebarOpen: false });
-			expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
-				'data-state',
-				'collapsed'
-			);
-		});
-
-		test('renders a ThreadList beside the conversation pane when sidebar is true', () => {
-			renderChatSurface({ sidebar: true });
-			expect(screen.getByRole('button', { name: 'New chat' })).toBeInTheDocument();
-		});
-
-		test('the rendered ThreadList reflects the ambient context thread list', () => {
-			const client = makeMockClient();
-			const ctx = makeContext({ client, assistantId: 'assistant-1' });
-			render(LangGraphHost, {
-				props: {
-					ctx,
-					component: ChatSurface,
-					threadId: 'test-123',
-					sidebar: true,
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?'
-				}
-			});
-
-			// Empty (never-fetched) thread list from a fresh LangGraphContext.
-			expect(screen.getByText('No conversations yet')).toBeInTheDocument();
 		});
 	});
 });

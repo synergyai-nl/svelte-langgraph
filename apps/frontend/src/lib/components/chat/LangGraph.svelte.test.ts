@@ -149,7 +149,10 @@ describe('<LangGraph> assistantId prop', () => {
 });
 
 describe('<LangGraph> markup', () => {
-	afterEach(() => vi.unstubAllGlobals());
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
 
 	test('renders no element of its own and provides tooltips without delay', async () => {
 		// The tooltip positions itself with this, and jsdom has none.
@@ -161,19 +164,17 @@ describe('<LangGraph> markup', () => {
 				disconnect() {}
 			}
 		);
-		const user = userEvent.setup({ delay: null });
+		// Fake timers make the delay check deterministic: under Bits UI's default 700ms delay the
+		// tooltip would still be closed after the single millisecond advanced below.
+		vi.useFakeTimers();
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 		const { container } = render(LangGraphTooltipHost);
 		const trigger = screen.getByRole('button', { name: 'Trigger' });
 		expect(trigger.parentElement).toBe(container);
 
 		await user.hover(trigger);
+		await vi.advanceTimersByTimeAsync(1);
 
-		// A short timeout: under Bits UI's default 700ms delay the tooltip would not open in time.
-		await waitFor(
-			() => expect(document.querySelector('[data-tooltip-content]')).toHaveTextContent('Tip'),
-			{
-				timeout: 200
-			}
-		);
+		expect(document.querySelector('[data-tooltip-content]')).toHaveTextContent('Tip');
 	});
 });
