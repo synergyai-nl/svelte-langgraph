@@ -78,7 +78,7 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
 
    This copies the components into `$lib/components/chat/`, the client library into
    `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
-   use, and writes the chat strings to `messages/chat/{locale}.json`.
+   use, and writes the chat strings to `messages/svelte-langgraph/{locale}.json`.
 
    The item ships no copies of shadcn-svelte UI components: the chat uses your stock ones,
    including `sidebar` and `spinner`, and copies through the `use-clipboard` hook. The thread
@@ -131,14 +131,14 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
 
    ```json
    "plugin.inlang.messageFormat": {
-   	"pathPattern": ["./messages/{locale}.json", "./messages/chat/{locale}.json"]
+   	"pathPattern": ["./messages/{locale}.json", "./messages/svelte-langgraph/{locale}.json"]
    }
    ```
 
    Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
    are compiled before you run `svelte-check`.
 
-5. Edit the chat UI's strings in `messages/chat/{locale}.json`. The item ships `en`, `nl` and
+5. Edit the chat UI's strings in `messages/svelte-langgraph/{locale}.json`. The item ships `en`, `nl` and
    `hi`, and Paraglide compiles only the `locales` in your settings: delete the files for
    locales you don't ship (the next `add` restores them), or add the locale to `locales`.
    Add a new locale by adding its file there and to `locales`.

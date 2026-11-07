@@ -22,7 +22,7 @@ fileGroups:
     # Chat block
     - 'src/lib/components/chat/**/*'
     # Message catalogue
-    - 'messages/chat/**/*'
+    - 'messages/svelte-langgraph/**/*'
     # Client library (unpublished, shipped as source); leading `/` = workspace root
     - '/packages/client/src/**/*'
 

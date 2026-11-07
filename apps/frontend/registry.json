@@ -13,7 +13,7 @@
 			"name": "chat",
 			"type": "registry:block",
 			"title": "Chat",
-			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/chat/{locale}.json). Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, localized with Paraglide (strings in messages/svelte-langgraph/{locale}.json). Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
 			"registryDependencies": [
 				"button",
 				"card",
@@ -187,19 +187,19 @@
 					"target": "chat/ChatLoader.svelte"
 				},
 				{
-					"path": "messages/chat/en.json",
+					"path": "messages/svelte-langgraph/en.json",
 					"type": "registry:file",
-					"target": "~/messages/chat/en.json"
+					"target": "~/messages/svelte-langgraph/en.json"
 				},
 				{
-					"path": "messages/chat/nl.json",
+					"path": "messages/svelte-langgraph/nl.json",
 					"type": "registry:file",
-					"target": "~/messages/chat/nl.json"
+					"target": "~/messages/svelte-langgraph/nl.json"
 				},
 				{
-					"path": "messages/chat/hi.json",
+					"path": "messages/svelte-langgraph/hi.json",
 					"type": "registry:file",
-					"target": "~/messages/chat/hi.json"
+					"target": "~/messages/svelte-langgraph/hi.json"
 				},
 				{
 					"path": "../../packages/client/src/apiUrl.ts",
