@@ -1,10 +1,14 @@
 import { describe, test, expect } from 'vitest';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import registry from '../registry.json';
+import pkg from '../package.json';
 
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url));
 const chatDir = 'src/lib/components/chat';
+
+/** The consumer components folder the item owns, so a re-run never touches the app's own files. */
+const itemTarget = 'svelte-langgraph';
 
 /** Every shippable file under `root/dir`, as `dir/file`: tests and `__tests__` helpers excluded. */
 function sourceFiles(root: string, dir: string): string[] {
@@ -28,10 +32,30 @@ describe('shadcn-svelte registry', () => {
 		expect(shipped).toEqual(sourceFiles(frontendRoot, chatDir));
 	});
 
-	test('installs chat components under chat/, preserving their layout', () => {
+	test('installs chat components flat under svelte-langgraph/, keeping their subfolders', () => {
 		for (const file of chat.files.filter((file) => file.path.startsWith(`${chatDir}/`))) {
 			expect(file.type).toBe('registry:component');
-			expect(file.target).toBe(file.path.replace('src/lib/components/', ''));
+			expect(file.target).toBe(file.path.replace(`${chatDir}/`, `${itemTarget}/`));
+		}
+	});
+
+	test('installs nothing outside its own folders', () => {
+		const folders: Record<string, string> = {
+			'registry:component': `${itemTarget}/`,
+			'registry:file': `~/messages/${itemTarget}/`,
+			'registry:lib': `${clientTarget}/`
+		};
+		for (const file of chat.files) {
+			expect(file.target.startsWith(folders[file.type]), file.target).toBe(true);
+		}
+	});
+
+	test('never imports its own files through $lib/components/chat/, which only exists here', () => {
+		// Relative imports survive the move to svelte-langgraph/; a `$lib/components/chat/` one would not.
+		for (const { path } of chat.files.filter((file) => file.path.startsWith(`${chatDir}/`))) {
+			expect(readFileSync(`${frontendRoot}/${path}`, 'utf8'), path).not.toMatch(
+				/\$lib\/components\/chat\//
+			);
 		}
 	});
 
@@ -60,6 +84,19 @@ describe('shadcn-svelte registry', () => {
 			.filter((file) => file.target.startsWith(`${clientTarget}/`))
 			.sort((a, b) => (a.path < b.path ? -1 : 1));
 		expect(shipped).toEqual(expected);
+	});
+
+	test('lists only the packages the chat adds, at the demo app ranges', () => {
+		// Packages a shadcn-svelte + Paraglide app already has (`@lucide/svelte`, `bits-ui`,
+		// `tailwind-variants`, `@inlang/paraglide-js`) stay out: the CLI would rewrite their ranges.
+		const ranges: Record<string, string> = { ...pkg.devDependencies, ...pkg.dependencies };
+		const expected = [
+			'@langchain/langgraph-sdk',
+			'@langchain/svelte',
+			'@tailwindcss/typography',
+			'svelte-exmarkdown'
+		].map((name) => `${name}@${ranges[name]}`);
+		expect(chat.dependencies).toEqual(expected);
 	});
 
 	test('does not depend on the unpublished client package', () => {
