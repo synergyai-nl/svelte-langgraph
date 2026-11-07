@@ -2,44 +2,28 @@
 	/**
 	 * `<ChatSurface>` — the assembled, ready-to-drop-in chat surface (SLG-133 PR 3).
 	 *
-	 * Thin composition only: `ThreadList` (optional) beside `Conversation`, with the
-	 * intro/`Suggestions` empty state filled into `Conversation`'s `empty` render-prop. No
-	 * business logic of its own — everything it renders is driven by `ConversationApi` and the
-	 * ambient `<LangGraph>` context.
+	 * The conversation pane: `Conversation` with the intro/`Suggestions` empty state filled into
+	 * its `empty` render-prop. No business logic of its own — everything it renders is driven by
+	 * `ConversationApi` and the ambient `<LangGraph>` context.
 	 *
-	 * With `sidebar`, it renders its own stock `Sidebar.Provider` around `ThreadList` and the
-	 * pane (`sidebarOpen` binds its open state), so the Cmd/Ctrl+B shortcut and the sidebar cookie
-	 * come with it. Without `sidebar` it renders no provider, and neither happens. Inside an app's
-	 * own `Sidebar.Provider`, `sidebar` would nest a second one: compose `ThreadList` and
-	 * `Conversation` by hand there instead.
+	 * It renders no `Sidebar.Provider` and no `ThreadList`. For a thread list, compose it yourself,
+	 * as `routes/chat/+layout.svelte` does: a stock `<Sidebar.Provider class="h-full min-h-0">`
+	 * holding `<ThreadList />` and a pane with your own `<Sidebar.Trigger />` and `<ChatSurface />`.
 	 */
 	import ChatLoader from '../ChatLoader.svelte';
-	import * as Sidebar from '$lib/components/ui/sidebar';
 	import Conversation from './Conversation.svelte';
-	import { ThreadList } from './ThreadList';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
 
 	interface Props {
 		/** Defaults to the ambient `<LangGraph>` context's active thread. */
 		threadId?: string;
-		/** Render a `ThreadList` beside the conversation pane, under its own `Sidebar.Provider`. */
-		sidebar?: boolean;
-		/** With `sidebar`: whether the thread list is open (desktop). Bindable. */
-		sidebarOpen?: boolean;
 		suggestions?: ChatSuggestion[];
 		intro?: string;
 		introTitle?: string;
 	}
 
-	let {
-		threadId,
-		sidebar = false,
-		sidebarOpen = $bindable(true),
-		suggestions = [],
-		intro = '',
-		introTitle = ''
-	}: Props = $props();
+	let { threadId, suggestions = [], intro = '', introTitle = '' }: Props = $props();
 
 	const ctx = useLangGraph('ChatSurface');
 
@@ -53,46 +37,34 @@
 	const ready = $derived(Boolean(ctx.client && ctx.assistantId));
 </script>
 
-{#snippet pane()}
-	<!-- `h-full min-h-0` in addition to `flex-1`: in the provider's flex row, beside `ThreadList`,
-	     `flex-1` sizes the pane, but in a plain block container (an embed's card) `flex-1` is
-	     inert and only `h-full` bounds the pane — without it the message list grows instead of
-	     scrolling. -->
-	<div class="bg-background relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
-		{#if resolvedThreadId && ready}
-			<!-- The remount boundary covers everything `Conversation` captures at init: the thread,
-			     the client identity, and the assistant id. A provider whose explicit `assistantId`
-			     or client changes mid-thread must remount the conversation, or it keeps streaming
-			     through the stale configuration. -->
-			{#key resolvedThreadId}
-				{#key ctx.client}
-					{#key ctx.assistantId}
-						<Conversation threadId={resolvedThreadId}>
-							{#snippet empty(api)}
-								<Suggestions
-									{suggestions}
-									{introTitle}
-									{intro}
-									onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
-								/>
-							{/snippet}
-						</Conversation>
-					{/key}
+<!-- `h-full min-h-0` in addition to `flex-1`: as a flex child (e.g. beside `ThreadList` under a
+     `Sidebar.Provider`'s flex row) `flex-1` sizes the pane, but embedded in a plain block
+     container (an embed's card, or the chat layout's `min-h-0 flex-1` content div) `flex-1` is
+     inert and only `h-full` bounds the pane — without it the message list grows instead of
+     scrolling. -->
+<div class="bg-background relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col">
+	{#if resolvedThreadId && ready}
+		<!-- The remount boundary covers everything `Conversation` captures at init: the thread,
+		     the client identity, and the assistant id. A provider whose explicit `assistantId`
+		     or client changes mid-thread must remount the conversation, or it keeps streaming
+		     through the stale configuration. -->
+		{#key resolvedThreadId}
+			{#key ctx.client}
+				{#key ctx.assistantId}
+					<Conversation threadId={resolvedThreadId}>
+						{#snippet empty(api)}
+							<Suggestions
+								{suggestions}
+								{introTitle}
+								{intro}
+								onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+							/>
+						{/snippet}
+					</Conversation>
 				{/key}
 			{/key}
-		{:else}
-			<ChatLoader />
-		{/if}
-	</div>
-{/snippet}
-
-{#if sidebar}
-	<!-- tailwind-merge swaps stock's viewport `min-h-svh` for `min-h-0`: the provider fills its
-	     container like the pane does. -->
-	<Sidebar.Provider class="h-full min-h-0" bind:open={sidebarOpen}>
-		<ThreadList />
-		{@render pane()}
-	</Sidebar.Provider>
-{:else}
-	{@render pane()}
-{/if}
+		{/key}
+	{:else}
+		<ChatLoader />
+	{/if}
+</div>

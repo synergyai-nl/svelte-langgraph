@@ -15,8 +15,7 @@
 	 * collision `ChatMessagesHost.svelte` documents for the nested shape.
 	 *
 	 * Wraps `Tooltip.Provider` with no delay, mirroring `LangGraph.svelte`'s own wrapper, and no
-	 * `Sidebar.Provider`, like `<LangGraph>`: `ThreadList` needs the caller's (see `ThreadListHost`),
-	 * and `ChatSurface` renders its own with `sidebar`.
+	 * `Sidebar.Provider`, like `<LangGraph>`: `ThreadList` needs the caller's (see `ThreadListHost`).
 	 */
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { LangGraphContext, setLangGraphContext } from '../langGraphContext.svelte.js';
