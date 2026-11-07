@@ -66,3 +66,27 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	// Still no sidebar cookie after a full round trip.
 	expect((await page.context().cookies()).find((c) => c.name === 'sidebar_state')).toBeUndefined();
 });
+
+test('a failed assistant lookup shows an error with Retry instead of the loader, and Retry recovers', async ({
+	page
+}) => {
+	test.setTimeout(60_000);
+
+	await authenticateUser(page);
+	// `getOrCreateAssistant` starts with `assistants.search`; failing it fails resolution. A 4xx,
+	// not a 5xx: the SDK retries 5xx with backoff, which would delay the error past the timeout.
+	await page.route('**/assistants/search', (route) => route.fulfill({ status: 400, body: 'boom' }));
+	await page.goto('/demo/embedded');
+
+	const card = page.locator('[data-testid="embedded-chat-card"]');
+	const error = card.getByTestId('chat-connect-error');
+	await expect(error).toBeVisible();
+	await expect(error).toHaveAttribute('role', 'alert');
+	await expect(error).toContainText("Couldn't connect to the chat.");
+
+	await page.unroute('**/assistants/search');
+	await error.getByRole('button', { name: 'Retry' }).click();
+
+	await expect(error).toHaveCount(0);
+	await expect(new ChatSurfacePage(card).textInput).toBeVisible();
+});

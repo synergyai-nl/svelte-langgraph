@@ -29,6 +29,8 @@
 	"slg_sidebar_threads_retry": "फिर से कोशिश करें",
 	"slg_sidebar_threads_load_more": "और लोड करें",
 	"slg_sidebar_new_chat_error": "नई चैट शुरू नहीं हो सकी। कृपया पुनः प्रयास करें।",
+	"slg_connect_error": "चैट से कनेक्ट नहीं हो सका।",
+	"slg_connect_retry": "पुनः प्रयास करें",
 	"slg_sidebar_mobile_title": "साइडबार",
 	"slg_sidebar_mobile_description": "मोबाइल साइडबार दिखाता है।",
 	"slg_message_feedback_failed": "रेटिंग विफल रही, फिर से प्रयास करें",

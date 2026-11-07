@@ -29,6 +29,8 @@
 	"slg_sidebar_threads_retry": "Try again",
 	"slg_sidebar_threads_load_more": "Load more",
 	"slg_sidebar_new_chat_error": "Couldn't start a new chat. Please try again.",
+	"slg_connect_error": "Couldn't connect to the chat.",
+	"slg_connect_retry": "Retry",
 	"slg_sidebar_mobile_title": "Sidebar",
 	"slg_sidebar_mobile_description": "Displays the mobile sidebar.",
 	"slg_message_feedback_failed": "Rating failed, try again",
