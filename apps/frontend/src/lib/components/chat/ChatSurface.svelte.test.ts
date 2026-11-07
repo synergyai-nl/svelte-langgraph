@@ -1,5 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { userEvent } from '@testing-library/user-event';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
 import ChatSurface from './ChatSurface.svelte';
@@ -7,6 +8,7 @@ import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import type { ChatSuggestion } from './Suggestions.svelte';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
 import { useStream } from '@langchain/svelte';
+import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
 
 // Mock useStream — same idiom as the old Chat suites: Conversation (mounted inside ChatSurface)
 // depends on it directly.
@@ -182,34 +184,17 @@ describe('ChatSurface', () => {
 		});
 	});
 
-	describe('sidebar prop', () => {
-		test('renders no ThreadList when sidebar is not given', () => {
-			renderChatSurface();
+	describe('no sidebar', () => {
+		test('renders no ThreadList and no Sidebar.Provider: Ctrl+B does nothing and writes no cookie', async () => {
+			document.cookie = `${SIDEBAR_COOKIE_NAME}=; path=/; max-age=0`;
+			const { container } = renderChatSurface();
 			expect(screen.queryByRole('button', { name: 'New chat' })).not.toBeInTheDocument();
-		});
+			expect(container.querySelector('[data-slot="sidebar-wrapper"]')).toBeNull();
 
-		test('renders a ThreadList beside the conversation pane when sidebar is true', () => {
-			renderChatSurface({ sidebar: true });
-			expect(screen.getByRole('button', { name: 'New chat' })).toBeInTheDocument();
-		});
+			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true }));
+			await tick();
 
-		test('the rendered ThreadList reflects the ambient context thread list', () => {
-			const client = makeMockClient();
-			const ctx = makeContext({ client, assistantId: 'assistant-1' });
-			render(LangGraphHost, {
-				props: {
-					ctx,
-					component: ChatSurface,
-					threadId: 'test-123',
-					sidebar: true,
-					suggestions,
-					introTitle: 'Welcome',
-					intro: 'How can I help?'
-				}
-			});
-
-			// Empty (never-fetched) thread list from a fresh LangGraphContext.
-			expect(screen.getByText('No conversations yet')).toBeInTheDocument();
+			expect(document.cookie).not.toContain(SIDEBAR_COOKIE_NAME);
 		});
 	});
 });

@@ -29,10 +29,9 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	// (a) No sidebar chrome anywhere on the page — the whole point of the embed.
 	await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0);
 
-	// (c) `b` is the app's sidebar-toggle shortcut. `Sidebar.Provider` gates both its global
-	// keydown handler and its cookie write on a mounted `Sidebar.Root` (SLG-133's embeddable-API
-	// patch — see `sidebar/context.svelte.ts`'s `hasRegisteredRoot`); this page renders none, so
-	// the shortcut must be a complete no-op here.
+	// (c) `b` is the app's sidebar-toggle shortcut. Its keydown handler and cookie write belong
+	// to `Sidebar.Provider`, which the caller owns; `<LangGraph>` renders none and this page adds
+	// none, so the shortcut must be a complete no-op here.
 	await page.keyboard.press('Control+b');
 	await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0);
 	expect((await page.context().cookies()).find((c) => c.name === 'sidebar_state')).toBeUndefined();

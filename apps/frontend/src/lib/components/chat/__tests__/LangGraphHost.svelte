@@ -14,12 +14,10 @@
 	 * `rerender({ threadId: 'new-id' })` on this host's render result works without the key
 	 * collision `ChatMessagesHost.svelte` documents for the nested shape.
 	 *
-	 * Always wraps `Tooltip.Provider` + `Sidebar.Provider`, mirroring `LangGraph.svelte`'s own
-	 * wrapper — needed by `ThreadList` (rendered by `ChatSurface`'s `sidebar` prop) and harmless for
-	 * components that don't touch sidebar context.
+	 * Wraps `Tooltip.Provider` with no delay, mirroring `LangGraph.svelte`'s own wrapper, and no
+	 * `Sidebar.Provider`, like `<LangGraph>`: `ThreadList` needs the caller's (see `ThreadListHost`).
 	 */
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { LangGraphContext, setLangGraphContext } from '../langGraphContext.svelte.js';
 	import type { Component } from 'svelte';
 
@@ -37,8 +35,6 @@
 	setLangGraphContext(ctx);
 </script>
 
-<Tooltip.Provider>
-	<Sidebar.Provider>
-		<Inner {...innerProps} />
-	</Sidebar.Provider>
+<Tooltip.Provider delayDuration={0}>
+	<Inner {...innerProps} />
 </Tooltip.Provider>

@@ -26,30 +26,46 @@
 	}
 </script>
 
+<!-- Our own element through the stock `MenuButton`'s `child` snippet, so a row can be a real
+     `<a>` or a `<button type="button">` and carry `data-pending`, which stock knows nothing of.
+     `data-active` is overridden to be absent unless active: stock sets `data-active="false"` on
+     every inactive row, and its `data-active:` variant matches any value. The classes keep the
+     lighter hover and add the pending tint; `cn()` lets them win over stock's. -->
 <Sidebar.MenuItem>
-	{#if href}
-		<Sidebar.MenuButton {isActive} {isPending} aria-current={isActive ? 'page' : undefined}>
-			{#snippet child({ props })}
-				<a {href} {...props} onclick={handleClick}>
-					<span class="truncate">{threadLabel(thread, getLocale())}</span>
-					{#if isPending}
-						<Spinner aria-hidden="true" />
-					{/if}
+	<Sidebar.MenuButton
+		{isActive}
+		aria-current={isActive ? 'page' : undefined}
+		class="hover:bg-sidebar-accent/50 data-[pending=true]:bg-sidebar-accent/70 data-[pending=true]:text-sidebar-accent-foreground"
+	>
+		{#snippet child({ props })}
+			{#if href}
+				<a
+					{href}
+					{...props}
+					data-active={isActive || undefined}
+					data-pending={isPending}
+					onclick={handleClick}
+				>
+					{@render label()}
 				</a>
-			{/snippet}
-		</Sidebar.MenuButton>
-	{:else}
-		<Sidebar.MenuButton
-			type="button"
-			{isActive}
-			{isPending}
-			aria-current={isActive ? 'page' : undefined}
-			onclick={handleClick}
-		>
-			<span class="truncate">{threadLabel(thread, getLocale())}</span>
-			{#if isPending}
-				<Spinner aria-hidden="true" />
+			{:else}
+				<button
+					type="button"
+					{...props}
+					data-active={isActive || undefined}
+					data-pending={isPending}
+					onclick={handleClick}
+				>
+					{@render label()}
+				</button>
 			{/if}
-		</Sidebar.MenuButton>
-	{/if}
+		{/snippet}
+	</Sidebar.MenuButton>
 </Sidebar.MenuItem>
+
+{#snippet label()}
+	<span class="truncate">{threadLabel(thread, getLocale())}</span>
+	{#if isPending}
+		<Spinner aria-hidden="true" />
+	{/if}
+{/snippet}

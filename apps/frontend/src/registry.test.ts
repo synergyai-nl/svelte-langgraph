@@ -15,10 +15,6 @@ function sourceFiles(root: string, dir: string): string[] {
 		.sort();
 }
 
-/** Patched copies of upstream shadcn-svelte ui items that the chat components depend on. */
-const patchedUiDirs = ['sidebar'];
-const uiDir = 'src/lib/components/ui';
-
 /** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `$lib`. */
 const clientDir = '../../packages/client/src';
 const clientTarget = 'svelte-langgraph-client';
@@ -49,24 +45,9 @@ describe('shadcn-svelte registry', () => {
 		}
 	});
 
-	test.each(patchedUiDirs)('ships every file of the patched ui/%s and no tests', (dir) => {
-		const shipped = paths.filter((path) => path.startsWith(`${uiDir}/${dir}/`)).sort();
-		expect(shipped).toEqual(sourceFiles(frontendRoot, `${uiDir}/${dir}`));
-	});
-
-	test('installs patched ui files into the consumer ui directory', () => {
-		for (const dir of patchedUiDirs) {
-			for (const file of chat.files.filter((file) => file.path.startsWith(`${uiDir}/${dir}/`))) {
-				expect(file.type).toBe('registry:ui');
-				expect(file.target).toBe(file.path.replace(`${uiDir}/`, ''));
-			}
-		}
-	});
-
-	test('does not also depend on the upstream versions of the patched ui items', () => {
-		for (const dir of patchedUiDirs) {
-			expect(chat.registryDependencies).not.toContain(dir);
-		}
+	test('ships no ui/ files and depends on the stock sidebar instead', () => {
+		expect(paths.filter((path) => path.startsWith('src/lib/components/ui/'))).toEqual([]);
+		expect(chat.registryDependencies).toContain('sidebar');
 	});
 
 	test('ships every client library file as registry:lib under svelte-langgraph-client/', () => {
