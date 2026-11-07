@@ -13,22 +13,28 @@
 			"name": "chat",
 			"type": "registry:block",
 			"title": "Chat",
-			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, installed into $lib/components/svelte-langgraph/ and localized with Paraglide (strings in messages/svelte-langgraph/{locale}.json). Uses your stock shadcn-svelte components and ships no copies of them. Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, installed into $lib/components/svelte-langgraph/ and localized with Paraglide (strings in messages/svelte-langgraph/{locale}.json). Lists the stock shadcn-svelte components the chat uses and ships no copies of them; its own files come from chat-core. Bundles the @svelte-langgraph/client library under $lib/svelte-langgraph-client, which needs a kit.alias entry for @svelte-langgraph/client (SvelteKit 2).",
 			"registryDependencies": [
 				"button",
 				"card",
 				"dialog",
-				"input",
 				"is-mobile",
-				"separator",
 				"sheet",
 				"sidebar",
-				"skeleton",
 				"spinner",
 				"textarea",
 				"tooltip",
-				"https://shadcn-svelte-extras.com/r/use-clipboard.json"
+				"https://shadcn-svelte-extras.com/r/use-clipboard.json",
+				"./chat-core.json"
 			],
+			"files": []
+		},
+		{
+			"name": "chat-core",
+			"type": "registry:block",
+			"title": "Chat core",
+			"description": "The chat's own files without its stock dependencies: the components in $lib/components/svelte-langgraph/, their strings in messages/svelte-langgraph/{locale}.json and the @svelte-langgraph/client library in $lib/svelte-langgraph-client. Install chat first; add chat-core again to update the chat without touching ui/ or hooks/.",
+			"registryDependencies": [],
 			"dependencies": [
 				"@langchain/langgraph-sdk@^1.8.3",
 				"@langchain/svelte@^0.3.1",
