@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { getOrCreateThread } from '@svelte-langgraph/client';
-	import ChatLoader from '$lib/components/ChatLoader.svelte';
+	import ChatLoader from '$lib/components/chat/ChatLoader.svelte';
 	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
 	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';

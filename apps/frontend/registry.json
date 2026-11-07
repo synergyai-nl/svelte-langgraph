@@ -182,9 +182,9 @@
 					"target": "chat/UserMessageEdit.svelte"
 				},
 				{
-					"path": "src/lib/components/ChatLoader.svelte",
+					"path": "src/lib/components/chat/ChatLoader.svelte",
 					"type": "registry:component",
-					"target": "ChatLoader.svelte"
+					"target": "chat/ChatLoader.svelte"
 				},
 				{
 					"path": "messages/chat/en.json",
