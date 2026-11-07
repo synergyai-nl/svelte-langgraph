@@ -52,10 +52,19 @@ You can preview the production build with `npm run preview`.
 
 ## Installing the chat UI from the registry
 
-The chat components (`src/lib/components/chat/`) are published as a
-[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) item, `chat`.
+The chat components (`src/lib/components/chat/` in this repo) are published as a
+[shadcn-svelte custom registry](https://www.shadcn-svelte.com/docs/registry) in two items:
+
+- `chat`, for a fresh install. It ships no files: it lists the stock shadcn-svelte components
+  the chat uses (`button`, `card`, `dialog`, `sheet`, `sidebar`, `spinner`, `textarea`,
+  `tooltip`, the `is-mobile` hook and the shadcn-svelte-extras `use-clipboard` hook) and
+  `chat-core`.
+- `chat-core`, for updates. It holds the chat's own files and npm packages, and lists no
+  stock components, so adding it never touches your `ui/` or `hooks/`.
+
 `moon frontend:registry-build` builds `registry.json` into `static/r/` (gitignored; `build`
-and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
+and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
+`/r/chat-core.json`.
 
 ### Requirements
 
@@ -63,36 +72,69 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
   ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)). Current `sv create`
   (1.x) scaffolds Kit 3; scaffold a new consumer with `pnpm dlx sv@0.17.1 create` until then.
 - Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
-- Paraglide.
+- Paraglide (`@inlang/paraglide-js`).
+- `@lucide/svelte`, `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first
+  two, and `bits-ui` comes with the stock components. The chat items do not list them, so they
+  leave your ranges alone.
+
+### Layout
+
+The items install into three folders they own. Everything else in your app is yours.
+
+- `$lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
+  `ScrollableContainer/` subfolders.
+- `$lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
+  to npm ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+- `messages/svelte-langgraph/`: the chat strings, one file per locale (steps 4 and 5).
+
+The CLI logs "chat installed at src/lib/components/chat" and "chat-core installed at
+src/lib/components/chat-core"; neither folder is created, the files are in the folders above.
 
 ### Steps
 
-1. Install the item:
+1. Install `chat`:
 
    ```bash
-   pnpm dlx shadcn-svelte@latest add https://svelte-langgraph-demo.synergyai.nl/r/chat.json
+   pnpm dlx shadcn-svelte@1.8.0 add https://svelte-langgraph-demo.synergyai.nl/r/chat.json
    ```
 
-   That URL serves the item built from `main`. Re-running `add` updates it, and reverts any
-   local patches to the files it ships.
+   That URL serves the items built from `main`. The CLI resolves `chat`'s `./chat-core.json`
+   next to it.
 
-   This copies the components into `$lib/components/chat/`, the client library into
-   `$lib/svelte-langgraph-client/`, pulls in the upstream shadcn-svelte UI components they
-   use, and writes the chat strings to `messages/svelte-langgraph/{locale}.json`.
+   **Answer No for the stock components you already have.** shadcn-svelte has no "skip if it
+   exists": when some of the stock components are already installed, the CLI lists them and
+   asks "Would you like to overwrite all existing files?". Keep its default, "No, let me
+   decide individually". It then asks per item, for example "Would you like to overwrite your
+   existing button registry:ui?", and that prompt defaults to **Yes**: answer No (`n`) for
+   each. The chat only uses stock variants and sizes, so your own versions work. `-y` does not
+   answer these prompts, and `-o` overwrites them all without asking. Measured with shadcn-svelte
+   1.8.0 on an app with `button` and `sidebar` already installed and customised:
 
-   The item ships no copies of shadcn-svelte UI components: the chat uses your stock ones,
-   including `sidebar` and `spinner`, and copies through the `use-clipboard` hook. The thread
-   list draws its own sidebar shell (`ThreadListPanel`), so it fits any container; it only needs
-   a stock `Sidebar.Provider` around it (see "Thread list layout" below).
+   ```text
+   ▲  The following items already exist:
+   │  button, is-mobile, sheet, sidebar, input, tooltip, skeleton, separator
+   ◇  Would you like to overwrite all existing files?
+   │  No, let me decide individually
+   ▲  Item button already exists at src/lib/components/ui/button
+   ◇  Would you like to overwrite your existing button registry:ui?
+   │  No
+   …  (the same for is-mobile, sheet, sidebar, input, tooltip, skeleton, separator)
+   ◇  card installed at src/lib/components/ui/card
+   ◇  dialog installed at src/lib/components/ui/dialog
+   ◇  spinner installed at src/lib/components/ui/spinner
+   ◇  textarea installed at src/lib/components/ui/textarea
+   ◇  chat installed at src/lib/components/chat
+   ◇  use-clipboard installed at src/lib/hooks/use-clipboard
+   ◇  chat-core installed at src/lib/components/chat-core
+   ```
 
-   The CLI asks about overwriting per item: `chat`, then each stock component it depends on
-   (`button`, `card`, `dialog`, `input`, `separator`, `sheet`, `sidebar`, `skeleton`,
-   `spinner`, `textarea`, `tooltip`, and the `is-mobile` and `use-clipboard` hooks).
-   Answer No to "overwrite all" to decide item by item, and decline the stock components you
-   customised: the chat only uses their stock variants and sizes. `-y` does not answer the
-   overwrite prompts, and they default to Yes, so read them before pressing Enter. A
-   non-interactive run needs `-y -o`, which overwrites everything; follow it with `git restore`
-   on the components you customised.
+   The customised `button` and `sidebar` stayed as they were; the missing stock components and
+   the chat's own files were installed.
+
+   The chat uses your stock components, including `sidebar` and `spinner`, and copies through
+   the `use-clipboard` hook. The thread list draws its own sidebar shell (`ThreadListPanel`), so
+   it fits any container; it only needs a stock `Sidebar.Provider` around it (see "Thread list
+   layout" below).
 
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
@@ -138,10 +180,10 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
    Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
    are compiled before you run `svelte-check`.
 
-5. Edit the chat UI's strings in `messages/svelte-langgraph/{locale}.json`. The item ships `en`, `nl` and
-   `hi`, and Paraglide compiles only the `locales` in your settings: delete the files for
-   locales you don't ship (the next `add` restores them), or add the locale to `locales`.
-   Add a new locale by adding its file there and to `locales`.
+5. Edit the chat UI's strings in `messages/svelte-langgraph/{locale}.json`. The item ships
+   `en`, `nl` and `hi`, and Paraglide compiles only the `locales` in your settings: delete the
+   files for locales you don't ship (the next update restores them), or add the locale to
+   `locales`. Add a new locale by adding its file there and to `locales`.
    Every chat key is prefixed `slg_` (`m.slg_cancel()`), so it cannot collide with your own keys:
    Paraglide's message-format plugin merges every `pathPattern` file and the last file wins silently,
    so an unprefixed shared key would shadow your app's own string.
@@ -153,16 +195,53 @@ and `dev` run it first), so the frontend serves the item at `/r/chat.json`.
      each add.
    - **ESLint.** `ThreadListItem` renders an `<a href>` from `hrefFor`, which must return a
      resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
-     `src/lib/components/chat/**` (the same override you may already have for `ui/**`).
+     `src/lib/components/svelte-langgraph/**` (the same override you may already have for
+     `ui/**`).
    - **Font weights.** The components use `font-medium`: `ChatToolMessage` (three times),
      `SuggestionCard`, and the stock `dialog-title`, `sidebar-group-label` and
      `sidebar-menu-button` (the active row). If your app has a weight policy, patch them after
      each add.
-   - **Dependencies.** The add rewrites the version ranges of packages you already have to the
-     item's, even downgrades (`@lucide/svelte` `^1.x` becomes `^0.562.0`, `tailwind-variants`
-     `^4` becomes `^3`), and adds the missing ones, most under `dependencies`. Check
-     `package.json` after each add and restore your ranges. An adapter-node app that ships
-     without `node_modules` keeps the packages under `devDependencies`.
+   - **Dependencies.** The chat adds only `@langchain/langgraph-sdk`, `@langchain/svelte`,
+     `@tailwindcss/typography` and `svelte-exmarkdown`, under `dependencies`, and leaves the
+     ones you already have alone. The stock components carry their own ranges, which the CLI
+     writes whenever it installs one: in the test above, `button` set `tailwind-variants` to
+     `^3.3.1` over `^4.0.1`. Check `package.json` after a fresh install. An adapter-node app
+     that ships without `node_modules` keeps the packages under `devDependencies`.
+
+### Updating
+
+Add `chat-core`, which never touches `ui/` or `hooks/`:
+
+```bash
+pnpm dlx shadcn-svelte@1.8.0 add https://svelte-langgraph-demo.synergyai.nl/r/chat-core.json -y -o
+```
+
+It rewrites every file in the chat's three folders, so it reverts your hand edits there: run
+`git diff` afterwards and re-apply them. `package.json` and your lockfile may change when the
+chat's npm packages change. Files the chat no longer ships stay behind; delete the three
+folders before the update to drop them. Measured with shadcn-svelte 1.8.0 on the app above,
+after a hand edit to `ChatLoader.svelte`:
+
+```text
+◇  Components to install:
+│  https://…/r/chat-core.json
+◇  chat-core installed at src/lib/components/chat-core
+└  Success! Components added.
+```
+
+`git status` then showed only the reverted `svelte-langgraph/ChatLoader.svelte`.
+
+When a release needs a stock component you don't have yet, its release notes say so: run
+`pnpm dlx shadcn-svelte@1.8.0 add <name>` for it, then update as above.
+
+### Moving from the `components/chat/` trial layout
+
+1. Back up your hand edits to the chat files.
+2. Install `chat.json` as in step 1, answering No for the stock components you already have.
+3. Move your imports to `$lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
+   where you use `ThreadList` (see "Thread list layout"), and delete the old
+   `components/chat/`, `components/ChatLoader.svelte`, `ui/copy-button/` and `messages/chat/`.
+   Keep `ui/sidebar/` and `ui/spinner/`: the chat now uses them as stock components.
 
 ### Backend routes
 
@@ -189,7 +268,7 @@ auth handler.
 <!-- +page.svelte -->
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import LangGraph from '$lib/components/chat/LangGraph.svelte';
+	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
 	import Chat from './Chat.svelte';
 
 	let { data } = $props(); // however your app exposes the token your backend validates
@@ -205,8 +284,8 @@ auth handler.
 ```svelte
 <!-- Chat.svelte: must be a child of <LangGraph> to read its context -->
 <script lang="ts">
-	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
-	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 
@@ -253,9 +332,9 @@ cookie.
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import LangGraph from '$lib/components/chat/LangGraph.svelte';
-	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
-	import { ThreadList } from '$lib/components/chat/ThreadList';
+	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
+	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { ThreadList } from '$lib/components/svelte-langgraph/ThreadList';
 
 	let { data } = $props();
 </script>
@@ -280,14 +359,14 @@ seeds the provider's `open` from the cookie (`bind:open`).
 `moon frontend:dev` builds the item first, so with it running, in the consumer project run:
 
 ```bash
-pnpm dlx shadcn-svelte@latest add http://localhost:5173/r/chat.json
+pnpm dlx shadcn-svelte@1.8.0 add http://localhost:5173/r/chat.json
 ```
 
 The CLI only accepts URLs, not file paths.
 
 Without the dev server, build and serve only the item: `moon frontend:registry-build`, then
 `python3 -m http.server 4877 -d apps/frontend/static/r`, and add
-`http://localhost:4877/chat.json`.
+`http://localhost:4877/chat.json` (or `chat-core.json` to update).
 
 ---
 
@@ -301,7 +380,7 @@ primitive built on Svelte 5 runes.
 ```svelte
 <script lang="ts">
 	import { createStateSync } from '@svelte-langgraph/client';
-	import StateField from '$lib/components/chat/StateField.svelte';
+	import StateField from '$lib/components/svelte-langgraph/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props
 	const sync = createStateSync({ stream, client, assistantId });
