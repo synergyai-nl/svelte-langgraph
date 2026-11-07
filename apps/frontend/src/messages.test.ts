@@ -2,9 +2,9 @@ import { describe, test, expect } from 'vitest';
 import en from '../messages/en.json';
 import nl from '../messages/nl.json';
 import hi from '../messages/hi.json';
-import chatEn from '../messages/chat/en.json';
-import chatNl from '../messages/chat/nl.json';
-import chatHi from '../messages/chat/hi.json';
+import chatEn from '../messages/svelte-langgraph/en.json';
+import chatNl from '../messages/svelte-langgraph/nl.json';
+import chatHi from '../messages/svelte-langgraph/hi.json';
 
 /**
  * Both catalogues `project.inlang/settings.json` loads via its `pathPattern` array: the app's own

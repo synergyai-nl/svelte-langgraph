@@ -10,7 +10,7 @@
 	 * as `routes/chat/+layout.svelte` does: a stock `<Sidebar.Provider class="h-full min-h-0">`
 	 * holding `<ThreadList />` and a pane with your own `<Sidebar.Trigger />` and `<ChatSurface />`.
 	 */
-	import ChatLoader from '../ChatLoader.svelte';
+	import ChatLoader from './ChatLoader.svelte';
 	import Conversation from './Conversation.svelte';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
