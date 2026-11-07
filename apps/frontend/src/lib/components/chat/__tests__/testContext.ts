@@ -25,10 +25,12 @@ export function makeContext(
 	options: {
 		client?: AppClient;
 		assistantId?: string;
+		titles?: boolean;
 	} = {}
 ): LangGraphContext {
 	const ctx = new LangGraphContext();
 	if (options.client) ctx.setClient(options.client);
 	if (options.assistantId !== undefined) ctx.setAssistantId(options.assistantId);
+	if (options.titles !== undefined) ctx.setTitles(options.titles);
 	return ctx;
 }

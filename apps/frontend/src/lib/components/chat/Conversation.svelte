@@ -242,7 +242,8 @@
 		untrack(() => {
 			ctx.threadList.refresh();
 			// The titler awaits the response and cancels its request on unmount.
-			void titler.ensureThreadTitle(stream.messages);
+			// `<LangGraph titles={false}>`: the backend has no `/titles` route.
+			if (ctx.titles) void titler.ensureThreadTitle(stream.messages);
 		});
 	});
 
@@ -253,7 +254,9 @@
 	$effect(() => {
 		if (stream.isThreadLoading || backfillAttempted) return;
 		backfillAttempted = true;
-		untrack(() => void titler.ensureThreadTitle(stream.messages));
+		untrack(() => {
+			if (ctx.titles) void titler.ensureThreadTitle(stream.messages);
+		});
 	});
 
 	// Report history-loading state up so the sidebar can mark this thread's row as pending.

@@ -159,3 +159,16 @@ describe('<LangGraph> markup', () => {
 		expect(document.querySelector('[data-tooltip-content]')).toHaveTextContent('Tip');
 	});
 });
+
+describe('<LangGraph> titles prop', () => {
+	test('defaults to true', async () => {
+		const { getCtx } = renderProbe();
+		await waitFor(() => expect(getCtx()).toBeDefined());
+		expect(getCtx()?.titles).toBe(true);
+	});
+
+	test('titles={false} reaches the context', async () => {
+		const { getCtx } = renderProbe({ titles: false });
+		await waitFor(() => expect(getCtx()?.titles).toBe(false));
+	});
+});
