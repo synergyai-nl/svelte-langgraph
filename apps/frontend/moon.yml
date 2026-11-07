@@ -21,7 +21,6 @@ fileGroups:
   registry:
     # Chat block
     - 'src/lib/components/chat/**/*'
-    - 'src/lib/components/ChatLoader.svelte'
     # Message catalogue
     - 'messages/chat/**/*'
     # Client library (unpublished, shipped as source); leading `/` = workspace root
