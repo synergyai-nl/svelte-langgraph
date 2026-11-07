@@ -94,8 +94,8 @@
 			{@attach scrollToMe(undefined, revealFrom === 0 ? 'smooth' : 'instant')}
 			transition:fly={{ y: 20, duration: revealFrom === 0 ? 800 : 0 }}
 		>
-			{#if generationError && onRetryError}
-				<ChatErrorMessage error={generationError} onRetry={onRetryError} />
+			{#if generationError}
+				<ChatErrorMessage onRetry={onRetryError} />
 			{:else if !finalAnswerStarted}
 				<ChatWaiting />
 			{/if}

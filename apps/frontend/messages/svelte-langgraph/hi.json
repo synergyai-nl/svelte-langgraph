@@ -18,6 +18,7 @@
 	"slg_thinking": "विचार प्रक्रिया",
 	"slg_message_copied": "प्रतिलिपि हो गई",
 	"slg_message_copy_failed": "प्रतिलिपि नहीं हो सकी",
+	"slg_error_generic": "कुछ गलत हो गया। फिर से कोशिश करें।",
 	"slg_chat_error_retry": "पुनः प्रयास करें",
 	"slg_cancel": "रद्द करें",
 	"slg_save_and_send": "सहेजें और भेजें",

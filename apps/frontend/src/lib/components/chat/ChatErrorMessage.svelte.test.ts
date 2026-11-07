@@ -6,22 +6,17 @@ import ChatErrorMessage from './ChatErrorMessage.svelte';
 import * as m from '$lib/paraglide/messages.js';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {
-	const error = new Error('Test error message');
-	return renderWithProviders(ChatErrorMessage, {
-		error,
-		onRetry: vi.fn(),
-		...overrides
-	});
+	return renderWithProviders(ChatErrorMessage, overrides);
 }
 
 describe('ChatErrorMessage', () => {
-	describe('when rendered with an error', () => {
+	describe('when rendered with a retry handler', () => {
 		beforeEach(() => {
-			renderComponent();
+			renderComponent({ onRetry: vi.fn() });
 		});
 
-		test('displays the error message', () => {
-			expect(screen.getByText('Test error message')).toBeInTheDocument();
+		test('shows the localized generic text', () => {
+			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
 		});
 
 		test('renders the retry button', () => {
@@ -36,5 +31,14 @@ describe('ChatErrorMessage', () => {
 
 		await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
 		expect(onRetry).toHaveBeenCalledTimes(1);
+	});
+
+	test('renders no retry button without onRetry', () => {
+		renderComponent();
+
+		expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
+		expect(
+			screen.queryByRole('button', { name: m.slg_chat_error_retry() })
+		).not.toBeInTheDocument();
 	});
 });

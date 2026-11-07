@@ -371,6 +371,16 @@ cookie.
 Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
 seeds the provider's `open` from the cookie (`bind:open`).
 
+### Run errors
+
+When a run fails, the message list shows an error card (`data-testid="chat-error"`) with the
+localized text of `slg_error_generic` ("Something went wrong. Try again."), never the server's
+message. The stream logs the raw error to the console, and `api.error` holds it for a custom
+`children` composition. `MessagesList` shows a Retry button only when it gets `onRetryError`.
+`Conversation`'s default composition passes its `retry`, so a `children` composition decides for
+itself, for example no Retry while the user lacks access. When a send is refused before the run
+starts (a 401, say), `Conversation` puts the text back in the composer.
+
 ### Test-install from a local checkout
 
 `moon frontend:dev` builds the item first, so with it running, in the consumer project run:
