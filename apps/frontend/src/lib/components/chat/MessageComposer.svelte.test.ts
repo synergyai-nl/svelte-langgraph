@@ -33,6 +33,12 @@ describe('MessageComposer', () => {
 		});
 	});
 
+	test('labels the textbox with the placeholder', () => {
+		renderComposer({ placeholder: 'Ask the referee...' });
+
+		expect(screen.getByRole('textbox', { name: 'Ask the referee...' })).toBeInTheDocument();
+	});
+
 	test('displays custom placeholder', () => {
 		renderComposer({ placeholder: 'Type something...' });
 

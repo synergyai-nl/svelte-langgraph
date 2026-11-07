@@ -125,4 +125,14 @@ describe('AIMessageActions', () => {
 			expect(tooltip()).not.toHaveTextContent('Copied');
 		});
 	});
+
+	describe('when onRegenerate is omitted', () => {
+		beforeEach(() => {
+			renderComponent({ isHovered: true, onRegenerate: undefined });
+		});
+
+		test('renders no regenerate button', () => {
+			expect(screen.queryByTitle(/regenerate/i)).not.toBeInTheDocument();
+		});
+	});
 });

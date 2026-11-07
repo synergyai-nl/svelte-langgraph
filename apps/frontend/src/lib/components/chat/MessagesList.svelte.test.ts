@@ -95,6 +95,27 @@ describe('MessagesList', () => {
 		expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 	});
 
+	describe('message actions', () => {
+		const conversation = [aUserMessage({ id: 'user-1' }), anAIMessage({ id: 'ai-1' })];
+
+		test('offers Edit and Regenerate when the handlers are given', () => {
+			renderMessages({ messages: conversation });
+
+			expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+			expect(screen.getByRole('button', { name: 'Regenerate' })).toBeInTheDocument();
+		});
+
+		test('offers neither without the handlers (read-only), but keeps Copy', () => {
+			renderMessages({ messages: conversation, onEdit: undefined, onRegenerate: undefined });
+
+			expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+			expect(screen.queryByRole('button', { name: 'Regenerate' })).not.toBeInTheDocument();
+			expect(screen.getAllByRole('button').some((b) => b.getAttribute('name') === 'copy')).toBe(
+				true
+			);
+		});
+	});
+
 	describe('thinking pill streaming animation', () => {
 		test('marks the last message as streaming when isStreaming is true', () => {
 			renderMessages({

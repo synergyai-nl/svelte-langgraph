@@ -11,8 +11,8 @@
 
 	interface Props {
 		message: Message;
-		onEdit: (message: Message, newText: string) => boolean;
-		onRegenerate: (message: Message) => void;
+		onEdit?: (message: Message, newText: string) => boolean;
+		onRegenerate?: (message: Message) => void;
 		onFeedback?: (message: Message, type: FeedbackScore, comment?: string) => Promise<void>;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
 		isThinkingActive?: boolean;
@@ -38,7 +38,7 @@
 	function confirmEdit() {
 		if (editText.trim() && editText !== message.text) {
 			// Only close the editor if the edit was accepted (rejected when a run is streaming)
-			if (onEdit(message, editText)) {
+			if (onEdit?.(message, editText)) {
 				isEditing = false;
 			}
 		} else {
@@ -95,7 +95,9 @@
 								{message.text}
 							</Card.Content>
 						</Card.Root>
-						<UserMessageActions {isHovered} onEdit={startEditing} />
+						{#if onEdit}
+							<UserMessageActions {isHovered} onEdit={startEditing} />
+						{/if}
 					{/if}
 				</div>
 			{/if}
