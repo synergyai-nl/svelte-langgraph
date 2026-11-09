@@ -36,11 +36,7 @@ export const LANGGRAPH_CONFIG = {
  * asserting on a specific row) don't have to re-derive it from the URL.
  */
 export async function gotoFreshThread(page: Page): Promise<string> {
-	const sessionRes = await page.request.get('/auth/session');
-	expect(sessionRes.ok()).toBeTruthy();
-	const session = await sessionRes.json();
-	const accessToken = session?.accessToken as string | undefined;
-	expect(accessToken, 'expected an accessToken on the Auth.js session').toBeTruthy();
+	const accessToken = await getBearerToken(page);
 
 	const threadRes = await page.request.post(`${LANGGRAPH_CONFIG.apiUrl}/threads`, {
 		headers: {
@@ -55,6 +51,22 @@ export async function gotoFreshThread(page: Page): Promise<string> {
 	await page.goto(`/chat/${thread.thread_id}`);
 
 	return thread.thread_id;
+}
+
+/**
+ * The bearer the app sends to the backend: `session.accessToken` from the root layout's data,
+ * fetched the way client navigation does. `data` is devalue's flattened form, where an object's
+ * fields hold the indices of their values.
+ */
+async function getBearerToken(page: Page): Promise<string> {
+	const response = await page.request.get('/__data.json');
+	expect(response.ok()).toBeTruthy();
+	const { nodes } = (await response.json()) as { nodes: { data: unknown[] }[] };
+	const data = nodes[0].data as [{ session: number }, ...unknown[]];
+	const session = data[data[0].session] as { accessToken: number } | null;
+	const token = session ? data[session.accessToken] : undefined;
+	expect(typeof token, 'expected a bearer in the layout session').toBe('string');
+	return token as string;
 }
 
 /**
