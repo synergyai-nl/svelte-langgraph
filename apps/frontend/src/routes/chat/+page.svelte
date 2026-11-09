@@ -1,13 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { getOrCreateThread } from '@svelte-langgraph/client';
 	import ChatLoader from '$lib/components/ChatLoader.svelte';
-	import LoginModal from '$lib/components/LoginModal.svelte';
 	import ChatError from '$lib/components/ChatError.svelte';
 	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
 
-	let show_login_dialog = $state(!page.data.session);
 	let redirect_error = $state<Error | null>(null);
 
 	// `/chat` sits under `chat/+layout.svelte`'s `<LangGraph>`, so `ctx` is in scope — and its
@@ -50,10 +47,6 @@
 			};
 		}
 	});
-
-	$effect.pre(() => {
-		if (!page.data.session) show_login_dialog = true;
-	});
 </script>
 
 {#if redirect_error}
@@ -61,5 +54,3 @@
 {:else}
 	<ChatLoader />
 {/if}
-
-<LoginModal bind:open={show_login_dialog} />

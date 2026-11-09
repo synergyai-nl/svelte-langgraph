@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createClient } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -140,5 +140,137 @@ describe('createClient', () => {
 		await client.generateTitle(messages, new AbortController().signal);
 		const init = fetchMock.mock.calls[0][1];
 		expect(init.headers).toEqual({ 'X-Org': 'acme', 'Content-Type': 'application/json' });
+	});
+});
+
+describe('function token', () => {
+	const ok = () =>
+		new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
+	const authorization = (init: RequestInit) => new Headers(init.headers).get('Authorization');
+	let fetchMock: ReturnType<typeof vi.fn>;
+	beforeEach(() => vi.stubGlobal('fetch', (fetchMock = vi.fn(async () => ok()))));
+
+	it('reads the token before every request, keeping custom headers', async () => {
+		let n = 0;
+		const client = createClient('https://backend.test/api/', async () => `tok-${++n}`, {
+			'X-Org': 'acme'
+		});
+
+		await client.threads.search({ limit: 1 });
+		await client.threads.search({ limit: 1 });
+		await client.submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock.mock.calls.map(([, init]) => authorization(init))).toEqual([
+			'Bearer tok-1',
+			'Bearer tok-2',
+			'Bearer tok-3'
+		]);
+		expect(new Headers(fetchMock.mock.calls[2][1].headers).get('X-Org')).toBe('acme');
+	});
+
+	it('sends no Authorization header when the function returns null', async () => {
+		const client = createClient('https://backend.test/api/', async () => null, {
+			authorization: 'Bearer stale'
+		});
+
+		await client.threads.search({ limit: 1 });
+		await client.submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock.mock.calls.map(([, init]) => authorization(init))).toEqual([null, null]);
+	});
+
+	it('fails the request when the token cannot be read', async () => {
+		const client = createClient('https://backend.test/api/', async () => {
+			throw new Error('signed out');
+		});
+
+		await expect(client.submitFeedback('thread-1', 'ai-1', 'up')).rejects.toThrow('signed out');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('sends a string token on SDK requests as before', async () => {
+		await createClient('https://backend.test/api/', 'test-token').threads.search({ limit: 1 });
+
+		expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer test-token');
+	});
+
+	describe('a token that never arrives', () => {
+		const pending = () => new Promise<string>(() => {});
+		afterEach(() => vi.restoreAllMocks());
+
+		it('lets a caller abort our own routes, with the signal’s reason', async () => {
+			const controller = new AbortController();
+			const request = createClient('https://backend.test/api/', pending).generateTitle(
+				messages,
+				controller.signal
+			);
+			controller.abort(new Error('stopped'));
+
+			await expect(request).rejects.toThrow('stopped');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects at once when the signal is already aborted', async () => {
+			const request = createClient('https://backend.test/api/', pending).generateTitle(
+				messages,
+				AbortSignal.abort(new Error('already'))
+			);
+
+			await expect(request).rejects.toThrow('already');
+		});
+
+		it('does not leave a later token failure unhandled after an early abort', async () => {
+			let fail!: (error: Error) => void;
+			const token = new Promise<string>((_, reject) => (fail = reject));
+			const request = createClient('https://backend.test/api/', () => token).generateTitle(
+				messages,
+				AbortSignal.abort(new Error('already'))
+			);
+
+			await expect(request).rejects.toThrow('already');
+			fail(new Error('token failed'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+
+		it('times out our own routes', async () => {
+			const timeout = new AbortController();
+			vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+			const request = createClient('https://backend.test/api/', pending).submitFeedback(
+				'thread-1',
+				'ai-1',
+				'up'
+			);
+			timeout.abort(new DOMException('timed out', 'TimeoutError'));
+
+			await expect(request).rejects.toThrow('timed out');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('lets a caller abort an SDK request, which the SDK hands to onRequest', async () => {
+			const controller = new AbortController();
+			const request = createClient('https://backend.test/api/', pending).threads.search({
+				limit: 1,
+				signal: controller.signal
+			});
+			controller.abort(new Error('stopped'));
+
+			await expect(request).rejects.toThrow('stopped');
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('does not cancel the token request for other callers', async () => {
+			let release!: (token: string) => void;
+			const shared = new Promise<string>((resolve) => (release = resolve));
+			const client = createClient('https://backend.test/api/', () => shared);
+			const controller = new AbortController();
+			const aborted = client.generateTitle(messages, controller.signal);
+			const patient = client.submitFeedback('thread-1', 'ai-1', 'up');
+			controller.abort(new Error('stopped'));
+			release('late');
+
+			await expect(aborted).rejects.toThrow('stopped');
+			await patient;
+			expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer late');
+		});
 	});
 });

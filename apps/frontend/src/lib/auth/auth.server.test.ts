@@ -114,7 +114,7 @@ describe('auth configuration', () => {
 		);
 	});
 
-	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
+	test('is stateless, ends only the local session on sign-out, and keeps the refresh token off HTTP', async () => {
 		const { options } = (await loadAuth()) as unknown as {
 			options: {
 				database?: unknown;
@@ -127,7 +127,7 @@ describe('auth configuration', () => {
 
 		expect(options.database).toBeUndefined();
 		expect(options.session.expiresIn).toBe(30 * 24 * 60 * 60);
-		expect(options.disabledPaths).toEqual(['/get-access-token', '/refresh-token', '/account-info']);
+		expect(options.disabledPaths).toEqual(['/refresh-token', '/account-info']);
 		// Better Auth's default: on in production.
 		expect(options.rateLimit.enabled).toBeUndefined();
 		const oauth = options.plugins.find((plugin) => plugin.id === 'generic-oauth');
@@ -176,7 +176,7 @@ describe('auth HTTP routes', () => {
 		expect(resolve).not.toHaveBeenCalled();
 	});
 
-	test.each(['get-access-token', 'refresh-token', 'account-info?useAccountCookie=true'])(
+	test.each(['refresh-token', 'account-info?useAccountCookie=true'])(
 		'%s is not served over HTTP',
 		async (path) => {
 			const auth = await loadAuth();
@@ -265,5 +265,49 @@ describe('account cookie', () => {
 		]) {
 			await expect(call()).rejects.toMatchObject({ body: { code: 'ACCOUNT_NOT_FOUND' } });
 		}
+	});
+
+	test('the expected-user header must match the session on get-access-token', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+		const body = { useAccountCookie: true as const };
+		const withHeader = (id: string) => {
+			const headers = new Headers(cookieHeaders(alice));
+			headers.set('x-slg-expected-user', id);
+			return headers;
+		};
+		const alicesId = (await auth.api.getSession({ headers: cookieHeaders(alice) }))!.user.id;
+
+		const tokens = await auth.api.getAccessToken({ headers: withHeader(alicesId), body });
+		expect(subjectOf(tokens.accessToken)).toBe('alice');
+		await expect(
+			auth.api.getAccessToken({ headers: withHeader('someone-else'), body })
+		).rejects.toMatchObject({ statusCode: 409, body: { code: 'ACCOUNT_CHANGED' } });
+	});
+	test('over HTTP, the expected-user header is checked against the session', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+		const call = (expectedUser: string) =>
+			auth.handler(
+				new Request('https://frontend.test/api/auth/get-access-token', {
+					method: 'POST',
+					headers: {
+						...Object.fromEntries(cookieHeaders(alice)),
+						origin: 'https://frontend.test',
+						'content-type': 'application/json',
+						'x-slg-expected-user': expectedUser
+					},
+					body: JSON.stringify({ useAccountCookie: true })
+				})
+			);
+		const { user } = (await auth.api.getSession({ headers: cookieHeaders(alice) }))!;
+
+		const mismatch = await call('someone-else');
+		expect(mismatch.status).toBe(409);
+		expect(await mismatch.json()).toMatchObject({ code: 'ACCOUNT_CHANGED' });
+
+		const own = await call(user.id);
+		expect(own.status).toBe(200);
+		expect(subjectOf((await own.json()).accessToken)).toBe('alice');
 	});
 });
