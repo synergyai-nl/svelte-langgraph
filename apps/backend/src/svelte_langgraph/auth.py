@@ -22,6 +22,8 @@ _jwt = JsonWebToken(["RS256", "RS384", "RS512"])
 logger = logging.getLogger(__name__)
 
 oidc_issuer = os.getenv("AUTH_OIDC_ISSUER", "")
+# The API audience the IdP puts in access tokens issued for this backend.
+oidc_audience = os.getenv("AUTH_OIDC_AUDIENCE", "")
 
 _jwks_cache: dict[str, Any] | None = None
 
@@ -58,7 +60,10 @@ async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
 
 
 def _decode_and_validate(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
-    """Decode and validate a JWT token against a JWKS.
+    """Decode and validate a JWT access token against a JWKS.
+
+    Besides the signature, `sub`, `exp` and `aud` (which must contain
+    AUTH_OIDC_AUDIENCE) are required; the issuer is checked by the caller.
 
     Args:
         token: The JWT token string.
@@ -71,8 +76,19 @@ def _decode_and_validate(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
         ValueError: If the key is not found in the JWKS.
         JoseError: If token validation fails.
     """
+    if not oidc_audience:
+        raise ValueError("AUTH_OIDC_AUDIENCE environment variable is not set")
+
     key_set = JsonWebKey.import_key_set(jwks)
-    claims = _jwt.decode(token, key_set)
+    claims = _jwt.decode(
+        token,
+        key_set,
+        claims_options={
+            "sub": {"essential": True},
+            "exp": {"essential": True},
+            "aud": {"essential": True, "value": oidc_audience},
+        },
+    )
     claims.validate()
     return dict(claims)
 
@@ -83,7 +99,7 @@ def _is_key_not_found_error(error: Exception) -> bool:
 
 
 async def _validate_token(token: str) -> dict[str, Any]:
-    """Validate a JWT token against the OIDC issuer's JWKS.
+    """Validate a JWT access token against the OIDC issuer's JWKS.
 
     Uses cached JWKS by default. If validation fails due to a missing key
     (e.g., after key rotation), automatically refreshes the JWKS and retries once.

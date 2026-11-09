@@ -18,20 +18,14 @@ function run(locals: Record<string, unknown>) {
 	}>;
 }
 
-const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
-/** An unsigned JWT; the layout only reads `exp`. */
-const jwt = (payload: Record<string, unknown>) => `${b64({ alg: 'none' })}.${b64(payload)}.sig`;
-const inSeconds = (seconds: number) => Math.floor(Date.now() / 1000) + seconds;
-
 beforeEach(() => {
 	getAccessToken.mockReset();
 	vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 describe('root layout load', () => {
-	test('exposes the ID token as session.accessToken, without leaking other fields', async () => {
-		const idToken = jwt({ exp: inSeconds(3600) });
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken });
+	test('exposes the access token as session.accessToken, without leaking other fields', async () => {
+		getAccessToken.mockResolvedValue({ accessToken: 'access-token', idToken: 'id-token' });
 
 		const { session } = await run({ session: { id: 's' }, user });
 
@@ -40,12 +34,12 @@ describe('root layout load', () => {
 		);
 		expect(session).toEqual({
 			user: { name: 'Ada', email: 'ada@example.com', image: null },
-			accessToken: idToken
+			accessToken: 'access-token'
 		});
 	});
 
 	test('reports a missing name as undefined so the UI falls back', async () => {
-		getAccessToken.mockResolvedValue({ idToken: jwt({ exp: inSeconds(3600) }) });
+		getAccessToken.mockResolvedValue({ accessToken: 'access-token' });
 
 		const { session } = (await run({ session: { id: 's' }, user: { ...user, name: '' } })) as {
 			session: { user: { name?: string } };
@@ -70,19 +64,29 @@ describe('root layout load', () => {
 		expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain('secret-token');
 	});
 
-	test('treats a missing ID token as signed out', async () => {
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque' });
+	test('treats a missing access token as signed out', async () => {
+		getAccessToken.mockResolvedValue({ idToken: 'id-token' });
 
 		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
 	});
 
-	test.each([
-		['an expired', jwt({ exp: inSeconds(-60) })],
-		['an exp-less', jwt({ sub: 'u1' })],
-		['a non-JWT', 'not-a-jwt']
-	])('treats %s ID token as signed out', async (_label, idToken) => {
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken });
+	test('treats an access token past its expiry as signed out', async () => {
+		getAccessToken.mockResolvedValue({
+			accessToken: 'access-token',
+			accessTokenExpiresAt: new Date(Date.now() - 60_000)
+		});
 
 		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
+	});
+
+	test('exposes an access token that has not expired yet', async () => {
+		getAccessToken.mockResolvedValue({
+			accessToken: 'access-token',
+			accessTokenExpiresAt: new Date(Date.now() + 3_600_000)
+		});
+
+		expect((await run({ session: { id: 's' }, user })).session).toMatchObject({
+			accessToken: 'access-token'
+		});
 	});
 });

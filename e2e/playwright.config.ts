@@ -48,16 +48,14 @@ export default defineConfig({
 		},
 		{
 			name: 'oidc',
-			command: 'moon backend:oidc-mock',
+			command: 'moon e2e:oidc-mock-e2e',
 			timeout: 120000,
 			stdout: 'pipe',
 			stderr: 'pipe',
 			gracefulShutdown: { signal: 'SIGINT', timeout: 1500 },
 			ignoreHTTPSErrors: false,
 			wait: {
-				// ANSI-tolerant: moon force-colors task output in some environments (it strips
-				// NO_COLOR from task env), so escape codes may appear inside the URL.
-				stdout: /Uvicorn running on .*localhost:8080/
+				stdout: /OIDC mock listening on/
 			}
 		},
 		{
