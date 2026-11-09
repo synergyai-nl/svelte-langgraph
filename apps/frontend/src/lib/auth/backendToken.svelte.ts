@@ -3,7 +3,8 @@
  * which refreshes it with the provider when fewer than 5 s remain. Cached until then. Freshness
  * follows the server's clock: the expiry is shifted by the largest clock offset the response's
  * `Date` header allows (measured from send time), so the cache can only expire early. No `Date`,
- * no caching.
+ * no caching. A token already expired by that clock is rejected as an expired session: without a
+ * refresh token Better Auth hands back the stale access token rather than an error.
  *
  * Pass `getToken` itself (one stable function) as the chat client's token; the client calls it
  * before every request. State is module-wide, so it outlives component remounts.
@@ -75,10 +76,17 @@ async function fetchToken(): Promise<string> {
 		backendAuth.expired = true;
 		throw new Error('Your session has expired. Sign in again to continue.');
 	}
-	const expiresAt = data.accessTokenExpiresAt;
+	const rawExpiry = data.accessTokenExpiresAt;
+	const expiresAt = rawExpiry ? +new Date(rawExpiry) - (skew ?? 0) : null;
+	// Without a refresh token Better Auth returns the expired access token instead of an error;
+	// treat it like a failed refresh so the sign-in prompt opens.
+	if (expiresAt !== null && expiresAt <= Date.now()) {
+		backendAuth.expired = true;
+		throw new Error('Your session has expired. Sign in again to continue.');
+	}
 	cached = {
 		token: data.accessToken,
-		expiresAt: expiresAt && skew !== null ? +new Date(expiresAt) - skew : null
+		expiresAt: skew !== null ? expiresAt : null
 	};
 	backendAuth.expired = false;
 	return data.accessToken;

@@ -64,7 +64,7 @@ describe('getToken', () => {
 		vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00Z') });
 		// Clocks agree. The response arrives 10 s late with a Date from send time; the token
 		// really expires 12 s after sending, so 2 s remain on receipt: inside the buffer.
-		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(12_000)), 0, 10_000));
+		getAccessToken.mockImplementationOnce(withServerDate(ok(token, inMs(12_000)), 0, 10_000));
 
 		await getToken();
 		await getToken();
@@ -140,6 +140,40 @@ describe('getToken', () => {
 			expect(backendAuth.expired).toBe(false);
 		}
 	);
+
+	test.each([
+		['by the server clock', 0],
+		['with no Date header, by the local clock', undefined]
+	])(
+		'an already-expired token (no refresh token) flags the session and is not cached, %s',
+		async (_, serverAheadMs) => {
+			getAccessToken.mockImplementation(withServerDate(ok(token, inMs(-60_000)), serverAheadMs));
+
+			await expect(getToken()).rejects.toThrow(/session has expired/);
+			expect(backendAuth.expired).toBe(true);
+
+			await expect(getToken()).rejects.toThrow(/session has expired/);
+			expect(getAccessToken).toHaveBeenCalledTimes(2);
+		}
+	);
+
+	test('a token valid locally but expired by the server clock is rejected', async () => {
+		// Server is 60 s ahead; the token has 30 s left locally, so it expired 30 s ago by server time.
+		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(30_000)), 60_000));
+
+		await expect(getToken()).rejects.toThrow(/session has expired/);
+		expect(backendAuth.expired).toBe(true);
+	});
+
+	test('a fresh token after an expired one clears the flag', async () => {
+		getAccessToken.mockImplementation(withServerDate(ok(token, inMs(-1_000)), 0));
+		await expect(getToken()).rejects.toThrow(/session has expired/);
+		expect(backendAuth.expired).toBe(true);
+
+		getAccessToken.mockImplementation(withServerDate(ok('token-a-fresh'), 0));
+		expect(await getToken()).toBe('token-a-fresh');
+		expect(backendAuth.expired).toBe(false);
+	});
 
 	test('a 5xx, 429 or network error fails the request without flagging the session', async () => {
 		getAccessToken.mockResolvedValue(failed(503));
