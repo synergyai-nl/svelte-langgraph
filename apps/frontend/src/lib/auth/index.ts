@@ -26,9 +26,12 @@ const bindAccountCookie = createAuthMiddleware(async (ctx) => {
 	}
 });
 
-// BETTER_AUTH_URL and BETTER_AUTH_SECRET are read from the environment by Better Auth itself.
+// Better Auth reads BETTER_AUTH_URL itself. The secret is required explicitly: Better Auth enforces
+// it only when NODE_ENV=production and otherwise silently falls back to AUTH_SECRET or a public
+// default, which would let anyone forge a session.
 const createAuth = () =>
 	betterAuth({
+		secret: required('BETTER_AUTH_SECRET'),
 		// Provider tokens stay server-side: the root layout reads them via auth.api, not HTTP.
 		disabledPaths: ['/get-access-token', '/refresh-token', '/account-info'],
 		// Stateless sessions cannot slide, by design since https://github.com/better-auth/better-auth/pull/8817.
@@ -62,8 +65,8 @@ const createAuth = () =>
 		]
 	});
 
-// betterAuth() starts initialising at once: it requires BETTER_AUTH_SECRET in production and
-// fetches OIDC discovery. The build imports this module without runtime settings and never uses
+// betterAuth() starts initialising at once: it requires BETTER_AUTH_SECRET and fetches
+// OIDC discovery. The build imports this module without runtime settings and never uses
 // auth (the auth handle skips it while building), so it gets no instance.
 export const auth = building ? (null as unknown as ReturnType<typeof createAuth>) : createAuth();
 export type Auth = typeof auth;

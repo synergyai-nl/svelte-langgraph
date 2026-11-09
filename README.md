@@ -319,6 +319,8 @@ The frontend's origin comes from `COMPOSE_BETTER_AUTH_URL`, not `BETTER_AUTH_URL
 COMPOSE_BETTER_AUTH_URL=https://app.example.com docker compose up --build
 ```
 
+`BETTER_AUTH_SECRET` must be set in the root `.env` (generate one with `openssl rand -base64 32`), or the frontend container exits at startup.
+
 `DATABASE_URL` can be overridden the same way, to point the backend at an external or managed Postgres server instead of the bundled `postgres` service. It must be reachable _from inside the backend container_ — a `localhost` URL there means the container itself, not your host.
 
 A host-local Ollama (or other OpenAI-compatible provider bound to the Docker host) must be addressed as `OPENAI_BASE_URL=http://host.docker.internal:11434/v1`. Compose wires `extra_hosts: host.docker.internal:host-gateway`, so this resolves on Linux Docker Engine too (>= 20.10) — Docker Desktop provides it natively.
@@ -326,6 +328,8 @@ A host-local Ollama (or other OpenAI-compatible provider bound to the Docker hos
 **Caveat:** if your root `.env` already sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aegra` (the old shipped default), `docker compose up` now honors it instead of silently overriding it — and that `localhost` resolves to the container itself, not Postgres. Comment out the line, or change the host to `postgres`, to fix it.
 
 ### Security notes
+
+The frontend refuses to start without `BETTER_AUTH_SECRET`, so a missing secret can never fall back to Better Auth's public default. The Docker image sets `NODE_ENV=production`, which also turns on the rate limiter described below.
 
 The frontend runs Better Auth's default rate limiter in production (100 requests per 10 seconds per client IP, 3 per 10 seconds for sign-in; only E2E turns it off, with `AUTH_RATE_LIMIT=false`). It takes the client IP from `X-Forwarded-For` and trusts that header only when it holds a single address, so the reverse proxy in front of the frontend must overwrite it with the client's address (e.g. nginx `proxy_set_header X-Forwarded-For $remote_addr;`). If a chain of proxies appends to it instead, list them in `advanced.ipAddress.trustedProxies` in `apps/frontend/src/lib/auth/index.ts`. Without a usable client IP, all clients share one bucket. Behind a TLS-terminating proxy, also set adapter-node's `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER`) so SvelteKit sees the public URL.
 

@@ -107,6 +107,13 @@ describe('while building', () => {
 });
 
 describe('auth configuration', () => {
+	test('refuses to start without BETTER_AUTH_SECRET instead of using a default secret', async () => {
+		vi.stubEnv('BETTER_AUTH_SECRET', '');
+		await expect(loadAuth()).rejects.toThrow(
+			"Required environment variable 'BETTER_AUTH_SECRET' not defined."
+		);
+	});
+
 	test('is stateless, ends only the local session on sign-out, and keeps provider tokens server-side', async () => {
 		const { options } = (await loadAuth()) as unknown as {
 			options: {
@@ -193,6 +200,32 @@ describe('account cookie', () => {
 		const refreshed = await auth.api.refreshToken({ headers: cookieHeaders(alice), body });
 		expect(subjectOf(refreshed.accessToken!)).toBe('alice');
 		expect(refreshed.accessToken).not.toBe(tokens.accessToken);
+	});
+
+	test('a refresh without an id_token keeps the sign-in ID token', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+		const body = { useAccountCookie: true as const };
+		const tokens = await auth.api.getAccessToken({ headers: cookieHeaders(alice), body });
+
+		// Registered per test and removed in finally, so it cannot leak into other tests.
+		const stripIdToken: Parameters<typeof idp.service.on<'beforeResponse'>>[1] = (
+			response,
+			req
+		) => {
+			if ((req.body as { grant_type?: string } | undefined)?.grant_type === 'refresh_token') {
+				delete (response.body as Record<string, unknown>).id_token;
+			}
+		};
+		idp.service.on('beforeResponse', stripIdToken);
+		try {
+			const refreshed = await auth.api.refreshToken({ headers: cookieHeaders(alice), body });
+			expect(refreshed.accessToken).not.toBe(tokens.accessToken);
+			// Upstream behaviour the root layout's expiry check relies on.
+			expect(refreshed.idToken).toBe(tokens.idToken);
+		} finally {
+			idp.service.off('beforeResponse', stripIdToken);
+		}
 	});
 
 	test('is refused when it belongs to another user than the session', async () => {
