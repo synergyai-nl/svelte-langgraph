@@ -102,6 +102,8 @@ jobs:
           context: .
           file: "./apps/frontend/Dockerfile"
           push: ${{ github.ref == 'refs/heads/main' }}
+          # Also load the image into the runner's Docker, for the smoke test below.
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
@@ -109,6 +111,25 @@ jobs:
         env:
           # No progress indicators for downloads
           BUILDKIT_PROGRESS: plain
+      - name: Smoke-test that the image refuses to start without BETTER_AUTH_SECRET
+        env:
+          IMAGE: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: |
+          set +e
+          timeout 60 docker run --rm \
+            -e BETTER_AUTH_URL=http://localhost:3000 \
+            -e BETTER_AUTH_SECRET= \
+            -e AUTH_OIDC_ISSUER=https://issuer.invalid \
+            -e AUTH_OIDC_CLIENT_ID=smoke \
+            -e AUTH_OIDC_CLIENT_SECRET=smoke \
+            "$IMAGE"
+          status=$?
+          # 0 = exited cleanly, 124 = still serving after 60 s: both mean it started without a secret.
+          if [ "$status" -eq 0 ] || [ "$status" -eq 124 ]; then
+            echo "::error::The frontend image started without BETTER_AUTH_SECRET (exit $status)"
+            exit 1
+          fi
+          echo "Image refused to start without a secret (exit $status)"
 
   ci:
     name: "CI"
