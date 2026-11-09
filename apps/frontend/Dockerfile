@@ -55,6 +55,9 @@ FROM node:24-alpine AS start
 # pin-apk-versions rule). TZ makes the intent explicit.
 ENV TZ=UTC
 
+# `node build` does not set NODE_ENV, and Better Auth's secret check and rate limiter key on it.
+ENV NODE_ENV=production
+
 # Copy built sources
 COPY --from=build /root/.proto /root/.proto
 

@@ -18,6 +18,11 @@ function run(locals: Record<string, unknown>) {
 	}>;
 }
 
+const b64 = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+/** An unsigned JWT; the layout only reads `exp`. */
+const jwt = (payload: Record<string, unknown>) => `${b64({ alg: 'none' })}.${b64(payload)}.sig`;
+const inSeconds = (seconds: number) => Math.floor(Date.now() / 1000) + seconds;
+
 beforeEach(() => {
 	getAccessToken.mockReset();
 	vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -25,7 +30,8 @@ beforeEach(() => {
 
 describe('root layout load', () => {
 	test('exposes the ID token as session.accessToken, without leaking other fields', async () => {
-		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken: 'id-token' });
+		const idToken = jwt({ exp: inSeconds(3600) });
+		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken });
 
 		const { session } = await run({ session: { id: 's' }, user });
 
@@ -34,12 +40,12 @@ describe('root layout load', () => {
 		);
 		expect(session).toEqual({
 			user: { name: 'Ada', email: 'ada@example.com', image: null },
-			accessToken: 'id-token'
+			accessToken: idToken
 		});
 	});
 
 	test('reports a missing name as undefined so the UI falls back', async () => {
-		getAccessToken.mockResolvedValue({ idToken: 'id-token' });
+		getAccessToken.mockResolvedValue({ idToken: jwt({ exp: inSeconds(3600) }) });
 
 		const { session } = (await run({ session: { id: 's' }, user: { ...user, name: '' } })) as {
 			session: { user: { name?: string } };
@@ -66,6 +72,16 @@ describe('root layout load', () => {
 
 	test('treats a missing ID token as signed out', async () => {
 		getAccessToken.mockResolvedValue({ accessToken: 'opaque' });
+
+		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
+	});
+
+	test.each([
+		['an expired', jwt({ exp: inSeconds(-60) })],
+		['an exp-less', jwt({ sub: 'u1' })],
+		['a non-JWT', 'not-a-jwt']
+	])('treats %s ID token as signed out', async (_label, idToken) => {
+		getAccessToken.mockResolvedValue({ accessToken: 'opaque', idToken });
 
 		expect((await run({ session: { id: 's' }, user })).session).toBeNull();
 	});
