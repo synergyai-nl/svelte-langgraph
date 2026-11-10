@@ -29,7 +29,7 @@
 						<div class="flex gap-2 pt-1">
 							<Button variant="outline" size="sm" onclick={() => onRetry()}>
 								<RefreshCw size={16} />
-								{m.chat_error_retry()}
+								{m.slg_chat_error_retry()}
 							</Button>
 						</div>
 					</div>

@@ -27,11 +27,11 @@
 		bind:value
 		onkeydown={handleKeydown}
 		autofocus
-		aria-label={m.message_edit()}
+		aria-label={m.slg_message_edit()}
 		class="bg-foreground dark:bg-foreground text-background min-h-0 resize-none rounded-xl border-0 px-6 py-6 text-sm shadow-sm ring-2 ring-blue-500 focus-visible:ring-blue-500"
 	/>
 	<div class="flex justify-end gap-1.5">
-		<Button variant="ghost" size="sm" onclick={onCancel}>{m.cancel()}</Button>
-		<Button variant="secondary" size="sm" onclick={onConfirm}>{m.save_and_send()}</Button>
+		<Button variant="ghost" size="sm" onclick={onCancel}>{m.slg_cancel()}</Button>
+		<Button variant="secondary" size="sm" onclick={onConfirm}>{m.slg_save_and_send()}</Button>
 	</div>
 </div>

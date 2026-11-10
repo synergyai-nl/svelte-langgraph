@@ -51,7 +51,7 @@
 			/>
 		</TooltipTrigger>
 		<TooltipContent>
-			{copySuccess ? m.message_copied() : m.message_copy()}
+			{copySuccess ? m.slg_message_copied() : m.slg_message_copy()}
 		</TooltipContent>
 	</Tooltip>
 
@@ -62,13 +62,13 @@
 				class="h-6 w-6"
 				variant="ghost"
 				size="icon-sm"
-				title={m.message_regenerate()}
+				title={m.slg_message_regenerate()}
 			>
 				<RefreshCw size={16} />
 			</Button>
 		</TooltipTrigger>
 		<TooltipContent>
-			{m.message_regenerate()}
+			{m.slg_message_regenerate()}
 		</TooltipContent>
 	</Tooltip>
 

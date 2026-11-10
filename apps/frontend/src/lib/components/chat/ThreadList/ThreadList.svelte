@@ -98,7 +98,11 @@
 	// `HTTP 400: {...}` into the sidebar. Explicit-`undefined` check so `error={null}` can
 	// deliberately suppress the context-defaulted alert (same rationale as `activeThreadId`).
 	const error = $derived(
-		errorProp !== undefined ? errorProp : ctx.createThreadError ? m.sidebar_new_chat_error() : null
+		errorProp !== undefined
+			? errorProp
+			: ctx.createThreadError
+				? m.slg_sidebar_new_chat_error()
+				: null
 	);
 
 	// Button rows (no `hrefFor`) must still open the clicked conversation: with no explicit
@@ -123,8 +127,8 @@
 
 <Sidebar.Root
 	collapsible="offcanvas"
-	mobileTitle={m.sidebar_mobile_title()}
-	mobileDescription={m.sidebar_mobile_description()}
+	mobileTitle={m.slg_sidebar_mobile_title()}
+	mobileDescription={m.slg_sidebar_mobile_description()}
 >
 	<Sidebar.Header>
 		<Button
@@ -134,7 +138,7 @@
 			class="w-full justify-start gap-2"
 		>
 			<Plus />
-			{m.sidebar_new_chat()}
+			{m.slg_sidebar_new_chat()}
 		</Button>
 		{#if error}
 			<div role="alert" class="text-destructive p-2 text-sm">
@@ -144,10 +148,10 @@
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<Sidebar.Group>
-			<Sidebar.GroupLabel>{m.sidebar_threads_label()}</Sidebar.GroupLabel>
+			<Sidebar.GroupLabel>{m.slg_sidebar_threads_label()}</Sidebar.GroupLabel>
 			{#if list.error && list.threads.length === 0}
 				<div role="alert" class="text-sidebar-foreground/70 flex flex-col gap-2 p-2 text-sm">
-					<p>{m.sidebar_threads_error()}</p>
+					<p>{m.slg_sidebar_threads_error()}</p>
 					<Button
 						type="button"
 						variant="secondary"
@@ -157,11 +161,11 @@
 						aria-busy={list.loading}
 						onclick={() => list.retry()}
 					>
-						{m.sidebar_threads_retry()}
+						{m.slg_sidebar_threads_retry()}
 					</Button>
 				</div>
 			{:else if list.loading && list.threads.length === 0}
-				<span class="sr-only">{m.sidebar_threads_loading()}</span>
+				<span class="sr-only">{m.slg_sidebar_threads_loading()}</span>
 				<Sidebar.Menu>
 					{#each Array.from({ length: SKELETON_COUNT }, (_, i) => i) as i (i)}
 						<Sidebar.MenuItem>
@@ -170,7 +174,7 @@
 					{/each}
 				</Sidebar.Menu>
 			{:else if list.threads.length === 0}
-				<p class="text-sidebar-foreground/70 p-2 text-sm">{m.sidebar_threads_empty()}</p>
+				<p class="text-sidebar-foreground/70 p-2 text-sm">{m.slg_sidebar_threads_empty()}</p>
 			{:else}
 				<Sidebar.Menu>
 					{#each list.threads as t (t.id)}
@@ -189,7 +193,7 @@
 				</Sidebar.Menu>
 				{#if list.error}
 					<div role="alert" class="text-destructive flex flex-col gap-2 p-2 text-sm">
-						<p>{m.sidebar_threads_error()}</p>
+						<p>{m.slg_sidebar_threads_error()}</p>
 						<Button
 							type="button"
 							variant="secondary"
@@ -199,7 +203,7 @@
 							aria-busy={list.loading}
 							onclick={() => list.retry()}
 						>
-							{m.sidebar_threads_retry()}
+							{m.slg_sidebar_threads_retry()}
 						</Button>
 					</div>
 				{:else if list.hasMore}
@@ -212,7 +216,7 @@
 						aria-busy={list.loading}
 						onclick={() => list.loadMore()}
 					>
-						{m.sidebar_threads_load_more()}
+						{m.slg_sidebar_threads_load_more()}
 					</Button>
 				{/if}
 			{/if}
