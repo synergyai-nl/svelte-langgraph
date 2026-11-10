@@ -18,6 +18,7 @@
 	"slg_message_edit": "Edit",
 	"slg_message_copied": "Copied",
 	"slg_message_copy_failed": "Failed to copy",
+	"slg_error_generic": "Something went wrong. Try again.",
 	"slg_chat_error_retry": "Retry",
 	"slg_cancel": "Cancel",
 	"slg_save_and_send": "Save & Send",

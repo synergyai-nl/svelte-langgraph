@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { renderWithProviders } from '../__tests__/render';
 import MessagesList from './MessagesList.svelte';
@@ -149,14 +149,10 @@ describe('MessagesList', () => {
 	});
 
 	describe('when generationError is set', () => {
-		const error = new Error('Something went wrong');
+		test('displays the error card even without a retry handler', () => {
+			renderMessages({ generationError: new Error('Something went wrong') });
 
-		beforeEach(() => {
-			renderMessages({ generationError: error, onRetryError: vi.fn() });
-		});
-
-		test('displays the error message', () => {
-			expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+			expect(screen.getByTestId('chat-error')).toBeInTheDocument();
 		});
 	});
 });
