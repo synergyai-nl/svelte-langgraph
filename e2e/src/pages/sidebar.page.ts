@@ -6,8 +6,8 @@ import { AppPage } from './app.page';
  * and `/chat/[threadID]` routes.
  *
  * `[data-slot="sidebar"]` is used by both the desktop sidebar and the mobile Sheet
- * drawer (see `apps/frontend/src/lib/components/ui/sidebar/sidebar.svelte`), but
- * `Sidebar.Root` renders exactly one of the two branches at a time based on viewport
+ * drawer (see `apps/frontend/src/lib/components/chat/ThreadList/ThreadListPanel.svelte`), but
+ * `ThreadListPanel` renders exactly one of the two branches at a time based on viewport
  * (`IsMobile`), so a single selector scoped to that attribute works for both — there is
  * never a moment where both are simultaneously present in the DOM.
  */
@@ -27,7 +27,7 @@ export class SidebarPage {
 	/**
 	 * The desktop `[data-slot="sidebar"]` element while collapsed. `collapsible="offcanvas"`
 	 * never removes the element — it just shrinks the inner container to `w-0` (see
-	 * sidebar.svelte) — so collapse assertions must check `data-state`, not visibility.
+	 * ThreadListPanel.svelte) — so collapse assertions must check `data-state`, not visibility.
 	 * Desktop-only: on mobile the same `[data-slot="sidebar"]` is the Sheet drawer, which
 	 * doesn't carry `data-state`.
 	 */

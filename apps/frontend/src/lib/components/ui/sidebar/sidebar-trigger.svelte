@@ -9,14 +9,9 @@
 		ref = $bindable(null),
 		class: className,
 		onclick,
-		// PATCHED vs upstream registry: upstream hard-codes the accessible label in English;
-		// taking it as a prop (defaulting to the upstream string) lets callers pass localized
-		// text without importing paraglide into ui/ (SLG-104).
-		label = 'Toggle Sidebar',
 		...restProps
 	}: ComponentProps<typeof Button> & {
 		onclick?: (e: MouseEvent) => void;
-		label?: string;
 	} = $props();
 
 	const sidebar = useSidebar();
@@ -37,5 +32,5 @@
 	{...restProps}
 >
 	<PanelLeft />
-	<span class="sr-only">{label}</span>
+	<span class="sr-only">Toggle Sidebar</span>
 </Button>

@@ -2,9 +2,8 @@ import { afterEach, describe, test, expect, vi, type MockInstance } from 'vitest
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { threadLabel, type AppClient } from '@svelte-langgraph/client';
-import LangGraphHost from '../__tests__/LangGraphHost.svelte';
 import { makeContext, makeMockClient } from '../__tests__/testContext.js';
-import ThreadList from './ThreadList.svelte';
+import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import { aThread } from '../../__tests__/fixtures';
 import * as m from '$lib/paraglide/messages.js';
 
@@ -29,7 +28,7 @@ function clientWithThreads(threadsOverrides: Record<string, unknown> = {}): AppC
 function renderUnderContext(client: AppClient | undefined, props: Record<string, unknown> = {}) {
 	const ctx = makeContext({ client });
 	if (client) ctx.threadList.setClient(client);
-	render(LangGraphHost, { props: { ctx, component: ThreadList, ...props } });
+	render(ThreadListHost, { props: { ctx, ...props } });
 	return ctx;
 }
 

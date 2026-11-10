@@ -1,8 +1,10 @@
-import { describe, test, expect } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { describe, test, expect, vi, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/svelte';
+import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import type { AppClient } from '@svelte-langgraph/client';
 import LangGraphProbe from './__tests__/LangGraphProbe.svelte';
+import LangGraphTooltipHost from './__tests__/LangGraphTooltipHost.svelte';
 import type { LangGraphContext } from './langGraphContext.svelte.js';
 
 /**
@@ -143,5 +145,36 @@ describe('<LangGraph> assistantId prop', () => {
 		const { getCtx } = renderProbe({ assistantId: 'explicit-assistant' });
 		await waitFor(() => expect(getCtx()?.assistantId).toBe('explicit-assistant'));
 		expect(getCtx()?.error).toBeUndefined();
+	});
+});
+
+describe('<LangGraph> markup', () => {
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	test('renders no element of its own and provides tooltips without delay', async () => {
+		// The tooltip positions itself with this, and jsdom has none.
+		vi.stubGlobal(
+			'ResizeObserver',
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			}
+		);
+		// Fake timers make the delay check deterministic: under Bits UI's default 700ms delay the
+		// tooltip would still be closed after the single millisecond advanced below.
+		vi.useFakeTimers();
+		const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+		const { container } = render(LangGraphTooltipHost);
+		const trigger = screen.getByRole('button', { name: 'Trigger' });
+		expect(trigger.parentElement).toBe(container);
+
+		await user.hover(trigger);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(document.querySelector('[data-tooltip-content]')).toHaveTextContent('Tip');
 	});
 });

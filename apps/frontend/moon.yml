@@ -24,8 +24,6 @@ fileGroups:
     - 'src/lib/components/ChatLoader.svelte'
     # Message catalogue
     - 'messages/chat/**/*'
-    # Patched upstream shadcn-svelte ui
-    - 'src/lib/components/ui/sidebar/**/*'
     # Client library (unpublished, shipped as source); leading `/` = workspace root
     - '/packages/client/src/**/*'
 

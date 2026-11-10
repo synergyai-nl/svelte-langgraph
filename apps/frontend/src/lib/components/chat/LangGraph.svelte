@@ -13,11 +13,10 @@
 	 * throw at init otherwise. Their props override context values; they are
 	 * not a provider-less alternative.
 	 *
-	 * Renders the patched `Sidebar.Provider` as its own wrapper element, with `children` directly
-	 * inside — no intervening wrapper div. `Sidebar.Provider`'s `peer`/`group` Tailwind contract
-	 * requires the sidebar (`ThreadList`, via `Sidebar.Root`) and the main content pane to be its
-	 * literal flex children, so anything this component put between itself and `children` would
-	 * break that contract for consumers.
+	 * Renders no DOM of its own: `children` go straight into the caller's markup, inside a
+	 * `Tooltip.Provider` with no delay (Bits UI tooltips need an ancestor provider). It renders no
+	 * `Sidebar.Provider` either: the caller owns that, as in shadcn. Wrap `ThreadList` and the
+	 * content pane in your own stock `Sidebar.Provider` (see `routes/chat/+layout.svelte`).
 	 */
 	import { onDestroy } from 'svelte';
 	import type { Snippet } from 'svelte';
@@ -28,7 +27,7 @@
 		type AppClient,
 		type TokenSource
 	} from '@svelte-langgraph/client';
-	import * as Sidebar from '$lib/components/ui/sidebar';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { LangGraphContext, setLangGraphContext } from './langGraphContext.svelte.js';
 
 	interface Props {
@@ -54,8 +53,6 @@
 		onThreadChange?: (id: string | null) => void;
 		/** Thread row links for `ThreadList`; must return a resolved path (see `ThreadList`). */
 		hrefFor?: (t: ThreadSummary) => string;
-		sidebarOpen?: boolean;
-		class?: string;
 		children: Snippet;
 	}
 
@@ -69,8 +66,6 @@
 		activeThreadId: activeThreadIdProp,
 		onThreadChange,
 		hrefFor,
-		sidebarOpen = $bindable(true),
-		class: className,
 		children
 	}: Props = $props();
 
@@ -186,6 +181,6 @@
 	onDestroy(() => ctx.dispose());
 </script>
 
-<Sidebar.Provider bind:open={sidebarOpen} class={className}>
+<Tooltip.Provider delayDuration={0}>
 	{@render children()}
-</Sidebar.Provider>
+</Tooltip.Provider>
