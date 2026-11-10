@@ -247,7 +247,10 @@ pane side by side as the provider's direct children, with a `Sidebar.Trigger` in
 mobile it is the only way to open the thread list's drawer. Stock `Sidebar.Provider` is
 `min-h-svh`; inside a bounded container, pass `class="h-full min-h-0"` so it fills the container
 instead of the viewport. The provider brings the Cmd/Ctrl+B shortcut and the `sidebar_state`
-cookie.
+cookie. Both come from your stock `ui/sidebar` (`constants.ts`), not from the chat, so the chat does
+not prefix them. Every stock provider uses the same cookie name and listens for the same shortcut
+on `window`, so a second `Sidebar.Provider` in your app writes that cookie too and also toggles on
+Cmd/Ctrl+B.
 
 ```svelte
 <script lang="ts">
