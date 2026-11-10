@@ -17,13 +17,12 @@ fileGroups:
   messages:
     - 'project.inlang'
     - 'messages'
-  # Everything the `chat` registry item ships (see registry.json).
+  # Everything the `chat-core` registry item ships (see registry.json).
   registry:
     # Chat block
     - 'src/lib/components/chat/**/*'
-    - 'src/lib/components/ChatLoader.svelte'
     # Message catalogue
-    - 'messages/chat/**/*'
+    - 'messages/svelte-langgraph/**/*'
     # Client library (unpublished, shipped as source); leading `/` = workspace root
     - '/packages/client/src/**/*'
 
@@ -47,7 +46,7 @@ tasks:
       - 'src/lib/paraglide'
 
   # Builds the shadcn-svelte registry (`registry.json`) into `static/r`, so the app serves
-  # it at `/r/chat.json` for `shadcn-svelte add`. Generated output: gitignored.
+  # it at `/r/chat.json` and `/r/chat-core.json` for `shadcn-svelte add`. Generated output: gitignored.
   # Must run with cwd `apps/frontend` (moon's default): registry file paths are cwd-relative.
   registry-build:
     command: 'shadcn-svelte registry build --output static/r'
