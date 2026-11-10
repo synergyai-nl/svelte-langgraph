@@ -51,6 +51,8 @@ export class LangGraphContext {
 
 	#pendingThreadId = $state<string | null>(null);
 
+	#titles = $state(true);
+
 	#hrefFor = $state<((t: ThreadSummary) => string) | undefined>(undefined);
 
 	#creatingThread = $state(false);
@@ -233,6 +235,15 @@ export class LangGraphContext {
 	}
 
 	// --- pass-through props ------------------------------------------------------------------
+
+	/** Whether the backend has the demo's `POST /titles` route; `false` means `Conversation` never requests titles. */
+	get titles(): boolean {
+		return this.#titles;
+	}
+
+	setTitles(titles: boolean): void {
+		this.#titles = titles;
+	}
 
 	get hrefFor(): ((t: ThreadSummary) => string) | undefined {
 		return this.#hrefFor;

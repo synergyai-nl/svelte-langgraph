@@ -53,6 +53,11 @@
 		onThreadChange?: (id: string | null) => void;
 		/** Thread row links for `ThreadList`; must return a resolved path (see `ThreadList`). */
 		hrefFor?: (t: ThreadSummary) => string;
+		/**
+		 * Set `false` when the backend has no `POST {url}/titles` route (the demo backend's custom
+		 * route, see the README's "Backend routes"): no thread titles are requested. Defaults to `true`.
+		 */
+		titles?: boolean;
 		children: Snippet;
 	}
 
@@ -66,6 +71,7 @@
 		activeThreadId: activeThreadIdProp,
 		onThreadChange,
 		hrefFor,
+		titles = true,
 		children
 	}: Props = $props();
 
@@ -114,6 +120,10 @@
 
 	$effect(() => {
 		ctx.setHrefFor(hrefFor);
+	});
+
+	$effect(() => {
+		ctx.setTitles(titles);
 	});
 
 	// Assistant resolution — children never do this themselves. Re-resolves whenever the
