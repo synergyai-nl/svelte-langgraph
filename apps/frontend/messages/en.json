@@ -164,7 +164,6 @@
 	"landing_table_status_supported": "Supported for {tool}",
 	"landing_table_status_partial": "Partially supported for {tool}",
 	"landing_table_status_unsupported": "Not supported for {tool}",
-	"demo_embedded_error": "Something went wrong: {message}",
 	"demo_embedded_try_again": "Try again",
 	"demo_embedded_new_chat_error": "Couldn't start a new chat."
 }

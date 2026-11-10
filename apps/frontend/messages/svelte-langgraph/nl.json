@@ -29,6 +29,8 @@
 	"slg_sidebar_threads_retry": "Opnieuw proberen",
 	"slg_sidebar_threads_load_more": "Meer laden",
 	"slg_sidebar_new_chat_error": "Kon geen nieuwe chat starten. Probeer het opnieuw.",
+	"slg_connect_error": "Kan geen verbinding maken met de chat.",
+	"slg_connect_retry": "Opnieuw proberen",
 	"slg_sidebar_mobile_title": "Zijbalk",
 	"slg_sidebar_mobile_description": "Toont de mobiele zijbalk.",
 	"slg_message_feedback_failed": "Beoordeling mislukt, probeer het opnieuw",

@@ -173,6 +173,7 @@
 			.catch((err) => {
 				if (started === resolutionCounter) {
 					resolvedFor = undefined;
+					console.error('Assistant resolution failed', err);
 					ctx.setError(err instanceof Error ? err : new Error(String(err)));
 				}
 			});
