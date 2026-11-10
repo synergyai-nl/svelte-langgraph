@@ -384,6 +384,63 @@ message. The stream logs the raw error to the console, and `api.error` holds it 
 itself, for example no Retry while the user lacks access. When a send is refused before the run
 starts (a 401, say), `Conversation` puts the text back in the composer.
 
+### Composing your own conversation
+
+`Conversation` hands its `children` snippet the reactive `api` (messages, input, `submit`, `stop`,
+`error`, ...), so you can build the layout yourself. This one omits `onEdit`/`onRegenerate`, so user
+messages have no Edit and AI messages no Regenerate (Copy stays).
+
+```svelte
+<script lang="ts">
+	import Conversation from '$lib/components/svelte-langgraph/Conversation.svelte';
+	import MessagesList from '$lib/components/svelte-langgraph/MessagesList.svelte';
+	import MessageComposer from '$lib/components/svelte-langgraph/MessageComposer.svelte';
+	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
+
+	const ctx = useLangGraph();
+</script>
+
+<!-- Conversation reads threadId, the client and the assistant once, at init, and throws if the
+     provider has not resolved the latter two yet. Gate and key it like ChatSurface does. -->
+{#if ctx.client && ctx.assistantId && ctx.activeThreadId}
+	{#key ctx.activeThreadId}
+		{#key ctx.client}
+			{#key ctx.assistantId}
+				<Conversation threadId={ctx.activeThreadId}>
+					{#snippet children(api)}
+						<div class="flex h-full min-h-0 flex-col">
+							<div class="min-h-0 flex-1 overflow-y-auto pb-4">
+								<MessagesList
+									messages={api.messages}
+									finalAnswerStarted={api.finalAnswerStarted}
+									isStreaming={api.isLoading}
+									generationError={api.error}
+									onRetryError={api.retry}
+								/>
+							</div>
+							<MessageComposer
+								bind:value={() => api.input, (v) => api.setInput(v)}
+								isStreaming={api.isLoading}
+								onSubmit={() => api.submit(api.input)}
+								onStop={api.stop}
+							/>
+						</div>
+					{/snippet}
+				</Conversation>
+			{/key}
+		{/key}
+	{/key}
+{/if}
+```
+
+Two layout rules for `MessagesList`:
+
+- It scrolls its newest message into view by looking for an ancestor with the literal class
+  `overflow-y-auto` (`ScrollableContainer/scrollControls.ts`, `closest('.overflow-y-auto')`).
+  `overflow-auto` or `overflow-y-scroll` will not do.
+- Its container hard-codes `mx-auto w-full max-w-4xl px-4 py-8` (`ScrollableContainer.svelte`), so
+  size and pad the scroll area around it, not the list.
+
 ### Test-install from a local checkout
 
 `moon frontend:dev` builds the item first, so with it running, in the consumer project run:

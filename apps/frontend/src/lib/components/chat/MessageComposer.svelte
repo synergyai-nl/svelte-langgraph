@@ -55,6 +55,7 @@
 						id="user-input"
 						disabled={isStreaming}
 						{placeholder}
+						aria-label={placeholder}
 						rows={1}
 						name="message"
 						bind:value
