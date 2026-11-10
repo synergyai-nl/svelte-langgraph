@@ -152,9 +152,11 @@ test('a refresh that fails offers sign-in and returns to the thread without repl
 	await expect(chat.loginModal).toContainText('Your session has expired');
 	expect(runs).toHaveLength(0);
 
-	await configure(request, { refresh_error: null });
 	await chat.app.signIn(chat.modalSignInButton);
 	await expectOIDCProviderURL(page);
+	// Only now, with the app left behind: a token request that succeeds clears the expired flag,
+	// and that closes the prompt before its sign-in button can be clicked.
+	await configure(request, { refresh_error: null });
 	await new OidcPage(page).authorize();
 	await page.waitForURL(`/chat/${threadId}`);
 	await expect(chat.loginModal).toBeHidden();
@@ -185,9 +187,10 @@ test('the embedded demo offers sign-in when the refresh credential is gone, then
 	await expect(signIn).toBeVisible();
 	await expect(card).toHaveCount(0);
 
-	await configure(request, { refresh_error: null });
 	await new AppPage(page).signIn(signIn);
 	await expectOIDCProviderURL(page);
+	// As above: lift the failure only once the app, and its token requests, are left behind.
+	await configure(request, { refresh_error: null });
 	await new OidcPage(page).authorize();
 	await page.waitForURL('/demo/embedded');
 	// The card renders before any token check, so prove the chat works: send and get a reply.
