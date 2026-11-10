@@ -26,8 +26,6 @@ fileGroups:
     - 'messages/chat/**/*'
     # Patched upstream shadcn-svelte ui
     - 'src/lib/components/ui/sidebar/**/*'
-    - 'src/lib/components/ui/spinner/**/*'
-    - 'src/lib/components/ui/copy-button/**/*'
     # Client library (unpublished, shipped as source); leading `/` = workspace root
     - '/packages/client/src/**/*'
 

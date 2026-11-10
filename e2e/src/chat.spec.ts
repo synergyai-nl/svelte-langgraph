@@ -246,6 +246,32 @@ test.describe('Regenerate message', () => {
 	});
 });
 
+test.describe('Copy message', () => {
+	test.beforeEach(async ({ page, context }) => {
+		await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+		await authenticateUser(page);
+		// Fresh thread per test — see rationale in the 'Edit message' describe above.
+		await gotoFreshThread(page);
+	});
+
+	test('copying an AI message puts its text on the clipboard and confirms it', async ({
+		page,
+		chat
+	}) => {
+		const question = `Question ${randomUUID()}`;
+		await chat.textInput.fill(question);
+		await chat.textInput.press('Enter');
+		const aiMessage = await chat.expectAiReply(question);
+
+		await aiMessage.hover();
+		const copy = aiMessage.locator('button[name="copy"]');
+		await copy.click();
+
+		await expect(page.locator('[data-slot="tooltip-content"]')).toContainText('Copied');
+		expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(question);
+	});
+});
+
 test.describe('Cancellation', () => {
 	test.beforeEach(async ({ page }) => {
 		await authenticateUser(page);

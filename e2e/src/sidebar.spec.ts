@@ -102,7 +102,22 @@ test.describe('Sidebar - real backend', () => {
 		// See the "sending a message" test above for why this timeout is generous.
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
 
+		// Give threadA a short title so its row has plenty of free space; the pending spinner's
+		// position is only observable when the label doesn't already fill the row.
+		await page.route('**/threads/search', async (route) => {
+			const response = await route.fetch();
+			const threads = (await response.json()) as {
+				thread_id: string;
+				metadata?: Record<string, unknown>;
+			}[];
+			for (const thread of threads) {
+				if (thread.thread_id === threadA) thread.metadata = { ...thread.metadata, title: 'alpha' };
+			}
+			await route.fulfill({ response, json: threads });
+		});
+
 		const threadB = await gotoFreshThread(page);
+		await expect(sidebar.threadLink(threadA)).toHaveText('alpha');
 		await chat.textInput.fill('beta');
 		await chat.textInput.press('Enter');
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
@@ -121,6 +136,15 @@ test.describe('Sidebar - real backend', () => {
 		await sidebar.threadLink(threadA).click();
 
 		await expect(sidebar.threadLink(threadA)).toHaveAttribute('data-pending', 'true');
+
+		// The label "alpha" is short, so a spinner that only follows the text would sit far from the row's right edge.
+		const spinnerBox = await sidebar
+			.threadLink(threadA)
+			.getByRole('status', { includeHidden: true })
+			.boundingBox();
+		const linkBox = await sidebar.threadLink(threadA).boundingBox();
+		expect(linkBox!.x + linkBox!.width - (spinnerBox!.x + spinnerBox!.width)).toBeLessThan(16);
+
 		await expect(chat.historyLoading).toBeVisible();
 
 		releaseHistory();
