@@ -11,7 +11,9 @@
  *
  * Every fetch asserts the user the page was rendered for (`page.data.session.user.id`) in a header
  * the server checks: cookies are shared across tabs, so another tab may have signed in as someone
- * else since.
+ * else since. The cached token and the request in flight are bound to that user too: once the
+ * page's data names another user (or none), neither is handed out, and a token that arrives for
+ * the previous user is not cached.
  */
 import { page } from '$app/state';
 import { authClient } from './client';
@@ -23,13 +25,15 @@ interface CachedToken {
 	token: string;
 	/** Epoch ms; null when the provider gave no expiry, which is never reused. */
 	expiresAt: number | null;
+	/** The user it was fetched for. */
+	userId: string;
 }
 
 /** `expired` is set when the session can no longer produce a token; the chat layout then offers sign-in. */
 export const backendAuth = $state({ expired: false });
 
 let cached: CachedToken | null = null;
-let inFlight: Promise<string> | null = null;
+let inFlight: { userId: string | undefined; promise: Promise<string> } | null = null;
 let reload = () => location.reload();
 
 const isFresh = (entry: CachedToken | null): entry is CachedToken =>
@@ -41,8 +45,7 @@ function accountChanged(): never {
 	throw new Error('The signed-in account changed. Reloading.');
 }
 
-async function fetchToken(): Promise<string> {
-	const expectedUserId: string | undefined = page.data.session?.user.id;
+async function fetchToken(expectedUserId: string | undefined): Promise<string> {
 	if (!expectedUserId) return accountChanged();
 	// The server checks the signed-in user against the header in the same request that yields the
 	// token, so another tab's sign-in cannot slip in between.
@@ -67,6 +70,8 @@ async function fetchToken(): Promise<string> {
 	const { data, error } = await (navigator.locks
 		? navigator.locks.request('slg-backend-token', request)
 		: request());
+	// The page now shows someone else: this answer is not theirs, so get one that is.
+	if (page.data.session?.user.id !== expectedUserId) return getToken();
 	if (error) {
 		if (error.code === 'ACCOUNT_CHANGED') return accountChanged();
 		// 4xx: no session or account, or the refresh failed. A 5xx or 429 (rate limit) may pass; the
@@ -86,22 +91,28 @@ async function fetchToken(): Promise<string> {
 	}
 	cached = {
 		token: data.accessToken,
-		expiresAt: skew !== null ? expiresAt : null
+		expiresAt: skew !== null ? expiresAt : null,
+		userId: expectedUserId
 	};
 	backendAuth.expired = false;
 	return data.accessToken;
 }
 
 /**
- * The current backend token. Concurrent callers share one request, which is never aborted: an
- * abandoned refresh would still rotate the refresh token, and its cookie must land.
+ * The backend token for the page's current user. Concurrent callers share one request, which is
+ * never aborted: an abandoned refresh would still rotate the refresh token, and its cookie must
+ * land. A request superseded by another user's runs on but leaves the slot to its successor.
  */
 export function getToken(): Promise<string> {
-	if (isFresh(cached)) return Promise.resolve(cached.token);
-	inFlight ??= fetchToken().finally(() => {
-		inFlight = null;
-	});
-	return inFlight;
+	const userId: string | undefined = page.data.session?.user.id;
+	if (isFresh(cached) && cached.userId === userId) return Promise.resolve(cached.token);
+	if (!inFlight || inFlight.userId !== userId) {
+		const promise: Promise<string> = fetchToken(userId).finally(() => {
+			if (inFlight?.promise === promise) inFlight = null;
+		});
+		inFlight = { userId, promise };
+	}
+	return inFlight.promise;
 }
 
 /** Test seam: forget the cached token and request in flight; replace the reload. */
