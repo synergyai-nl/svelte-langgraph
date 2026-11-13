@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import { page } from '$app/state';
 import { backendAuth, getToken, resetBackendToken } from './backendToken.svelte';
 
 const { getAccessToken } = vi.hoisted(() => ({ getAccessToken: vi.fn() }));
@@ -20,11 +21,17 @@ const expectedUser = {
 	headers: { 'x-slg-expected-user': 'user-a' },
 	onResponse: expect.any(Function)
 };
+const expectedUserB = { ...expectedUser, headers: { 'x-slg-expected-user': 'user-b' } };
+/** What a client-side navigation or invalidation leaves in page data; null is signed out. */
+const setPageUser = (id: string | null) => {
+	(page.data as { session: unknown }).session = id ? { user: { id } } : null;
+};
 
 const reload = vi.fn();
 const token = 'token-a';
 
 beforeEach(() => {
+	setPageUser('user-a');
 	reload.mockReset();
 	resetBackendToken(reload);
 	getAccessToken.mockReset().mockImplementation(withServerDate(ok(token), 0));
@@ -47,6 +54,18 @@ const withServerDate = (result: ReturnType<typeof ok>, serverAheadMs?: number, d
 		options.onResponse({ response: new Response(null, { headers }) });
 		return result;
 	});
+
+/** The next request is answered with user-a's cacheable token, but only once released. */
+const heldForA = () => {
+	let release!: () => void;
+	const released = new Promise<void>((resolve) => (release = resolve));
+	const answer = withServerDate(ok(token), 0);
+	getAccessToken.mockImplementationOnce(async (body, options) => {
+		await released;
+		return answer(body, options);
+	});
+	return release;
+};
 
 describe('getToken', () => {
 	test('judges freshness by the server clock: a token valid locally but near expiry by server time is refetched', async () => {
@@ -241,5 +260,76 @@ describe('getToken', () => {
 		expect(await getToken()).toBe('token-a-refreshed');
 		expect(getAccessToken).toHaveBeenCalledTimes(2);
 		expect(reload).not.toHaveBeenCalled();
+	});
+
+	test('a cached token is not returned once the page is for another user', async () => {
+		expect(await getToken()).toBe(token);
+		setPageUser('user-b');
+		getAccessToken.mockImplementation(withServerDate(ok('token-b'), 0));
+
+		expect(await getToken()).toBe('token-b');
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(getAccessToken).toHaveBeenLastCalledWith({ useAccountCookie: true }, expectedUserB);
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	test('a cached token is not returned once the page has no user', async () => {
+		expect(await getToken()).toBe(token);
+		setPageUser(null);
+
+		await expect(getToken()).rejects.toThrow(/account changed/);
+		expect(getAccessToken).toHaveBeenCalledOnce();
+		expect(reload).toHaveBeenCalledOnce();
+	});
+
+	test('a request in flight for one user is not shared with a page now for another', async () => {
+		const releaseA = heldForA();
+		const callerA = getToken();
+		setPageUser('user-b');
+		getAccessToken.mockImplementation(withServerDate(ok('token-b'), 0));
+
+		const callerB = getToken();
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(getAccessToken).toHaveBeenLastCalledWith({ useAccountCookie: true }, expectedUserB);
+		expect(await callerB).toBe('token-b');
+
+		// user-a's answer lands late: it neither replaces user-b's cached token nor reaches its caller.
+		releaseA();
+		expect(await callerA).toBe('token-b');
+		expect(await getToken()).toBe('token-b');
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(reload).not.toHaveBeenCalled();
+	});
+
+	test('a request that resolves after the page changed user fetches for the new user', async () => {
+		const releaseA = heldForA();
+		const caller = getToken();
+		setPageUser('user-b');
+		getAccessToken.mockImplementation(withServerDate(ok('token-b'), 0));
+		releaseA();
+
+		expect(await caller).toBe('token-b');
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+		expect(getAccessToken).toHaveBeenLastCalledWith({ useAccountCookie: true }, expectedUserB);
+		expect(await getToken()).toBe('token-b');
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
+	});
+
+	test('a superseded request that settles first leaves the in-flight slot to its successor', async () => {
+		let failA!: (reason: Error) => void;
+		getAccessToken.mockReturnValueOnce(new Promise((_, reject) => (failA = reject)));
+		const callerA = getToken();
+		setPageUser('user-b');
+		let releaseB!: (value: ReturnType<typeof ok>) => void;
+		getAccessToken.mockReturnValueOnce(new Promise((resolve) => (releaseB = resolve)));
+		const callerB = getToken();
+
+		failA(new TypeError('Failed to fetch'));
+		await expect(callerA).rejects.toThrow('Failed to fetch');
+		const laterB = getToken();
+		releaseB(ok('token-b'));
+
+		expect(await Promise.all([callerB, laterB])).toEqual(['token-b', 'token-b']);
+		expect(getAccessToken).toHaveBeenCalledTimes(2);
 	});
 });
