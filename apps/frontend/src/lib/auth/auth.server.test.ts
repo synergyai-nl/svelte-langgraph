@@ -215,10 +215,31 @@ describe('account cookie', () => {
 
 		const tokens = await auth.api.getAccessToken({ headers: cookieHeaders(alice), body });
 		expect(subjectOf(tokens.accessToken)).toBe('alice');
-		expect(subjectOf(tokens.idToken!)).toBe('alice');
+		expect(Object.keys(tokens).sort()).toEqual(['accessToken', 'accessTokenExpiresAt', 'scopes']);
 		const refreshed = await auth.api.refreshToken({ headers: cookieHeaders(alice), body });
 		expect(subjectOf(refreshed.accessToken!)).toBe('alice');
 		expect(refreshed.accessToken).not.toBe(tokens.accessToken);
+	});
+
+	test('/get-access-token does not return the ID token, over HTTP either', async () => {
+		const auth = await loadAuth();
+		const alice = await signIn(auth, 'alice');
+
+		const response = await auth.handler(
+			new Request('https://frontend.test/api/auth/get-access-token', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					origin: 'https://frontend.test',
+					cookie: cookieHeaders(alice).get('cookie')!
+				},
+				body: JSON.stringify({ useAccountCookie: true })
+			})
+		);
+		expect(response.status).toBe(200);
+		const body = await response.json();
+		expect(Object.keys(body).sort()).toEqual(['accessToken', 'accessTokenExpiresAt', 'scopes']);
+		expect(subjectOf(body.accessToken)).toBe('alice');
 	});
 
 	test('a refresh without an id_token still yields a fresh access token (#298)', async () => {
