@@ -17,9 +17,11 @@
  * Submitting while `stream.isLoading` is true enqueues the submission via
  * useStream's built-in queue — acceptable for lightweight state-only writes.
  *
- * ## threads.updateState as an expert escape hatch
- * `client.threads.updateState` can write directly to the thread checkpoint,
- * bypassing the graph.  It is intentionally NOT used here because:
+ * ## threads.updateState is not available
+ * `client.threads.updateState` writes directly to the thread checkpoint,
+ * bypassing the graph.  The demo backend answers it with 403, because such a
+ * write skips the graph's own checks (see `apps/backend/src/svelte_langgraph/deny.py`).
+ * Against a backend that allows it, it is still not used here because:
  *  - No server-side validation — the write bypasses the graph, so `phase_gate`
  *    never runs to reject it; the bad value is checkpointed and then fails
  *    every subsequent run until a valid value is written
