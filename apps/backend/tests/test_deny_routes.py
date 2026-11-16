@@ -328,15 +328,20 @@ def real_app(tmp_path_factory):
         # Keep the route table independent of the local environment.
         "ENABLE_PROMETHEUS_METRICS": "false",
     }
-    subprocess.run(
+    probe = subprocess.run(
         [sys.executable, str(Path(__file__).with_name("aegra_app_probe.py"))]
         + [str(probes_path), str(result_path)],
         cwd=BACKEND_DIR,
         env=env,
-        check=True,
         capture_output=True,
+        text=True,
         timeout=120,
     )
+    if probe.returncode != 0:
+        pytest.fail(
+            f"aegra_app_probe.py exited with {probe.returncode}\n"
+            f"--- stdout ---\n{probe.stdout}\n--- stderr ---\n{probe.stderr}"
+        )
     return json.loads(result_path.read_text())
 
 
