@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-19 — `/get-access-token` no longer returns `idToken` (#PR-G)
+## 2026-11-19 — `/get-access-token` no longer returns `idToken` ([#417](https://github.com/synergyai-nl/svelte-langgraph/pull/417))
 
 **What changed.** Better Auth's `/get-access-token` returned the ID token to the browser, which only needs the access token. An `after` hook in `apps/frontend/src/lib/auth/index.ts` now reduces the response to `accessToken`, `accessTokenExpiresAt` and `scopes`. The hook also applies to `auth.api.getAccessToken(...)` calls on the server. Errors pass through unchanged.
 
@@ -24,7 +24,7 @@ Each entry has this format:
 **What to do.**
 
 1. Port the `stripIdToken` hook and add it as `hooks.after` next to the existing `before` hook.
-2. If your code needs the ID token, read it on the server, not from this response.
+2. If your code needs the ID token, read it on the server from the stored account. This response no longer has it, for server calls either.
 
 **How to check.** Request `/api/auth/get-access-token` while signed in. The body has no `idToken`.
 
