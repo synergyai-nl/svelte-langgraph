@@ -52,6 +52,7 @@ services:
       AUTH_TYPE: "custom"
       # The API audience required in access tokens (see README, Authentication).
       AUTH_OIDC_AUDIENCE: "${AUTH_OIDC_AUDIENCE:-}"
+      AUTH_JWKS_TTL_SECONDS: "${AUTH_JWKS_TTL_SECONDS:-300}"
     extra_hosts:
       # Lets OPENAI_BASE_URL reach a provider running on the Docker host
       # (e.g. Ollama at http://host.docker.internal:11434/v1).

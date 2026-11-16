@@ -89,6 +89,7 @@ The `.env` file is organized into sections:
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
 - `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
+- `AUTH_JWKS_TTL_SECONDS` - Optional; seconds the backend trusts the identity provider's signing keys before fetching them again (default `300`, `0` fetches on every request). An invalid value stops the backend at startup
 - `AUTH_OIDC_SCOPES` - Optional space-separated scopes; defaults to `openid profile email offline_access`
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
@@ -344,6 +345,8 @@ A host-local Ollama (or other OpenAI-compatible provider bound to the Docker hos
 The frontend refuses to start without `BETTER_AUTH_SECRET`, so a missing secret can never fall back to Better Auth's public default. The Docker image sets `NODE_ENV=production`, which also turns on the rate limiter described below.
 
 The frontend runs Better Auth's default rate limiter in production (100 requests per 10 seconds per client IP, 3 per 10 seconds for sign-in; only E2E turns it off, with `AUTH_RATE_LIMIT=false`). It takes the client IP from `X-Forwarded-For` and trusts that header only when it holds a single address, so the reverse proxy in front of the frontend must overwrite it with the client's address (e.g. nginx `proxy_set_header X-Forwarded-For $remote_addr;`). If a chain of proxies appends to it instead, list them in `advanced.ipAddress.trustedProxies` in `apps/frontend/src/lib/auth/index.ts`. Without a usable client IP, all clients share one bucket. Behind a TLS-terminating proxy, also set adapter-node's `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER`) so SvelteKit sees the public URL.
+
+The backend caches the identity provider's signing keys (JWKS) for `AUTH_JWKS_TTL_SECONDS` (default five minutes), so a key the provider removes stops working after that. If the provider is unreachable once the cache has expired, tokens are rejected rather than checked against the old keys.
 
 Aegra stops at startup when `auth.path` fails to load. The backend also refuses to start unless Aegra loaded `svelte_langgraph.auth:auth`; without an `auth.path`, Aegra 0.12 and earlier serve every request as an anonymous user, whatever `AUTH_TYPE` says. The image bakes in `AUTH_TYPE=custom`; once [aegra/aegra#775](https://github.com/aegra/aegra/pull/775) ships, that setting makes Aegra refuse to start without `auth.path`. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Run webhooks are off (`http.disable_webhooks` in `aegra.json`). Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
 

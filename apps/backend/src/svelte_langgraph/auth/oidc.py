@@ -1,5 +1,7 @@
 import logging
+import math
 import os
+import time
 from typing import Any
 
 import httpx
@@ -18,17 +20,54 @@ oidc_issuer = os.getenv("AUTH_OIDC_ISSUER", "")
 # The API audience the IdP puts in access tokens issued for this backend.
 oidc_audience = os.getenv("AUTH_OIDC_AUDIENCE", "")
 
+
+def _read_jwks_ttl(raw: str | None) -> float:
+    """Parse AUTH_JWKS_TTL_SECONDS: a non-negative number of seconds, default 300.
+
+    0 means "fetch the JWKS on every request". Anything else invalid fails at
+    import, so a typo cannot silently leave the cache without a lifetime.
+    """
+    if raw is None or raw.strip() == "":
+        return 300.0
+    try:
+        ttl = float(raw)
+    except ValueError:
+        ttl = math.nan
+    if not math.isfinite(ttl) or ttl < 0:
+        raise ValueError(
+            f"AUTH_JWKS_TTL_SECONDS must be a non-negative number of seconds, got {raw!r}"
+        )
+    return ttl
+
+
+# How long fetched signing keys are trusted. After that the JWKS is fetched
+# again, so a key the IdP removed stops validating tokens.
+jwks_ttl_seconds = _read_jwks_ttl(os.getenv("AUTH_JWKS_TTL_SECONDS"))
+
 _jwks_cache: dict[str, Any] | None = None
+# time.monotonic() when _jwks_cache was fetched.
+_jwks_fetched_at: float = 0.0
+
+
+def _jwks_cache_is_fresh() -> bool:
+    return (
+        _jwks_cache is not None
+        and time.monotonic() - _jwks_fetched_at < jwks_ttl_seconds
+    )
 
 
 async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
     """Fetch and cache JWKS from the OIDC issuer.
 
+    The cache expires after AUTH_JWKS_TTL_SECONDS. A failed fetch raises; the
+    expired keys are never used as a fallback (fail closed). Concurrent
+    requests after expiry may each fetch once; the last result wins.
+
     Args:
         force_refresh: If True, bypass cache and fetch fresh JWKS.
     """
-    global _jwks_cache
-    if _jwks_cache is not None and not force_refresh:
+    global _jwks_cache, _jwks_fetched_at
+    if _jwks_cache is not None and not force_refresh and _jwks_cache_is_fresh():
         return _jwks_cache
 
     if not oidc_issuer:
@@ -48,6 +87,7 @@ async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
         jwks_response.raise_for_status()
         jwks_data: dict[str, Any] = jwks_response.json()
         _jwks_cache = jwks_data
+        _jwks_fetched_at = time.monotonic()
 
     return _jwks_cache
 

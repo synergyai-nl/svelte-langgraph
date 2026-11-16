@@ -15,6 +15,20 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — JWKS cache expires after five minutes (#PR-C)
+
+**What changed.** The backend cached the identity provider's signing keys (JWKS) until the process restarted, so a key the provider removed stayed trusted. The cache now expires after `AUTH_JWKS_TTL_SECONDS` (default `300`, `0` fetches on every request). After expiry the JWKS is fetched again before a token is validated. If that fetch fails, the token is rejected with 401; the expired keys are not used as a fallback. An invalid value stops the backend at import.
+
+**Who is affected.** Apps that copied this backend's `auth/oidc.py`.
+
+**What to do.**
+
+1. Port the TTL change from `apps/backend/src/svelte_langgraph/auth/oidc.py`: `_read_jwks_ttl`, `jwks_ttl_seconds`, `_jwks_fetched_at`, `_jwks_cache_is_fresh` and the check in `_get_jwks`.
+2. Optionally set `AUTH_JWKS_TTL_SECONDS` (and pass it through in your Compose file).
+3. Expect the provider's JWKS endpoint to be requested at least once per TTL while there is traffic. Tokens are rejected while it is unreachable after expiry.
+
+**How to check.** Run `moon run backend:test -- tests/test_auth.py`.
+
 ## 2026-11-19 — Backend refuses to start without its auth module ([#418](https://github.com/synergyai-nl/svelte-langgraph/pull/418))
 
 **What changed.** Aegra 0.12 stops at startup when `auth.path` fails to load. It still serves every request as `anonymous` when the config has no `auth.path`, and it accepts any `Auth` object `auth.path` names. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth:auth`. If not, the server exits with an error.
