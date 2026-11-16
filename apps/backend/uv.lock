@@ -1,10 +1,10 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [[package]]
 name = "aegra-api"
-version = "0.10.8"
+version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -31,9 +31,9 @@ dependencies = [
     { name = "structlog" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/4e/d6f46ff1a972df95ab96c25bf50f11747a617ca8d9290973121b184567dc/aegra_api-0.10.8.tar.gz", hash = "sha256:6210700ba09df4576c5bdea1ddbc59c0aacdc8300a6796da9f84ab08f8b5b7e9", size = 521954, upload-time = "2026-10-01T18:03:52.902Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/73/faf448a3ef41f46d9449e49b5e621b9c64787eb9d77c2a4f04fbf117a71d/aegra_api-0.11.0.tar.gz", hash = "sha256:704a8ac72bf22520057deb4fd5f5dee1e85d1039314cd62a873dfd37738bc82c", size = 539084, upload-time = "2026-10-23T12:24:06.613Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/de/59e722bb85d7a133cf237bc813b45b98ce9c696e977ac783a25cc1f121ef/aegra_api-0.10.8-py3-none-any.whl", hash = "sha256:9aad20cfa977f83808e9d03f9864215d3b5453e073d5c4a5e64cef18390c520d", size = 253207, upload-time = "2026-10-01T18:03:51.68Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/c8/fc48d38993d3df858953000e3e98fd884c3ffd6552b8c483424b7f87ac68/aegra_api-0.11.0-py3-none-any.whl", hash = "sha256:6d49695aecd4133289b9b0e84d39eb67f1fb7581cedcb1554405d93b580648d3", size = 255525, upload-time = "2026-10-23T12:24:05.418Z" },
 ]
 
 [[package]]
@@ -1708,7 +1708,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aegra-api", specifier = "==0.10.*" },
+    { name = "aegra-api", specifier = "==0.11.*" },
     { name = "authlib", specifier = ">=1.4.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["openai"], specifier = "==1.3.*" },
