@@ -2,7 +2,7 @@
 
 import json
 import os
-import subprocess
+import subprocess  # nosec B404 - only runs this repo's own probe script
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -328,7 +328,7 @@ def real_app(tmp_path_factory):
         # Keep the route table independent of the local environment.
         "ENABLE_PROMETHEUS_METRICS": "false",
     }
-    probe = subprocess.run(
+    probe = subprocess.run(  # nosec B603 - fixed command: this interpreter, a script in this repo
         [sys.executable, str(Path(__file__).with_name("aegra_app_probe.py"))]
         + [str(probes_path), str(result_path)],
         cwd=BACKEND_DIR,
