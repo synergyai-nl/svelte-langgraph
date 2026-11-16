@@ -9,13 +9,13 @@ There are no version numbers, because the code is distributed off `main`. Entrie
 
 Each entry has this format:
 
-- Heading: `## YYYY-MM-DD — <title that says what changed> (#PR)`
+- Heading: `## YYYY-MM-DD — <title that says what changed> (#PR)`, with the PR number linked.
 - **What changed**: one or two sentences.
 - **Who is affected**: which downstream apps need to act.
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-16 — Backend moves to Aegra 0.11.0 (#PR-A)
+## 2026-11-16 — Backend moves to Aegra 0.11.0 ([#416](https://github.com/synergyai-nl/svelte-langgraph/pull/416))
 
 **What changed.** The demo backend now pins `aegra-api==0.11.*` (it was `0.10.*`). Later entries on this page add the actual authentication guard.
 
@@ -23,6 +23,8 @@ Two facts matter for any downstream app:
 
 - In 0.11, a request without valid credentials, on a server whose auth module did not load, is still served. Aegra treats it as the user `anonymous`, with `is_authenticated: False`. That flag does not reject anything by itself.
 - The `AUTH_TYPE` environment variable does not enforce authentication in Aegra, in 0.10 or in 0.11. With a missing auth module, `custom` behaves like `noop`.
+
+One API change is visible to clients: `POST /threads/search` answers 422 when `select` is set. The client in this repo retries without `select`. A client of your own must do the same, or not send `select`.
 
 **Who is affected.** Apps that copied this backend's `pyproject.toml` or run their own Aegra server.
 
