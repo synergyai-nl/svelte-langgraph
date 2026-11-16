@@ -54,6 +54,15 @@ async def get_current_user(headers: dict[str, str] | None) -> MinimalUserDict:
         raise Auth.exceptions.HTTPException(
             status_code=401, detail="Invalid or malformed token"
         )
+    except ValueError as e:
+        # The signing key is not in the (freshly fetched) JWKS, for example
+        # because the identity provider removed it.
+        if not oidc._is_key_not_found_error(e):
+            raise
+        logger.error(f"Token validation failed: {e}")
+        raise Auth.exceptions.HTTPException(
+            status_code=401, detail="Invalid or malformed token"
+        )
     except JoseError as e:
         # Other JWT validation errors
         logger.exception(e)
