@@ -15,6 +15,30 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — Crons, direct thread-state writes and thread commands return 403 (#PR-E)
+
+**What changed.** Aegra mounts a few routes that run the graph or write its checkpoints without the `threads.create_run` event, so the auth handler can neither validate their run input nor give them the server-set run context. The backend now answers 403, for every caller, on these routes:
+
+- Crons: everything at `/runs/crons` and below, and `/threads/{thread_id}/runs/crons`. Cron runs never pass the run-create event. `CRON_ENABLED=false` only stops the scheduler; the routes stay mounted and the first run still starts.
+- Direct thread-state writes: any method other than `GET` and `HEAD` on `/threads/{thread_id}/state`, which includes the SDK's `threads.updateState`. The write skips the graph's own checks (`phase_gate`). Its auth event is `threads.update`, the same as renaming a thread.
+- Thread commands: `/threads/{thread_id}/commands`. Aegra discards the auth handler's return there, so these runs get no server-set context.
+
+A small ASGI middleware (`DenyRoutesMiddleware` in `deny.py`) does this before authentication, so a caller without a token also gets 403, not 401. The body has Aegra's error shape: `{"error": "forbidden", "message": ..., "details": null}`. Aegra's CORS middleware wraps it, so browsers can read the 403. State reads, the history, thread renames (`PATCH /threads/{thread_id}`), the run routes and CORS preflight are unaffected.
+
+**Who is affected.** Apps that copied this backend's `http.py`, and clients that use crons, `threads.updateState` or thread commands.
+
+**What to do.**
+
+1. Copy `apps/backend/src/svelte_langgraph/deny.py` into your backend.
+2. In your `http.app`, call `app.add_middleware(DenyRoutesMiddleware)` right after creating the `FastAPI` app, as `http.py` does. Do not add it to Aegra's app from outside: it must be added before Aegra adds its own middleware.
+3. To keep a route your app really needs, return `False` for it in `is_denied`, at the marked place above the rules. Your app must then guarantee itself what the rule protected:
+   - Crons: cron runs get no server-set context and never pass the run-create event. Your graph must not need `runtime.context["user_id"]` for them, and you must validate cron input yourself (the `crons.create` and `crons.update` events in `auth.py` do).
+   - Thread-state writes: the written values never pass the graph's checks. Your graph must accept any value the write can store.
+   - Thread commands: the runs get no server-set context.
+4. Copy `tests/test_deny_routes.py` and `tests/aegra_app_probe.py`. On an Aegra upgrade the route-table test fails for every new route until you classify it in `KNOWN_ROUTES`.
+
+**How to check.** Against a running backend, `curl -i -X POST http://localhost:2026/runs/crons` must answer `403` with `"error": "forbidden"`.
+
 ## 2026-11-19 — Client run input is validated ([#420](https://github.com/synergyai-nl/svelte-langgraph/pull/420))
 
 **What changed.** Run input from the client reaches the graph's `RunnableConfig`. Before, the backend accepted any `config`, `context` and `checkpoint` keys, and the graph read the user's name from the client's `configurable.user_name`. The auth handler now validates run input when a run, an assistant or a cron is created or updated, and rejects untrusted input with 422. The error names the offending key.
