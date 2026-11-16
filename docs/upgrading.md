@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-19 — Backend refuses to start without its auth module (#PR-B)
+## 2026-11-19 — Backend refuses to start without its auth module ([#418](https://github.com/synergyai-nl/svelte-langgraph/pull/418))
 
 **What changed.** If Aegra cannot load the auth module (a wrong `auth.path`, an import error), it logs a warning and serves every request as an anonymous user. `AUTH_TYPE` does not prevent this. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth.auth`. If not, the server exits with an error.
 
