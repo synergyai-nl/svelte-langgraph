@@ -57,7 +57,9 @@ async def feedback(
     aegra: Annotated[httpx.AsyncClient, Depends(aegra_client)],
 ) -> dict:
     """Attach a rating to the trace of the run that produced the message."""
-    # require_auth doesn't read is_authenticated (aegra/aegra#459).
+    # require_auth doesn't read is_authenticated (aegra/aegra#459). The startup
+    # check in http.py covers the missing-auth-module case (#302); this stays
+    # as a second line of defence.
     if not user.is_authenticated or not user.identity:
         raise HTTPException(status_code=401, detail="Authentication required")
 

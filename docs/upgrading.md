@@ -15,6 +15,20 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — Backend refuses to start without its auth module (#PR-B)
+
+**What changed.** If Aegra cannot load the auth module (a wrong `auth.path`, an import error), it logs a warning and serves every request as an anonymous user. `AUTH_TYPE` does not prevent this. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth.auth`. If not, the server exits with an error.
+
+**Who is affected.** Apps that copied this backend's `http.py` or run their own `http.app`.
+
+**What to do.**
+
+1. Copy `check_auth_loaded` and the `lifespan` from `apps/backend/src/svelte_langgraph/http.py` into your own `http.app`. Change the import of `auth` to your own auth object.
+2. Pass `lifespan=lifespan` when you create the `FastAPI` app. A startup handler does not work here: Aegra's handlers raise an error.
+3. Stop relying on `AUTH_TYPE=custom`. You may keep the variable, but Aegra does not enforce anything based on it.
+
+**How to check.** Copy `aegra.json`, set a wrong `auth.path` in the copy, and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with the error `Aegra did not load ...`.
+
 ## 2026-11-19 — Backend auth code moves into a package ([#424](https://github.com/synergyai-nl/svelte-langgraph/pull/424))
 
 **What changed.** `apps/backend/src/svelte_langgraph/auth.py` became the package `svelte_langgraph/auth/`. Token validation and the JWKS cache are in `auth/oidc.py`. The `Auth` object and its handlers are in `auth/handlers.py`. No behaviour changed.
