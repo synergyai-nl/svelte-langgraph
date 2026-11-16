@@ -23,7 +23,7 @@ from svelte_langgraph.graph import get_prompt, get_user_name
 from tests.conftest import PROVIDER_CASES
 
 USER_ID = "oidc|user-1"
-SECRET = "s3cret-value"
+CLIENT_VALUE = "client-supplied-value"
 
 
 # Nothing here calls a chat model: opt out of the root conftest's provider matrix.
@@ -46,7 +46,7 @@ def rejected(value: dict) -> str:
     with pytest.raises(Auth.exceptions.HTTPException) as caught:
         run_input.validate_run_input(value)
     assert caught.value.status_code == 422
-    assert SECRET not in str(caught.value.detail)
+    assert CLIENT_VALUE not in str(caught.value.detail)
     return str(caught.value.detail)
 
 
@@ -128,7 +128,7 @@ def test_accepts_what_aegra_dumps_for_frontend_runs(request_model):
     ["user_id", "user_display_name", "langgraph_auth_user", "user_name", "unknown"],
 )
 def test_rejects_configurable_keys_not_allowlisted(key):
-    detail = rejected(configurable(**{key: SECRET}))
+    detail = rejected(configurable(**{key: CLIENT_VALUE}))
     assert f"config.configurable.{key}" in detail
 
 
@@ -140,30 +140,34 @@ def test_rejects_state_only_submit_of_the_wrong_type(value):
 
 @pytest.mark.parametrize(
     ("key", "value"),
-    [("tags", [SECRET]), ("metadata", {"k": SECRET}), ("recursion_limit", 5)],
+    [
+        ("tags", [CLIENT_VALUE]),
+        ("metadata", {"k": CLIENT_VALUE}),
+        ("recursion_limit", 5),
+    ],
 )
 def test_rejects_non_empty_top_level_config_keys(key, value):
     assert f"config.{key}" in rejected({"config": {key: value}})
 
 
-@pytest.mark.parametrize("context", [{"user_id": SECRET}, SECRET])
+@pytest.mark.parametrize("context", [{"user_id": CLIENT_VALUE}, CLIENT_VALUE])
 def test_rejects_a_non_empty_context(context):
     assert "context is not accepted" in rejected({"context": context})
 
 
 @pytest.mark.parametrize("field", ["config", "checkpoint"])
 def test_rejects_non_object_shapes(field):
-    assert f"{field} must be an object" in rejected({field: SECRET})
+    assert f"{field} must be an object" in rejected({field: CLIENT_VALUE})
 
 
 def test_rejects_a_non_object_configurable():
     assert "config.configurable must be an object" in rejected(
-        {"config": {"configurable": [SECRET]}}
+        {"config": {"configurable": [CLIENT_VALUE]}}
     )
 
 
 def test_rejects_unknown_checkpoint_keys():
-    detail = rejected({"checkpoint": {"checkpoint_id": "c", "user_id": SECRET}})
+    detail = rejected({"checkpoint": {"checkpoint_id": "c", "user_id": CLIENT_VALUE}})
     assert "checkpoint.user_id" in detail
 
 
@@ -179,10 +183,10 @@ def test_checks_params_of_a_thread_command():
     run_input.validate_run_input(
         {**command, "params": configurable(state_only_submit=True)}
     )
-    detail = rejected({**command, "params": configurable(user_id=SECRET)})
+    detail = rejected({**command, "params": configurable(user_id=CLIENT_VALUE)})
     assert "params.config.configurable.user_id" in detail
     assert "params.context" in rejected(
-        {**command, "params": {"context": {"user_id": SECRET}}}
+        {**command, "params": {"context": {"user_id": CLIENT_VALUE}}}
     )
 
 
@@ -227,11 +231,11 @@ async def test_other_events_return_only_the_owner_filter(resource, action):
 @pytest.mark.parametrize(
     ("resource", "action", "value"),
     [
-        ("threads", "create_run", configurable(user_id=SECRET)),
-        ("assistants", "create", {"config": {}, "context": {"user_id": SECRET}}),
-        ("assistants", "update", configurable(user_display_name=SECRET)),
-        ("crons", "create", configurable(user_id=SECRET)),
-        ("crons", "update", {"context": {"user_id": SECRET}}),
+        ("threads", "create_run", configurable(user_id=CLIENT_VALUE)),
+        ("assistants", "create", {"config": {}, "context": {"user_id": CLIENT_VALUE}}),
+        ("assistants", "update", configurable(user_display_name=CLIENT_VALUE)),
+        ("crons", "create", configurable(user_id=CLIENT_VALUE)),
+        ("crons", "update", {"context": {"user_id": CLIENT_VALUE}}),
     ],
 )
 async def test_handler_rejects_untrusted_input(resource, action, value):
@@ -271,7 +275,7 @@ async def test_aegra_run_create_rejects_untrusted_input(aegra_uses_our_auth):
     request = run_create(
         assistant_id="chat",
         input={"messages": []},
-        config={"configurable": {"user_id": SECRET}},
+        config={"configurable": {"user_id": CLIENT_VALUE}},
     )
     with pytest.raises(HTTPException) as caught:
         await _apply_create_run_auth(User(identity=USER_ID), "thread-1", request)
@@ -281,7 +285,7 @@ async def test_aegra_run_create_rejects_untrusted_input(aegra_uses_our_auth):
 
 async def test_aegra_assistant_create_rejects_a_context(aegra_uses_our_auth):
     value = AssistantCreate.model_validate(
-        {"graph_id": "chat", "context": {"user_id": SECRET}}
+        {"graph_id": "chat", "context": {"user_id": CLIENT_VALUE}}
     ).model_dump()
     with pytest.raises(HTTPException) as caught:
         await handle_event(
