@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-19 — Crons, direct thread-state writes and thread commands return 403 (#PR-E)
+## 2026-11-19 — Crons, direct thread-state writes and thread commands return 403 ([#421](https://github.com/synergyai-nl/svelte-langgraph/pull/421))
 
 **What changed.** Aegra mounts a few routes that run the graph or write its checkpoints without the `threads.create_run` event, so the auth handler can neither validate their run input nor give them the server-set run context. The backend now answers 403, for every caller, on these routes:
 
