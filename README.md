@@ -82,6 +82,7 @@ The `.env` file is organized into sections:
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
 - `DATABASE_URL` - PostgreSQL connection URL for Aegra. Leave unset for the common setups: `moon backend:dev` on the host defaults to `localhost:5432/aegra` (what `moon backend:docker-postgres` serves), and `docker compose up` points at the compose `postgres` service automatically. Set it only for your own/external database server. If you set up before this changed, see the [caveat under Production](#production) — `docker compose up` now honors an explicit `DATABASE_URL` instead of overriding it
 - `AUTH_TYPE` - Set to `custom` to document the intent. Aegra does not enforce anything based on it; the backend refuses to start unless Aegra loaded `svelte_langgraph.auth:auth` (see [Security notes](#security-notes))
+- `AUTH_JWKS_TTL_SECONDS` - Optional; seconds the backend trusts the identity provider's signing keys before fetching them again (default `300`, `0` fetches on every request). An invalid value stops the backend at startup
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
@@ -89,7 +90,6 @@ The `.env` file is organized into sections:
 - `AUTH_OIDC_CLIENT_ID` - Your OIDC client ID (e.g., `svelte-langgraph`)
 - `AUTH_OIDC_CLIENT_SECRET` - Your OIDC client secret
 - `BETTER_AUTH_SECRET` - Random session-encryption secret, at least 32 characters (`openssl rand -base64 32`)
-- `AUTH_JWKS_TTL_SECONDS` - Optional; seconds the backend trusts the identity provider's signing keys before fetching them again (default `300`, `0` fetches on every request). An invalid value stops the backend at startup
 - `AUTH_OIDC_SCOPES` - Optional space-separated scopes; defaults to `openid profile email offline_access`
 - `PUBLIC_LANGGRAPH_API_URL` - URL of your Aegra server (typically `http://localhost:2026`)
 - `PUBLIC_SENTRY_DSN` - Public DSN for Sentry error tracking (optional)
