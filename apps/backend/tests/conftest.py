@@ -17,6 +17,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 import respx
+from aegra_api.models.auth import User
 from httpx import Response
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import InMemorySaver
@@ -203,9 +204,15 @@ def make_completion_response(
 
 @pytest.fixture
 def thread_config() -> RunnableConfig:
-    """Create a unique thread configuration for each test."""
+    """Create a unique thread configuration for each test.
+
+    `langgraph_auth_user` stands in for the user Aegra puts there on every run.
+    """
     return RunnableConfig(
-        configurable={"thread_id": str(uuid4()), "user_name": "Alice"}
+        configurable={
+            "thread_id": str(uuid4()),
+            "langgraph_auth_user": User(identity="user-alice", display_name="Alice"),
+        }
     )
 
 
