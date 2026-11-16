@@ -10,8 +10,20 @@ from langgraph_sdk import Auth
 
 from svelte_langgraph import http
 from svelte_langgraph.auth import auth
+from tests.conftest import PROVIDER_CASES
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
+# Nothing here touches a chat model: opt out of the root conftest's provider matrix.
+@pytest.fixture(scope="module")
+def provider_case():
+    return PROVIDER_CASES[0]
+
+
+@pytest.fixture
+def chat_model():
+    return None
 
 
 def use_auth_instance(monkeypatch, instance):

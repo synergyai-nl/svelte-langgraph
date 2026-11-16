@@ -24,7 +24,7 @@ Each entry has this format:
 **What to do.**
 
 1. Copy `check_auth_loaded` and the `lifespan` from `apps/backend/src/svelte_langgraph/http.py` into your own `http.app`. Change the import of `auth` to your own auth object.
-2. Pass `lifespan=lifespan` when you create the `FastAPI` app. A startup handler does not work here: Aegra's handlers raise an error.
+2. Pass `lifespan=lifespan` when you create the `FastAPI` app. An `on_startup` handler does not work here: Aegra rejects them.
 3. Stop relying on `AUTH_TYPE=custom`. You may keep the variable, but Aegra does not enforce anything based on it.
 
 **How to check.** Copy `aegra.json`, set a wrong `auth.path` in the copy, and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with the error `Aegra did not load ...`.
