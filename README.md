@@ -16,6 +16,10 @@ https://svelte-langgraph-demo.synergyai.nl/
 - **Authentication**: Generic OIDC (OpenID Connect) integration
 - **Internationalization**: Paraglide-JS for multi-language support
 
+## Documentation
+
+See [docs/README.md](docs/README.md) for the documentation index, including [upgrade notes for downstream apps](docs/upgrading.md).
+
 ## Prerequisites
 
 This repo uses [Proto](https://moonrepo.dev/docs/proto/install) with `.prototools` to pin **moon** (^1.41.8) and **pnpm**. Moon installs and manages the rest of the toolchain (Python 3.12, Node.js, [uv](https://docs.astral.sh/uv/)).
