@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { CircleAlert } from '@lucide/svelte';
-	import * as m from '$lib/paraglide/messages.js';
-	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-	import * as Dialog from '$lib/components/ui/dialog';
+	import * as m from '#lib/paraglide/messages.js';
+	import SignInButton from '#lib/auth/components/SignInButton.svelte';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
 
 	interface Props {
 		open: boolean;

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Header from './Header.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
@@ -11,7 +11,7 @@ vi.mock('$app/navigation', () => ({
 }));
 
 const signOut = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-vi.mock('$lib/auth/client', () => ({
+vi.mock('#lib/auth/client.ts', () => ({
 	authClient: {
 		signOut,
 		signIn: { social: vi.fn().mockResolvedValue({ error: null }) }

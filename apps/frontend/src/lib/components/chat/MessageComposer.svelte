@@ -5,9 +5,9 @@
 -->
 
 <script lang="ts">
-	import { Textarea } from '$lib/components/ui/textarea/index.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.js';
 	import SubmitButton from './SubmitButton.svelte';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		value: string;

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { toggleMode, mode } from 'mode-watcher';
-	import { buttonVariants } from '$lib/components/ui/button';
+	import { buttonVariants } from '#lib/components/ui/button/index.ts';
 	import { Moon, Sun } from '@lucide/svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { cn } from '$lib/utils.js';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { cn } from '#lib/utils.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
 
 	let { class: className = '' } = $props();
 </script>

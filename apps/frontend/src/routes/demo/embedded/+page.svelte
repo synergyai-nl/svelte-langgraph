@@ -22,11 +22,11 @@
 	 */
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
-	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-	import { backendAuth, getToken } from '$lib/auth/backendToken.svelte';
-	import LangGraph from '$lib/components/chat/LangGraph.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import { PUBLIC_LANGGRAPH_API_URL } from '$app/env/public';
+	import SignInButton from '#lib/auth/components/SignInButton.svelte';
+	import { backendAuth, getToken } from '#lib/auth/backendToken.svelte.ts';
+	import LangGraph from '#lib/components/chat/LangGraph.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 	import EmbeddedChatSurface from './EmbeddedChatSurface.svelte';
 
 	// `expired` is module-wide and may be stale (set on /chat, re-signed-in since). The gate keeps
@@ -44,9 +44,9 @@
 			data-testid="embedded-chat-card"
 			class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border shadow-lg"
 		>
-			<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL ?? ''} token={getToken}>
-				<EmbeddedChatSurface />
-			</LangGraph>
+			<LangGraph url={PUBLIC_LANGGRAPH_API_URL ?? ''} token={getToken}
+				><EmbeddedChatSurface /></LangGraph
+			>
 		</div>
 	{:else}
 		<div class="max-w-md space-y-4 rounded-xl border p-8 text-center text-sm">

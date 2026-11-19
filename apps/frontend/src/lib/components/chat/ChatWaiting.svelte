@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { User } from '@lucide/svelte';
-	import { Spinner } from '$lib/components/ui/spinner';
-	import * as m from '$lib/paraglide/messages.js';
+	import { Spinner } from '#lib/components/ui/spinner/index.ts';
+	import * as m from '#lib/paraglide/messages.js';
 </script>
 
 <div class="mb-6 flex w-full justify-start">

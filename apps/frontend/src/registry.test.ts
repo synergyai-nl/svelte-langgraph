@@ -19,7 +19,7 @@ function sourceFiles(root: string, dir: string): string[] {
 		.sort();
 }
 
-/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `$lib`. */
+/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `#lib`. */
 const clientDir = '../../packages/client/src';
 const clientTarget = 'svelte-langgraph-client';
 
@@ -80,7 +80,7 @@ describe('shadcn-svelte registry', () => {
 	});
 
 	test('never imports its own files through $lib/components/chat/, which only exists here', () => {
-		// Relative imports survive the move to svelte-langgraph/; a `$lib/components/chat/` one would not.
+		// Relative imports survive the move to svelte-langgraph/; a `#lib/components/chat/` one would not.
 		for (const { path } of shippedComponents) {
 			expect(readFileSync(`${frontendRoot}/${path}`, 'utf8'), path).not.toMatch(
 				/\$lib\/components\/chat\//

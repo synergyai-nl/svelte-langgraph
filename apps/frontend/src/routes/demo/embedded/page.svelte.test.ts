@@ -2,14 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 
 import EmbeddedDemoPage from './+page.svelte';
-import { backendAuth, resetBackendToken } from '$lib/auth/backendToken.svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { backendAuth, resetBackendToken } from '#lib/auth/backendToken.svelte.ts';
+import { m } from '#lib/paraglide/messages.js';
 
 const tokenCall = vi.hoisted(() => ({
 	getAccessToken: vi.fn(),
 	getSession: vi.fn()
 }));
-vi.mock('$lib/auth/client', () => ({
+vi.mock('#lib/auth/client.ts', () => ({
 	authClient: { ...tokenCall, signIn: { social: vi.fn() } }
 }));
 

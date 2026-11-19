@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import { cn } from '$lib/utils';
+	import { m } from '#lib/paraglide/messages.js';
+	import { cn } from '#lib/utils.ts';
 
 	let { class: className = '' }: { class?: string } = $props();
 </script>

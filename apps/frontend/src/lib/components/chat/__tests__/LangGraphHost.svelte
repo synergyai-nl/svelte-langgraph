@@ -17,7 +17,7 @@
 	 * Wraps `Tooltip.Provider` with no delay, mirroring `LangGraph.svelte`'s own wrapper, and no
 	 * `Sidebar.Provider`, like `<LangGraph>`: `ThreadList` needs the caller's (see `ThreadListHost`).
 	 */
-	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 	import { LangGraphContext, setLangGraphContext } from '../langGraphContext.svelte.js';
 	import type { Component } from 'svelte';
 

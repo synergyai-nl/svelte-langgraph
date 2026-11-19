@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
-	import ChatLoader from '$lib/components/chat/ChatLoader.svelte';
-	import ChatError from '$lib/components/ChatError.svelte';
-	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
-	import * as m from '$lib/paraglide/messages.js';
+	import ChatSurface from '#lib/components/chat/ChatSurface.svelte';
+	import ChatLoader from '#lib/components/chat/ChatLoader.svelte';
+	import ChatError from '#lib/components/ChatError.svelte';
+	import { useLangGraph } from '#lib/components/chat/langGraphContext.svelte.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	// Client + assistant resolution now live in `+layout.svelte`'s `<LangGraph>` provider — this
 	// page only reads the result.

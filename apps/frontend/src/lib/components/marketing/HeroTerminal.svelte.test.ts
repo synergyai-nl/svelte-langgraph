@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import HeroTerminal from './HeroTerminal.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 describe('HeroTerminal', () => {
 	test('renders the terminal chrome label', () => {

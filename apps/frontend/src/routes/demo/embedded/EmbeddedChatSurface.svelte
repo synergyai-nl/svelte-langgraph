@@ -11,9 +11,9 @@
 	 * existing fallback to `ctx.activeThreadId` — no `threadId` prop needs to be threaded through
 	 * here.
 	 */
-	import ChatSurface from '$lib/components/chat/ChatSurface.svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+	import ChatSurface from '#lib/components/chat/ChatSurface.svelte';
+	import { m } from '#lib/paraglide/messages.js';
+	import { useLangGraph } from '#lib/components/chat/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 

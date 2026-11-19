@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { FeedbackScore } from '@svelte-langgraph/client';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import { Button } from '$lib/components/ui/button';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import { Textarea } from '#lib/components/ui/textarea/index.ts';
+	import * as m from '#lib/paraglide/messages.js';
 	// Capped here so the backend's 422 is unreachable from the UI. `maxlength`
 	// counts UTF-16 units against a backend limit in code points, so it can only
 	// ever stop short of it -- never over.

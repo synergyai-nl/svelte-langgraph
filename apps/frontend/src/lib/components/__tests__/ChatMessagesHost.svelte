@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 	import MessagesList from '../chat/MessagesList.svelte';
 	import type { ComponentProps } from 'svelte';
 

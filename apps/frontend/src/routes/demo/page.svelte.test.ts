@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
-import { m } from '$lib/paraglide/messages.js';
+import { m } from '#lib/paraglide/messages.js';
 import DemoPage from './+page.svelte';
 
 describe('/demo', () => {

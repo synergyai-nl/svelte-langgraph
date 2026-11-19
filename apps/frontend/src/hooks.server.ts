@@ -1,11 +1,10 @@
 import * as Sentry from '@sentry/sveltekit';
-import type { Handle } from '@sveltejs/kit';
-import { sequence } from '@sveltejs/kit/hooks';
-import { building } from '$app/environment';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
+import { building } from '$app/env';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { paraglideMiddleware } from '$lib/paraglide/server';
-import { auth } from '$lib/auth';
-import { initSentry } from '$lib/sentry';
+import { paraglideMiddleware } from '#lib/paraglide/server.js';
+import { auth } from '#lib/auth/index.ts';
+import { initSentry } from '#lib/sentry.ts';
 
 initSentry({ server: true });
 
