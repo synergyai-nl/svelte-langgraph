@@ -84,13 +84,17 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
-    empty), `context` (must be empty) and the keys of `checkpoint`. The
-    detail names the offending key, never its value.
+    empty), `context` and `webhook` (must be empty) and the keys of
+    `checkpoint`. The detail names the offending key, never its value.
     """
     _validate_config("config", value.get("config"))
 
     if not _is_empty(value.get("context")):
         raise _reject("context is not accepted; it must be empty.")
+
+    # This backend turns run webhooks off. Aegra treats "" as no webhook.
+    if value.get("webhook") not in (None, ""):
+        raise _reject("webhook is not accepted.")
 
     for key in _as_mapping("checkpoint", value.get("checkpoint")):
         if key not in ALLOWED_CHECKPOINT_KEYS:
