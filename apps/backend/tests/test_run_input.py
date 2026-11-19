@@ -12,6 +12,7 @@ from aegra_api.core.auth_handlers import build_auth_context, handle_event
 from aegra_api.models import RunCreate
 from aegra_api.models.assistants import AssistantCreate
 from aegra_api.models.auth import User
+from aegra_api.models.crons import CronCreate, CronUpdate
 from aegra_api.services.run_preparation import _apply_create_run_auth
 from fastapi import HTTPException
 from langchain_core.messages import SystemMessage
@@ -171,6 +172,49 @@ def test_rejects_unknown_checkpoint_keys():
     assert "checkpoint.user_id" in detail
 
 
+@pytest.mark.parametrize("webhook", [None, ""])
+def test_accepts_no_webhook(webhook):
+    """Aegra treats an empty webhook as none and never calls it."""
+    run_input.validate_run_input({"webhook": webhook})
+
+
+@pytest.mark.parametrize(
+    "webhook", ["https://example.com/hook", "not a url", {"url": CLIENT_VALUE}]
+)
+def test_rejects_a_webhook(webhook):
+    assert rejected({"webhook": webhook}) == "webhook is not accepted."
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(
+            CronCreate.model_validate(
+                {
+                    "assistant_id": "chat",
+                    "schedule": "0 * * * *",
+                    "input": {},
+                    "webhook": "https://example.com/hook",
+                }
+            ).model_dump(),
+            id="cron-create",
+        ),
+        pytest.param(
+            {
+                "cron_id": "c",
+                **CronUpdate.model_validate(
+                    {"webhook": "https://example.com/hook"}
+                ).model_dump(exclude_none=True),
+            },
+            id="cron-update",
+        ),
+    ],
+)
+def test_rejects_the_webhook_of_a_cron(value):
+    """Aegra hands the cron events the webhook under the same key."""
+    assert rejected(value) == "webhook is not accepted."
+
+
 def test_names_long_keys_cut_short():
     detail = rejected(configurable(**{"k" * 500: True}))
     assert "k" * 64 in detail
@@ -223,6 +267,7 @@ async def test_other_events_return_only_the_owner_filter(resource, action):
         ("assistants", "update", configurable(user_display_name=CLIENT_VALUE)),
         ("crons", "create", configurable(user_id=CLIENT_VALUE)),
         ("crons", "update", {"context": {"user_id": CLIENT_VALUE}}),
+        ("crons", "update", {"cron_id": "c", "webhook": "https://example.com/hook"}),
     ],
 )
 async def test_handler_rejects_untrusted_input(resource, action, value):
@@ -268,6 +313,16 @@ async def test_aegra_run_create_rejects_untrusted_input(aegra_uses_our_auth):
         await _apply_create_run_auth(User(identity=USER_ID), "thread-1", request)
     assert caught.value.status_code == 422
     assert "config.configurable.user_id" in caught.value.detail
+
+
+async def test_aegra_run_create_rejects_a_webhook(aegra_uses_our_auth):
+    request = run_create(
+        assistant_id="chat", input={}, webhook="https://example.com/hook"
+    )
+    with pytest.raises(HTTPException) as caught:
+        await _apply_create_run_auth(User(identity=USER_ID), "thread-1", request)
+    assert caught.value.status_code == 422
+    assert caught.value.detail == "webhook is not accepted."
 
 
 async def test_aegra_assistant_create_rejects_a_context(aegra_uses_our_auth):
