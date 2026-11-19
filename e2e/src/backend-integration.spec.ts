@@ -407,17 +407,12 @@ test.describe('Backend Integration', () => {
 				}
 			});
 
-			test('should refuse state writes and commands with 403', async ({ request }) => {
+			test('should refuse state writes with 403', async ({ request }) => {
 				const a = await setUpUser(request);
 				const write = await a.api('POST', `/threads/${a.threadId}/state`, {
 					values: { phase: 'planning' }
 				});
 				expect(write.status, write.text).toBe(403);
-				const command = await a.api('POST', `/threads/${a.threadId}/commands`, {
-					method: 'run.input',
-					params: { assistant_id: a.assistantId, input: humanInput('Hello') }
-				});
-				expect(command.status, command.text).toBe(403);
 			});
 
 			test('should keep the neighbouring thread routes open', async ({ request }) => {
@@ -487,6 +482,81 @@ test.describe('Backend Integration', () => {
 					config: { configurable: { state_only_submit: true } }
 				});
 				expect(response.status, response.text).toBe(200);
+			});
+		});
+
+		test.describe('Webhooks', () => {
+			test('should reject a run with a webhook on every run route', async ({ request }) => {
+				const a = await setUpUser(request);
+				for (const route of ['runs', 'runs/wait', 'runs/stream']) {
+					const response = await a.api('POST', `/threads/${a.threadId}/${route}`, {
+						assistant_id: a.assistantId,
+						input: humanInput('Hello'),
+						webhook: 'https://example.com/hook'
+					});
+					expect(response.status, `${route}: ${response.text}`).toBe(422);
+					expect(response.body.message).toContain('webhook is not accepted.');
+				}
+				// The handler runs before the run is created, so no run exists.
+				const runs = await a.api('GET', `/threads/${a.threadId}/runs`);
+				expect(runs.body).toEqual([]);
+			});
+		});
+
+		test.describe('Thread commands', () => {
+			test('should reject a run.start with an identity key in configurable', async ({
+				request
+			}) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', `/threads/${a.threadId}/commands`, {
+					id: 1,
+					method: 'run.start',
+					params: {
+						assistant_id: a.assistantId,
+						input: humanInput('Hello'),
+						config: { configurable: { user_id: 'someone-else' } }
+					}
+				});
+				// Protocol errors ride HTTP 200.
+				expect(response.status, response.text).toBe(200);
+				expect(response.body.type).toBe('error');
+				expect(response.body.id).toBe(1);
+				expect(response.body.error).toBe('invalid_argument');
+				expect((await a.api('GET', `/threads/${a.threadId}/runs`)).body).toEqual([]);
+			});
+
+			test('should start a run for a valid run.start', async ({ request }) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', `/threads/${a.threadId}/commands`, {
+					id: 2,
+					method: 'run.start',
+					params: { assistant_id: a.assistantId, input: humanInput('Hello') }
+				});
+				expect(response.status, response.text).toBe(200);
+				expect(response.body.type, response.text).toBe('success');
+				expect(response.body.id).toBe(2);
+				const runId = response.body.result.run_id as string;
+				expect(runId).toBeTruthy();
+
+				const runs = await a.api('GET', `/threads/${a.threadId}/runs`);
+				expect(runs.body.map((run: Record<string, unknown>) => run.run_id)).toEqual([runId]);
+				// Let the run finish so it does not disturb later tests.
+				await waitForRunStatus(a.api, a.threadId, runId, ['success', 'error', 'interrupted']);
+			});
+		});
+
+		test.describe('Prune', () => {
+			test("should not prune another user's thread", async ({ request }) => {
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const prune = await b.api('POST', '/threads/prune', {
+					thread_ids: [a.threadId],
+					strategy: 'delete'
+				});
+				expect(prune.status, prune.text).toBe(200);
+				expect(prune.body.pruned_count).toBe(0);
+				const thread = await a.api('GET', `/threads/${a.threadId}`);
+				expect(thread.status, thread.text).toBe(200);
 			});
 		});
 	});
