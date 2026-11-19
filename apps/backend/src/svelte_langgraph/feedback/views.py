@@ -57,7 +57,10 @@ async def feedback(
     aegra: Annotated[httpx.AsyncClient, Depends(aegra_client)],
 ) -> dict:
     """Attach a rating to the trace of the run that produced the message."""
-    # require_auth doesn't read is_authenticated (aegra/aegra#459).
+    # Aegra marks `anonymous` with `is_authenticated=False` (aegra/aegra#459,
+    # since 0.11), but `require_auth` does not check it. The startup check
+    # (`auth/startup.py`) covers a config without auth (#302); this stays as a
+    # second line of defence.
     if not user.is_authenticated or not user.identity:
         raise HTTPException(status_code=401, detail="Authentication required")
 

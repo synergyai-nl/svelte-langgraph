@@ -8,7 +8,7 @@ this suite at one run per test instead of sixteen.
 
 import httpx
 import pytest
-from aegra_api.core import auth_deps
+from aegra_api.core import auth_deps, auth_middleware
 from aegra_api.core.auth_deps import require_auth
 from aegra_api.core.auth_middleware import LangGraphAuthBackend
 from aegra_api.models import User
@@ -152,11 +152,13 @@ def real_auth(monkeypatch):
     backend = object.__new__(LangGraphAuthBackend)
     backend.auth_instance = auth
     monkeypatch.setattr(auth_deps, "get_auth_backend", lambda: backend)
+    # The app's startup check reads the instance through the middleware module.
+    monkeypatch.setattr(auth_middleware, "get_auth_backend", lambda: backend)
     return backend
 
 
 @pytest.fixture
-def client(aegra, caller_id, authenticated):
+def client(aegra, caller_id, authenticated, real_auth):
     """A TestClient that is authenticated, talking to a fake Aegra.
 
     /feedback depends on `require_auth` and on Aegra's own routes, which would

@@ -248,8 +248,9 @@ def test_a_caller_without_an_identity_is_rejected(client, langfuse_env):
 @respx.mock
 @pytest.mark.parametrize("authenticated", [False], indirect=True)
 def test_a_user_flagged_unauthenticated_is_rejected(client, langfuse_env):
-    """require_auth admits whatever its backend returns without reading
-    is_authenticated (aegra/aegra#459), so the route checks it itself."""
+    """Aegra marks `anonymous` with is_authenticated=False (aegra/aegra#459,
+    since 0.11), but require_auth admits whatever its backend returns without
+    reading it, so the route checks it itself."""
     score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
     assert rate(client).status_code == 401
