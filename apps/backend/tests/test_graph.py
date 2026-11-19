@@ -582,7 +582,7 @@ def test_prompt_includes_phase_system_message():
     from svelte_langgraph.graph import get_prompt
 
     state = {"messages": [], "phase": "draft"}  # type: ignore[typeddict-item]
-    config = RunnableConfig(configurable={"user_name": "Alice", "thread_id": "test"})
+    config = RunnableConfig(configurable={"thread_id": "test"})
 
     messages = get_prompt(state, config)  # type: ignore[arg-type]
 

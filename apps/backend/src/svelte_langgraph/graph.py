@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Annotated, Any, cast
 
 from langchain.agents import create_agent
@@ -39,18 +39,42 @@ class AgentExtendedState(AgentState[None]):
     phase: Annotated[Phase, last_value]
 
 
-SYSTEM_PROMPT = "You are a helpful assistant. Address the user as {user_name}."
+SYSTEM_PROMPT = "You are a helpful assistant."
+USER_NAME_PROMPT = " Address the user as {user_name}."
 INITIAL_MESSAGE = "Hi, how are you doing?"
 
 
-def get_prompt_template() -> ChatPromptTemplate:
+def get_prompt_template(with_user_name: bool) -> ChatPromptTemplate:
+    system_prompt = SYSTEM_PROMPT + (USER_NAME_PROMPT if with_user_name else "")
     return ChatPromptTemplate(
         [
-            ("system", SYSTEM_PROMPT),
+            ("system", system_prompt),
             ("system", "Current phase: {phase}"),
             ("ai", INITIAL_MESSAGE),
         ]
     )
+
+
+def get_user_name(config: RunnableConfig) -> str | None:
+    """The user's name from the verified access token, or None.
+
+    Read from `configurable.langgraph_auth_user`, which Aegra sets on every run
+    from the auth handler's result; a client cannot override it. Never read
+    identity from client-supplied `configurable` keys. Aegra fills
+    `display_name` with the identity when the token has no name, so a name
+    equal to the identity counts as no name.
+    """
+    user = (config.get("configurable") or {}).get("langgraph_auth_user")
+    if user is None:
+        return None
+    if isinstance(user, Mapping):
+        name, identity = user.get("display_name"), user.get("identity")
+    else:
+        name = getattr(user, "display_name", None)
+        identity = getattr(user, "identity", None)
+    if not isinstance(name, str) or not name.strip() or name == identity:
+        return None
+    return name
 
 
 def get_prompt(
@@ -59,18 +83,17 @@ def get_prompt(
     assert "configurable" in config
     assert isinstance(state["messages"], list)
 
-    template = get_prompt_template()
     phase = state.get("phase")
     if phase is None:
         phase = DEFAULT_PHASE
 
-    return (
-        template.format_messages(
-            user_name=config["configurable"].get("user_name"),
-            phase=phase,
-        )
-        + state["messages"]
-    )
+    user_name = get_user_name(config)
+    template = get_prompt_template(with_user_name=user_name is not None)
+    variables: dict[str, Any] = {"phase": phase}
+    if user_name is not None:
+        variables["user_name"] = user_name
+
+    return template.format_messages(**variables) + state["messages"]
 
 
 @before_agent(can_jump_to=["end"], state_schema=AgentExtendedState)
