@@ -1,3 +1,5 @@
+import adapter from '@sveltejs/adapter-node';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { sentrySvelteKit } from '@sentry/sveltekit';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import tailwindcss from '@tailwindcss/vite';
@@ -5,10 +7,21 @@ import { svelteTesting } from '@testing-library/svelte/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+// Pin the SvelteKit version to moon's task hash so client and server always agree on
+// __sveltekit_<hash>. moon injects MOON_TASK_HASH and keeps it stable across retries and
+// machines for identical inputs. Falls back to SvelteKit's Date.now() default when built
+// outside moon (a standalone single-process build is internally consistent anyway).
+const version = process.env.MOON_TASK_HASH ? { name: process.env.MOON_TASK_HASH } : undefined;
+
 export default defineConfig(({ command, isPreview }) => ({
 	plugins: [
 		tailwindcss(),
-		sveltekit(),
+		sveltekit({
+			preprocess: vitePreprocess(),
+			adapter: adapter(),
+			alias: { async_hooks: './src/lib/async_hooks_mock.ts' }
+		}),
+
 		...(command === 'serve' && !isPreview && !process.env.VITEST
 			? [
 					paraglideVitePlugin({
@@ -19,11 +32,7 @@ export default defineConfig(({ command, isPreview }) => ({
 					})
 				]
 			: []),
-		sentrySvelteKit({
-			sourceMapsUploadOptions: {
-				telemetry: !process.env.VITEST
-			}
-		})
+		sentrySvelteKit({ sourceMapsUploadOptions: { telemetry: !process.env.VITEST } })
 	],
 	test: {
 		projects: [

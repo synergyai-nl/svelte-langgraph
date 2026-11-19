@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { Check, X, Minus, ExternalLink } from '@lucide/svelte';
 	import type { Component } from 'svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { cn } from '$lib/utils';
+	import { m } from '#lib/paraglide/messages.js';
+	import { cn } from '#lib/utils.ts';
 
 	export type CellStatus = 'yes' | 'no' | 'partial';
 

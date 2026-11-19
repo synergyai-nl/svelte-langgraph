@@ -81,9 +81,9 @@ and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
 
 The items install into three folders they own. Everything else in your app is yours.
 
-- `$lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
+- `#lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
   `ScrollableContainer/` subfolders.
-- `$lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
+- `#lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
   to npm ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
 - `messages/svelte-langgraph/`: the chat strings, one file per locale (steps 4 and 5).
 
@@ -240,7 +240,7 @@ When a release needs a stock component you don't have yet, its release notes say
 
 1. Back up your hand edits to the chat files.
 2. Install `chat.json` as in step 1, answering No for the stock components you already have.
-3. Move your imports to `$lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
+3. Move your imports to `#lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
    where you use `ThreadList` (see "Thread list layout"), and in `project.inlang/settings.json`
    change the `./messages/chat/{locale}.json` entry of `pathPattern` to
    `./messages/svelte-langgraph/{locale}.json` (see [step 4](#steps)). Run `vite dev` or a build
@@ -289,7 +289,7 @@ auth handler.
 <!-- +page.svelte -->
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
+	import LangGraph from '#lib/components/svelte-langgraph/LangGraph.svelte';
 	import Chat from './Chat.svelte';
 
 	let { data } = $props(); // however your app exposes the token your backend validates
@@ -305,8 +305,8 @@ auth handler.
 ```svelte
 <!-- Chat.svelte: must be a child of <LangGraph> to read its context -->
 <script lang="ts">
-	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
-	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
+	import ChatSurface from '#lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { useLangGraph } from '#lib/components/svelte-langgraph/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 
@@ -351,10 +351,10 @@ Cmd/Ctrl+B.
 ```svelte
 <script lang="ts">
 	import { env } from '$env/dynamic/public';
-	import * as Sidebar from '$lib/components/ui/sidebar';
-	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
-	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
-	import { ThreadList } from '$lib/components/svelte-langgraph/ThreadList';
+	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
+	import LangGraph from '#lib/components/svelte-langgraph/LangGraph.svelte';
+	import ChatSurface from '#lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { ThreadList } from '#lib/components/svelte-langgraph/ThreadList';
 
 	let { data } = $props();
 </script>
@@ -392,10 +392,10 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte
 <script lang="ts">
-	import Conversation from '$lib/components/svelte-langgraph/Conversation.svelte';
-	import MessagesList from '$lib/components/svelte-langgraph/MessagesList.svelte';
-	import MessageComposer from '$lib/components/svelte-langgraph/MessageComposer.svelte';
-	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
+	import Conversation from '#lib/components/svelte-langgraph/Conversation.svelte';
+	import MessagesList from '#lib/components/svelte-langgraph/MessagesList.svelte';
+	import MessageComposer from '#lib/components/svelte-langgraph/MessageComposer.svelte';
+	import { useLangGraph } from '#lib/components/svelte-langgraph/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 </script>
@@ -467,7 +467,7 @@ primitive built on Svelte 5 runes.
 ```svelte
 <script lang="ts">
 	import { createStateSync } from '@svelte-langgraph/client';
-	import StateField from '$lib/components/svelte-langgraph/StateField.svelte';
+	import StateField from '#lib/components/svelte-langgraph/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props
 	const sync = createStateSync({ stream, client, assistantId });

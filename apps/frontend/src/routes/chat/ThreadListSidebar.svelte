@@ -7,8 +7,8 @@
 	 * lives in `routes/chat/` instead of the routing-agnostic `lib/components/chat/` package.
 	 */
 	import { navigating } from '$app/state';
-	import { ThreadList } from '$lib/components/chat/ThreadList';
-	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+	import { ThreadList } from '#lib/components/chat/ThreadList/index.ts';
+	import { useLangGraph } from '#lib/components/chat/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 	let pendingThreadId = $derived(navigating.to?.params?.threadID ?? ctx.pendingThreadId);

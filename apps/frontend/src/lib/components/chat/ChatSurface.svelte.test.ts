@@ -8,7 +8,7 @@ import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import type { ChatSuggestion } from './Suggestions.svelte';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
 import { useStream } from '@langchain/svelte';
-import { SIDEBAR_COOKIE_NAME } from '$lib/components/ui/sidebar/constants.js';
+import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.js';
 
 // Mock useStream — same idiom as the old Chat suites: Conversation (mounted inside ChatSurface)
 // depends on it directly.

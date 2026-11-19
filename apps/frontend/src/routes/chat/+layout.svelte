@@ -8,18 +8,18 @@
 	 * below) is the one further seam needed for the `navigating`/pending-row merge — see its own
 	 * header comment.
 	 */
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { env } from '$env/dynamic/public';
+	import { PUBLIC_LANGGRAPH_API_URL } from '$app/env/public';
 
-	import * as Sidebar from '$lib/components/ui/sidebar';
-	import LangGraph from '$lib/components/chat/LangGraph.svelte';
-	import LoginModal from '$lib/components/LoginModal.svelte';
-	import { backendAuth, getToken } from '$lib/auth/backendToken.svelte';
+	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
+	import LangGraph from '#lib/components/chat/LangGraph.svelte';
+	import LoginModal from '#lib/components/LoginModal.svelte';
+	import { backendAuth, getToken } from '#lib/auth/backendToken.svelte.ts';
 	import ThreadListSidebar from './ThreadListSidebar.svelte';
-	import { parseSidebarCookie } from '$lib/sidebarCookie';
-	import * as m from '$lib/paraglide/messages.js';
+	import { parseSidebarCookie } from '#lib/sidebarCookie.ts';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let { children } = $props();
 
@@ -50,7 +50,7 @@
      `ThreadListSidebar` and the content pane are the provider's literal flex children: its
      `peer`/`group` classes need nothing in between. -->
 <LangGraph
-	url={env.PUBLIC_LANGGRAPH_API_URL ?? ''}
+	url={PUBLIC_LANGGRAPH_API_URL ?? ''}
 	token={signedOut ? null : getToken}
 	{activeThreadId}
 	onThreadChange={(id) => {

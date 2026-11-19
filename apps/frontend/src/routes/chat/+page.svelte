@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { getOrCreateThread } from '@svelte-langgraph/client';
-	import ChatLoader from '$lib/components/chat/ChatLoader.svelte';
-	import ChatError from '$lib/components/ChatError.svelte';
-	import { useLangGraph } from '$lib/components/chat/langGraphContext.svelte.js';
+	import ChatLoader from '#lib/components/chat/ChatLoader.svelte';
+	import ChatError from '#lib/components/ChatError.svelte';
+	import { useLangGraph } from '#lib/components/chat/langGraphContext.svelte.js';
 
 	let redirect_error = $state<Error | null>(null);
 

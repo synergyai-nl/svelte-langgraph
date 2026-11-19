@@ -1,4 +1,4 @@
-import { building } from '$app/environment';
+import { building } from '$app/env';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { betterAuth } from 'better-auth';
@@ -12,6 +12,7 @@ const EXPECTED_USER_HEADER = 'x-slg-expected-user';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 
 function required(name: string): string {
+	// @migration-task Rewrite dynamic env lookup manually.
 	const value = env[name];
 	if (!value) throw new Error(`Required environment variable '${name}' not defined.`);
 	return value;
@@ -100,4 +101,5 @@ const createAuth = () =>
 // OIDC discovery. The build imports this module without runtime settings and never uses
 // auth (the auth handle skips it while building), so it gets no instance.
 export const auth = building ? (null as unknown as ReturnType<typeof createAuth>) : createAuth();
+
 export type Auth = typeof auth;

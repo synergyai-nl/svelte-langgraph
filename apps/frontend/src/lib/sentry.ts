@@ -1,9 +1,9 @@
 import * as Sentry from '@sentry/sveltekit';
-import { env } from '$env/dynamic/public';
-import { dev } from '$app/environment';
+import { PUBLIC_SENTRY_DSN, PUBLIC_SENTRY_SEND_PII } from '$app/env/public';
+import { dev } from '$app/env';
 
 export function initSentry({ server = false }: { server?: boolean } = {}) {
-	const dsn = env.PUBLIC_SENTRY_DSN;
+	const dsn = PUBLIC_SENTRY_DSN;
 
 	if (!dsn) {
 		console.warn('Sentry DSN not configured');
@@ -19,7 +19,7 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 		 * and can be overridden via PUBLIC_SENTRY_SEND_PII.
 		 */
 		sendDefaultPii:
-			env.PUBLIC_SENTRY_SEND_PII === 'true' || (env.PUBLIC_SENTRY_SEND_PII === undefined && dev),
+			PUBLIC_SENTRY_SEND_PII === 'true' || (PUBLIC_SENTRY_SEND_PII === undefined && dev),
 		enableLogs: true,
 		...(server
 			? {

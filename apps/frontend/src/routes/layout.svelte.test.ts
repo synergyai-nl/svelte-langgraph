@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import Layout from './+layout.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 

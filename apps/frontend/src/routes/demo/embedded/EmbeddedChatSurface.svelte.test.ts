@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 
-import LangGraphHost from '$lib/components/chat/__tests__/LangGraphHost.svelte';
-import { makeContext, makeMockClient } from '$lib/components/chat/__tests__/testContext.js';
+import LangGraphHost from '#lib/components/chat/__tests__/LangGraphHost.svelte';
+import { makeContext, makeMockClient } from '#lib/components/chat/__tests__/testContext.js';
 import EmbeddedChatSurface from './EmbeddedChatSurface.svelte';
 
 describe('EmbeddedChatSurface', () => {

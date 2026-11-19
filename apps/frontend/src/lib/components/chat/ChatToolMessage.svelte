@@ -2,7 +2,7 @@
 	import type { ToolMessage } from '@svelte-langgraph/client';
 	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		message: ToolMessage;

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 
-import LangGraphHost from '$lib/components/chat/__tests__/LangGraphHost.svelte';
-import { makeContext, makeMockClient } from '$lib/components/chat/__tests__/testContext.js';
+import LangGraphHost from '#lib/components/chat/__tests__/LangGraphHost.svelte';
+import { makeContext, makeMockClient } from '#lib/components/chat/__tests__/testContext.js';
 import ChatIndexPage from './+page.svelte';
 import { getOrCreateThread } from '@svelte-langgraph/client';
 

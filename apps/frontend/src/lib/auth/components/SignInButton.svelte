@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { authClient } from '$lib/auth/client';
-	import { buttonVariants, type ButtonVariant } from '$lib/components/ui/button';
-	import { m } from '$lib/paraglide/messages.js';
+	import { authClient } from '#lib/auth/client.ts';
+	import { buttonVariants, type ButtonVariant } from '#lib/components/ui/button/index.ts';
+	import { m } from '#lib/paraglide/messages.js';
 
 	interface Props {
 		label?: string;

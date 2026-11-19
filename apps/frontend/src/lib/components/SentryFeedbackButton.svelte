@@ -1,13 +1,13 @@
 <script lang="ts">
 	import * as Sentry from '@sentry/sveltekit';
-	import { env } from '$env/dynamic/public';
-	import { Button } from '$lib/components/ui/button';
+	import { PUBLIC_SENTRY_DSN } from '$app/env/public';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import { MessageCircleHeart } from '@lucide/svelte';
-	import { cn } from '$lib/utils.js';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { cn } from '#lib/utils.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
 
 	let { class: className = '' } = $props();
-	const dsn = env.PUBLIC_SENTRY_DSN;
+	const dsn = PUBLIC_SENTRY_DSN;
 
 	async function openFeedback() {
 		const feedback = Sentry.getFeedback();

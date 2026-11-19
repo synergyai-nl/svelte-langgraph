@@ -2,12 +2,12 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import { createRawSnippet, flushSync } from 'svelte';
 import ChatLayout from './+layout.svelte';
-import { backendAuth } from '$lib/auth/backendToken.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import { backendAuth } from '#lib/auth/backendToken.svelte.ts';
+import * as m from '#lib/paraglide/messages.js';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('$env/dynamic/public', () => ({ env: { PUBLIC_LANGGRAPH_API_URL: 'http://localhost:9' } }));
-vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: vi.fn() } } }));
+vi.mock('#lib/auth/client.ts', () => ({ authClient: { signIn: { social: vi.fn() } } }));
 
 const pageState = {
 	url: new URL('http://localhost/chat/t-1'),
@@ -22,8 +22,8 @@ vi.mock('$app/state', () => ({
 }));
 
 // The token never resolves: these tests are about the prompt, not requests.
-vi.mock('$lib/auth/backendToken.svelte', async (importOriginal) => ({
-	...(await importOriginal<typeof import('$lib/auth/backendToken.svelte')>()),
+vi.mock('#lib/auth/backendToken.svelte.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/auth/backendToken.svelte.ts')>()),
 	getToken: () => new Promise(() => {})
 }));
 

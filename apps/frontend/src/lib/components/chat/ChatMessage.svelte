@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Card from '$lib/components/ui/card';
+	import * as Card from '#lib/components/ui/card/index.ts';
 	import { User } from '@lucide/svelte';
 	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
 	import Markdown from 'svelte-exmarkdown';

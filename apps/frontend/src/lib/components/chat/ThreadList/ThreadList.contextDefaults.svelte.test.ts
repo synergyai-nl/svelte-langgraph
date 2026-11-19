@@ -5,7 +5,7 @@ import { threadLabel, type AppClient } from '@svelte-langgraph/client';
 import { makeContext, makeMockClient } from '../__tests__/testContext.js';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import { aThread } from '../../__tests__/fixtures';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const t1 = aThread({ id: 'aaaaaaaa-0000-0000-0000-000000000001', title: 'First' });
 const t2 = aThread({ id: 'bbbbbbbb-0000-0000-0000-000000000002', title: 'Second' });

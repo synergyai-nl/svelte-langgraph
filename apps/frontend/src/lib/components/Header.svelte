@@ -1,23 +1,23 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { m } from '$lib/paraglide/messages.js';
+	import { m } from '#lib/paraglide/messages.js';
 
 	import { LogOut, MessageSquare, Moon, Sun, Menu } from '@lucide/svelte';
-	import * as Avatar from '$lib/components/ui/avatar';
-	import { Button } from '$lib/components/ui/button';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import * as NavigationMenu from '$lib/components/ui/navigation-menu';
+	import * as Avatar from '#lib/components/ui/avatar/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
+	import * as NavigationMenu from '#lib/components/ui/navigation-menu/index.ts';
 
 	import { toggleMode, mode } from 'mode-watcher';
 
-	import LanguageSwitcher from '$lib/components/LanguageSwitcher.svelte';
-	import ThemeSwitcher from '$lib/components/ThemeSwitcher.svelte';
-	import SignInButton from '$lib/auth/components/SignInButton.svelte';
-	import { authClient } from '$lib/auth/client';
-	import * as Dialog from '$lib/components/ui/dialog';
+	import LanguageSwitcher from '#lib/components/LanguageSwitcher.svelte';
+	import ThemeSwitcher from '#lib/components/ThemeSwitcher.svelte';
+	import SignInButton from '#lib/auth/components/SignInButton.svelte';
+	import { authClient } from '#lib/auth/client.ts';
+	import * as Dialog from '#lib/components/ui/dialog/index.ts';
 	import SentryFeedbackButton from './SentryFeedbackButton.svelte';
-	import { cn } from '$lib/utils';
+	import { cn } from '#lib/utils.ts';
 
 	interface Props {
 		variant?: 'app' | 'marketing';
