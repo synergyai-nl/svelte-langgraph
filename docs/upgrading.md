@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-19 — Frontend moves to SvelteKit 3 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-19 — Frontend moves to SvelteKit 3 ([#435](https://github.com/synergyai-nl/svelte-langgraph/pull/435))
 
 **What changed.** The frontend runs on SvelteKit 3 (was 2.49), Vite 8, TypeScript 6, adapter-node 6 and Vitest 4 (Vitest 3 does not support Vite 8). It is the output of `sv migrate sveltekit-3` plus follow-ups:
 
