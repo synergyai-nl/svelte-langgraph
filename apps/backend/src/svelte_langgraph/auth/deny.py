@@ -1,7 +1,7 @@
 """Refuse the Aegra routes that the auth handler cannot police.
 
 Aegra mounts every Agent Protocol route and has no switch to turn one off.
-A few of them run the graph, or write its checkpoints, without the
+Some of them run the graph, or write its checkpoints, without the
 `threads.create_run` event that `auth.add_owner` uses to validate run input
 and set the server-side run context:
 
@@ -11,8 +11,6 @@ and set the server-side run context:
 - `POST /threads/{thread_id}/state`. It writes the checkpoint without running
   the graph, so the graph's own checks (`graph.phase_gate`) never run. Its
   auth event is `threads.update`, the same as renaming a thread.
-- `POST /threads/{thread_id}/commands`. It starts runs, but the auth handler's
-  return value is discarded there, so the runs get no server-set context.
 
 `DenyRoutesMiddleware` answers these with 403 for every caller, before
 authentication, in Aegra's error body shape. Copy this module and its
@@ -45,8 +43,8 @@ def is_denied(method: str, path: str) -> bool:
 
     # DOWNSTREAM APPS: to keep a route your app really needs, return False for
     # it here, above the rules below. Your app must then guarantee itself what
-    # the rule protected; see "Crons, direct thread-state writes and thread
-    # commands return 403" in docs/upgrading.md.
+    # the rule protected; see "Crons and direct thread-state writes return 403"
+    # in docs/upgrading.md.
 
     match segments:
         case ["runs", "crons", *_] | ["threads", _, "runs", "crons", *_]:
@@ -55,9 +53,6 @@ def is_denied(method: str, path: str) -> bool:
         case ["threads", _, "state"]:
             # A direct checkpoint write skips the graph's own checks.
             return method not in _READ_METHODS
-        case ["threads", _, "commands"]:
-            # Command runs cannot receive the server-set context.
-            return True
     return False
 
 

@@ -116,10 +116,10 @@ KNOWN_ROUTES: dict[tuple[str, str], bool] = {
     ("DELETE", "/store/items"): ALLOW,
     ("POST", "/store/items/search"): ALLOW,
     ("POST", "/store/namespaces"): ALLOW,
-    # Event streaming v2: the event stream only reads; commands start runs
-    # that cannot get the server-set context.
+    # Event streaming v2: the event stream only reads. Since Aegra 0.12 the
+    # runs that commands start pass `threads.create_run`, so they are allowed.
     ("POST", "/threads/{thread_id}/stream/events"): ALLOW,
-    ("POST", "/threads/{thread_id}/commands"): DENY,
+    ("POST", "/threads/{thread_id}/commands"): ALLOW,
 }
 
 
@@ -136,12 +136,10 @@ KNOWN_ROUTES: dict[tuple[str, str], bool] = {
         ("POST", "/runs/crons/search"),
         ("POST", "/runs/crons/count"),
         ("POST", "/threads/t1/state"),
-        ("POST", "/threads/t1/commands"),
-        # Every method on the cron and command paths, and every write on state.
+        # Every method on the cron paths, and every write on state.
         ("GET", "/runs/crons"),
         ("HEAD", "/runs/crons/search"),
         ("PUT", "/runs/crons/c1"),
-        ("GET", "/threads/t1/commands"),
         ("PATCH", "/threads/t1/state"),
         ("PUT", "/threads/t1/state"),
         ("DELETE", "/threads/t1/state"),
@@ -149,7 +147,7 @@ KNOWN_ROUTES: dict[tuple[str, str], bool] = {
         ("POST", "/runs/crons/"),
         ("POST", "//runs//crons"),
         ("POST", "/threads/t1/state/"),
-        ("POST", "/threads//t1/commands"),
+        ("POST", "//threads//t1/state"),
         ("POST", "/RUNS/Crons"),
         ("POST", "/threads/t1/STATE"),
         ("post", "/threads/t1/state"),
@@ -174,6 +172,9 @@ def test_policy_denies(method, path):
         ("POST", "/runs/stream"),
         ("POST", "/runs/cancel"),
         ("POST", "/threads/t1/stream/events"),
+        # Command runs pass `threads.create_run`, so the handler polices them.
+        ("POST", "/threads/t1/commands"),
+        ("GET", "/threads/t1/commands"),
         ("POST", "/titles"),
         ("POST", "/feedback"),
         ("GET", "/"),
@@ -235,11 +236,10 @@ def small_app():
         ("POST", "/threads/t1/runs/crons"),
         ("DELETE", "/runs/crons/c1"),
         ("POST", "/threads/t1/state"),
-        ("POST", "/threads/t1/commands"),
         # Percent-encoding is decoded before routing, and before the policy.
         ("POST", "/runs%2Fcrons"),
         ("POST", "/threads/t1/stat%65"),
-        ("POST", "/threads/t1%2Fcommands"),
+        ("POST", "/threads/t1%2Fstate"),
     ],
 )
 def test_middleware_answers_403_in_aegras_error_shape(small_app, method, url):
@@ -303,7 +303,7 @@ PROBES = {
     },
     "command": {"method": "POST", "url": "/threads/t1/commands"},
     "trailing_slash": {"method": "POST", "url": "/runs/crons/"},
-    "encoded_slash": {"method": "POST", "url": "/threads/t1%2Fcommands"},
+    "encoded_slash": {"method": "POST", "url": "/threads/t1%2Fstate"},
     "state_read": {"method": "GET", "url": "/threads/t1/state"},
     "preflight": {
         "method": "OPTIONS",
@@ -364,12 +364,17 @@ def test_deny_middleware_runs_inside_aegras_cors(real_app):
 
 @pytest.mark.parametrize(
     "probe",
-    ["cron_create", "state_write", "command", "trailing_slash", "encoded_slash"],
+    ["cron_create", "state_write", "trailing_slash", "encoded_slash"],
 )
 def test_real_app_answers_403_before_authentication(real_app, probe):
     response = real_app["responses"][probe]
     assert response["status"] == 403
     assert json.loads(response["body"]) == FORBIDDEN_BODY
+
+
+def test_real_app_passes_commands_to_authentication(real_app):
+    # Not denied: the request got past the middleware to Aegra's authentication.
+    assert real_app["responses"]["command"]["status"] == 401
 
 
 def test_real_app_403_carries_cors_headers(real_app):
