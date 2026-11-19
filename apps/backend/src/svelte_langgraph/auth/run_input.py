@@ -7,8 +7,10 @@ from langgraph_sdk import Auth
 #
 # Run input from the client reaches the graph's RunnableConfig, and through an
 # assistant's stored config/context it reaches every run of that assistant.
-# Aegra only lets the auth handler reject such input reliably (a raise works on
-# every route; rewriting it does not), so anything not listed here is rejected.
+# A raise in the auth handler stops every event in RUN_INPUT_EVENTS. Rewriting
+# the input does not: Aegra merges a returned config/context only for
+# threads.create_run (the run routes and POST /threads/{id}/commands), not for
+# the assistant and cron events. So anything not listed here is rejected.
 
 # Keys a client may send in `config.configurable`, with the type each must have.
 # DOWNSTREAM APPS: this is where you add the configurable keys your own client
