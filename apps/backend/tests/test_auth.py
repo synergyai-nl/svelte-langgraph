@@ -1,5 +1,6 @@
 """Unit tests for OIDC authentication module."""
 
+import asyncio
 import base64
 import json
 import time
@@ -19,6 +20,8 @@ def reset_jwks_cache() -> None:
     """Reset the JWKS cache before each test."""
     oidc._jwks_cache = None
     oidc._jwks_fetched_at = 0.0
+    # A lock used under one test's event loop must not leak into the next.
+    oidc._jwks_lock = asyncio.Lock()
 
 
 def seed_jwks(jwks: dict[str, Any]) -> None:
@@ -739,6 +742,13 @@ class TestJwksTtl:
         self.fetches = 0
         self.idp_jwks: dict[str, Any] = {"keys": []}
         self.idp_down = False
+        # Number of upcoming JWKS fetches that fail.
+        self.failing_fetches = 0
+        # When set, JWKS fetches wait for this event before answering.
+        self.gate: asyncio.Event | None = None
+        self.fetch_started = asyncio.Event()
+        self.in_flight = 0
+        self.max_in_flight = 0
 
     @pytest.fixture
     def key(self) -> Any:
@@ -773,6 +783,17 @@ class TestJwksTtl:
                     response.json.return_value = mock_oidc_config
                 else:
                     outer.fetches += 1
+                    outer.in_flight += 1
+                    outer.max_in_flight = max(outer.max_in_flight, outer.in_flight)
+                    outer.fetch_started.set()
+                    try:
+                        if outer.gate is not None:
+                            await outer.gate.wait()
+                        if outer.failing_fetches:
+                            outer.failing_fetches -= 1
+                            raise httpx.ConnectError("idp unreachable")
+                    finally:
+                        outer.in_flight -= 1
                     response.json.return_value = outer.idp_jwks
                 return response
 
@@ -836,6 +857,73 @@ class TestJwksTtl:
             await self.authenticate(key)
             await self.authenticate(key)
         assert self.fetches == 2
+
+    def expire_cache(self, jwks: dict[str, Any]) -> None:
+        """Put a JWKS in the cache that has just expired."""
+        oidc._jwks_cache = jwks
+        oidc._jwks_fetched_at = self.now
+        self.now += self.TTL
+
+    async def run_gated(self, calls: list[Any]) -> list[Any]:
+        """Run calls concurrently while the JWKS fetch is held back.
+
+        The fetch is released only after every call has had the chance to
+        reach it, then the results (or exceptions) are returned in order.
+        """
+        self.gate = asyncio.Event()
+        tasks = [asyncio.create_task(call) for call in calls]
+        await asyncio.wait_for(self.fetch_started.wait(), timeout=5)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert not any(task.done() for task in tasks)
+        self.gate.set()
+        return await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True), timeout=5
+        )
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_after_ttl_share_one_fetch(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        self.expire_cache(self.idp_jwks)
+        with self.fake_idp(mock_oidc_config):
+            results = await self.run_gated([self.authenticate(key) for _ in range(10)])
+        assert self.fetches == 1
+        assert [user["identity"] for user in results] == ["test-user"] * 10
+
+    @pytest.mark.asyncio
+    async def test_concurrent_unknown_kid_shares_one_forced_fetch(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        old_key = JsonWebKey.generate_key("RSA", 2048, {"kid": "k0"})
+        oidc._jwks_cache = {"keys": [old_key.as_dict(is_private=False)]}
+        # Fresh, and older than the clock, so a refresh changes the timestamp.
+        oidc._jwks_fetched_at = self.now - 1
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            results = await self.run_gated([self.authenticate(key) for _ in range(10)])
+        assert self.fetches == 1
+        assert [user["identity"] for user in results] == ["test-user"] * 10
+
+    @pytest.mark.asyncio
+    async def test_failed_fetch_releases_the_lock(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        self.expire_cache(self.idp_jwks)
+        self.failing_fetches = 1
+        with self.fake_idp(mock_oidc_config):
+            first, second = await self.run_gated(
+                [self.authenticate(key), self.authenticate(key)]
+            )
+        # The first fetch fails; the waiting request fetches again and succeeds.
+        assert isinstance(first, Auth.exceptions.HTTPException)
+        assert first.status_code == 401
+        assert second["identity"] == "test-user"
+        assert self.fetches == 2
+        assert self.max_in_flight == 1
+        assert not oidc._jwks_lock.locked()
 
     @pytest.mark.parametrize(
         ("raw", "expected"),
