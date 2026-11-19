@@ -82,6 +82,7 @@ The `.env` file is organized into sections:
 - `CHAT_MODEL_NAME` - OpenAI-compatible model to use (defaults to `gpt-4o-mini`)
 - `DATABASE_URL` - PostgreSQL connection URL for Aegra. Leave unset for the common setups: `moon backend:dev` on the host defaults to `localhost:5432/aegra` (what `moon backend:docker-postgres` serves), and `docker compose up` points at the compose `postgres` service automatically. Set it only for your own/external database server. If you set up before this changed, see the [caveat under Production](#production) — `docker compose up` now honors an explicit `DATABASE_URL` instead of overriding it
 - `AUTH_TYPE` - Set to `custom` to document the intent. Aegra does not enforce anything based on it; the backend refuses to start unless Aegra loaded `svelte_langgraph.auth:auth` (see [Security notes](#security-notes))
+- `AUTH_JWKS_TTL_SECONDS` - Optional; seconds the backend trusts the identity provider's signing keys before fetching them again (default `300`, `0` fetches on every request). An invalid value stops the backend at startup
 - `OTEL_TARGETS` - Optional OpenTelemetry tracing fan-out (e.g. `LANGFUSE`, with `LANGFUSE_*` keys)
 
 **Frontend Variables:**
@@ -344,6 +345,8 @@ A host-local Ollama (or other OpenAI-compatible provider bound to the Docker hos
 The frontend refuses to start without `BETTER_AUTH_SECRET`, so a missing secret can never fall back to Better Auth's public default. The Docker image sets `NODE_ENV=production`, which also turns on the rate limiter described below.
 
 The frontend runs Better Auth's default rate limiter in production (100 requests per 10 seconds per client IP, 3 per 10 seconds for sign-in; only E2E turns it off, with `AUTH_RATE_LIMIT=false`). It takes the client IP from `X-Forwarded-For` and trusts that header only when it holds a single address, so the reverse proxy in front of the frontend must overwrite it with the client's address (e.g. nginx `proxy_set_header X-Forwarded-For $remote_addr;`). If a chain of proxies appends to it instead, list them in `advanced.ipAddress.trustedProxies` in `apps/frontend/src/lib/auth/index.ts`. Without a usable client IP, all clients share one bucket. Behind a TLS-terminating proxy, also set adapter-node's `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER`) so SvelteKit sees the public URL.
+
+The backend caches the identity provider's signing keys (JWKS) for `AUTH_JWKS_TTL_SECONDS` (default five minutes), so a key the provider removes stops working after that. If the provider is unreachable once the cache has expired, tokens are rejected rather than checked against the old keys.
 
 Aegra stops at startup when `auth.path` fails to load. The backend also refuses to start unless Aegra loaded `svelte_langgraph.auth:auth`; without an `auth.path`, Aegra would serve every request as an anonymous user, whatever `AUTH_TYPE` says. The image still bakes in `AUTH_TYPE=custom`, but only as documentation. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Run webhooks are off (`http.disable_webhooks` in `aegra.json`). Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
 
