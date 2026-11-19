@@ -13,6 +13,7 @@ from aegra_api.models import RunCreate
 from aegra_api.models.assistants import AssistantCreate
 from aegra_api.models.auth import User
 from aegra_api.models.crons import CronCreate, CronUpdate
+from aegra_api.services.event_streaming import commands
 from aegra_api.services.run_preparation import _apply_create_run_auth
 from fastapi import HTTPException
 from langchain_core.messages import SystemMessage
@@ -387,6 +388,68 @@ async def test_aegra_assistant_create_rejects_a_context(aegra_uses_our_auth):
             build_auth_context(User(identity=USER_ID), "assistants", "create"), value
         )
     assert caught.value.status_code == 422
+
+
+class TestThreadCommands:
+    """POST /threads/{id}/commands runs the same check before a run starts."""
+
+    @pytest.fixture
+    def prepare(self, aegra_uses_our_auth, monkeypatch) -> AsyncMock:
+        prepare = AsyncMock(return_value=("run-1", None, None))
+        monkeypatch.setattr(commands, "_prepare_run", prepare)
+        return prepare
+
+    async def dispatch(self, method: str, params: dict) -> dict:
+        session = AsyncMock()
+        # No interrupted thread and no earlier run on it.
+        session.scalar.return_value = None
+        envelope, _run_id = await commands.handle_command(
+            {"id": 1, "method": method, "params": params},
+            session=session,
+            thread_id="thread-1",
+            user=User(identity=USER_ID),
+        )
+        return envelope
+
+    async def test_run_start_rejects_untrusted_input(self, prepare):
+        envelope = await self.dispatch(
+            "run.start",
+            {
+                "assistant_id": "chat",
+                "input": {},
+                "config": {"configurable": {"user_id": CLIENT_VALUE}},
+            },
+        )
+        assert envelope["type"] == "error"
+        assert envelope["error"] == "invalid_argument"
+        assert "config.configurable.user_id" in envelope["message"]
+        assert CLIENT_VALUE not in envelope["message"]
+        prepare.assert_not_awaited()
+
+    async def test_run_start_gets_the_server_context(self, prepare):
+        envelope = await self.dispatch(
+            "run.start", {"assistant_id": "chat", "input": {}}
+        )
+        assert envelope["type"] == "success"
+        prepare.assert_awaited_once()
+        assert prepare.await_args.args[2].context == {"user_id": USER_ID}
+
+    async def test_input_respond_rejects_a_state_update(self, prepare):
+        envelope = await self.dispatch(
+            "input.respond",
+            {"assistant_id": "chat", "response": "yes", "update": {"phase": "draft"}},
+        )
+        assert envelope["type"] == "error"
+        assert envelope["error"] == "invalid_argument"
+        assert envelope["message"] == "command.update is not accepted."
+        prepare.assert_not_awaited()
+
+    async def test_input_respond_with_only_a_response_starts(self, prepare):
+        envelope = await self.dispatch(
+            "input.respond", {"assistant_id": "chat", "response": "yes"}
+        )
+        assert envelope["type"] == "success"
+        assert prepare.await_args.args[2].command == {"resume": "yes"}
 
 
 # --- the user's name -------------------------------------------------------------
