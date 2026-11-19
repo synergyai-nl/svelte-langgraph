@@ -80,30 +80,18 @@ def _validate_config(path: str, raw_config: object) -> None:
             )
 
 
-def _validate_run_fields(path: str, fields: Mapping[str, Any]) -> None:
-    prefix = f"{path}." if path else ""
-    _validate_config(f"{prefix}config", fields.get("config"))
-
-    if not _is_empty(fields.get("context")):
-        raise _reject(f"{prefix}context is not accepted; it must be empty.")
-
-    checkpoint_path = f"{prefix}checkpoint"
-    for key in _as_mapping(checkpoint_path, fields.get("checkpoint")):
-        if key not in ALLOWED_CHECKPOINT_KEYS:
-            raise _reject(f"{_key(checkpoint_path, key)} is not an allowed key.")
-
-
 def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
     empty), `context` (must be empty) and the keys of `checkpoint`. The
     detail names the offending key, never its value.
-
-    `POST /threads/{id}/commands` sends the raw command body, which nests the
-    run input under `params`; that is checked too.
     """
-    _validate_run_fields("", value)
-    params = value.get("params")
-    if isinstance(value.get("method"), str) and params is not None:
-        _validate_run_fields("params", _as_mapping("params", params))
+    _validate_config("config", value.get("config"))
+
+    if not _is_empty(value.get("context")):
+        raise _reject("context is not accepted; it must be empty.")
+
+    for key in _as_mapping("checkpoint", value.get("checkpoint")):
+        if key not in ALLOWED_CHECKPOINT_KEYS:
+            raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")

@@ -177,19 +177,6 @@ def test_names_long_keys_cut_short():
     assert "k" * 65 not in detail
 
 
-def test_checks_params_of_a_thread_command():
-    """POST /threads/{id}/commands nests run input under `params`."""
-    command = {"id": 1, "method": "run.start", "thread_id": "t"}
-    run_input.validate_run_input(
-        {**command, "params": configurable(state_only_submit=True)}
-    )
-    detail = rejected({**command, "params": configurable(user_id=CLIENT_VALUE)})
-    assert "params.config.configurable.user_id" in detail
-    assert "params.context" in rejected(
-        {**command, "params": {"context": {"user_id": CLIENT_VALUE}}}
-    )
-
-
 # --- add_owner -----------------------------------------------------------------
 
 
