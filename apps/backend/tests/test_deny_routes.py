@@ -38,7 +38,7 @@ def chat_model():
 
 DENY, ALLOW = True, False
 
-# Every route of the real app (aegra-api 0.11.0 plus http.py), with the
+# Every route of the real app (aegra-api 0.12.0 plus http.py), with the
 # expected answer of `is_denied`. An Aegra upgrade that adds a route fails
 # `test_route_table_has_no_unknown_routes` until the route is listed here.
 KNOWN_ROUTES: dict[tuple[str, str], bool] = {
