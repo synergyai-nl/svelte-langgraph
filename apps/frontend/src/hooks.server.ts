@@ -9,13 +9,13 @@ import { initSentry } from '#lib/sentry.ts';
 initSentry({ server: true });
 
 const handleParaglide: Handle = ({ event, resolve }) =>
-	paraglideMiddleware(event.request, ({ request, locale }) => {
-		event.request = request;
-
-		return resolve(event, {
-			transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale)
-		});
-	});
+	// SvelteKit 3 makes `event.request` readonly: pass the middleware's request on a copy of the event.
+	paraglideMiddleware(event.request, ({ request, locale }) =>
+		resolve(
+			{ ...event, request },
+			{ transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale) }
+		)
+	);
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = building ? null : await auth.api.getSession({ headers: event.request.headers });

@@ -23,8 +23,10 @@ vi.mock('$app/state', () => ({
 	}
 }));
 
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_LANGGRAPH_API_URL: 'http://localhost:9' }
+vi.mock('$app/env/public', () => ({
+	PUBLIC_LANGGRAPH_API_URL: 'http://localhost:9',
+	PUBLIC_SENTRY_DSN: undefined,
+	PUBLIC_SENTRY_SEND_PII: undefined
 }));
 
 describe('/demo/embedded', () => {
