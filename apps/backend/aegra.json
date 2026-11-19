@@ -8,6 +8,7 @@
 	"http": {
 		"app": "svelte_langgraph.http:app",
 		"enable_custom_route_auth": true,
+		"disable_webhooks": true,
 		"cors": {
 			"allow_origins": ["*"]
 		}

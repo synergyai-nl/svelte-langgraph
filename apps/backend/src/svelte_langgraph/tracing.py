@@ -2,20 +2,16 @@
 
 Aegra owns tracing itself: `OTEL_TARGETS=LANGFUSE` makes it export every run
 over OTLP and stamp each span with `langfuse.trace.metadata.run_id` (see
-`aegra_api.observability.span_enrichment`). This module adds the two things it
-has no opinion about — which id that trace gets, and how a rating is attached
-to it.
+`aegra_api.observability.span_enrichment`). This module attaches a rating to
+that trace.
 
-Those two are the same problem. Left alone, OpenTelemetry mints a random trace
-id, so scoring a run would mean searching Langfuse for the trace carrying its
-`run_id` — a search that returns nothing for the first ~10s while the trace is
-being ingested, which is exactly when people rate an answer. Choosing the trace
-id up front removes the search: `pin_trace_to_run` makes it equal to the run id,
-and `record_score` can then post straight to it.
-
-A stand-in for aegra/aegra#372, which seeds the same id a different way. The
-two must never run together: whether they agree is unverified. The upgrade
-steps are under "Tracing shim" in the backend README.
+Aegra sets each run's trace id from its run id (`OTEL_TRACE_ID_FROM_RUN_ID`,
+on by default). So `record_score` computes the trace id from the run id and
+posts straight to it. Without that, scoring a run would mean searching
+Langfuse for the trace carrying its `run_id`, and that search returns nothing
+for the first ~10s while the trace is ingested, which is when people rate an
+answer. A ratio sampler (`traceidratio` or `parentbased_traceidratio`) turns
+the setting off, and scores then attach to no trace.
 """
 
 import asyncio
@@ -25,14 +21,6 @@ from typing import Literal
 from uuid import UUID
 
 import httpx
-from langchain_core.runnables import RunnableConfig
-from opentelemetry import context as otel_context
-from opentelemetry.trace import (
-    NonRecordingSpan,
-    SpanContext,
-    TraceFlags,
-    set_span_in_context,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +36,9 @@ _SCORE_NAME = "user_feedback"
 # default would give up well before it.
 _TIMEOUT = httpx.Timeout(30.0)
 
-# Pinning removed the *ingestion* race, not ordinary flakiness: a 5xx, a DNS
-# blip or a restarting self-hosted instance would otherwise lose the rating
-# outright, since the caller has nowhere to put it.
+# A known trace id removes the *ingestion* race, not ordinary flakiness: a 5xx,
+# a DNS blip or a restarting self-hosted instance would otherwise lose the
+# rating outright, since the caller has nowhere to put it.
 _RETRY_DELAYS = (0.5, 2.0)
 _RETRYABLE_STATUSES = {408, 429}
 
@@ -79,55 +67,17 @@ def _auth() -> tuple[str, str]:
 
 
 def trace_id_for_run(run_id: str) -> str | None:
-    """The trace id `pin_trace_to_run` gives a run, or None if it can't have one.
+    """The trace id Aegra gives a run, or None if it can't have one.
 
     A run id is a UUID and an OTEL trace id is 16 bytes, so one is just the
-    other's hex. Both sides compute this independently — nothing is stored.
+    other's hex. Aegra seeds the trace id with `UUID(run_id).int` while
+    `OTEL_TRACE_ID_FROM_RUN_ID` is on; `record_score` relies on that. Both
+    sides compute it independently, so nothing is stored.
     """
     try:
         return UUID(str(run_id)).hex
     except (ValueError, AttributeError, TypeError):
         return None
-
-
-def pin_trace_to_run(config: RunnableConfig) -> None:
-    """Make the run's exported trace id equal to its run id.
-
-    Attaches a non-recording parent span carrying the wanted id. Everything the
-    run then traces inherits it, because OpenInference's LangChain tracer starts
-    its root span from the ambient context (it leaves
-    `separate_trace_from_runtime_context` off, so the parent context is `None`,
-    meaning "use whatever is current").
-
-    The timing is what makes this work, and it is Aegra's doing: a graph factory
-    taking `config` is invoked per run, inside the run's own task, with
-    `configurable.run_id` already set and before `astream` opens any span.
-
-    Nothing detaches this. It doesn't leak, because every run gets its own
-    `contextvars.Context` — explicitly in `LocalExecutor.submit`, and via
-    `asyncio.create_task` in the worker — which dies with the run.
-    """
-    run_id = (config.get("configurable") or {}).get("run_id")
-    if not run_id:
-        # Aegra also calls the factory with defaults to extract the state schema
-        # at startup, and main.py's CLI loop has no server-issued run id.
-        return
-
-    trace_id = trace_id_for_run(run_id)
-    if trace_id is None:
-        logger.warning("run_id %r is not a UUID; leaving the trace id random", run_id)
-        return
-
-    trace_int = int(trace_id, 16)
-    span_context = SpanContext(
-        trace_id=trace_int,
-        # Any non-zero span id works — this parent is never exported, it only
-        # carries the trace id. Deriving it from the run keeps it deterministic.
-        span_id=(trace_int >> 64) or 1,
-        is_remote=True,
-        trace_flags=TraceFlags(TraceFlags.SAMPLED),
-    )
-    otel_context.attach(set_span_in_context(NonRecordingSpan(span_context)))
 
 
 async def record_score(
