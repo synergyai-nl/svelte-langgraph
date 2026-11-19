@@ -17,17 +17,17 @@ Each entry has this format:
 
 ## 2026-11-19 — Backend refuses to start without its auth module ([#418](https://github.com/synergyai-nl/svelte-langgraph/pull/418))
 
-**What changed.** If Aegra cannot load the auth module (a wrong `auth.path`, an import error), it logs a warning and serves every request as an anonymous user. `AUTH_TYPE` does not prevent this. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth.auth`. If not, the server exits with an error.
+**What changed.** Aegra 0.12 stops at startup when `auth.path` fails to load. It still serves every request as `anonymous` when the config has no `auth.path`, and it accepts any `Auth` object `auth.path` names. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth:auth`. If not, the server exits with an error.
 
 **Who is affected.** Apps that copied this backend's `http.py` or run their own `http.app`.
 
 **What to do.**
 
-1. Copy `check_auth_loaded` and the `lifespan` from `apps/backend/src/svelte_langgraph/http.py` into your own `http.app`. Change the import of `auth` to your own auth object.
+1. Copy `auth/startup.py` and call `check_auth_loaded` from your `http.app` lifespan (see `apps/backend/src/svelte_langgraph/http.py`). Change its import of `auth` to your own auth object.
 2. Pass `lifespan=lifespan` when you create the `FastAPI` app. An `on_startup` handler does not work here: Aegra rejects them.
 3. Stop relying on `AUTH_TYPE=custom`. You may keep the variable, but Aegra does not enforce anything based on it.
 
-**How to check.** Copy `aegra.json`, set a wrong `auth.path` in the copy, and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with the error `Aegra did not load ...`.
+**How to check.** Remove the `auth` block in a copy of `aegra.json` and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with "Aegra did not load svelte_langgraph.auth:auth". A wrong `auth.path` makes Aegra itself exit with `AuthLoadError`.
 
 ## 2026-11-19 — Backend auth code moves into a package ([#424](https://github.com/synergyai-nl/svelte-langgraph/pull/424))
 

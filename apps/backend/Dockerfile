@@ -17,10 +17,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Aegra does not enforce anything based on AUTH_TYPE: if the auth module fails
-# to load, requests are served as an anonymous user whatever its value. The
-# guarantee is the startup check in svelte_langgraph/http.py, which stops the
-# server when the auth module was not loaded. The value is kept for clarity.
+# Aegra does not enforce anything based on AUTH_TYPE. Without an auth.path it
+# serves requests as an anonymous user, whatever this value. The guarantee is
+# the startup check in svelte_langgraph/auth/startup.py. The value is kept for
+# clarity.
 ENV AUTH_TYPE=custom
 
 EXPOSE 2026

@@ -72,9 +72,10 @@ tasks:
     command: "uv run uvicorn aegra_api.main:app --host localhost --port 2026 --reload 2>&1"
     preset: "watcher"
     env:
-      # Aegra does not enforce anything based on AUTH_TYPE. The startup check
-      # in svelte_langgraph/http.py is what keeps the server from running
-      # without the auth module. The value is kept for clarity.
+      # Aegra does not enforce anything based on AUTH_TYPE. Without an
+      # auth.path it serves requests as an anonymous user, whatever this value.
+      # The guarantee is the startup check in svelte_langgraph/auth/startup.py.
+      # The value is kept for clarity.
       AUTH_TYPE: "custom"
     options:
       envFile: '/.env'
