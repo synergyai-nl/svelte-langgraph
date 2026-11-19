@@ -135,11 +135,13 @@ async def add_owner(
     metadata.update(filters)
 
     if event == ("threads", "create_run"):
-        # On the run-create routes Aegra merges a returned `context` into the
-        # run (the client's is empty, see above), so the graph gets one
-        # server-derived key it can trust. A non-empty context also stops
-        # Aegra from copying the client's `configurable` into the context.
-        # Routes that discard the return still validated the input above.
+        # On every threads.create_run route, POST /threads/{id}/commands
+        # included, Aegra merges a returned `context` into the run (the
+        # client's is empty, see above), so the graph gets one server-derived
+        # key it can trust. A non-empty context also stops Aegra from copying
+        # the client's `configurable` into the context. The cron events
+        # (crons.create, crons.update) validate their input above, but their
+        # return is not merged into the runs a cron starts.
         return {**filters, "context": {"user_id": ctx.user.identity}}
 
     # Return filters to restrict access
