@@ -350,7 +350,7 @@ The backend caches the identity provider's signing keys (JWKS) for `AUTH_JWKS_TT
 
 Aegra stops at startup when `auth.path` fails to load. The backend also refuses to start unless Aegra loaded `svelte_langgraph.auth:auth`; without an `auth.path`, Aegra would serve every request as an anonymous user, whatever `AUTH_TYPE` says. The image still bakes in `AUTH_TYPE=custom`, but only as documentation. Because every request must carry an `Authorization` header (no cookies), the API serves wildcard CORS, the standard posture for token-authenticated APIs. Run webhooks are off (`http.disable_webhooks` in `aegra.json`). Operators who additionally want to pin allowed origins can mount their own Aegra config and point `AEGRA_CONFIG` at it, e.g. `AEGRA_CONFIG=/etc/aegra/aegra.json` with a concrete `http.cors.allow_origins` list.
 
-The backend answers 403, for every caller, on the Aegra routes its auth handler cannot police: crons, direct thread-state writes (`POST /threads/{id}/state`) and thread commands (`POST /threads/{id}/commands`). They run the graph or write its checkpoints without the run-create check; the deny list is in `apps/backend/src/svelte_langgraph/deny.py`.
+The backend answers 403, for every caller, on the Aegra routes its auth handler cannot police: crons and direct thread-state writes (`POST /threads/{id}/state`). They run the graph or write its checkpoints without the run-create check; the deny list is in `apps/backend/src/svelte_langgraph/auth/deny.py`.
 
 ### Internationalization with Paraglide
 
