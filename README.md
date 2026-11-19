@@ -18,7 +18,7 @@ https://svelte-langgraph-demo.synergyai.nl/
 
 ## Documentation
 
-See [docs/README.md](docs/README.md) for the documentation index, including [upgrade notes for downstream apps](docs/upgrading.md).
+See [docs/README.md](docs/README.md) for the documentation index, including the [backend trust model](docs/auth.md) and [upgrade notes for downstream apps](docs/upgrading.md).
 
 ## Prerequisites
 
@@ -341,6 +341,8 @@ A host-local Ollama (or other OpenAI-compatible provider bound to the Docker hos
 **Caveat:** if your root `.env` already sets `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aegra` (the old shipped default), `docker compose up` now honors it instead of silently overriding it — and that `localhost` resolves to the container itself, not Postgres. Comment out the line, or change the host to `postgres`, to fix it.
 
 ### Security notes
+
+The backend does not trust client run input. See the [backend trust model](docs/auth.md) for what it enforces and what stays open.
 
 The frontend refuses to start without `BETTER_AUTH_SECRET`, so a missing secret can never fall back to Better Auth's public default. The Docker image sets `NODE_ENV=production`, which also turns on the rate limiter described below.
 
