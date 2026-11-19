@@ -478,6 +478,20 @@ class TestAccessTokenClaims:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_rejects_token_signed_by_another_key_with_the_same_kid(
+        self, jwks: dict[str, Any]
+    ) -> None:
+        seed_jwks(jwks)
+        other_key = JsonWebKey.generate_key("RSA", 2048, {"kid": "k1"}, is_private=True)
+
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user(
+                {"authorization": f"Bearer {self.sign(other_key)}"}
+            )
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_rejects_hmac_signed_token(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
