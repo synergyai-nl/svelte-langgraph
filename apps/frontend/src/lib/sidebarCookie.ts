@@ -1,4 +1,4 @@
-import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.js';
+import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.ts';
 
 /**
  * Parse the sidebar-open cookie out of a raw `document.cookie` string. Mirrors the server's

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Button } from '#lib/components/ui/button/index.ts';
 	import { Pencil } from '@lucide/svelte';
-	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.ts';
 	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {

@@ -7,7 +7,7 @@
 	import { Button } from '#lib/components/ui/button/index.ts';
 	import { ThumbsUp, ThumbsDown, Asterisk } from '@lucide/svelte';
 	import * as m from '#lib/paraglide/messages.js';
-	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.ts';
 	import FeedbackDialog from './FeedbackDialog.svelte';
 
 	interface Props {
