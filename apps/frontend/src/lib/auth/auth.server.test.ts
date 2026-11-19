@@ -5,14 +5,29 @@ import { OAuth2Server } from 'oauth2-mock-server';
 import type { Auth } from './index';
 
 const state = vi.hoisted(() => ({ building: false }));
-vi.mock('$app/environment', () => ({
+vi.mock('$app/env', () => ({
 	get building() {
 		return state.building;
 	}
 }));
 vi.mock('$app/server', () => ({ getRequestEvent: () => undefined }));
 // Better Auth reads process.env itself; let the OIDC settings come from there too.
-vi.mock('$env/dynamic/private', () => ({ env: process.env }));
+vi.mock('$app/env/private', () =>
+	Object.defineProperties(
+		{},
+		Object.fromEntries(
+			[
+				'BETTER_AUTH_SECRET',
+				'AUTH_OIDC_ISSUER',
+				'AUTH_OIDC_CLIENT_ID',
+				'AUTH_OIDC_CLIENT_SECRET',
+				'AUTH_OIDC_SCOPES',
+				'AUTH_OIDC_AUDIENCE',
+				'AUTH_RATE_LIMIT'
+			].map((name) => [name, { enumerable: true, get: () => process.env[name] }])
+		)
+	)
+);
 
 // A real OIDC provider in-process; the subject of the tokens it issues is chosen per sign-in.
 const idp = new OAuth2Server();
