@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from langgraph_sdk import Auth
 
 from svelte_langgraph import http
-from svelte_langgraph.auth import auth
+from svelte_langgraph.auth import auth, startup
 from tests.conftest import PROVIDER_CASES
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -34,19 +34,19 @@ def use_auth_instance(monkeypatch, instance):
 
 def test_passes_with_our_auth_module(monkeypatch):
     use_auth_instance(monkeypatch, auth)
-    http.check_auth_loaded()
+    startup.check_auth_loaded()
 
 
 def test_raises_when_no_auth_module_loaded(monkeypatch):
     use_auth_instance(monkeypatch, None)
     with pytest.raises(RuntimeError, match=r"found nothing \(None\)"):
-        http.check_auth_loaded()
+        startup.check_auth_loaded()
 
 
 def test_raises_for_a_foreign_auth_instance(monkeypatch):
     use_auth_instance(monkeypatch, Auth())
     with pytest.raises(RuntimeError, match="a different object"):
-        http.check_auth_loaded()
+        startup.check_auth_loaded()
 
 
 def test_startup_is_aborted_without_our_auth_module(monkeypatch):
