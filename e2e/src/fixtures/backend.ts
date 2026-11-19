@@ -12,7 +12,7 @@ export const LANGGRAPH_CONFIG = {
  *
  * Every E2E spec authenticates as the same hardcoded OIDC identity (test-user,
  * see pages/oidc.page.ts), and the backend scopes thread search to that
- * identity (see apps/backend/src/svelte_langgraph/auth.py `add_owner`/
+ * identity (see apps/backend/src/svelte_langgraph/auth/handlers.py `add_owner`/
  * `filters = {"owner": ctx.user.identity}`). That means every spec shares one
  * pool of threads for that single user.
  *
