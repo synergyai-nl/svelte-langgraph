@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { screen } from '@testing-library/svelte';
 import { render } from '@testing-library/svelte';
 import LandscapeComparisonTable, { type ComparisonRow } from './LandscapeComparisonTable.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const sampleRows: ComparisonRow[] = [
 	{

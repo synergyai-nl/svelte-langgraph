@@ -27,7 +27,7 @@
 		type AppClient,
 		type TokenSource
 	} from '@svelte-langgraph/client';
-	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 	import { LangGraphContext, setLangGraphContext } from './langGraphContext.svelte.js';
 
 	interface Props {

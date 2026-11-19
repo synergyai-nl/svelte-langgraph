@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { m } from '$lib/paraglide/messages.js';
-	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Badge } from '$lib/components/ui/badge';
-	import { Separator } from '$lib/components/ui/separator';
+	import { m } from '#lib/paraglide/messages.js';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Card from '#lib/components/ui/card/index.ts';
+	import { Badge } from '#lib/components/ui/badge/index.ts';
+	import { Separator } from '#lib/components/ui/separator/index.ts';
 	import {
 		Shield,
 		Zap,
@@ -22,11 +22,11 @@
 		ExternalLink
 	} from '@lucide/svelte';
 	import type { Component } from 'svelte';
-	import HeroTerminal from '$lib/components/marketing/HeroTerminal.svelte';
+	import HeroTerminal from '#lib/components/marketing/HeroTerminal.svelte';
 	import LandscapeComparisonTable, {
 		type ComparisonRow
-	} from '$lib/components/marketing/LandscapeComparisonTable.svelte';
-	import StackLogos from '$lib/components/marketing/StackLogos.svelte';
+	} from '#lib/components/marketing/LandscapeComparisonTable.svelte';
+	import StackLogos from '#lib/components/marketing/StackLogos.svelte';
 
 	interface Feature {
 		icon: Component<{ class?: string }>;

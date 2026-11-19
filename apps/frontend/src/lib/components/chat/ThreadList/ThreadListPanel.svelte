@@ -12,9 +12,9 @@
 	 *   accessibility tree.
 	 * - The mobile drawer's sr-only title and description are props, for localised text.
 	 */
-	import * as Sheet from '$lib/components/ui/sheet';
-	import { useSidebar } from '$lib/components/ui/sidebar';
-	import { SIDEBAR_WIDTH_MOBILE } from '$lib/components/ui/sidebar/constants.js';
+	import * as Sheet from '#lib/components/ui/sheet/index.ts';
+	import { useSidebar } from '#lib/components/ui/sidebar/index.ts';
+	import { SIDEBAR_WIDTH_MOBILE } from '#lib/components/ui/sidebar/constants.ts';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from '../__tests__/render';
 import ChatToolMessage from './ChatToolMessage.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 import { aToolMessage } from '../__tests__/fixtures';
 
 function renderComponent(overrides: Record<string, unknown> = {}) {

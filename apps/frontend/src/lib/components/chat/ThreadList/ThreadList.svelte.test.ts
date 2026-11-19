@@ -6,7 +6,7 @@ import ThreadList from './ThreadList.svelte';
 import { makeContext } from '../__tests__/testContext.js';
 import { aThread } from '../../__tests__/fixtures';
 import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
-import { useSidebar } from '$lib/components/ui/sidebar';
+import { useSidebar } from '#lib/components/ui/sidebar/index.ts';
 
 interface ListStubOverrides {
 	threads?: ThreadSummary[];

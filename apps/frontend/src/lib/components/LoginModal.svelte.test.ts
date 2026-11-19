@@ -1,7 +1,7 @@
 import { describe, test, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/svelte';
 import LoginModal from './LoginModal.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
@@ -9,7 +9,7 @@ vi.mock('$app/navigation', () => ({
 }));
 
 const signIn = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: signIn } } }));
+vi.mock('#lib/auth/client.ts', () => ({ authClient: { signIn: { social: signIn } } }));
 
 afterEach(async () => {
 	goto.mockReset();

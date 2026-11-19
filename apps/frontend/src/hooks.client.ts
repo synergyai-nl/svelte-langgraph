@@ -1,5 +1,5 @@
 import { handleErrorWithSentry } from '@sentry/sveltekit';
-import { initSentry } from '$lib/sentry';
+import { initSentry } from '#lib/sentry.ts';
 
 initSentry({ server: false });
 

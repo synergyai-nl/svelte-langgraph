@@ -69,7 +69,7 @@
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		threadId: string;

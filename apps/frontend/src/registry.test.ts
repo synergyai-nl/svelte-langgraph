@@ -19,7 +19,7 @@ function sourceFiles(root: string, dir: string): string[] {
 		.sort();
 }
 
-/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `$lib`. */
+/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `#lib`. */
 const clientDir = '../../packages/client/src';
 const clientTarget = 'svelte-langgraph-client';
 
@@ -50,7 +50,7 @@ describe('shadcn-svelte registry', () => {
 	test('chat lists every stock ui component a shipped file imports', () => {
 		for (const { path } of shippedComponents) {
 			const source = readFileSync(`${frontendRoot}/${path}`, 'utf8');
-			for (const [, name] of source.matchAll(/\$lib\/components\/ui\/([\w-]+)/g)) {
+			for (const [, name] of source.matchAll(/#lib\/components\/ui\/([\w-]+)/g)) {
 				expect(chat.registryDependencies, `${path} imports ui/${name}`).toContain(name);
 			}
 		}
@@ -79,11 +79,11 @@ describe('shadcn-svelte registry', () => {
 		}
 	});
 
-	test('never imports its own files through $lib/components/chat/, which only exists here', () => {
-		// Relative imports survive the move to svelte-langgraph/; a `$lib/components/chat/` one would not.
+	test('never imports its own files through #lib/components/chat/, which only exists here', () => {
+		// Relative imports survive the move to svelte-langgraph/; a `#lib/components/chat/` one would not.
 		for (const { path } of shippedComponents) {
 			expect(readFileSync(`${frontendRoot}/${path}`, 'utf8'), path).not.toMatch(
-				/\$lib\/components\/chat\//
+				/#lib\/components\/chat\//
 			);
 		}
 	});

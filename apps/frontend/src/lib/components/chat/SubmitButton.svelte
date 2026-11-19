@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SendHorizontal, Square } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 
 	interface Props {
 		isStreaming: boolean;

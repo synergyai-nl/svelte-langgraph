@@ -11,8 +11,8 @@
 	 * holding `<ThreadList />` and a pane with your own `<Sidebar.Trigger />` and `<ChatSurface />`.
 	 */
 	import ChatLoader from './ChatLoader.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as m from '$lib/paraglide/messages.js';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as m from '#lib/paraglide/messages.js';
 	import Conversation from './Conversation.svelte';
 	import Suggestions, { type ChatSuggestion } from './Suggestions.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';

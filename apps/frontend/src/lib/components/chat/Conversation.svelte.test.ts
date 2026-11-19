@@ -6,7 +6,7 @@ import LangGraphHost from './__tests__/LangGraphHost.svelte';
 import Conversation, { type ConversationApi } from './Conversation.svelte';
 import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 /**
  * Ported from the deleted `Chat.svelte.test.ts` (see git history at `906acf6`) onto `Conversation`,

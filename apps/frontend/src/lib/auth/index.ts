@@ -1,5 +1,13 @@
-import { building } from '$app/environment';
-import { env } from '$env/dynamic/private';
+import { building } from '$app/env';
+import {
+	AUTH_OIDC_AUDIENCE,
+	AUTH_OIDC_CLIENT_ID,
+	AUTH_OIDC_CLIENT_SECRET,
+	AUTH_OIDC_ISSUER,
+	AUTH_OIDC_SCOPES,
+	AUTH_RATE_LIMIT,
+	BETTER_AUTH_SECRET
+} from '$app/env/private';
 import { getRequestEvent } from '$app/server';
 import { betterAuth } from 'better-auth';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
@@ -11,8 +19,7 @@ import { sveltekitCookies } from 'better-auth/svelte-kit';
 const EXPECTED_USER_HEADER = 'x-slg-expected-user';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 
-function required(name: string): string {
-	const value = env[name];
+function required(name: string, value: string | undefined): string {
 	if (!value) throw new Error(`Required environment variable '${name}' not defined.`);
 	return value;
 }
@@ -47,7 +54,7 @@ const bindAccountCookie = createAuthMiddleware(async (ctx) => {
 // default, which would let anyone forge a session.
 const createAuth = () =>
 	betterAuth({
-		secret: required('BETTER_AUTH_SECRET'),
+		secret: required('BETTER_AUTH_SECRET', BETTER_AUTH_SECRET),
 		// The browser gets its access token from /get-access-token, which refreshes it when due.
 		// The other token routes stay closed: nothing needs the refresh token over HTTP.
 		disabledPaths: ['/refresh-token', '/account-info'],
@@ -55,17 +62,17 @@ const createAuth = () =>
 		session: { expiresIn: SESSION_MAX_AGE },
 		// Unset keeps Better Auth's default (on in production). E2E signs in more often than the
 		// 3-per-10-seconds sign-in limit allows, so .env.e2e sets AUTH_RATE_LIMIT=false.
-		rateLimit: { enabled: env.AUTH_RATE_LIMIT === 'false' ? false : undefined },
+		rateLimit: { enabled: AUTH_RATE_LIMIT === 'false' ? false : undefined },
 		hooks: { before: bindAccountCookie },
 		plugins: [
 			genericOAuth({
 				config: [
 					{
 						providerId: 'oidc',
-						discoveryUrl: `${required('AUTH_OIDC_ISSUER').replace(/\/$/, '')}/.well-known/openid-configuration`,
-						clientId: required('AUTH_OIDC_CLIENT_ID'),
-						clientSecret: required('AUTH_OIDC_CLIENT_SECRET'),
-						scopes: (env.AUTH_OIDC_SCOPES ?? 'openid profile email offline_access')
+						discoveryUrl: `${required('AUTH_OIDC_ISSUER', AUTH_OIDC_ISSUER).replace(/\/$/, '')}/.well-known/openid-configuration`,
+						clientId: required('AUTH_OIDC_CLIENT_ID', AUTH_OIDC_CLIENT_ID),
+						clientSecret: required('AUTH_OIDC_CLIENT_SECRET', AUTH_OIDC_CLIENT_SECRET),
+						scopes: (AUTH_OIDC_SCOPES ?? 'openid profile email offline_access')
 							.split(/\s+/)
 							.filter(Boolean),
 						// Sign-out ends the local session only; no redirect to the provider.
@@ -76,8 +83,8 @@ const createAuth = () =>
 						// user would keep their first sign-in's profile until the server restarts.
 						overrideUserInfo: true,
 						// Auth0 only issues an API-audience access token when asked for one; other IdPs ignore it.
-						...(env.AUTH_OIDC_AUDIENCE && {
-							authorizationUrlParams: { audience: env.AUTH_OIDC_AUDIENCE }
+						...(AUTH_OIDC_AUDIENCE && {
+							authorizationUrlParams: { audience: AUTH_OIDC_AUDIENCE }
 						})
 					}
 				]
@@ -90,4 +97,5 @@ const createAuth = () =>
 // OIDC discovery. The build imports this module without runtime settings and never uses
 // auth (the auth handle skips it while building), so it gets no instance.
 export const auth = building ? (null as unknown as ReturnType<typeof createAuth>) : createAuth();
+
 export type Auth = typeof auth;

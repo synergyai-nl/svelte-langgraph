@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { Button } from '$lib/components/ui/button';
-	import * as m from '$lib/paraglide/messages.js';
+	import { Textarea } from '#lib/components/ui/textarea/index.ts';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		value: string;

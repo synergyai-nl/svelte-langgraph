@@ -1,9 +1,28 @@
 import * as Sentry from '@sentry/sveltekit';
-import { env } from '$env/dynamic/public';
-import { dev } from '$app/environment';
+import { PUBLIC_SENTRY_DSN, PUBLIC_SENTRY_SEND_PII } from '$app/env/public';
+import { dev } from '$app/env';
+
+// Sentry 11 migration guide: "If you want to keep the v10 default behavior"
+const restrictiveDataCollection: NonNullable<Parameters<typeof Sentry.init>[0]>['dataCollection'] =
+	{
+		userInfo: false,
+		cookies: false,
+		httpHeaders: {
+			request: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] },
+			response: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] }
+		},
+		httpBodies: [],
+		urlQueryParams: { deny: ['forwarded', '-ip', 'remote-', 'via', '-user'] },
+		genAI: { inputs: false, outputs: false },
+		databaseQueryData: false,
+		queues: false,
+		graphQL: { document: false, variables: false }
+	};
 
 export function initSentry({ server = false }: { server?: boolean } = {}) {
-	const dsn = env.PUBLIC_SENTRY_DSN;
+	const dsn = PUBLIC_SENTRY_DSN;
+	const sendPii =
+		PUBLIC_SENTRY_SEND_PII === 'true' || (PUBLIC_SENTRY_SEND_PII === undefined && dev);
 
 	if (!dsn) {
 		console.warn('Sentry DSN not configured');
@@ -14,13 +33,12 @@ export function initSentry({ server = false }: { server?: boolean } = {}) {
 		dsn,
 		tracesSampleRate: 1.0,
 		/**
-		 * sendDefaultPii allows capturing user info (IP, browser data, etc).
-		 * Default to `true` in dev mode for easier debugging,
-		 * and can be overridden via PUBLIC_SENTRY_SEND_PII.
+		 * Sentry 11 replaced `sendDefaultPii` with `dataCollection`, whose unset default is permissive
+		 * (user info, cookies, bodies, ...). Collect everything by default in dev (or when
+		 * PUBLIC_SENTRY_SEND_PII=true); otherwise use the restrictive baseline that matches the
+		 * v10 default (`sendDefaultPii: false`).
 		 */
-		sendDefaultPii:
-			env.PUBLIC_SENTRY_SEND_PII === 'true' || (env.PUBLIC_SENTRY_SEND_PII === undefined && dev),
-		enableLogs: true,
+		...(sendPii ? {} : { dataCollection: restrictiveDataCollection }),
 		...(server
 			? {
 					integrations: [

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { getLocale, setLocale, locales, type Locale } from '$lib/paraglide/runtime.js';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { buttonVariants } from '$lib/components/ui/button';
+	import { getLocale, setLocale, locales, type Locale } from '#lib/paraglide/runtime.js';
+	import * as DropdownMenu from '#lib/components/ui/dropdown-menu/index.ts';
+	import { buttonVariants } from '#lib/components/ui/button/index.ts';
 	import { Globe } from '@lucide/svelte';
-	import { m } from '$lib/paraglide/messages.js';
-	import { cn } from '$lib/utils.js';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
+	import { m } from '#lib/paraglide/messages.js';
+	import { cn } from '#lib/utils.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 
 	let { class: className = '' } = $props();
 
