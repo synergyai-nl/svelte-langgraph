@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request, WebSocket
 from fastapi.testclient import TestClient
 
 from svelte_langgraph import http
-from svelte_langgraph.deny import DenyRoutesMiddleware, is_denied
+from svelte_langgraph.auth.deny import DenyRoutesMiddleware, is_denied
 from tests.conftest import PROVIDER_CASES
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
