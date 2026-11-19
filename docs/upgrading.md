@@ -15,6 +15,19 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — `/get-access-token` no longer returns `idToken` ([#417](https://github.com/synergyai-nl/svelte-langgraph/pull/417))
+
+**What changed.** Better Auth's `/get-access-token` returned the ID token to the browser, which only needs the access token. An `after` hook in `apps/frontend/src/lib/auth/index.ts` now reduces the response to `accessToken`, `accessTokenExpiresAt` and `scopes`. The hook also applies to `auth.api.getAccessToken(...)` calls on the server. Errors pass through unchanged.
+
+**Who is affected.** Apps that copied `apps/frontend/src/lib/auth/`, and any code that read `idToken` from that response.
+
+**What to do.**
+
+1. Port the `stripIdToken` hook and add it as `hooks.after` next to the existing `before` hook.
+2. If your code needs the ID token, read it on the server from the stored account. This response no longer has it, for server calls either.
+
+**How to check.** Request `/api/auth/get-access-token` while signed in. The body has no `idToken`.
+
 ## 2026-11-19 — Backend moves to Aegra 0.12.0 ([#416](https://github.com/synergyai-nl/svelte-langgraph/pull/416))
 
 **What changed.** The demo backend now pins `aegra-api==0.12.*` (it was `0.10.*`). It turns off run webhooks in `aegra.json`. It drops `pin_trace_to_run`, because Aegra now sets the trace id itself. Later entries on this page add the guards that reject anonymous callers.
