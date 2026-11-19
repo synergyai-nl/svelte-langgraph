@@ -1,4 +1,4 @@
-import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.js';
+import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.ts';
 import type { LayoutServerLoad } from './$types';
 
 /**

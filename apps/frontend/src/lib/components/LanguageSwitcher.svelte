@@ -5,7 +5,7 @@
 	import { Globe } from '@lucide/svelte';
 	import { m } from '#lib/paraglide/messages.js';
 	import { cn } from '#lib/utils.js';
-	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 
 	let { class: className = '' } = $props();
 

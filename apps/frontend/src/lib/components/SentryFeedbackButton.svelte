@@ -4,7 +4,7 @@
 	import { Button } from '#lib/components/ui/button/index.ts';
 	import { MessageCircleHeart } from '@lucide/svelte';
 	import { cn } from '#lib/utils.js';
-	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 
 	let { class: className = '' } = $props();
 	const dsn = PUBLIC_SENTRY_DSN;
