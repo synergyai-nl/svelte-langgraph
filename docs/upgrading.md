@@ -15,6 +15,35 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — Frontend moves to SvelteKit 3 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.** The frontend runs on SvelteKit 3 (was 2.49), Vite 8, TypeScript 6, adapter-node 6 and Vitest 4 (Vitest 3 does not support Vite 8). It is the output of `sv migrate sveltekit-3` plus follow-ups:
+
+- `$lib/x` imports are now `#lib/x.ts` (package.json `imports`, with explicit file extensions).
+- `svelte.config.js` is gone. Its options are passed to `sveltekit({...})` in `vite.config.ts`; the former `kit.*` options are top-level plugin options. `tsconfig.json` extends `$app/tsconfig`.
+- `$app/environment` is now `$app/env`. `$env/dynamic/public` and `$env/dynamic/private` are now named imports from `$app/env/public` and `$app/env/private`. The variables are declared in `src/env.ts` with `defineEnvVars` from `@sveltejs/kit/env`. A variable without a `schema` is required and validated at build and start; ours are optional passthrough (`schema: (input) => input`), and the requiredness checks stay in `src/lib/auth/index.ts`.
+- Kit 3 calls `handleError` for all errors with `{ event, kind, error }`, where `kind` is `'app'`, `'framework'`, `'validation'` or `'unknown'`. Expected errors such as a 404 are not `unknown`.
+- `event.request` is readonly in Kit 3. The Paraglide handle in `src/hooks.server.ts` now passes the middleware's request on a copy of the event: `resolve({ ...event, request }, …)`.
+- SvelteKit 3 adds a build-time `paths.origin` option in `sveltekit()`, which adapter-node 6 honours. The `ORIGIN` environment variable still works (checked against adapter-node 6.0.4) but is ignored, with a warning, when `paths.origin` is set. The `sv migrate` checklist says `ORIGIN` was removed; that is not what the released adapter does.
+- `@sentry/sveltekit` is 11 (10 only supports Kit 2). v11 filters the Kit 3 `handleError` kinds itself, and `sentrySvelteKit` is imported from `@sentry/sveltekit/vite`. v11 also removed three options we used: `sendDefaultPii` (replaced by `dataCollection`, whose unset default collects user info, cookies and request bodies), `enableLogs` (logs are sent whenever a logging integration is present) and `sourceMapsUploadOptions` in `sentrySvelteKit()` (its fields moved to the top level). `src/lib/sentry.ts` now sets a restrictive `dataCollection` unless `PUBLIC_SENTRY_SEND_PII=true` (or unset in dev), which keeps the previous behaviour.
+- Kit 3 deprecates the `alias` option (`config_option_deprecated_alias`, "use subpath imports instead"). It still works. This repo no longer uses it for `async_hooks`.
+- The chat registry item (`chat` and `chat-core`) ships Kit 3-style sources (`#lib` imports with file extensions), and its install guide uses `$app/env/public`. Consumers still need an alias for `@svelte-langgraph/client`; in Kit 3 it goes in `sveltekit({ alias })` and prints the deprecation warning. The alias goes away once the client is published to npm.
+
+**Who is affected.** Apps that copied the frontend auth helpers, hooks or config, and apps that installed the chat item. The CLI still rewrites the item's imports to the aliases in your `components.json`, but the item is now built and tested on Kit 3 only: move a Kit 2 app to Kit 3 before updating `chat-core`.
+
+**What to do.**
+
+1. Run `npx sv migrate sveltekit-3`.
+2. Move `kit.alias` for `@svelte-langgraph/client` into `sveltekit({ alias })` in `vite.config.ts`.
+3. Declare the auth and `PUBLIC_*` variables in `src/env.ts` and import them from `$app/env/private` and `$app/env/public`.
+4. Review `handleError`: it now receives all errors. Filter on `kind` and handle only `unknown` (and `app` or `framework` if you need to).
+5. Keep `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER` behind a trusted proxy) as you have it. Only if you set `paths.origin` in `sveltekit()`: drop `ORIGIN`, it is ignored then.
+6. Bump `@sentry/sveltekit` to 11 or later and import `sentrySvelteKit` from `@sentry/sveltekit/vite`. Replace `sendDefaultPii` with `dataCollection` in `Sentry.init` (copy `restrictiveDataCollection` from `src/lib/sentry.ts` if you relied on `sendDefaultPii: false`: leaving it unset now sends more data, not less), drop `enableLogs`, and move the fields of `sourceMapsUploadOptions` to the top level of `sentrySvelteKit()`.
+7. Bump Vitest to 4 and change `vi.mock` targets from `$app/environment`, `$env/dynamic/public` and `$env/dynamic/private` to `$app/env`, `$app/env/public` and `$app/env/private` (named exports). If you run coverage with `--coverage.include src`, narrow it to code files (`"src/**/*.{ts,js,svelte}"`): Vitest 4 otherwise tries to parse `app.html`.
+8. If a `handle` hook assigns to `event.request` (the Paraglide middleware pattern), pass `{ ...event, request }` to `resolve` instead.
+
+**How to check.** Run `moon check frontend` (or your own `svelte-check` and build). Then open an unknown URL: the error page renders and, with Sentry on, the 404 is not reported.
+
 ## 2026-11-19 — Crons and direct thread-state writes return 403 ([#421](https://github.com/synergyai-nl/svelte-langgraph/pull/421))
 
 **What changed.** Aegra mounts a few routes that run the graph or write its checkpoints without the `threads.create_run` event, so the auth handler can neither validate their run input nor give them the server-set run context. The backend now answers 403, for every caller, on these routes:
