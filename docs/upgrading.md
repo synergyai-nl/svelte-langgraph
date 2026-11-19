@@ -17,13 +17,13 @@ Each entry has this format:
 
 ## 2026-11-19 — JWKS cache expires after five minutes ([#419](https://github.com/synergyai-nl/svelte-langgraph/pull/419))
 
-**What changed.** The backend cached the identity provider's signing keys (JWKS) until the process restarted, so a key the provider removed stayed trusted. The cache now expires after `AUTH_JWKS_TTL_SECONDS` (default `300`, `0` fetches on every request). After expiry the JWKS is fetched again before a token is validated. If that fetch fails, the token is rejected with 401; the expired keys are not used as a fallback. An invalid value stops the backend at import.
+**What changed.** The backend cached the identity provider's signing keys (JWKS) until the process restarted, so a key the provider removed stayed trusted. The cache now expires after `AUTH_JWKS_TTL_SECONDS` (default `300`, `0` fetches on every request). After expiry the JWKS is fetched again before a token is validated. If that fetch fails, the token is rejected with 401; the expired keys are not used as a fallback. Concurrent requests after expiry share one fetch. An invalid value stops the backend at import.
 
-**Who is affected.** Apps that copied this backend's `auth/oidc.py`.
+**Who is affected.** Apps that copied this backend's `auth/oidc.py` or `auth/handlers.py`.
 
 **What to do.**
 
-1. Port the TTL change from `apps/backend/src/svelte_langgraph/auth/oidc.py`: `_read_jwks_ttl`, `jwks_ttl_seconds`, `_jwks_fetched_at`, `_jwks_cache_is_fresh` and the check in `_get_jwks`.
+1. Port the TTL change from `apps/backend/src/svelte_langgraph/auth/oidc.py`: `_read_jwks_ttl`, `jwks_ttl_seconds`, `_jwks_fetched_at`, `_jwks_cache_is_fresh`, `_jwks_lock`, `_fetch_jwks`, the checks in `_get_jwks` and the forced refresh in `_validate_token`. In `auth/handlers.py`, port the `except ValueError` branch that answers 401 when the key is not in the JWKS.
 2. Optionally set `AUTH_JWKS_TTL_SECONDS` (and pass it through in your Compose file).
 3. Expect the provider's JWKS endpoint to be requested at least once per TTL while there is traffic. Tokens are rejected while it is unreachable after expiry.
 
