@@ -17,17 +17,18 @@ from aegra_api.services.run_preparation import _apply_create_run_auth
 from fastapi import HTTPException
 from langchain_core.messages import SystemMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.types import Command
 from langgraph_sdk import Auth
 
 from svelte_langgraph.auth import handlers, oidc, run_input
 from svelte_langgraph.graph import get_prompt, get_user_name
-from tests.conftest import PROVIDER_CASES
+from tests.conftest import PROVIDER_CASES, make_completion_response
 
 USER_ID = "oidc|user-1"
 CLIENT_VALUE = "client-supplied-value"
 
 
-# Nothing here calls a chat model: opt out of the root conftest's provider matrix.
+# Nothing here depends on the chat provider: opt out of the root conftest's provider matrix.
 @pytest.fixture(scope="module")
 def provider_case():
     return PROVIDER_CASES[0]
@@ -117,6 +118,10 @@ def test_accepts_trusted_input(value):
                 config={"configurable": {"state_only_submit": True}},
             ),
             id="state-only-submit",
+        ),
+        pytest.param(
+            run_create(assistant_id="chat", command={"resume": "yes"}),
+            id="resume",
         ),
     ],
 )
@@ -213,6 +218,44 @@ def test_rejects_a_webhook(webhook):
 def test_rejects_the_webhook_of_a_cron(value):
     """Aegra hands the cron events the webhook under the same key."""
     assert rejected(value) == "webhook is not accepted."
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        {"resume": "yes"},
+        {"resume": None},
+        {"resume": "yes", "update": None, "goto": None},
+        {"resume": "yes", "update": {}, "goto": []},
+    ],
+)
+def test_accepts_a_resume_command(command):
+    run_input.validate_run_input({"command": command})
+
+
+@pytest.mark.parametrize(
+    ("command", "detail"),
+    [
+        ({"update": {"phase": "draft"}}, "command.update is not accepted."),
+        (
+            {"resume": "yes", "update": [["phase", "draft"]]},
+            "command.update is not accepted.",
+        ),
+        ({"goto": "model"}, "command.goto is not accepted."),
+        (
+            {"resume": "yes", "goto": [{"node": "tools", "input": {}}]},
+            "command.goto is not accepted.",
+        ),
+        ({"goto": ""}, "command.goto is not accepted."),
+        ({"resume": "yes", "user_id": CLIENT_VALUE}, "command.user_id"),
+    ],
+)
+def test_rejects_command_keys_beyond_resume(command, detail):
+    assert detail in rejected({"command": command})
+
+
+def test_rejects_a_non_object_command():
+    assert "command must be an object" in rejected({"command": [CLIENT_VALUE]})
 
 
 def test_names_long_keys_cut_short():
@@ -325,6 +368,16 @@ async def test_aegra_run_create_rejects_a_webhook(aegra_uses_our_auth):
     assert caught.value.detail == "webhook is not accepted."
 
 
+async def test_aegra_run_create_rejects_a_command_update(aegra_uses_our_auth):
+    request = run_create(
+        assistant_id="chat", command={"resume": "x", "update": {"phase": "draft"}}
+    )
+    with pytest.raises(HTTPException) as caught:
+        await _apply_create_run_auth(User(identity=USER_ID), "thread-1", request)
+    assert caught.value.status_code == 422
+    assert caught.value.detail == "command.update is not accepted."
+
+
 async def test_aegra_assistant_create_rejects_a_context(aegra_uses_our_auth):
     value = AssistantCreate.model_validate(
         {"graph_id": "chat", "context": {"user_id": CLIENT_VALUE}}
@@ -402,3 +455,20 @@ async def test_graph_accepts_the_server_context(
     )
     assert result["phase"] == "draft"
     assert not mock_completion_optional.called
+
+
+async def test_command_goto_reaches_the_model_past_phase_gate(
+    agent, thread_config, mock_completion_optional
+):
+    """Why `command` may only carry `resume`.
+
+    phase_gate ends a state-only submit without a model call. A `goto` in the
+    run's command schedules the model next to phase_gate, so the model runs
+    anyway.
+    """
+    mock_completion_optional.mock(return_value=make_completion_response("hi"))
+    config = RunnableConfig(
+        configurable={**thread_config["configurable"], "state_only_submit": True}
+    )
+    await agent.ainvoke(Command(goto="model"), config)
+    assert mock_completion_optional.called

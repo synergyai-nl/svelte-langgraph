@@ -26,6 +26,13 @@ ALLOWED_CHECKPOINT_KEYS = frozenset(
     {"thread_id", "checkpoint_ns", "checkpoint_id", "checkpoint_map"}
 )
 
+# Keys of a run's `command`. `resume` answers a pending interrupt, and Aegra
+# checks that the thread is interrupted. `update` writes state and `goto` runs
+# a node of the caller's choice, which skips the decisions graph.phase_gate
+# makes; both must be empty. Other keys are rejected.
+ALLOWED_COMMAND_KEYS = frozenset({"resume"})
+EMPTY_COMMAND_KEYS = frozenset({"update", "goto"})
+
 # Events whose payload carries config/context that ends up in a run.
 RUN_INPUT_EVENTS = frozenset(
     {
@@ -84,8 +91,9 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
-    empty), `context` and `webhook` (must be empty) and the keys of
-    `checkpoint`. The detail names the offending key, never its value.
+    empty), `context` and `webhook` (must be empty), the keys of
+    `checkpoint`, and `command` (only `resume`). The detail names the
+    offending key, never its value.
     """
     _validate_config("config", value.get("config"))
 
@@ -99,3 +107,12 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     for key in _as_mapping("checkpoint", value.get("checkpoint")):
         if key not in ALLOWED_CHECKPOINT_KEYS:
             raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")
+
+    for key, item in _as_mapping("command", value.get("command")).items():
+        if key in ALLOWED_COMMAND_KEYS:
+            continue
+        if key in EMPTY_COMMAND_KEYS:
+            if not _is_empty(item):
+                raise _reject(f"command.{key} is not accepted.")
+            continue
+        raise _reject(f"{_key('command', key)} is not an allowed key.")
