@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 import os
@@ -47,6 +48,8 @@ jwks_ttl_seconds = _read_jwks_ttl(os.getenv("AUTH_JWKS_TTL_SECONDS"))
 _jwks_cache: dict[str, Any] | None = None
 # time.monotonic() when _jwks_cache was fetched.
 _jwks_fetched_at: float = 0.0
+# Held while the JWKS is fetched, so concurrent requests share one fetch.
+_jwks_lock = asyncio.Lock()
 
 
 def _jwks_cache_is_fresh() -> bool:
@@ -61,15 +64,29 @@ async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
 
     The cache expires after AUTH_JWKS_TTL_SECONDS. A failed fetch raises; the
     expired keys are never used as a fallback (fail closed). Concurrent
-    requests after expiry may each fetch once; the last result wins.
+    requests share one fetch.
 
     Args:
-        force_refresh: If True, bypass cache and fetch fresh JWKS.
+        force_refresh: If True, bypass cache and fetch fresh JWKS. A forced
+            refresh that waited while another request fetched uses that result.
     """
-    global _jwks_cache, _jwks_fetched_at
     if _jwks_cache is not None and not force_refresh and _jwks_cache_is_fresh():
         return _jwks_cache
 
+    seen = _jwks_fetched_at
+    async with _jwks_lock:
+        # Another request may have fetched while this one waited.
+        if _jwks_cache is not None:
+            if not force_refresh and _jwks_cache_is_fresh():
+                return _jwks_cache
+            if force_refresh and _jwks_fetched_at != seen:
+                return _jwks_cache
+        return await _fetch_jwks()
+
+
+async def _fetch_jwks() -> dict[str, Any]:
+    """Fetch the JWKS and store it in the cache. Call with _jwks_lock held."""
+    global _jwks_cache, _jwks_fetched_at
     if not oidc_issuer:
         raise ValueError("AUTH_OIDC_ISSUER environment variable is not set")
 
@@ -89,7 +106,7 @@ async def _get_jwks(force_refresh: bool = False) -> dict[str, Any]:
         _jwks_cache = jwks_data
         _jwks_fetched_at = time.monotonic()
 
-    return _jwks_cache
+    return jwks_data
 
 
 def _decode_and_validate(token: str, jwks: dict[str, Any]) -> dict[str, Any]:
@@ -137,15 +154,12 @@ async def _validate_token(token: str) -> dict[str, Any]:
     Uses cached JWKS by default. If validation fails due to a missing key
     (e.g., after key rotation), automatically refreshes the JWKS and retries once.
     """
-    global _jwks_cache
-
     try:
         jwks = await _get_jwks()
         claims = _decode_and_validate(token, jwks)
     except ValueError as e:
         if not _is_key_not_found_error(e):
             raise
-        _jwks_cache = None
         jwks = await _get_jwks(force_refresh=True)
         claims = _decode_and_validate(token, jwks)
 
