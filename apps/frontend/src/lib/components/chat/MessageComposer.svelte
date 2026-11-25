@@ -29,6 +29,8 @@
 	function handleSubmit(event: SubmitEvent) {
 		// Prevent the native GET form submission (would navigate to ?message=<text>).
 		event.preventDefault();
+		// The one guard against blank input: `ConversationApi.submit` sends any text it is given.
+		if (isEmpty || isStreaming) return;
 		onSubmit();
 	}
 

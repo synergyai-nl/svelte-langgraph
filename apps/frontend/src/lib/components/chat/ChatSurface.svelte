@@ -59,7 +59,9 @@
 								{suggestions}
 								{introTitle}
 								{intro}
-								onSuggestionClick={(suggestedText) => api.submit(suggestedText)}
+								onSuggestionClick={(suggestedText) => {
+									if (suggestedText.trim()) api.submit(suggestedText);
+								}}
 							/>
 						{/snippet}
 					</Conversation>

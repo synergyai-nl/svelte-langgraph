@@ -122,4 +122,44 @@ describe('MessageComposer', () => {
 
 		expect(onSubmit).not.toHaveBeenCalled();
 	});
+
+	// `ConversationApi.submit` sends any text it is given, so the composer is the one guard
+	// against blank input, for the button, Enter and a plain form submit alike.
+	describe('with whitespace-only input', () => {
+		test('disables the submit button', () => {
+			renderComposer({ value: '   ' });
+
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+		});
+
+		test('does not call onSubmit on Enter', async () => {
+			const user = userEvent.setup();
+			const onSubmit = vi.fn();
+			renderComposer({ value: '   ', onSubmit });
+
+			await user.click(screen.getByRole('textbox'));
+			await user.keyboard('{Enter}');
+
+			expect(onSubmit).not.toHaveBeenCalled();
+		});
+	});
+
+	test('a form submit with empty input does not call onSubmit, and prevents the native submission', async () => {
+		const onSubmit = vi.fn();
+		const { container } = renderComposer({ value: '', onSubmit });
+
+		const notPrevented = await fireEvent.submit(container.querySelector('form')!);
+
+		expect(onSubmit).not.toHaveBeenCalled();
+		expect(notPrevented).toBe(false);
+	});
+
+	test('a form submit while streaming does not call onSubmit', async () => {
+		const onSubmit = vi.fn();
+		const { container } = renderComposer({ value: 'Hello', isStreaming: true, onSubmit });
+
+		await fireEvent.submit(container.querySelector('form')!);
+
+		expect(onSubmit).not.toHaveBeenCalled();
+	});
 });

@@ -27,17 +27,16 @@
 		/** Current (non-cancellation) generation error, if any. */
 		error: Error | null;
 		/**
-		 * Submit a new user message. No-op while `isLoading` or given only whitespace. Clears
-		 * `input`, and puts the text back when the send fails before the message reaches the thread.
+		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
+		 * in the UI (`MessageComposer` does). No-op while `isLoading`. Clears `input`, and puts the
+		 * text back when the send fails before the message reaches the thread.
+		 *
+		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
+		 * speaks first or a backend that answers the last human message again. No-op while
+		 * `isLoading` or `isThreadLoading`. Adds no message and leaves `input` alone; a failure
+		 * lands in `error`, as with text.
 		 */
-		submit: (text: string) => void;
-		/**
-		 * Start a run without a human message (`{ messages: [] }`), for an agent that speaks first
-		 * or a backend that answers the last human message again. No-op while `isLoading` or
-		 * `isThreadLoading`. Adds no message to the list and leaves `input` alone; a failure lands
-		 * in `error`, as for `submit`.
-		 */
-		continueRun: () => void;
+		submit: (text?: string) => void;
 		/** Resubmit the last user message after a generation error. */
 		retry: () => void;
 		/** Stop the in-flight run. */
@@ -182,14 +181,18 @@
 		}
 	}
 
-	function submitInput(text: string) {
-		if (!text.trim() || stream.isLoading) return;
+	function submitInput(text?: string) {
+		if (text === undefined) {
+			submitWithoutMessage();
+			return;
+		}
+		if (stream.isLoading) return;
 		last_user_message = text;
 		current_input = '';
 		void submitHumanMessage(text);
 	}
 
-	function continueRun() {
+	function submitWithoutMessage() {
 		if (stream.isLoading || stream.isThreadLoading) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		void stream.submit({ messages: [] });
@@ -323,7 +326,6 @@
 			return generationError;
 		},
 		submit: submitInput,
-		continueRun,
 		retry: retryGenerationAfterError,
 		stop: stopGeneration,
 		edit: handleEdit,
