@@ -15,6 +15,33 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — Client run input is validated ([#420](https://github.com/synergyai-nl/svelte-langgraph/pull/420))
+
+**What changed.** Run input from the client reaches the graph's `RunnableConfig`. Before, the backend accepted any `config`, `context` and `checkpoint` keys, and the graph read the user's name from the client's `configurable.user_name`. The auth handler now validates run input when a run, an assistant or a cron is created or updated, and rejects untrusted input with 422. The error names the offending key.
+
+- `config.configurable` may only hold keys in `ALLOWED_CONFIGURABLE_KEYS`, with the listed type. The demo allows only `state_only_submit` (a bool).
+- Other `config` keys (`tags`, `metadata`, `recursion_limit`, ...) must be empty or absent.
+- `context` must be empty or absent.
+- `checkpoint` may only hold `thread_id`, `checkpoint_ns`, `checkpoint_id` and `checkpoint_map`.
+- `webhook` must be empty or absent.
+- `command` may only carry `resume`; `update` and `goto` are rejected. They let a run write state or start at a node of the caller's choice, past the graph's own checks. A downstream app that needs them must first make sure its graph checks state on every path, and then extend `validate_run_input`.
+
+Runs started through `POST /threads/{id}/commands` pass the same check. There a rejection comes back as an `invalid_argument` command error.
+
+On run create the handler also returns `context: {"user_id": <token subject>}`. Aegra merges it into the run, so the graph has one server-derived key in `runtime.context`. The user's name now comes only from the access token: `get_current_user` sets `display_name` from the `name` claim. The graph reads it from `configurable.langgraph_auth_user`, which Aegra sets on every run. `configurable.user_name` is no longer read. Without a `name` claim, the prompt has no name.
+
+**Who is affected.** Apps that copied this backend's `auth` package or `graph.py`, and clients that send their own `configurable` keys, other `config` keys, a `context`, a `webhook`, or a `command` with `update` or `goto`.
+
+**What to do.**
+
+1. Port `auth/run_input.py`, and the `add_owner` and `get_current_user` changes in `auth/handlers.py`, from `apps/backend/src/svelte_langgraph/`. Skip the `name` claim handling in `get_current_user` if your graph does not use the user's name.
+2. Add the `configurable` keys your own client sends to `ALLOWED_CONFIGURABLE_KEYS`, with their type. Never add identity keys such as `user_id` or a user name.
+3. In your graph, read identity from `configurable["langgraph_auth_user"]` (port `get_user_name` from `graph.py`) or from `runtime.context["user_id"]`. Never read it from client `configurable` keys. Note that Aegra sets `display_name` to the identity when the token has no name.
+4. Update clients that send other `configurable` keys, other `config` keys, a `context`, a `webhook` or a `command` with `update` or `goto`: they now get 422.
+5. Assistants already stored in your database are not validated again. Their stored `config` and `context` still reach every run of that assistant. Check stored assistants for identity keys, and delete or update the ones that have them.
+
+**How to check.** Run `moon run backend:test -- tests/test_run_input.py`. Against a running backend, a run create with `config.configurable.user_id` must answer 422 with a detail that names `config.configurable.user_id`.
+
 ## 2026-11-19 — JWKS cache expires after five minutes ([#419](https://github.com/synergyai-nl/svelte-langgraph/pull/419))
 
 **What changed.** The backend cached the identity provider's signing keys (JWKS) until the process restarted, so a key the provider removed stayed trusted. The cache now expires after `AUTH_JWKS_TTL_SECONDS` (default `300`, `0` fetches on every request). After expiry the JWKS is fetched again before a token is validated. If that fetch fails, the token is rejected with 401; the expired keys are not used as a fallback. Concurrent requests after expiry share one fetch. An invalid value stops the backend at import.

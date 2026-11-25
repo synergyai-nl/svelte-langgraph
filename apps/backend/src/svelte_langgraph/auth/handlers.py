@@ -11,6 +11,7 @@ from langgraph_sdk import Auth
 from langgraph_sdk.auth.types import MinimalUserDict
 
 from . import oidc
+from .run_input import RUN_INPUT_EVENTS, validate_run_input
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,11 @@ async def get_current_user(headers: dict[str, str] | None) -> MinimalUserDict:
         is_authenticated=True,
         permissions=claims.get("permissions", []),
     )
+    # The graph reads the user's name from here (`langgraph_auth_user`), never
+    # from client run input. Without a name Aegra uses the identity instead.
+    name = claims.get("name")
+    if isinstance(name, str) and name.strip():
+        user["display_name"] = name
 
     return user
 
@@ -101,7 +107,17 @@ async def add_owner(
 
     Returns:
         A filter dictionary that LangGraph uses to restrict access to resources.
+        For `threads.create_run` it also carries a `context` that Aegra merges
+        into the run.
+
+    Raises:
+        Auth.exceptions.HTTPException: 422 when an event in RUN_INPUT_EVENTS
+            carries run input that `validate_run_input` rejects.
     """
+    event = (ctx.resource, ctx.action)
+    if event in RUN_INPUT_EVENTS:
+        validate_run_input(value)
+
     # Create filter to restrict access to just this user's resources
     filters = {"owner": ctx.user.identity}
 
@@ -117,6 +133,16 @@ async def add_owner(
     # this information will be saved with the resource
     # So we can filter by it later in read operations
     metadata.update(filters)
+
+    if event == ("threads", "create_run"):
+        # On every threads.create_run route, POST /threads/{id}/commands
+        # included, Aegra merges a returned `context` into the run (the
+        # client's is empty, see above), so the graph gets one server-derived
+        # key it can trust. A non-empty context also stops Aegra from copying
+        # the client's `configurable` into the context. The cron events
+        # (crons.create, crons.update) validate their input above, but their
+        # return is not merged into the runs a cron starts.
+        return {**filters, "context": {"user_id": ctx.user.identity}}
 
     # Return filters to restrict access
     # These filters are applied to ALL operations (create, read, update, search, etc.)
