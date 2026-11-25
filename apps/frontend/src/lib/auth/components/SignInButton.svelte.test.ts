@@ -1,10 +1,10 @@
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import SignInButton from './SignInButton.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const signIn = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-vi.mock('$lib/auth/client', () => ({ authClient: { signIn: { social: signIn } } }));
+vi.mock('#lib/auth/client.ts', () => ({ authClient: { signIn: { social: signIn } } }));
 
 describe('SignInButton', () => {
 	test('defaults its label to the shared sign-in message', () => {

@@ -3,7 +3,7 @@ import { screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { renderWithProviders } from './__tests__/render';
 import Header from './Header.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 const goto = vi.fn();
 vi.mock('$app/navigation', () => ({
@@ -11,7 +11,7 @@ vi.mock('$app/navigation', () => ({
 }));
 
 const signOut = vi.hoisted(() => vi.fn().mockResolvedValue({ error: null }));
-vi.mock('$lib/auth/client', () => ({
+vi.mock('#lib/auth/client.ts', () => ({
 	authClient: {
 		signOut,
 		signIn: { social: vi.fn().mockResolvedValue({ error: null }) }
@@ -20,11 +20,13 @@ vi.mock('$lib/auth/client', () => ({
 
 // Mocking `$app/*` above stops Vite resolving `$app` for transitive imports, and
 // SentryFeedbackButton reaches @sentry/sveltekit (which imports `$app` internally)
-// plus `$env/dynamic/public` (which reads a SvelteKit global that only exists at
+// plus `$app/env/public` (which reads a SvelteKit global that only exists at
 // runtime). A DSN is supplied so the feedback button actually renders.
 vi.mock('@sentry/sveltekit', () => ({ getFeedback: () => null }));
-vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_SENTRY_DSN: 'https://public@sentry.invalid/1' }
+vi.mock('$app/env/public', () => ({
+	PUBLIC_LANGGRAPH_API_URL: undefined,
+	PUBLIC_SENTRY_DSN: 'https://public@sentry.invalid/1',
+	PUBLIC_SENTRY_SEND_PII: undefined
 }));
 
 // `page.data.session` drives the signed-in/signed-out split; tests swap it per case.

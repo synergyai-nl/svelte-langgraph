@@ -5,14 +5,14 @@
 
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
-	import { Button } from '$lib/components/ui/button';
-	import * as Sidebar from '$lib/components/ui/sidebar';
+	import { Button } from '#lib/components/ui/button/index.ts';
+	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
 	import ThreadListItem from './ThreadListItem.svelte';
 	import ThreadListPanel from './ThreadListPanel.svelte';
 	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
 	import type { Snippet } from 'svelte';
 	import { useLangGraph } from '../langGraphContext.svelte.js';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		/**

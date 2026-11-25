@@ -1,22 +1,21 @@
 import * as Sentry from '@sentry/sveltekit';
-import type { Handle } from '@sveltejs/kit';
-import { sequence } from '@sveltejs/kit/hooks';
-import { building } from '$app/environment';
+import { sequence, type Handle } from '@sveltejs/kit/hooks';
+import { building } from '$app/env';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { paraglideMiddleware } from '$lib/paraglide/server';
-import { auth } from '$lib/auth';
-import { initSentry } from '$lib/sentry';
+import { paraglideMiddleware } from '#lib/paraglide/server.js';
+import { auth } from '#lib/auth/index.ts';
+import { initSentry } from '#lib/sentry.ts';
 
 initSentry({ server: true });
 
 const handleParaglide: Handle = ({ event, resolve }) =>
-	paraglideMiddleware(event.request, ({ request, locale }) => {
-		event.request = request;
-
-		return resolve(event, {
-			transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale)
-		});
-	});
+	// SvelteKit 3 makes `event.request` readonly: pass the middleware's request on a copy of the event.
+	paraglideMiddleware(event.request, ({ request, locale }) =>
+		resolve(
+			{ ...event, request },
+			{ transformPageChunk: ({ html }) => html.replace('%paraglide.lang%', locale) }
+		)
+	);
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	const session = building ? null : await auth.api.getSession({ headers: event.request.headers });

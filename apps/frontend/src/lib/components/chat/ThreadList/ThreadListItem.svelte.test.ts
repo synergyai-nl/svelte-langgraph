@@ -3,7 +3,7 @@ import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import { aThread } from '../../__tests__/fixtures';
 import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
-import { useSidebar } from '$lib/components/ui/sidebar';
+import { useSidebar } from '#lib/components/ui/sidebar/index.ts';
 
 // Covers ThreadListItem.svelte:18-21 (handleClick): a row click closes the mobile drawer and
 // forwards the id via onSelect, mirroring the header "New chat" button's behaviour.

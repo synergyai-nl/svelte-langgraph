@@ -68,9 +68,11 @@ and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
 
 ### Requirements
 
-- SvelteKit **2**. SvelteKit 3 is not supported yet
-  ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)). Current `sv create`
-  (1.x) scaffolds Kit 3; scaffold a new consumer with `pnpm dlx sv@0.17.1 create` until then.
+- SvelteKit **3**. The items import through the `#lib` package-import alias, so your
+  `components.json` aliases must use `#lib` too (`"lib": "#lib"`, `"ui": "#lib/components/ui"`,
+  `"hooks": "#lib/hooks"`, `"utils": "#lib/utils"`, and a `package.json` `imports` entry
+  `"#lib/*": "./src/lib/*"`; `sv create` sets these up). The CLI rewrites the items' imports to
+  whatever aliases your `components.json` declares.
 - Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
 - Paraglide (`@inlang/paraglide-js`).
 - `@lucide/svelte`, `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first
@@ -81,10 +83,10 @@ and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
 
 The items install into three folders they own. Everything else in your app is yours.
 
-- `$lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
+- `#lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
   `ScrollableContainer/` subfolders.
-- `$lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
-  to npm ([#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+- `#lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
+  to npm.
 - `messages/svelte-langgraph/`: the chat strings, one file per locale (steps 4 and 5).
 
 The CLI logs "chat installed at src/lib/components/chat" and "chat-core installed at
@@ -140,8 +142,7 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
 
 2. Point `@svelte-langgraph/client` at the installed library with a SvelteKit `alias` entry,
-   wherever your Kit config lives. Apps from `sv create` 0.17 or newer have no
-   `svelte.config.js`: pass it to `sveltekit()` in `vite.config.ts`:
+   passed to `sveltekit()` in your `vite.config.ts`:
 
    ```ts
    sveltekit({
@@ -152,14 +153,12 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    });
    ```
 
-   With a `svelte.config.js`, add it to your existing `kit.alias` object (or create one)
-   instead. Kit ignores `svelte.config.js` once `sveltekit()` receives options, so put it in
-   only one place.
+   SvelteKit 3 prints a `config_option_deprecated_alias` deprecation warning for this option.
+   That is expected until the client is published to npm and the alias goes away.
 
    The path must match your shadcn-svelte `lib` alias if you customised it. The chat
    components import the client by its package name; this alias is temporary until the client
-   is published to npm (after 1.0, see
-   [#326](https://github.com/synergyai-nl/svelte-langgraph/issues/326)).
+   is published to npm (after 1.0).
 
 3. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
    which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
@@ -240,7 +239,7 @@ When a release needs a stock component you don't have yet, its release notes say
 
 1. Back up your hand edits to the chat files.
 2. Install `chat.json` as in step 1, answering No for the stock components you already have.
-3. Move your imports to `$lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
+3. Move your imports to `#lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
    where you use `ThreadList` (see "Thread list layout"), and in `project.inlang/settings.json`
    change the `./messages/chat/{locale}.json` entry of `pathPattern` to
    `./messages/svelte-langgraph/{locale}.json` (see [step 4](#steps)). Run `vite dev` or a build
@@ -288,25 +287,37 @@ auth handler.
 ```svelte
 <!-- +page.svelte -->
 <script lang="ts">
-	import { env } from '$env/dynamic/public';
-	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
+	import { PUBLIC_LANGGRAPH_API_URL } from '$app/env/public';
+	import LangGraph from '#lib/components/svelte-langgraph/LangGraph.svelte';
 	import Chat from './Chat.svelte';
 
 	let { data } = $props(); // however your app exposes the token your backend validates
 </script>
 
 <div class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border">
-	<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} graph="chat">
+	<LangGraph url={PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} graph="chat">
 		<Chat />
 	</LangGraph>
 </div>
 ```
 
+Declare the variable in your app's `src/env.ts` so `$app/env/public` exports it (SvelteKit 3
+replaces `$env/dynamic/public`):
+
+```ts
+// src/env.ts
+import { defineEnvVars } from '@sveltejs/kit/env';
+
+export const variables = defineEnvVars({
+	PUBLIC_LANGGRAPH_API_URL: { public: true, schema: (input) => input }
+});
+```
+
 ```svelte
 <!-- Chat.svelte: must be a child of <LangGraph> to read its context -->
 <script lang="ts">
-	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
-	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
+	import ChatSurface from '#lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { useLangGraph } from '#lib/components/svelte-langgraph/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 
@@ -350,17 +361,17 @@ Cmd/Ctrl+B.
 
 ```svelte
 <script lang="ts">
-	import { env } from '$env/dynamic/public';
-	import * as Sidebar from '$lib/components/ui/sidebar';
-	import LangGraph from '$lib/components/svelte-langgraph/LangGraph.svelte';
-	import ChatSurface from '$lib/components/svelte-langgraph/ChatSurface.svelte';
-	import { ThreadList } from '$lib/components/svelte-langgraph/ThreadList';
+	import { PUBLIC_LANGGRAPH_API_URL } from '$app/env/public';
+	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
+	import LangGraph from '#lib/components/svelte-langgraph/LangGraph.svelte';
+	import ChatSurface from '#lib/components/svelte-langgraph/ChatSurface.svelte';
+	import { ThreadList } from '#lib/components/svelte-langgraph/ThreadList';
 
 	let { data } = $props();
 </script>
 
 <!-- Rows pick a thread and "New chat" creates one; ChatSurface follows the selection. -->
-<LangGraph url={env.PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
+<LangGraph url={PUBLIC_LANGGRAPH_API_URL} token={data.accessToken}>
 	<Sidebar.Provider class="h-full min-h-0">
 		<ThreadList />
 		<div class="flex min-w-0 flex-1 flex-col">
@@ -392,10 +403,10 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte
 <script lang="ts">
-	import Conversation from '$lib/components/svelte-langgraph/Conversation.svelte';
-	import MessagesList from '$lib/components/svelte-langgraph/MessagesList.svelte';
-	import MessageComposer from '$lib/components/svelte-langgraph/MessageComposer.svelte';
-	import { useLangGraph } from '$lib/components/svelte-langgraph/langGraphContext.svelte.js';
+	import Conversation from '#lib/components/svelte-langgraph/Conversation.svelte';
+	import MessagesList from '#lib/components/svelte-langgraph/MessagesList.svelte';
+	import MessageComposer from '#lib/components/svelte-langgraph/MessageComposer.svelte';
+	import { useLangGraph } from '#lib/components/svelte-langgraph/langGraphContext.svelte.js';
 
 	const ctx = useLangGraph();
 </script>
@@ -467,7 +478,7 @@ primitive built on Svelte 5 runes.
 ```svelte
 <script lang="ts">
 	import { createStateSync } from '@svelte-langgraph/client';
-	import StateField from '$lib/components/svelte-langgraph/StateField.svelte';
+	import StateField from '#lib/components/svelte-langgraph/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props
 	const sync = createStateSync({ stream, client, assistantId });

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Brain, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
-	import * as m from '$lib/paraglide/messages.js';
+	import * as m from '#lib/paraglide/messages.js';
 
 	interface Props {
 		thinking: string;

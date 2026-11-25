@@ -3,7 +3,7 @@
 	 * A tooltip as `<LangGraph>`'s only child, with no `Tooltip.Provider` around it: Bits UI throws
 	 * without an ancestor provider, so this checks `<LangGraph>` supplies one.
 	 */
-	import * as Tooltip from '$lib/components/ui/tooltip';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 	import LangGraph from '../LangGraph.svelte';
 </script>
 

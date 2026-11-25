@@ -5,9 +5,9 @@
 	import { page } from '$app/state';
 	import { ModeWatcher } from 'mode-watcher';
 
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
-	import Header from '$lib/components/Header.svelte';
-	import { m } from '$lib/paraglide/messages.js';
+	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
+	import Header from '#lib/components/Header.svelte';
+	import { m } from '#lib/paraglide/messages.js';
 
 	let { children } = $props();
 

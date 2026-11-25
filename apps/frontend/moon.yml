@@ -136,7 +136,7 @@ tasks:
     args:
       - '--coverage.reporter text'
       - '--coverage.reporter lcov'
-      - '--coverage.include src'
+      - '--coverage.include "src/**/*.{ts,js,svelte}"'
       - '--coverage.exclude "**/*.(test|spec).*"'
       - '--coverage.exclude src/lib/paraglide'
       - '--coverage.exclude src/lib/components/ui'

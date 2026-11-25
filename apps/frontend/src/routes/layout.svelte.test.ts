@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import Layout from './+layout.svelte';
-import * as m from '$lib/paraglide/messages.js';
+import * as m from '#lib/paraglide/messages.js';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
 
@@ -17,7 +17,11 @@ vi.mock('$app/state', () => ({
 // See Header.svelte.test.ts: mocking `$app/*` breaks `$app`/env resolution for
 // SentryFeedbackButton's transitive imports.
 vi.mock('@sentry/sveltekit', () => ({ getFeedback: () => null }));
-vi.mock('$env/dynamic/public', () => ({ env: {} }));
+vi.mock('$app/env/public', () => ({
+	PUBLIC_LANGGRAPH_API_URL: undefined,
+	PUBLIC_SENTRY_DSN: undefined,
+	PUBLIC_SENTRY_SEND_PII: undefined
+}));
 
 const children = createRawSnippet(() => ({
 	render: () => '<p data-testid="page-content">routed content</p>'

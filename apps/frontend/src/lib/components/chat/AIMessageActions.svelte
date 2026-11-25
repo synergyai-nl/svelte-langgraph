@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Button } from '$lib/components/ui/button';
+	import { Button } from '#lib/components/ui/button/index.ts';
 	import { Check, Copy, RefreshCw, X } from '@lucide/svelte';
 	import { scale } from 'svelte/transition';
-	import { UseClipboard } from '$lib/hooks/use-clipboard.svelte';
+	import { UseClipboard } from '#lib/hooks/use-clipboard.svelte.ts';
 	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
-	import * as m from '$lib/paraglide/messages.js';
-	import { Tooltip, TooltipTrigger, TooltipContent } from '$lib/components/ui/tooltip/index.js';
+	import * as m from '#lib/paraglide/messages.js';
+	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.ts';
 	import FeedbackButtons, { type FeedbackStatus } from './FeedbackButtons.svelte';
 
 	interface Props {

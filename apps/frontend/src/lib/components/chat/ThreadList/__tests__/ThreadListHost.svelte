@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Sidebar from '$lib/components/ui/sidebar';
+	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
 	import ThreadList from '../ThreadList.svelte';
 	import SidebarNotifier from './SidebarNotifier.svelte';
 	import { LangGraphContext, setLangGraphContext } from '../../langGraphContext.svelte.js';
