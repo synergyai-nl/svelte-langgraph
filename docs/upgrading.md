@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-25 — `Conversation` can start a run without a human message ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-25 — `Conversation` can start a run without a human message ([#443](https://github.com/synergyai-nl/svelte-langgraph/pull/443))
 
 **What changed.** `ConversationApi` has a new method, `continueRun()`. It submits `{ messages: [] }` on the conversation's stream, so an app can start a run with no human message: an agent that speaks first, or a backend that answers the last human message again after a failed run. It is a no-op while a run is active or the thread history is loading, adds no message to the list and leaves the composer input alone. A failure shows in `api.error` and the error card, as for `submit`. `submit` and the other methods are unchanged. The `chat-core` registry item ships the new `Conversation.svelte`.
 
