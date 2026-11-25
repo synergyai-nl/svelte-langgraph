@@ -8,14 +8,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from authlib.jose import JsonWebKey, jwt
+from langgraph_sdk import Auth
 
-from svelte_langgraph import auth
+from svelte_langgraph.auth import handlers, oidc
 
 
 @pytest.fixture(autouse=True)
 def reset_jwks_cache() -> None:
     """Reset the JWKS cache before each test."""
-    auth._jwks_cache = None
+    oidc._jwks_cache = None
 
 
 API_AUDIENCE = "svelte-langgraph-api"
@@ -25,7 +26,7 @@ ISSUER = "http://localhost:8080"
 @pytest.fixture(autouse=True)
 def configured_audience(monkeypatch: pytest.MonkeyPatch) -> None:
     """The verifier requires AUTH_OIDC_AUDIENCE; configure it for every test."""
-    monkeypatch.setattr(auth, "oidc_audience", API_AUDIENCE)
+    monkeypatch.setattr(oidc, "oidc_audience", API_AUDIENCE)
 
 
 @pytest.fixture
@@ -220,18 +221,18 @@ class TestGetJwks:
     @pytest.mark.asyncio
     async def test_raises_error_when_issuer_not_set(self) -> None:
         """Test that _get_jwks raises ValueError when AUTH_OIDC_ISSUER is not set."""
-        with patch.object(auth, "oidc_issuer", ""):
+        with patch.object(oidc, "oidc_issuer", ""):
             with pytest.raises(
                 ValueError, match="AUTH_OIDC_ISSUER environment variable is not set"
             ):
-                await auth._get_jwks()
+                await oidc._get_jwks()
 
     @pytest.mark.asyncio
     async def test_fetches_and_caches_jwks(
         self, mock_oidc_config: dict[str, str], mock_jwks: dict[str, Any]
     ) -> None:
         """Test that _get_jwks fetches JWKS and caches it."""
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch("httpx.AsyncClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client_class.return_value.__aenter__.return_value = mock_client
@@ -249,18 +250,18 @@ class TestGetJwks:
 
                 mock_client.get = mock_get
 
-                result = await auth._get_jwks()
+                result = await oidc._get_jwks()
 
                 assert result == mock_jwks
-                assert auth._jwks_cache == mock_jwks
+                assert oidc._jwks_cache == mock_jwks
 
     @pytest.mark.asyncio
     async def test_returns_cached_jwks(self, mock_jwks: dict[str, Any]) -> None:
         """Test that _get_jwks returns cached JWKS without fetching."""
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         with patch("httpx.AsyncClient") as mock_client_class:
-            result = await auth._get_jwks()
+            result = await oidc._get_jwks()
 
             mock_client_class.assert_not_called()
             assert result == mock_jwks
@@ -274,7 +275,7 @@ class TestGetJwks:
             k: v for k, v in mock_oidc_config.items() if k != "jwks_uri"
         }
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch("httpx.AsyncClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client_class.return_value.__aenter__.return_value = mock_client
@@ -288,7 +289,7 @@ class TestGetJwks:
                 mock_client.get = mock_get
 
                 with pytest.raises(ValueError, match="JWKS URI not found"):
-                    await auth._get_jwks()
+                    await oidc._get_jwks()
 
     @pytest.mark.asyncio
     async def test_force_refresh_bypasses_cache(
@@ -296,9 +297,9 @@ class TestGetJwks:
     ) -> None:
         """Test that force_refresh=True bypasses the cache and fetches fresh JWKS."""
         old_jwks = {"keys": [{"kid": "old-key"}]}
-        auth._jwks_cache = old_jwks
+        oidc._jwks_cache = old_jwks
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch("httpx.AsyncClient") as mock_client_class:
                 mock_client = MagicMock()
                 mock_client_class.return_value.__aenter__.return_value = mock_client
@@ -316,10 +317,10 @@ class TestGetJwks:
 
                 mock_client.get = mock_get
 
-                result = await auth._get_jwks(force_refresh=True)
+                result = await oidc._get_jwks(force_refresh=True)
 
                 assert result == mock_jwks
-                assert auth._jwks_cache == mock_jwks
+                assert oidc._jwks_cache == mock_jwks
 
 
 class TestValidateToken:
@@ -340,14 +341,14 @@ class TestValidateToken:
                 raise ValueError("Key not found")
             return mock_claims
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch.object(
-                auth, "_decode_and_validate", side_effect=mock_decode_and_validate
+                oidc, "_decode_and_validate", side_effect=mock_decode_and_validate
             ):
                 with patch.object(
-                    auth, "_get_jwks", new=AsyncMock(return_value={"keys": []})
+                    oidc, "_get_jwks", new=AsyncMock(return_value={"keys": []})
                 ):
-                    result = await auth._validate_token("test-token")
+                    result = await oidc._validate_token("test-token")
 
                     assert result == mock_claims
                     assert call_count == 2
@@ -355,17 +356,17 @@ class TestValidateToken:
     @pytest.mark.asyncio
     async def test_raises_after_retry_fails(self) -> None:
         """Test that _validate_token raises error if retry also fails."""
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch.object(
-                auth,
+                oidc,
                 "_decode_and_validate",
                 side_effect=ValueError("Key not found"),
             ):
                 with patch.object(
-                    auth, "_get_jwks", new=AsyncMock(return_value={"keys": []})
+                    oidc, "_get_jwks", new=AsyncMock(return_value={"keys": []})
                 ):
                     with pytest.raises(ValueError, match="Key not found"):
-                        await auth._validate_token("test-token")
+                        await oidc._validate_token("test-token")
 
     @pytest.mark.asyncio
     async def test_does_not_retry_on_other_errors(self) -> None:
@@ -379,15 +380,15 @@ class TestValidateToken:
             call_count += 1
             raise ValueError("Some other error")
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch.object(
-                auth, "_decode_and_validate", side_effect=mock_decode_and_validate
+                oidc, "_decode_and_validate", side_effect=mock_decode_and_validate
             ):
                 with patch.object(
-                    auth, "_get_jwks", new=AsyncMock(return_value={"keys": []})
+                    oidc, "_get_jwks", new=AsyncMock(return_value={"keys": []})
                 ):
                     with pytest.raises(ValueError, match="Some other error"):
-                        await auth._validate_token("test-token")
+                        await oidc._validate_token("test-token")
 
                     assert call_count == 1
 
@@ -397,7 +398,7 @@ class TestAccessTokenClaims:
 
     @pytest.fixture(autouse=True)
     def issuer(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(auth, "oidc_issuer", ISSUER)
+        monkeypatch.setattr(oidc, "oidc_issuer", ISSUER)
 
     @pytest.fixture
     def key(self) -> Any:
@@ -424,9 +425,9 @@ class TestAccessTokenClaims:
     async def test_accepts_access_token_for_the_api_audience(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        auth._jwks_cache = jwks
+        oidc._jwks_cache = jwks
 
-        claims = await auth._validate_token(self.sign(key))
+        claims = await oidc._validate_token(self.sign(key))
 
         assert claims["sub"] == "test-user"
 
@@ -434,11 +435,11 @@ class TestAccessTokenClaims:
     async def test_accepts_audience_list_containing_the_api_audience(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        auth._jwks_cache = jwks
+        oidc._jwks_cache = jwks
 
         token = self.sign(key, aud=["other-api", API_AUDIENCE])
 
-        assert (await auth._validate_token(token))["sub"] == "test-user"
+        assert (await oidc._validate_token(token))["sub"] == "test-user"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -456,10 +457,10 @@ class TestAccessTokenClaims:
     async def test_rejects_invalid_claims(
         self, key: Any, jwks: dict[str, Any], overrides: dict[str, Any]
     ) -> None:
-        auth._jwks_cache = jwks
+        oidc._jwks_cache = jwks
 
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user(
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user(
                 {"authorization": f"Bearer {self.sign(key, **overrides)}"}
             )
 
@@ -469,7 +470,7 @@ class TestAccessTokenClaims:
     async def test_rejects_hmac_signed_token(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        auth._jwks_cache = jwks
+        oidc._jwks_cache = jwks
         token = jwt.encode(
             {"alg": "HS256"},
             {
@@ -481,8 +482,8 @@ class TestAccessTokenClaims:
             "secret",
         ).decode()
 
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user({"authorization": f"Bearer {token}"})
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user({"authorization": f"Bearer {token}"})
 
         assert exc_info.value.status_code == 401
 
@@ -490,11 +491,11 @@ class TestAccessTokenClaims:
     async def test_fails_closed_when_audience_is_not_configured(
         self, key: Any, jwks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        auth._jwks_cache = jwks
-        monkeypatch.setattr(auth, "oidc_audience", "")
+        oidc._jwks_cache = jwks
+        monkeypatch.setattr(oidc, "oidc_audience", "")
 
         with pytest.raises(ValueError, match="AUTH_OIDC_AUDIENCE"):
-            await auth._validate_token(self.sign(key))
+            await oidc._validate_token(self.sign(key))
 
 
 class TestGetCurrentUser:
@@ -503,8 +504,8 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_raises_401_when_no_headers(self) -> None:
         """Test that get_current_user raises 401 when headers are missing."""
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user(None)
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user(None)
 
         assert exc_info.value.status_code == 401
         assert "No token provided" in exc_info.value.detail
@@ -512,8 +513,8 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_raises_401_when_no_authorization(self) -> None:
         """Test that get_current_user raises 401 when no authorization header."""
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user({"content-type": "application/json"})
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user({"content-type": "application/json"})
 
         assert exc_info.value.status_code == 401
         assert "No token provided" in exc_info.value.detail
@@ -521,8 +522,8 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_raises_401_when_invalid_header_format(self) -> None:
         """Test that get_current_user raises 401 for invalid header format."""
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user({"authorization": "InvalidHeader"})
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user({"authorization": "InvalidHeader"})
 
         assert exc_info.value.status_code == 401
         assert "Invalid authorization header format" in exc_info.value.detail
@@ -530,8 +531,8 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_raises_401_when_not_bearer_scheme(self) -> None:
         """Test that get_current_user raises 401 for non-Bearer scheme."""
-        with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-            await auth.get_current_user({"authorization": "Basic sometoken"})
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user({"authorization": "Basic sometoken"})
 
         assert exc_info.value.status_code == 401
         assert "Invalid auth scheme" in exc_info.value.detail
@@ -546,9 +547,9 @@ class TestGetCurrentUser:
         }
 
         with patch.object(
-            auth, "_validate_token", new=AsyncMock(return_value=mock_claims)
+            oidc, "_validate_token", new=AsyncMock(return_value=mock_claims)
         ):
-            result = await auth.get_current_user(
+            result = await handlers.get_current_user(
                 {"authorization": "Bearer valid-token"}
             )
 
@@ -565,9 +566,9 @@ class TestGetCurrentUser:
         }
 
         with patch.object(
-            auth, "_validate_token", new=AsyncMock(return_value=mock_claims)
+            oidc, "_validate_token", new=AsyncMock(return_value=mock_claims)
         ):
-            result = await auth.get_current_user(
+            result = await handlers.get_current_user(
                 {"authorization": "Bearer valid-token"}
             )
 
@@ -582,14 +583,14 @@ class TestGetCurrentUser:
         A secure implementation MUST reject this token because the signature
         cannot be verified against the JWKS public keys.
         """
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         forged_token = create_forged_jwt()
         authorization = f"Bearer {forged_token}"
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
-            with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user({"authorization": authorization})
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await handlers.get_current_user({"authorization": authorization})
 
             assert exc_info.value.status_code == 401
 
@@ -602,28 +603,28 @@ class TestGetCurrentUser:
         A secure implementation MUST reject this token because the signature
         doesn't match the payload when verified against the JWKS public keys.
         """
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         tampered_token = create_tampered_jwt()
         authorization = f"Bearer {tampered_token}"
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
-            with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user({"authorization": authorization})
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await handlers.get_current_user({"authorization": authorization})
 
             assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_rejects_garbage_jwt(self, mock_jwks: dict[str, Any]) -> None:
         """Test that garbage/malformed JWT is rejected."""
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         garbage_token = "not.a.valid.jwt.token"
         authorization = f"Bearer {garbage_token}"
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
-            with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user({"authorization": authorization})
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await handlers.get_current_user({"authorization": authorization})
 
             assert exc_info.value.status_code == 401
 
@@ -637,14 +638,14 @@ class TestGetCurrentUser:
 
         See: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-with-limited-algorithms
         """
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         forged_token = create_alg_none_jwt()
         authorization = f"Bearer {forged_token}"
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
-            with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user({"authorization": authorization})
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await handlers.get_current_user({"authorization": authorization})
 
             assert exc_info.value.status_code == 401
 
@@ -655,14 +656,14 @@ class TestGetCurrentUser:
         A secure implementation MUST reject tokens that don't specify a valid
         algorithm in the header.
         """
-        auth._jwks_cache = mock_jwks
+        oidc._jwks_cache = mock_jwks
 
         forged_token = create_missing_alg_jwt()
         authorization = f"Bearer {forged_token}"
 
-        with patch.object(auth, "oidc_issuer", "http://localhost:8080"):
-            with pytest.raises(auth.Auth.exceptions.HTTPException) as exc_info:
-                await auth.get_current_user({"authorization": authorization})
+        with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await handlers.get_current_user({"authorization": authorization})
 
             assert exc_info.value.status_code == 401
 
@@ -678,7 +679,7 @@ class TestAddOwner:
 
         value: dict[str, Any] = {}
 
-        result = await auth.add_owner(mock_ctx, value)
+        result = await handlers.add_owner(mock_ctx, value)
 
         assert result == {"owner": "test-user-123"}
         assert value["metadata"]["owner"] == "test-user-123"
@@ -695,7 +696,7 @@ class TestAddOwner:
 
         value: dict[str, Any] = {"metadata": None}
 
-        result = await auth.add_owner(mock_ctx, value)
+        result = await handlers.add_owner(mock_ctx, value)
 
         assert result == {"owner": "test-user-123"}
         assert value["metadata"]["owner"] == "test-user-123"
@@ -708,7 +709,7 @@ class TestAddOwner:
 
         value: dict[str, Any] = {"metadata": {"existing_key": "existing_value"}}
 
-        result = await auth.add_owner(mock_ctx, value)
+        result = await handlers.add_owner(mock_ctx, value)
 
         assert result == {"owner": "test-user-123"}
         assert value["metadata"]["owner"] == "test-user-123"

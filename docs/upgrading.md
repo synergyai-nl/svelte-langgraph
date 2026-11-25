@@ -2,7 +2,7 @@
 
 This page is for two kinds of readers:
 
-- Apps that copied or ported this backend: `auth.py`, `http.py`, `graph.py`, the Dockerfile or `aegra.json`. This includes the frontend auth helpers.
+- Apps that copied or ported this backend: the `auth` package, `http.py`, `graph.py`, the Dockerfile or `aegra.json`. This includes the frontend auth helpers.
 - Apps that installed the chat item from the registry.
 
 There are no version numbers, because the code is distributed off `main`. Entries are keyed by date and PR number, newest first.
@@ -14,6 +14,19 @@ Each entry has this format:
 - **Who is affected**: which downstream apps need to act.
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
+
+## 2026-11-19 — Backend auth code moves into a package ([#424](https://github.com/synergyai-nl/svelte-langgraph/pull/424))
+
+**What changed.** `apps/backend/src/svelte_langgraph/auth.py` became the package `svelte_langgraph/auth/`. Token validation and the JWKS cache are in `auth/oidc.py`. The `Auth` object and its handlers are in `auth/handlers.py`. No behaviour changed.
+
+**Who is affected.** Apps that track this repo's `auth.py`.
+
+**What to do.**
+
+1. Nothing at runtime. `auth.path` in `aegra.json` stays `svelte_langgraph.auth:auth`. Keep it a module path, not a file path.
+2. When you port later changes to the auth code, look in the new files.
+
+**How to check.** In the backend directory, run `uv run python -c "from svelte_langgraph.auth import auth; print(auth)"`. It prints an `Auth` object.
 
 ## 2026-11-19 — Backend moves to Aegra 0.12.0 ([#416](https://github.com/synergyai-nl/svelte-langgraph/pull/416))
 
