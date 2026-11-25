@@ -42,6 +42,16 @@ const bindAccountCookie = createAuthMiddleware(async (ctx) => {
 	}
 });
 
+// The browser needs only the access token; Better Auth also returns the ID token. Allowlist the
+// fields so it, and any field added later, never reaches the browser. Errors pass through as is.
+const stripIdToken = createAuthMiddleware(async (ctx) => {
+	if (ctx.path !== '/get-access-token') return;
+	const returned = ctx.context.returned;
+	if (!returned || returned instanceof Error || typeof returned !== 'object') return;
+	const { accessToken, accessTokenExpiresAt, scopes } = returned as Record<string, unknown>;
+	ctx.context.returned = { accessToken, accessTokenExpiresAt, scopes };
+});
+
 // Better Auth reads BETTER_AUTH_URL itself. The secret is required explicitly: Better Auth enforces
 // it only when NODE_ENV=production and otherwise silently falls back to AUTH_SECRET or a public
 // default, which would let anyone forge a session.
@@ -56,7 +66,7 @@ const createAuth = () =>
 		// Unset keeps Better Auth's default (on in production). E2E signs in more often than the
 		// 3-per-10-seconds sign-in limit allows, so .env.e2e sets AUTH_RATE_LIMIT=false.
 		rateLimit: { enabled: env.AUTH_RATE_LIMIT === 'false' ? false : undefined },
-		hooks: { before: bindAccountCookie },
+		hooks: { before: bindAccountCookie, after: stripIdToken },
 		plugins: [
 			genericOAuth({
 				config: [
