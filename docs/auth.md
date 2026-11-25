@@ -13,7 +13,7 @@ Aegra takes these from the client as given, unless your app says otherwise:
 - Cron payloads.
 - Run `metadata`.
 - A run's or cron's `webhook` URL. Aegra 0.12 calls it.
-- The `AUTH_TYPE` setting. It does not enforce anything.
+- The `AUTH_TYPE` setting. Aegra 0.12 and earlier enforce nothing based on it. [aegra/aegra#775](https://github.com/aegra/aegra/pull/775) makes `AUTH_TYPE=custom` refuse to start without `auth.path`.
 - A config without `auth.path`: Aegra serves every request as `anonymous`. (A failing `auth.path` stops startup since 0.12.)
 - `is_authenticated`: false for `anonymous`, but `require_auth` does not check it.
 - Another `Auth` object named by `auth.path`. Aegra accepts it.
@@ -27,7 +27,7 @@ Aegra takes these from the client as given, unless your app says otherwise:
 | Run input validation | `auth/run_input.py`, `validate_run_input` | On run create, assistant create and update, and cron create and update, a client may only send the `configurable` keys in `ALLOWED_CONFIGURABLE_KEYS`. Other `config` keys and `context` must be empty. `checkpoint` may only address a checkpoint. `webhook` must be empty. `command` may only carry `resume`. This covers runs started through `/commands`. Anything else gets 422, and the message names the key. |
 | Server-set identity | `auth/handlers.py`, `add_owner` and `get_current_user`; `graph.py`, `get_user_name` | On run create the handler sets `context.user_id` from the token. The user's name comes from the `name` claim, through `configurable.langgraph_auth_user`. The graph never reads identity from client input. |
 | Route deny list | `auth/deny.py`, `is_denied` and `DenyRoutesMiddleware` | Every caller gets 403 on the cron routes and on writes to `/threads/{id}/state`. These routes would run the graph or write checkpoints without the checks above. |
-| Startup check | `auth/startup.py`, `check_auth_loaded` | The server does not start unless Aegra loaded `svelte_langgraph.auth:auth`. Aegra 0.12 stops on a failing `auth.path`; this also covers a missing `auth.path` and a foreign `Auth` object. |
+| Startup check | `auth/startup.py`, `check_auth_loaded` | The server does not start unless Aegra loaded `svelte_langgraph.auth:auth`. Aegra 0.12 stops on a failing `auth.path`; this also covers a missing `auth.path` and a foreign `Auth` object. A workaround for Aegra 0.12 and earlier: once [aegra/aegra#775](https://github.com/aegra/aegra/pull/775) ships, it only adds the foreign `Auth` object case ([#440](https://github.com/synergyai-nl/svelte-langgraph/issues/440)). |
 | Webhooks off | `aegra.json`, `http.disable_webhooks` | A run with `webhook` gets 422. |
 
 The E2E tests in `e2e/src/backend-integration.spec.ts` check these guards against a running backend, with two users.
