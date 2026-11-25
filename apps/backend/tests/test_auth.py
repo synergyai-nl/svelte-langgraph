@@ -1,11 +1,13 @@
 """Unit tests for OIDC authentication module."""
 
+import asyncio
 import base64
 import json
 import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from authlib.jose import JsonWebKey, jwt
 from langgraph_sdk import Auth
@@ -17,6 +19,15 @@ from svelte_langgraph.auth import handlers, oidc
 def reset_jwks_cache() -> None:
     """Reset the JWKS cache before each test."""
     oidc._jwks_cache = None
+    oidc._jwks_fetched_at = 0.0
+    # A lock used under one test's event loop must not leak into the next.
+    oidc._jwks_lock = asyncio.Lock()
+
+
+def seed_jwks(jwks: dict[str, Any]) -> None:
+    """Put a JWKS in the cache as if it had just been fetched."""
+    oidc._jwks_cache = jwks
+    oidc._jwks_fetched_at = time.monotonic()
 
 
 API_AUDIENCE = "svelte-langgraph-api"
@@ -258,7 +269,7 @@ class TestGetJwks:
     @pytest.mark.asyncio
     async def test_returns_cached_jwks(self, mock_jwks: dict[str, Any]) -> None:
         """Test that _get_jwks returns cached JWKS without fetching."""
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         with patch("httpx.AsyncClient") as mock_client_class:
             result = await oidc._get_jwks()
@@ -297,7 +308,7 @@ class TestGetJwks:
     ) -> None:
         """Test that force_refresh=True bypasses the cache and fetches fresh JWKS."""
         old_jwks = {"keys": [{"kid": "old-key"}]}
-        oidc._jwks_cache = old_jwks
+        seed_jwks(old_jwks)
 
         with patch.object(oidc, "oidc_issuer", "http://localhost:8080"):
             with patch("httpx.AsyncClient") as mock_client_class:
@@ -425,7 +436,7 @@ class TestAccessTokenClaims:
     async def test_accepts_access_token_for_the_api_audience(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        oidc._jwks_cache = jwks
+        seed_jwks(jwks)
 
         claims = await oidc._validate_token(self.sign(key))
 
@@ -435,7 +446,7 @@ class TestAccessTokenClaims:
     async def test_accepts_audience_list_containing_the_api_audience(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        oidc._jwks_cache = jwks
+        seed_jwks(jwks)
 
         token = self.sign(key, aud=["other-api", API_AUDIENCE])
 
@@ -457,7 +468,7 @@ class TestAccessTokenClaims:
     async def test_rejects_invalid_claims(
         self, key: Any, jwks: dict[str, Any], overrides: dict[str, Any]
     ) -> None:
-        oidc._jwks_cache = jwks
+        seed_jwks(jwks)
 
         with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
             await handlers.get_current_user(
@@ -467,10 +478,24 @@ class TestAccessTokenClaims:
         assert exc_info.value.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_rejects_token_signed_by_another_key_with_the_same_kid(
+        self, jwks: dict[str, Any]
+    ) -> None:
+        seed_jwks(jwks)
+        other_key = JsonWebKey.generate_key("RSA", 2048, {"kid": "k1"}, is_private=True)
+
+        with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+            await handlers.get_current_user(
+                {"authorization": f"Bearer {self.sign(other_key)}"}
+            )
+
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_rejects_hmac_signed_token(
         self, key: Any, jwks: dict[str, Any]
     ) -> None:
-        oidc._jwks_cache = jwks
+        seed_jwks(jwks)
         token = jwt.encode(
             {"alg": "HS256"},
             {
@@ -491,7 +516,7 @@ class TestAccessTokenClaims:
     async def test_fails_closed_when_audience_is_not_configured(
         self, key: Any, jwks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        oidc._jwks_cache = jwks
+        seed_jwks(jwks)
         monkeypatch.setattr(oidc, "oidc_audience", "")
 
         with pytest.raises(ValueError, match="AUTH_OIDC_AUDIENCE"):
@@ -583,7 +608,7 @@ class TestGetCurrentUser:
         A secure implementation MUST reject this token because the signature
         cannot be verified against the JWKS public keys.
         """
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         forged_token = create_forged_jwt()
         authorization = f"Bearer {forged_token}"
@@ -603,7 +628,7 @@ class TestGetCurrentUser:
         A secure implementation MUST reject this token because the signature
         doesn't match the payload when verified against the JWKS public keys.
         """
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         tampered_token = create_tampered_jwt()
         authorization = f"Bearer {tampered_token}"
@@ -617,7 +642,7 @@ class TestGetCurrentUser:
     @pytest.mark.asyncio
     async def test_rejects_garbage_jwt(self, mock_jwks: dict[str, Any]) -> None:
         """Test that garbage/malformed JWT is rejected."""
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         garbage_token = "not.a.valid.jwt.token"
         authorization = f"Bearer {garbage_token}"
@@ -638,7 +663,7 @@ class TestGetCurrentUser:
 
         See: https://docs.authlib.org/en/latest/jose/jwt.html#jwt-with-limited-algorithms
         """
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         forged_token = create_alg_none_jwt()
         authorization = f"Bearer {forged_token}"
@@ -656,7 +681,7 @@ class TestGetCurrentUser:
         A secure implementation MUST reject tokens that don't specify a valid
         algorithm in the header.
         """
-        oidc._jwks_cache = mock_jwks
+        seed_jwks(mock_jwks)
 
         forged_token = create_missing_alg_jwt()
         authorization = f"Bearer {forged_token}"
@@ -714,3 +739,214 @@ class TestAddOwner:
         assert result == {"owner": "test-user-123"}
         assert value["metadata"]["owner"] == "test-user-123"
         assert value["metadata"]["existing_key"] == "existing_value"
+
+
+class TestJwksTtl:
+    """The JWKS cache expires; an expired cache is refetched, never reused."""
+
+    TTL = 300.0
+
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(oidc, "oidc_issuer", ISSUER)
+        monkeypatch.setattr(oidc, "jwks_ttl_seconds", self.TTL)
+        self.now = 1000.0
+        # Patch the module's clock only, not the global time module.
+        monkeypatch.setattr(oidc, "time", MagicMock(monotonic=lambda: self.now))
+        self.fetches = 0
+        self.idp_jwks: dict[str, Any] = {"keys": []}
+        self.idp_down = False
+        # Number of upcoming JWKS fetches that fail.
+        self.failing_fetches = 0
+        # When set, JWKS fetches wait for this event before answering.
+        self.gate: asyncio.Event | None = None
+        self.fetch_started = asyncio.Event()
+        self.in_flight = 0
+        self.max_in_flight = 0
+
+    @pytest.fixture
+    def key(self) -> Any:
+        return JsonWebKey.generate_key("RSA", 2048, {"kid": "k1"}, is_private=True)
+
+    def token(self, key: Any) -> str:
+        now = int(time.time())
+        claims = {
+            "iss": ISSUER,
+            "sub": "test-user",
+            "aud": API_AUDIENCE,
+            "iat": now,
+            "exp": now + 300,
+        }
+        return jwt.encode({"alg": "RS256", "kid": "k1"}, claims, key).decode()
+
+    def fake_idp(self, mock_oidc_config: dict[str, Any]) -> Any:
+        outer = self
+
+        class FakeClient:
+            async def __aenter__(self) -> "FakeClient":
+                return self
+
+            async def __aexit__(self, *args: Any) -> None:
+                return None
+
+            async def get(self, url: str) -> MagicMock:
+                if outer.idp_down:
+                    raise httpx.ConnectError("idp unreachable")
+                response = MagicMock()
+                if "openid-configuration" in url:
+                    response.json.return_value = mock_oidc_config
+                else:
+                    outer.fetches += 1
+                    outer.in_flight += 1
+                    outer.max_in_flight = max(outer.max_in_flight, outer.in_flight)
+                    outer.fetch_started.set()
+                    try:
+                        if outer.gate is not None:
+                            await outer.gate.wait()
+                        if outer.failing_fetches:
+                            outer.failing_fetches -= 1
+                            raise httpx.ConnectError("idp unreachable")
+                    finally:
+                        outer.in_flight -= 1
+                    response.json.return_value = outer.idp_jwks
+                return response
+
+        return patch("httpx.AsyncClient", FakeClient)
+
+    async def authenticate(self, key: Any) -> Any:
+        return await handlers.get_current_user(
+            {"authorization": f"Bearer {self.token(key)}"}
+        )
+
+    @pytest.mark.asyncio
+    async def test_no_refetch_inside_ttl(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            await self.authenticate(key)
+            self.now += self.TTL - 1
+            await self.authenticate(key)
+        assert self.fetches == 1
+
+    @pytest.mark.asyncio
+    async def test_removed_key_is_rejected_after_ttl(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            await self.authenticate(key)
+            # The IdP removes the key; inside the TTL the cached copy still works.
+            self.idp_jwks = {"keys": []}
+            await self.authenticate(key)
+            self.now += self.TTL
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await self.authenticate(key)
+        assert exc_info.value.status_code == 401
+        assert self.fetches >= 2
+
+    @pytest.mark.asyncio
+    async def test_refresh_failure_after_ttl_is_401(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            await self.authenticate(key)
+            self.now += self.TTL
+            self.idp_down = True
+            with pytest.raises(Auth.exceptions.HTTPException) as exc_info:
+                await self.authenticate(key)
+        assert exc_info.value.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_zero_ttl_fetches_every_time(
+        self,
+        key: Any,
+        mock_oidc_config: dict[str, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(oidc, "jwks_ttl_seconds", 0.0)
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            await self.authenticate(key)
+            await self.authenticate(key)
+        assert self.fetches == 2
+
+    def expire_cache(self, jwks: dict[str, Any]) -> None:
+        """Put a JWKS in the cache that has just expired."""
+        oidc._jwks_cache = jwks
+        oidc._jwks_fetched_at = self.now
+        self.now += self.TTL
+
+    async def run_gated(self, calls: list[Any]) -> list[Any]:
+        """Run calls concurrently while the JWKS fetch is held back.
+
+        The fetch is released only after every call has had the chance to
+        reach it, then the results (or exceptions) are returned in order.
+        """
+        self.gate = asyncio.Event()
+        tasks = [asyncio.create_task(call) for call in calls]
+        await asyncio.wait_for(self.fetch_started.wait(), timeout=5)
+        for _ in range(20):
+            await asyncio.sleep(0)
+        assert not any(task.done() for task in tasks)
+        self.gate.set()
+        return await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True), timeout=5
+        )
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_after_ttl_share_one_fetch(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        self.expire_cache(self.idp_jwks)
+        with self.fake_idp(mock_oidc_config):
+            results = await self.run_gated([self.authenticate(key) for _ in range(10)])
+        assert self.fetches == 1
+        assert [user["identity"] for user in results] == ["test-user"] * 10
+
+    @pytest.mark.asyncio
+    async def test_concurrent_unknown_kid_shares_one_forced_fetch(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        old_key = JsonWebKey.generate_key("RSA", 2048, {"kid": "k0"})
+        oidc._jwks_cache = {"keys": [old_key.as_dict(is_private=False)]}
+        # Fresh, and older than the clock, so a refresh changes the timestamp.
+        oidc._jwks_fetched_at = self.now - 1
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        with self.fake_idp(mock_oidc_config):
+            results = await self.run_gated([self.authenticate(key) for _ in range(10)])
+        assert self.fetches == 1
+        assert [user["identity"] for user in results] == ["test-user"] * 10
+
+    @pytest.mark.asyncio
+    async def test_failed_fetch_releases_the_lock(
+        self, key: Any, mock_oidc_config: dict[str, Any]
+    ) -> None:
+        self.idp_jwks = {"keys": [key.as_dict(is_private=False)]}
+        self.expire_cache(self.idp_jwks)
+        self.failing_fetches = 1
+        with self.fake_idp(mock_oidc_config):
+            first, second = await self.run_gated(
+                [self.authenticate(key), self.authenticate(key)]
+            )
+        # The first fetch fails; the waiting request fetches again and succeeds.
+        assert isinstance(first, Auth.exceptions.HTTPException)
+        assert first.status_code == 401
+        assert second["identity"] == "test-user"
+        assert self.fetches == 2
+        assert self.max_in_flight == 1
+        assert not oidc._jwks_lock.locked()
+
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [(None, 300.0), ("", 300.0), ("0", 0.0), ("60", 60.0), ("1.5", 1.5)],
+    )
+    def test_ttl_setting_parses(self, raw: str | None, expected: float) -> None:
+        assert oidc._read_jwks_ttl(raw) == expected
+
+    @pytest.mark.parametrize("raw", ["abc", "-1", "nan", "inf", "5m"])
+    def test_invalid_ttl_setting_fails_loudly(self, raw: str) -> None:
+        with pytest.raises(ValueError, match="AUTH_JWKS_TTL_SECONDS"):
+            oidc._read_jwks_ttl(raw)
