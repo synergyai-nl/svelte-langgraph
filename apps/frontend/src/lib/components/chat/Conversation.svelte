@@ -31,6 +31,13 @@
 		 * `input`, and puts the text back when the send fails before the message reaches the thread.
 		 */
 		submit: (text: string) => void;
+		/**
+		 * Start a run without a human message (`{ messages: [] }`), for an agent that speaks first
+		 * or a backend that answers the last human message again. No-op while `isLoading` or
+		 * `isThreadLoading`. Adds no message to the list and leaves `input` alone; a failure lands
+		 * in `error`, as for `submit`.
+		 */
+		continueRun: () => void;
 		/** Resubmit the last user message after a generation error. */
 		retry: () => void;
 		/** Stop the in-flight run. */
@@ -182,6 +189,12 @@
 		void submitHumanMessage(text);
 	}
 
+	function continueRun() {
+		if (stream.isLoading || stream.isThreadLoading) return;
+		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
+		void stream.submit({ messages: [] });
+	}
+
 	function retryGenerationAfterError() {
 		if (!last_user_message) return;
 		// A refused send put the text back in the composer; retrying sends it, so clear it.
@@ -310,6 +323,7 @@
 			return generationError;
 		},
 		submit: submitInput,
+		continueRun,
 		retry: retryGenerationAfterError,
 		stop: stopGeneration,
 		edit: handleEdit,

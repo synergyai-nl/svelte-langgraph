@@ -15,6 +15,18 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-25 — `Conversation` can start a run without a human message ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.** `ConversationApi` has a new method, `continueRun()`. It submits `{ messages: [] }` on the conversation's stream, so an app can start a run with no human message: an agent that speaks first, or a backend that answers the last human message again after a failed run. It is a no-op while a run is active or the thread history is loading, adds no message to the list and leaves the composer input alone. A failure shows in `api.error` and the error card, as for `submit`. `submit` and the other methods are unchanged. The `chat-core` registry item ships the new `Conversation.svelte`.
+
+**Who is affected.** Nobody needs to act. Apps that installed the chat item get the method with their next `chat-core` update.
+
+**What to do.**
+
+1. Nothing. To use it, update `chat-core` (see "Updating" in `apps/frontend/README.md`) and call `api.continueRun()` from a `children` or `empty` snippet, or from `useConversation()`.
+
+**How to check.** Run `moon run frontend:test -- src/lib/components/chat/Conversation.svelte.test.ts`.
+
 ## 2026-11-19 — Frontend moves to SvelteKit 3 ([#435](https://github.com/synergyai-nl/svelte-langgraph/pull/435))
 
 **What changed.** The frontend runs on SvelteKit 3 (was 2.49), Vite 8, TypeScript 6, adapter-node 6 and Vitest 4 (Vitest 3 does not support Vite 8). It is the output of `sv migrate sveltekit-3` plus follow-ups:

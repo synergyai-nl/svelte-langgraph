@@ -398,7 +398,9 @@ starts (a 401, say), `Conversation` puts the text back in the composer.
 ### Composing your own conversation
 
 `Conversation` hands its `children` snippet the reactive `api` (messages, input, `submit`, `stop`,
-`error`, ...), so you can build the layout yourself. This one omits `onEdit`/`onRegenerate`, so user
+`error`, ...), so you can build the layout yourself. `api.continueRun()` starts a run without a human message
+(`{ messages: [] }`), for an agent that speaks first or a retry that answers the last human message
+again; it is a no-op while a run is active or the history is loading. This one omits `onEdit`/`onRegenerate`, so user
 messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte

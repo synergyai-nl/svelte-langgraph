@@ -420,6 +420,90 @@ describe('Conversation', () => {
 		});
 	});
 
+	describe('continueRun', () => {
+		/** Render with the `children` or `empty` snippet and hand back the api it receives. */
+		function renderForApi(slot: 'children' | 'empty' = 'children') {
+			let api: ConversationApi | undefined;
+			const snippet = createRawSnippet<[ConversationApi]>((getApi) => {
+				api = getApi();
+				return { render: () => '<div data-testid="api-probe"></div>' };
+			});
+			const ctx = makeContext({ client: makeMockClient(), assistantId: 'assistant-1' });
+			render(LangGraphHost, {
+				props: { ctx, component: Conversation, threadId: 'test-123', [slot]: snippet }
+			});
+			if (!api) throw new Error('the snippet did not render');
+			return api;
+		}
+
+		test('submits exactly { messages: [] } and adds no message', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setMessages([
+				{ type: 'human', content: 'Earlier question', id: 'user-1' },
+				{ type: 'ai', content: 'Earlier answer', id: 'ai-1' }
+			]);
+			const api = renderForApi();
+			api.setInput('draft');
+
+			api.continueRun();
+
+			expect(submit).toHaveBeenCalledExactlyOnceWith({ messages: [] });
+			expect(api.messages.map((msg) => msg.id)).toEqual(['user-1', 'ai-1']);
+			expect(api.input).toBe('draft');
+		});
+
+		test('does nothing before the thread history has loaded', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setIsThreadLoading(true);
+			const api = renderForApi();
+
+			api.continueRun();
+			expect(submit).not.toHaveBeenCalled();
+
+			mockModule.setIsThreadLoading(false);
+			api.continueRun();
+			expect(submit).toHaveBeenCalledExactlyOnceWith({ messages: [] });
+		});
+
+		test('is refused while a run is active', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setIsLoading(true);
+			const api = renderForApi();
+
+			api.continueRun();
+
+			expect(submit).not.toHaveBeenCalled();
+		});
+
+		test('surfaces a failure like a failed submit', async () => {
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				mockModule.setError(new Error('Generation failed'));
+			});
+			// `empty` keeps the default composition, so the error card renders as for `submit`.
+			const api = renderForApi('empty');
+
+			api.continueRun();
+
+			expect(await screen.findByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
+			expect(api.error?.message).toBe('Generation failed');
+			expect(screen.getByPlaceholderText('Ask your agent…')).toHaveValue('');
+		});
+
+		test('leaves submit rejecting blank input', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			const api = renderForApi();
+
+			api.submit('');
+			api.submit('   ');
+
+			expect(submit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('empty render-prop', () => {
 		function renderWithEmpty() {
 			const client = makeMockClient();
