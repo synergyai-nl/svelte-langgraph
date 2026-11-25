@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .api import router as title_router
+from .auth.deny import DenyRoutesMiddleware
 from .auth.startup import check_auth_loaded
 from .feedback.views import router as feedback_router
 
@@ -25,5 +26,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(lifespan=lifespan)
+# Refuse the Aegra routes the auth handler cannot police (see auth/deny.py).
+# Added here, it runs inside Aegra's own middleware, so CORS still wraps the 403.
+app.add_middleware(DenyRoutesMiddleware)
 app.include_router(title_router)
 app.include_router(feedback_router)
