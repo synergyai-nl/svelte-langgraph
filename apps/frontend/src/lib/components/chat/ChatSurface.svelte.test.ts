@@ -95,6 +95,20 @@ describe('ChatSurface', () => {
 			});
 		});
 
+		test('clicking a suggestion with blank text submits nothing', async () => {
+			const user = userEvent.setup();
+			const mockSubmit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = mockSubmit;
+			renderChatSurface({
+				suggestions: [{ title: 'Blank', description: 'No text', suggestedText: '   ' }]
+			});
+
+			await user.click(screen.getByRole('button', { name: /Blank/i }));
+			await tick();
+
+			expect(mockSubmit).not.toHaveBeenCalled();
+		});
+
 		test('submitting a typed message switches from suggestions to messages view', async () => {
 			const user = userEvent.setup();
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => {

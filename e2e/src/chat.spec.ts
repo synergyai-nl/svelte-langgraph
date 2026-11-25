@@ -47,6 +47,29 @@ test.describe('Sending', () => {
 		await expect(page).not.toHaveURL(/[?&]message=/);
 	});
 
+	test('blank input sends nothing; the next real message starts exactly one run', async ({
+		page,
+		chat
+	}) => {
+		// `ConversationApi.submit` sends any text it is given: the composer is the guard.
+		let runRequests = 0;
+		page.on('request', (request) => {
+			if (new URL(request.url()).pathname.endsWith('/runs/stream')) runRequests++;
+		});
+
+		await chat.textInput.fill('   ');
+		await expect(chat.sendButton).toBeDisabled();
+		await chat.textInput.press('Enter');
+
+		const message = `After blank ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+		await chat.expectAiReply(message);
+
+		await expect(chat.userMessages).toHaveCount(1);
+		expect(runRequests).toBe(1);
+	});
+
 	test('a send refused before the run starts keeps the text and shows the error card', async ({
 		page,
 		chat

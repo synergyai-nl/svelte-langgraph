@@ -15,6 +15,26 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-25 — `submit` text is optional; blank text is no longer ignored ([#443](https://github.com/synergyai-nl/svelte-langgraph/pull/443))
+
+**What changed.** `ConversationApi.submit` is now `submit(text?: string)`.
+
+- `submit(text)` sends `text` as a human message, whatever it is. It used to ignore blank or whitespace-only text; it now sends it. It is still a no-op while a run is active.
+- `submit()` starts a run with no human message: it submits `{ messages: [] }` on the conversation's stream, for an agent that speaks first or a backend that answers the last human message again after a failed run. It is a no-op while a run is active or the thread history is loading, adds no message to the list and leaves the composer input alone. A failure shows in `api.error` and the error card, as with text.
+- The blank check moved to the UI: `MessageComposer` ignores blank input on the send button, Enter and a form submit, and `ChatSurface` ignores a suggestion whose text is blank.
+
+The `chat-core` registry item ships the new `Conversation.svelte`, `MessageComposer.svelte` and `ChatSurface.svelte`.
+
+**Who is affected.** Apps that installed the chat item and call `api.submit` from their own composer, button or snippet. Apps that only use `ChatSurface`, `Conversation`'s default composition or `MessageComposer` need not act.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Where your own code calls `api.submit(text)`, return early when `text.trim()` is empty, unless you mean to send blank text.
+3. To start a run without a human message, call `api.submit()`.
+
+**How to check.** Run `moon run frontend:test -- src/lib/components/chat/Conversation.svelte.test.ts src/lib/components/chat/MessageComposer.svelte.test.ts`. In your app, press Enter in an empty composer: no request to `/runs/stream` is made.
+
 ## 2026-11-19 — Frontend moves to SvelteKit 3 ([#435](https://github.com/synergyai-nl/svelte-langgraph/pull/435))
 
 **What changed.** The frontend runs on SvelteKit 3 (was 2.49), Vite 8, TypeScript 6, adapter-node 6 and Vitest 4 (Vitest 3 does not support Vite 8). It is the output of `sv migrate sveltekit-3` plus follow-ups:

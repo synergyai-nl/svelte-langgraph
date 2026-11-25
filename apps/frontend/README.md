@@ -398,7 +398,11 @@ starts (a 401, say), `Conversation` puts the text back in the composer.
 ### Composing your own conversation
 
 `Conversation` hands its `children` snippet the reactive `api` (messages, input, `submit`, `stop`,
-`error`, ...), so you can build the layout yourself. This one omits `onEdit`/`onRegenerate`, so user
+`error`, ...), so you can build the layout yourself. `api.submit(text)` sends `text` as a human message, whatever
+it is; `api.submit()` starts a run without one (`{ messages: [] }`), for an agent that speaks first
+or a backend that answers the last human message again. Both are a no-op while a run is active, and
+`submit()` also while the history is loading. `MessageComposer` never submits blank input; a
+composer you write yourself must check before it calls `submit`. This one omits `onEdit`/`onRegenerate`, so user
 messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte

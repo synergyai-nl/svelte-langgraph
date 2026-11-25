@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
-import { screen, waitFor, within, render } from '@testing-library/svelte';
+import { screen, waitFor, within, render, fireEvent } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { createRawSnippet } from 'svelte';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
@@ -417,6 +417,132 @@ describe('Conversation', () => {
 			await waitFor(() => {
 				expect(screen.getByRole('status')).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('submit without text', () => {
+		/** Render with the `children` or `empty` snippet and hand back the api it receives. */
+		function renderForApi(slot: 'children' | 'empty' = 'children') {
+			let api: ConversationApi | undefined;
+			const snippet = createRawSnippet<[ConversationApi]>((getApi) => {
+				api = getApi();
+				return { render: () => '<div data-testid="api-probe"></div>' };
+			});
+			const ctx = makeContext({ client: makeMockClient(), assistantId: 'assistant-1' });
+			render(LangGraphHost, {
+				props: { ctx, component: Conversation, threadId: 'test-123', [slot]: snippet }
+			});
+			if (!api) throw new Error('the snippet did not render');
+			return api;
+		}
+
+		test('submits exactly { messages: [] }, adds no message and leaves input alone', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setMessages([
+				{ type: 'human', content: 'Earlier question', id: 'user-1' },
+				{ type: 'ai', content: 'Earlier answer', id: 'ai-1' }
+			]);
+			const api = renderForApi();
+			api.setInput('draft');
+
+			api.submit();
+
+			expect(submit).toHaveBeenCalledExactlyOnceWith({ messages: [] });
+			expect(api.messages.map((msg) => msg.id)).toEqual(['user-1', 'ai-1']);
+			expect(api.input).toBe('draft');
+		});
+
+		test('does nothing before the thread history has loaded', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setIsThreadLoading(true);
+			const api = renderForApi();
+
+			api.submit();
+			expect(submit).not.toHaveBeenCalled();
+
+			mockModule.setIsThreadLoading(false);
+			api.submit();
+			expect(submit).toHaveBeenCalledExactlyOnceWith({ messages: [] });
+		});
+
+		test('is refused while a run is active', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setIsLoading(true);
+			const api = renderForApi();
+
+			api.submit();
+
+			expect(submit).not.toHaveBeenCalled();
+		});
+
+		test('surfaces a failure like a failed submit with text', async () => {
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				mockModule.setError(new Error('Generation failed'));
+			});
+			// `empty` keeps the default composition, so the error card renders as for text.
+			const api = renderForApi('empty');
+
+			api.submit();
+
+			expect(await screen.findByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
+			expect(api.error?.message).toBe('Generation failed');
+			expect(screen.getByPlaceholderText('Ask your agent…')).toHaveValue('');
+		});
+
+		test('an empty string is sent as a human message, not treated as no text', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			const api = renderForApi();
+
+			api.submit('');
+
+			expect(submit).toHaveBeenCalledExactlyOnceWith({
+				messages: [{ type: 'human', content: '' }]
+			});
+		});
+
+		test('text is sent as a human message and clears input', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			const api = renderForApi();
+			api.setInput('Hello');
+
+			api.submit('Hello');
+
+			expect(submit).toHaveBeenCalledExactlyOnceWith({
+				messages: [{ type: 'human', content: 'Hello' }]
+			});
+			expect(api.input).toBe('');
+		});
+
+		test('text is accepted while the thread history is loading', () => {
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			mockModule.setIsThreadLoading(true);
+			const api = renderForApi();
+
+			api.submit('Hello');
+
+			expect(submit).toHaveBeenCalledExactlyOnceWith({
+				messages: [{ type: 'human', content: 'Hello' }]
+			});
+		});
+
+		test('the default composer does not submit blank input', async () => {
+			const user = userEvent.setup();
+			const submit = vi.fn();
+			mockModule.mockStreamCallbacks.submit = submit;
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, '   ');
+			await user.keyboard('{Enter}');
+			await fireEvent.submit(textbox.closest('form')!);
+
+			expect(submit).not.toHaveBeenCalled();
 		});
 	});
 
