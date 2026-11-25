@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Client } from '@langchain/langgraph-sdk';
 import type { APIRequestContext } from '@playwright/test';
 import { authenticateUser, OIDC_CONFIG } from './fixtures/auth';
@@ -11,6 +12,65 @@ async function mintToken(request: APIRequestContext, claims: Record<string, unkn
 	const response = await request.post(`${OIDC_CONFIG.issuer}/__test__/token`, { data: claims });
 	expect(response.ok()).toBeTruthy();
 	return ((await response.json()) as { accessToken: string }).accessToken;
+}
+
+/** One user's calls to the backend, as raw HTTP so the status codes are visible. */
+function apiAs(request: APIRequestContext, token: string) {
+	return async (method: string, path: string, data?: unknown) => {
+		const response = await request.fetch(`${LANGGRAPH_CONFIG.apiUrl}${path}`, {
+			method,
+			headers: { Authorization: `Bearer ${token}` },
+			data
+		});
+		const text = await response.text();
+		// Untyped on purpose: each test reads the fields its route returns.
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let body: Record<string, any> = {};
+		try {
+			body = JSON.parse(text);
+		} catch {
+			// An event stream or an empty body.
+		}
+		return { status: response.status(), body, text };
+	};
+}
+type Api = ReturnType<typeof apiAs>;
+
+const humanInput = (content: string) => ({ messages: [{ type: 'human', content }] });
+
+/** A user with a chat assistant and an empty thread of their own. */
+async function setUpUser(request: APIRequestContext, sub?: string) {
+	const api = apiAs(request, await mintToken(request, sub ? { sub } : {}));
+	const assistant = await api('POST', '/assistants', { graph_id: 'chat', if_exists: 'do_nothing' });
+	expect(assistant.status).toBe(200);
+	const thread = await api('POST', '/threads', {});
+	expect(thread.status).toBe(200);
+	return {
+		api,
+		assistantId: assistant.body.assistant_id as string,
+		threadId: thread.body.thread_id as string
+	};
+}
+
+/** Start a background run; `slow` echoes a long input, which the AI mock streams for a while. */
+async function startRun(api: Api, assistantId: string, threadId: string, slow = false) {
+	const content = slow ? randomUUID().replace(/-/g, '').repeat(16) : 'Hello';
+	const run = await api('POST', `/threads/${threadId}/runs`, {
+		assistant_id: assistantId,
+		input: humanInput(content)
+	});
+	expect(run.status, run.text).toBe(200);
+	return run.body.run_id as string;
+}
+
+async function waitForRunStatus(api: Api, threadId: string, runId: string, status: string[]) {
+	await expect
+		.poll(
+			async () =>
+				status.includes((await api('GET', `/threads/${threadId}/runs/${runId}`)).body.status),
+			{ timeout: 30_000, message: `run reaches ${status.join(' or ')}` }
+		)
+		.toBe(true);
 }
 
 function toBase64Url(value: string): string {
@@ -249,6 +309,255 @@ test.describe('Backend Integration', () => {
 			}
 			expect((await owner.threads.get(thread.thread_id)).thread_id).toBe(thread.thread_id);
 			await owner.threads.delete(thread.thread_id);
+		});
+	});
+
+	test.describe('Two-user isolation', () => {
+		test.describe('Runs', () => {
+			test('should hide a finished run from another user', async ({ request }) => {
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const runId = await startRun(a.api, a.assistantId, a.threadId);
+				await waitForRunStatus(a.api, a.threadId, runId, ['success']);
+
+				const runPath = `/threads/${a.threadId}/runs/${runId}`;
+				const reads = [
+					['GET', runPath],
+					['GET', `${runPath}/join`],
+					['GET', `${runPath}/stream`]
+				] as const;
+				for (const [method, path] of reads) {
+					const denied = await b.api(method, path);
+					expect(denied.status, `${method} ${path} as B: ${denied.text}`).toBe(404);
+					const allowed = await a.api(method, path);
+					expect(allowed.status, `${method} ${path} as A: ${allowed.text}`).toBe(200);
+				}
+				// Listing is not an error for another user: it answers 200 with their own runs, none.
+				const listPath = `/threads/${a.threadId}/runs`;
+				expect(
+					(await a.api('GET', listPath)).body.map((run: Record<string, unknown>) => run.run_id)
+				).toEqual([runId]);
+				const listed = await b.api('GET', listPath);
+				expect(listed.status, listed.text).toBe(200);
+				expect(listed.body).toEqual([]);
+			});
+
+			test('should not let another user cancel a running run', async ({ request }) => {
+				test.setTimeout(60_000);
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const runId = await startRun(a.api, a.assistantId, a.threadId, true);
+
+				const cancelPath = `/threads/${a.threadId}/runs/${runId}/cancel`;
+				const denied = await b.api('POST', cancelPath);
+				expect(denied.status, denied.text).toBe(404);
+				const bulk = await b.api('POST', '/runs/cancel', {
+					thread_id: a.threadId,
+					run_ids: [runId]
+				});
+				expect(bulk.status, bulk.text).toBe(404);
+				expect((await a.api('GET', `/threads/${a.threadId}/runs/${runId}`)).body.status).not.toBe(
+					'interrupted'
+				);
+
+				const cancelled = await a.api('POST', `${cancelPath}?wait=1`);
+				expect(cancelled.status, cancelled.text).toBe(200);
+				await waitForRunStatus(a.api, a.threadId, runId, ['interrupted', 'error', 'success']);
+			});
+		});
+
+		test.describe('Store', () => {
+			test('should scope items to the user who put them', async ({ request }) => {
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const namespace = ['isolation', randomUUID()];
+				const key = 'note';
+				const value = { text: 'only for A' };
+
+				const put = await a.api('PUT', '/store/items', { namespace, key, value });
+				expect(put.status, put.text).toBe(204);
+
+				const query = `key=${key}&namespace=${namespace.join('&namespace=')}`;
+				const own = await a.api('GET', `/store/items?${query}`);
+				expect(own.status, own.text).toBe(200);
+				expect(own.body.value).toEqual(value);
+				const foreign = await b.api('GET', `/store/items?${query}`);
+				expect(foreign.status, foreign.text).toBe(404);
+
+				// Search: the same namespace, as the other user, finds nothing. (A's own search is
+				// not asserted: the owner filter from `add_owner` is applied to item values too.)
+				const hidden = await b.api('POST', '/store/items/search', { namespace_prefix: namespace });
+				expect(hidden.status, hidden.text).toBe(200);
+				expect(hidden.body.items).toEqual([]);
+			});
+		});
+
+		test.describe('Denied routes', () => {
+			test('should refuse cron routes with 403', async ({ request }) => {
+				const a = await setUpUser(request);
+				const cron = { assistant_id: a.assistantId, schedule: '0 0 * * *' };
+				for (const [method, path, data] of [
+					['POST', '/runs/crons', cron],
+					['POST', `/threads/${a.threadId}/runs/crons`, cron],
+					['POST', '/runs/crons/search', {}]
+				] as const) {
+					const response = await a.api(method, path, data);
+					expect(response.status, `${method} ${path}: ${response.text}`).toBe(403);
+					expect(response.body.error).toBe('forbidden');
+				}
+			});
+
+			test('should refuse state writes with 403', async ({ request }) => {
+				const a = await setUpUser(request);
+				const write = await a.api('POST', `/threads/${a.threadId}/state`, {
+					values: { phase: 'planning' }
+				});
+				expect(write.status, write.text).toBe(403);
+			});
+
+			test('should keep the neighbouring thread routes open', async ({ request }) => {
+				const a = await setUpUser(request);
+				const state = await a.api('GET', `/threads/${a.threadId}/state`);
+				expect(state.status, state.text).toBe(200);
+				const patch = await a.api('PATCH', `/threads/${a.threadId}`, {
+					metadata: { title: 'Renamed' }
+				});
+				expect(patch.status, patch.text).toBe(200);
+				expect(patch.body.metadata.title).toBe('Renamed');
+			});
+		});
+
+		test.describe('Run input', () => {
+			const rejected: [string, Record<string, unknown>, string][] = [
+				[
+					'an identity key in configurable',
+					{ config: { configurable: { user_id: 'someone-else' } } },
+					'config.configurable.user_id'
+				],
+				[
+					'an unknown configurable key',
+					{ config: { configurable: { unknown_key: true } } },
+					'config.configurable.unknown_key'
+				],
+				[
+					'a configurable key of the wrong type',
+					{ config: { configurable: { state_only_submit: 'yes' } } },
+					'config.configurable.state_only_submit'
+				],
+				['a non-empty context', { context: { user_id: 'someone-else' } }, 'context']
+			];
+			for (const [name, extra, key] of rejected) {
+				test(`should reject a run with ${name}`, async ({ request }) => {
+					const a = await setUpUser(request);
+					for (const route of ['runs/wait', 'runs/stream', 'runs']) {
+						const response = await a.api('POST', `/threads/${a.threadId}/${route}`, {
+							assistant_id: a.assistantId,
+							input: humanInput('Hello'),
+							...extra
+						});
+						expect(response.status, `${route}: ${response.text}`).toBe(422);
+						expect(response.body.message).toContain(key);
+					}
+				});
+			}
+
+			test('should reject an assistant with an identity key in configurable', async ({
+				request
+			}) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', '/assistants', {
+					graph_id: 'chat',
+					name: 'isolation',
+					config: { configurable: { user_id: 'someone-else' } }
+				});
+				expect(response.status, response.text).toBe(422);
+				expect(response.body.message).toContain('config.configurable.user_id');
+			});
+
+			test('should accept a run with only state_only_submit', async ({ request }) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', `/threads/${a.threadId}/runs/wait`, {
+					assistant_id: a.assistantId,
+					input: humanInput('Hello'),
+					config: { configurable: { state_only_submit: true } }
+				});
+				expect(response.status, response.text).toBe(200);
+			});
+		});
+
+		test.describe('Webhooks', () => {
+			test('should reject a run with a webhook on every run route', async ({ request }) => {
+				const a = await setUpUser(request);
+				for (const route of ['runs', 'runs/wait', 'runs/stream']) {
+					const response = await a.api('POST', `/threads/${a.threadId}/${route}`, {
+						assistant_id: a.assistantId,
+						input: humanInput('Hello'),
+						webhook: 'https://example.com/hook'
+					});
+					expect(response.status, `${route}: ${response.text}`).toBe(422);
+					expect(response.body.message).toContain('webhook is not accepted.');
+				}
+				// The handler runs before the run is created, so no run exists.
+				const runs = await a.api('GET', `/threads/${a.threadId}/runs`);
+				expect(runs.body).toEqual([]);
+			});
+		});
+
+		test.describe('Thread commands', () => {
+			test('should reject a run.start with an identity key in configurable', async ({
+				request
+			}) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', `/threads/${a.threadId}/commands`, {
+					id: 1,
+					method: 'run.start',
+					params: {
+						assistant_id: a.assistantId,
+						input: humanInput('Hello'),
+						config: { configurable: { user_id: 'someone-else' } }
+					}
+				});
+				// Protocol errors ride HTTP 200.
+				expect(response.status, response.text).toBe(200);
+				expect(response.body.type).toBe('error');
+				expect(response.body.id).toBe(1);
+				expect(response.body.error).toBe('invalid_argument');
+				expect((await a.api('GET', `/threads/${a.threadId}/runs`)).body).toEqual([]);
+			});
+
+			test('should start a run for a valid run.start', async ({ request }) => {
+				const a = await setUpUser(request);
+				const response = await a.api('POST', `/threads/${a.threadId}/commands`, {
+					id: 2,
+					method: 'run.start',
+					params: { assistant_id: a.assistantId, input: humanInput('Hello') }
+				});
+				expect(response.status, response.text).toBe(200);
+				expect(response.body.type, response.text).toBe('success');
+				expect(response.body.id).toBe(2);
+				const runId = response.body.result.run_id as string;
+				expect(runId).toBeTruthy();
+
+				const runs = await a.api('GET', `/threads/${a.threadId}/runs`);
+				expect(runs.body.map((run: Record<string, unknown>) => run.run_id)).toEqual([runId]);
+				// Let the run finish so it does not disturb later tests.
+				await waitForRunStatus(a.api, a.threadId, runId, ['success', 'error', 'interrupted']);
+			});
+		});
+
+		test.describe('Prune', () => {
+			test("should not prune another user's thread", async ({ request }) => {
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const prune = await b.api('POST', '/threads/prune', {
+					thread_ids: [a.threadId],
+					strategy: 'delete'
+				});
+				expect(prune.status, prune.text).toBe(200);
+				expect(prune.body.pruned_count).toBe(0);
+				const thread = await a.api('GET', `/threads/${a.threadId}`);
+				expect(thread.status, thread.text).toBe(200);
+			});
 		});
 	});
 
