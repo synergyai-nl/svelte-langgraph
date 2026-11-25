@@ -15,6 +15,20 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-19 — Backend refuses to start without its auth module ([#418](https://github.com/synergyai-nl/svelte-langgraph/pull/418))
+
+**What changed.** Aegra 0.12 stops at startup when `auth.path` fails to load. It still serves every request as `anonymous` when the config has no `auth.path`, and it accepts any `Auth` object `auth.path` names. The demo backend's `http.app` now has a lifespan that checks at startup that Aegra loaded `svelte_langgraph.auth:auth`. If not, the server exits with an error.
+
+**Who is affected.** Apps that copied this backend's `http.py` or run their own `http.app`.
+
+**What to do.**
+
+1. Copy `auth/startup.py` and call `check_auth_loaded` from your `http.app` lifespan (see `apps/backend/src/svelte_langgraph/http.py`). Change its import of `auth` to your own auth object.
+2. Pass `lifespan=lifespan` when you create the `FastAPI` app. An `on_startup` handler does not work here: Aegra rejects them.
+3. Keep `AUTH_TYPE=custom` set. Aegra 0.12 and earlier enforce nothing based on it. Once [aegra/aegra#775](https://github.com/aegra/aegra/pull/775) ships, it is what makes Aegra refuse to start without `auth.path`.
+
+**How to check.** Remove the `auth` block in a copy of `aegra.json` and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with "Aegra did not load svelte_langgraph.auth:auth". A wrong `auth.path` makes Aegra itself exit with `AuthLoadError`.
+
 ## 2026-11-19 — Backend auth code moves into a package ([#424](https://github.com/synergyai-nl/svelte-langgraph/pull/424))
 
 **What changed.** `apps/backend/src/svelte_langgraph/auth.py` became the package `svelte_langgraph/auth/`. Token validation and the JWKS cache are in `auth/oidc.py`. The `Auth` object and its handlers are in `auth/handlers.py`. No behaviour changed.

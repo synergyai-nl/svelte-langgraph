@@ -72,8 +72,11 @@ tasks:
     command: "uv run uvicorn aegra_api.main:app --host localhost --port 2026 --reload 2>&1"
     preset: "watcher"
     env:
-      # Aegra defaults to noop auth, which would silently disable OIDC and
-      # per-user isolation if AUTH_TYPE is missing from a pre-existing .env.
+      # Aegra 0.12 and earlier enforce nothing based on AUTH_TYPE: without an
+      # auth.path they serve requests as an anonymous user, whatever this
+      # value. The guarantee there is the startup check in
+      # svelte_langgraph/auth/startup.py. aegra/aegra#775 makes
+      # AUTH_TYPE=custom refuse to start without auth.path.
       AUTH_TYPE: "custom"
     options:
       envFile: '/.env'

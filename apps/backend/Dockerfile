@@ -17,9 +17,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Aegra defaults to noop auth; bake in custom auth so the shipped image can
-# never silently run unauthenticated (required for wildcard CORS to be safe).
-# Override explicitly only if you know what you are doing.
+# Aegra 0.12 and earlier enforce nothing based on AUTH_TYPE: without an
+# auth.path they serve requests as an anonymous user, whatever this value. The
+# guarantee there is the startup check in svelte_langgraph/auth/startup.py.
+# aegra/aegra#775 makes AUTH_TYPE=custom refuse to start without auth.path.
 ENV AUTH_TYPE=custom
 
 EXPOSE 2026
