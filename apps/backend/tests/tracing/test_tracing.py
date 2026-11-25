@@ -8,11 +8,17 @@ import asyncio
 import contextvars
 import json
 import uuid
-from uuid import UUID
 
 import httpx
 import pytest
 import respx
+from aegra_api.observability.sampling import is_trace_id_from_run_id_enabled
+from aegra_api.observability.span_enrichment import (
+    RunIdAwareIdGenerator,
+    make_run_trace_context,
+    prepare_run_otel_trace,
+)
+from aegra_api.settings import settings
 from langchain_core.runnables import RunnableConfig
 from openinference.instrumentation.langchain import LangChainInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -41,102 +47,105 @@ def test_a_non_uuid_run_has_no_trace_id(run_id):
     assert trace_id_for_run(run_id) is None
 
 
-class TestPinning:
-    """`pin_trace_to_run` runs inside `make_graph`, so these drive the factory
-    the way Aegra does rather than calling it directly."""
+def local_executor_context(run_id: str) -> contextvars.Context:
+    """The context `LocalExecutor.submit` gives a run's task."""
+    return make_run_trace_context(run_id, "t1", "chat", "user-1")
+
+
+def worker_context(run_id: str) -> contextvars.Context:
+    """The context a worker gives a run: `_restore_trace_context` calls
+    `prepare_run_otel_trace` inside the job's own context."""
+    ctx = contextvars.copy_context()
+    ctx.run(prepare_run_otel_trace, run_id)
+    return ctx
+
+
+class TestAegraSetsTheTraceId:
+    """`record_score` posts to `trace_id_for_run(run_id)` without a lookup. That
+    only works because Aegra gives the run that trace id. These run the graph
+    under Aegra's own seeding entry points and check the contract still holds."""
+
+    @pytest.fixture(autouse=True)
+    def seeding_on(self, monkeypatch):
+        """Seeding is decided once and cached, so start from a known state."""
+        monkeypatch.delenv("OTEL_TRACES_SAMPLER", raising=False)
+        monkeypatch.setattr(settings.observability, "OTEL_TRACE_ID_FROM_RUN_ID", True)
+        is_trace_id_from_run_id_enabled.cache_clear()
+        yield
+        is_trace_id_from_run_id_enabled.cache_clear()
 
     @pytest.fixture
-    def exporter(self):
-        exp = InMemorySpanExporter()
-        provider = TracerProvider()
-        provider.add_span_processor(SimpleSpanProcessor(exp))
+    def provider(self):
+        # The same id generator Aegra's OpenTelemetry setup installs.
+        provider = TracerProvider(id_generator=RunIdAwareIdGenerator())
         LangChainInstrumentor().instrument(tracer_provider=provider)
-        yield exp
+        yield provider
         LangChainInstrumentor().uninstrument()
 
-    @staticmethod
-    async def run_graph(config: RunnableConfig) -> None:
-        """Mirror `LocalExecutor.submit`: build the graph and run it inside a
-        context of the run's own.
+    @pytest.fixture
+    def exporter(self, provider):
+        exp = InMemorySpanExporter()
+        provider.add_span_processor(SimpleSpanProcessor(exp))
+        return exp
 
-        `await ctx.run(coro_fn)` would NOT do this — `ctx.run` only builds the
-        coroutine, which then executes in the caller's context, and the test
-        would pass or fail for the wrong reason.
+    @staticmethod
+    async def run_graph(run_id: str, context: contextvars.Context) -> None:
+        """Build and run the graph in the run's own context, as Aegra does.
+
+        `await ctx.run(coro_fn)` would NOT do this: `ctx.run` only builds the
+        coroutine, which then executes in the caller's context.
         """
 
         async def body() -> None:
-            agent = make_graph(config)
-            await agent.ainvoke(
-                {"messages": [{"role": "user", "content": "hello"}]}, config
-            )
-
-        await asyncio.create_task(body(), context=contextvars.copy_context())
-
-    @staticmethod
-    def trace_ids(exporter: InMemorySpanExporter) -> set[str]:
-        return {
-            format(ctx.trace_id, "032x")
-            for span in exporter.get_finished_spans()
-            if (ctx := span.get_span_context()) is not None
-        }
-
-    async def test_every_span_of_a_run_shares_the_run_id_as_its_trace_id(
-        self, exporter, mock_completion
-    ):
-        mock_completion.mock(return_value=make_completion_response("hi there"))
-        run_id = str(uuid.uuid4())
-
-        await self.run_graph(
-            RunnableConfig(configurable={"thread_id": "t1", "run_id": run_id})
-        )
-
-        assert exporter.get_finished_spans(), "the run exported no spans"
-        assert self.trace_ids(exporter) == {UUID(run_id).hex}
-
-    async def test_a_run_without_a_run_id_still_traces(self, exporter, mock_completion):
-        """The CLI loop and Aegra's startup schema extraction both call the
-        factory with no run id; they must trace normally, not crash."""
-        mock_completion.mock(return_value=make_completion_response("hi there"))
-
-        await self.run_graph(RunnableConfig(configurable={"thread_id": "t1"}))
-
-        assert exporter.get_finished_spans()
-
-    async def test_a_pinned_id_does_not_escape_the_run_that_set_it(
-        self, exporter, mock_completion
-    ):
-        """`pin_trace_to_run` attaches a context without ever detaching it, which
-        is only safe because each run owns its context.
-
-        This deliberately does NOT use `run_graph`: wrapping the pinning run in a
-        fresh `contextvars.Context` would provide the isolation under test, and
-        the assertion would hold even with `pin_trace_to_run` gutted. Here the
-        pinning run gets its own context (as Aegra gives it) while the second
-        runs in *this* context — so a leak past the task boundary fails the test.
-        """
-        mock_completion.mock(
-            side_effect=lambda request: make_completion_response("hi there")
-        )
-        run_id = str(uuid.uuid4())
-
-        async def pinned() -> None:
             config = RunnableConfig(configurable={"thread_id": "t1", "run_id": run_id})
-            make_graph(config)
             await make_graph(config).ainvoke(
                 {"messages": [{"role": "user", "content": "hello"}]}, config
             )
 
-        await asyncio.create_task(pinned(), context=contextvars.copy_context())
-        assert self.trace_ids(exporter) == {UUID(run_id).hex}, "pinning did not apply"
+        await asyncio.create_task(body(), context=context)
 
-        exporter.clear()
-        unpinned = RunnableConfig(configurable={"thread_id": "t2"})
-        await make_graph(unpinned).ainvoke(
-            {"messages": [{"role": "user", "content": "hello"}]}, unpinned
-        )
+    @staticmethod
+    def run_trace_ids(exporter: InMemorySpanExporter) -> set[str]:
+        spans = [s for s in exporter.get_finished_spans() if s.name != "http-request"]
+        assert spans, "the run exported no spans"
+        return {
+            format(ctx.trace_id, "032x")
+            for span in spans
+            if (ctx := span.get_span_context()) is not None
+        }
 
-        assert exporter.get_finished_spans(), "the second run exported no spans"
-        assert UUID(run_id).hex not in self.trace_ids(exporter)
+    @pytest.mark.parametrize(
+        "make_context",
+        [local_executor_context, worker_context],
+        ids=["local-executor", "worker"],
+    )
+    async def test_every_span_of_a_run_has_the_runs_trace_id(
+        self, provider, exporter, mock_completion, make_context
+    ):
+        mock_completion.mock(return_value=make_completion_response("hi there"))
+        run_id = str(uuid.uuid4())
+
+        # Aegra builds the run's context inside a request. That request's span
+        # must not become the run's parent.
+        with provider.get_tracer("test").start_as_current_span("http-request"):
+            context = make_context(run_id)
+        await self.run_graph(run_id, context)
+
+        assert self.run_trace_ids(exporter) == {trace_id_for_run(run_id)}
+
+    async def test_a_ratio_sampler_turns_the_run_trace_id_off(
+        self, exporter, mock_completion, monkeypatch
+    ):
+        """The documented caveat: under a ratio sampler, scores attach to no
+        trace."""
+        monkeypatch.setenv("OTEL_TRACES_SAMPLER", "parentbased_traceidratio")
+        is_trace_id_from_run_id_enabled.cache_clear()
+        mock_completion.mock(return_value=make_completion_response("hi there"))
+        run_id = str(uuid.uuid4())
+
+        await self.run_graph(run_id, local_executor_context(run_id))
+
+        assert trace_id_for_run(run_id) not in self.run_trace_ids(exporter)
 
 
 class TestScoring:
@@ -149,7 +158,7 @@ class TestScoring:
 
     @respx.mock
     async def test_posts_straight_to_the_runs_own_trace(self, langfuse_env):
-        """The point of pinning: no lookup call, just the score."""
+        """The trace id is known up front: no lookup call, just the score."""
         score = respx.post(SCORE_URL).mock(return_value=ACCEPTED)
 
         assert await record_score(RUN_ID, "up", SCORE_ID) is True
@@ -183,8 +192,8 @@ class TestScoring:
 
     @respx.mock
     async def test_a_transient_failure_is_retried(self, langfuse_env):
-        """Pinning removed the ingestion race, not ordinary flakiness — and the
-        caller has nowhere to put a rating we drop."""
+        """A known trace id removed the ingestion race, not ordinary flakiness,
+        and the caller has nowhere to put a rating we drop."""
         score = respx.post(SCORE_URL).mock(
             side_effect=[httpx.Response(503), httpx.ConnectError("blip"), ACCEPTED]
         )

@@ -106,6 +106,9 @@ test.describe('Sidebar - real backend', () => {
 		// position is only observable when the label doesn't already fill the row.
 		await page.route('**/threads/search', async (route) => {
 			const response = await route.fetch();
+			// Pass non-2xx through untouched: the server may reject `select` with a 422, and the
+			// client retries without it.
+			if (!response.ok()) return route.fulfill({ response });
 			const threads = (await response.json()) as {
 				thread_id: string;
 				metadata?: Record<string, unknown>;

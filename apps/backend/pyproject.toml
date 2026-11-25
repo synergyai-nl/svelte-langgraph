@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "aegra-api==0.10.*",
+    "aegra-api==0.12.*",
     "authlib>=1.4.1",
     "httpx>=0.28.1",
     "langchain[openai]==1.3.*",
