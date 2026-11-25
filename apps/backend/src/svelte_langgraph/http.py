@@ -18,6 +18,8 @@ from .feedback.views import router as feedback_router
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Workaround for Aegra <= 0.12: remove or simplify once aegra/aegra#775
+    # ships (see #440).
     check_auth_loaded()
     yield
 

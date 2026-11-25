@@ -25,7 +25,7 @@ Each entry has this format:
 
 1. Copy `auth/startup.py` and call `check_auth_loaded` from your `http.app` lifespan (see `apps/backend/src/svelte_langgraph/http.py`). Change its import of `auth` to your own auth object.
 2. Pass `lifespan=lifespan` when you create the `FastAPI` app. An `on_startup` handler does not work here: Aegra rejects them.
-3. Stop relying on `AUTH_TYPE=custom`. You may keep the variable, but Aegra does not enforce anything based on it.
+3. Keep `AUTH_TYPE=custom` set. Aegra 0.12 and earlier enforce nothing based on it. Once [aegra/aegra#775](https://github.com/aegra/aegra/pull/775) ships, it is what makes Aegra refuse to start without `auth.path`.
 
 **How to check.** Remove the `auth` block in a copy of `aegra.json` and start the backend with `AEGRA_CONFIG` pointing at the copy. The process must exit with "Aegra did not load svelte_langgraph.auth:auth". A wrong `auth.path` makes Aegra itself exit with `AuthLoadError`.
 

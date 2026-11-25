@@ -60,6 +60,11 @@ def write_config(tmp_path, **extra):
     return path
 
 
+# Tests for check_auth_loaded and the lifespan. Workaround for Aegra <= 0.12:
+# remove or simplify these along with the check once aegra/aegra#775 ships
+# (see #440).
+
+
 def test_passes_with_our_auth_module(monkeypatch):
     use_auth_instance(monkeypatch, auth)
     startup.check_auth_loaded()
@@ -98,6 +103,10 @@ def test_aegra_loads_the_same_object_from_the_repo_config(monkeypatch):
     assert auth_middleware.get_auth_instance() is auth
 
 
+# Tests that pin Aegra 0.12 behaviour. Revisit them when aegra/aegra#775 ships
+# (see #440).
+
+
 def test_aegra_refuses_a_broken_auth_path(monkeypatch, tmp_path):
     """Aegra 0.12 itself stops at startup when `auth.path` does not load."""
     path = write_config(tmp_path, auth={"path": "svelte_langgraph.nope:auth"})
@@ -108,7 +117,11 @@ def test_aegra_refuses_a_broken_auth_path(monkeypatch, tmp_path):
 
 def test_a_config_without_auth_is_caught_by_our_check(monkeypatch, tmp_path):
     """Without `auth.path` Aegra starts and serves everyone as `anonymous`, so
-    only our own check stops it."""
+    only our own check stops it.
+
+    Aegra 0.12 behaviour. Once aegra/aegra#775 ships (see #440), assert instead
+    that `AUTH_TYPE=custom` without `auth` raises `AuthLoadError`.
+    """
     point_aegra_at(monkeypatch, write_config(tmp_path))
     assert auth_middleware.get_auth_instance() is None
     with pytest.raises(RuntimeError, match=r"found nothing \(None\)"):

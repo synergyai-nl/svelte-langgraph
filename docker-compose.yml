@@ -44,9 +44,11 @@ services:
       # be reachable *from inside this container* — a `localhost` URL means the
       # container itself, not your host.
       DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/aegra}"
-      # Aegra does not enforce anything based on AUTH_TYPE. Without an auth.path
-      # it serves requests as an anonymous user, whatever this value. The
-      # guarantee is the startup check in svelte_langgraph/auth/startup.py.
+      # Aegra 0.12 and earlier enforce nothing based on AUTH_TYPE: without an
+      # auth.path they serve requests as an anonymous user, whatever this
+      # value. The guarantee there is the startup check in
+      # svelte_langgraph/auth/startup.py. aegra/aegra#775 makes
+      # AUTH_TYPE=custom refuse to start without auth.path.
       AUTH_TYPE: "custom"
       # The API audience required in access tokens (see README, Authentication).
       AUTH_OIDC_AUDIENCE: "${AUTH_OIDC_AUDIENCE:-}"
