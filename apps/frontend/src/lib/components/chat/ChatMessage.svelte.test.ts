@@ -135,6 +135,33 @@ describe('ChatMessage', () => {
 		});
 	});
 
+	describe('when an AI message contains links', () => {
+		test.each([
+			['[x](javascript:alert(1))', 'x'],
+			['[x](JaVaScRiPt:alert(1))', 'x'],
+			['[x](data:text/html,y)', 'x'],
+			['[x](vbscript:y)', 'x'],
+			['<javascript:alert(1)>', 'javascript:alert(1)'],
+			['[x][r]\n\n[r]: javascript:alert(1)', 'x'],
+			['<a href="javascript:alert(1)">x</a>', '<a href="javascript:alert(1)">x</a>']
+		])('renders %j as text, not a link', (text, shown) => {
+			const { container } = renderAIComponent({ text });
+			expect(container.querySelector('a')).toBeNull();
+			expect(container.querySelector('.prose')).toHaveTextContent(shown);
+		});
+
+		test.each([
+			['[x](https://example.com/a)', 'https://example.com/a'],
+			['[x](http://example.com)', 'http://example.com'],
+			['[x](mailto:a@example.com)', 'mailto:a@example.com'],
+			['[x](/docs)', '/docs'],
+			['[x](#top)', '#top']
+		])('keeps %j as a link', (text, href) => {
+			renderAIComponent({ text });
+			expect(screen.getByRole('link', { name: 'x' })).toHaveAttribute('href', href);
+		});
+	});
+
 	describe('with edit and regenerate handlers', () => {
 		test('offers Edit on a user message', () => {
 			renderUserComponent();

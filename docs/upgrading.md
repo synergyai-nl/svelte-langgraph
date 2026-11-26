@@ -15,6 +15,19 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — AI messages render only safe links ([#453](https://github.com/synergyai-nl/svelte-langgraph/pull/453))
+
+**What changed.** `ChatMessage` renders a markdown link in an AI message as a link only when its URL is `http:`, `https:`, `mailto:`, relative or a fragment. Any other scheme, such as `javascript:`, `data:` or `vbscript:`, renders the link's contents without an anchor. Before, links were rendered without a scheme allowlist. The `chat-core` registry item ships the new `ChatMessage.svelte`.
+
+**Who is affected.** Apps that installed the chat item. Apps whose agents link to another scheme on purpose (for example `tel:`) see those links without an anchor.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. To allow another scheme, add it to `SAFE_LINK_PROTOCOLS` in your copy of `ChatMessage.svelte`.
+
+**How to check.** Run `moon run frontend:test -- src/lib/components/chat/ChatMessage.svelte.test.ts`. In your app, have the agent answer `[x](javascript:alert(1))`: the reply shows `x`, not a link.
+
 ## 2026-11-26 — The chat imports the client through `#lib`; drop the `@svelte-langgraph/client` alias ([#452](https://github.com/synergyai-nl/svelte-langgraph/pull/452))
 
 **What changed.** The chat components import the bundled client as `#lib/svelte-langgraph-client/index.ts` instead of by its package name `@svelte-langgraph/client`. The CLI rewrites that import to your `components.json` `lib` alias, like the item's other `#lib` imports, so the chat needs no `alias` in `vite.config.ts` and SvelteKit 3 no longer prints `config_option_deprecated_alias` for it. In this repo a `package.json` `imports` entry, `"#lib/svelte-langgraph-client/index.ts": "@svelte-langgraph/client"`, maps the same specifier to `packages/client`. `chat-core` now also lists `@lucide/svelte` (`>=0.562.0`) and `@types/node` (`*`, a dev dependency), so a fresh app no longer fails on them; a version your `package.json` already declares inside those ranges stays.
