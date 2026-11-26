@@ -1,0 +1,5 @@
+self-hosted-runner:
+  # Blacksmith runner labels (https://docs.blacksmith.sh/blacksmith-runners/overview#runner-tags)
+  labels:
+    - blacksmith-2vcpu-ubuntu-2604-arm
+    - blacksmith-4vcpu-ubuntu-2604
