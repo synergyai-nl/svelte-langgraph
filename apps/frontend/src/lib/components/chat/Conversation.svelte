@@ -127,15 +127,28 @@
 	// makes it rateable. The stream keeps showing its streamed copy of an answer (its content
 	// differs in shape from the stored one), so the stamp is read from the server's `values`.
 	const stampedIds = new SvelteSet<string>();
+	// Ids a server `values` event carried, so the server stored them. The stream marks a sent
+	// message `failed` when its run ends before the echo, and keeps that status when the echo
+	// comes later: the failure can reach the client first, on the lifecycle stream, while the
+	// echo is still on its way on the content stream.
+	const echoedIds = new SvelteSet<string>();
+	// The last plain send whose text went back into the composer (see `submitHumanMessage`).
+	let restoredSend: { id: string; text: string } | undefined;
 	// `bufferSize: 1`: each `values` event is a full state, and only the newest is needed (the
 	// projection's default keeps 4096 for the life of the mount).
 	useChannelEffect(stream, ['values'], {
 		bufferSize: 1,
 		onEvent(event) {
 			for (const message of (event.params.data as ThreadValues).messages ?? []) {
+				if (typeof message.id !== 'string') continue;
+				echoedIds.add(message.id);
 				const metadata = message.response_metadata as { run_id?: unknown } | undefined;
-				if (typeof message.id === 'string' && typeof metadata?.run_id === 'string')
-					stampedIds.add(message.id);
+				if (typeof metadata?.run_id === 'string') stampedIds.add(message.id);
+			}
+			// The echo came after all: the message is the server's, so its text leaves the composer.
+			if (restoredSend && echoedIds.has(restoredSend.id)) {
+				if (current_input === restoredSend.text) current_input = '';
+				restoredSend = undefined;
 			}
 		}
 	});
@@ -154,9 +167,10 @@
 			// The stream shows a sent message at once and marks it `failed` when its run ended
 			// before the client saw the server echo it (a send refused with a 401, a run stopped
 			// that early): leave it out. A response lost after the server stored the message looks
-			// the same and hides a stored message until a remount; the Retry issue #444 reconciles
-			// with the stored thread state before a resend.
-			if (msg.id && metadataOf(msg.id)?.optimisticStatus === 'failed') continue;
+			// the same and hides a stored message until a remount; Retry (the Retry issue #444) resends
+			// with the same message id, so the server merges it instead of storing it twice.
+			if (msg.id && !echoedIds.has(msg.id) && metadataOf(msg.id)?.optimisticStatus === 'failed')
+				continue;
 			const m = msg as unknown as Record<string, unknown>;
 
 			if ((m.type === 'ai' || m.type === 'AIMessageChunk') && Array.isArray(m.tool_calls)) {
@@ -208,8 +222,8 @@
 
 	// `stream.submit` resolves once the run settles, with a failure in `stream.error`; it rejects
 	// only when it fails before the run starts (setting up the thread), before the message shows.
-	// Resolves `true` when the client saw no echo of the message (see `mapMessages`), which then
-	// left the list, or when the submit rejected.
+	// Resolves the message's id when the client saw no echo of it (see `mapMessages`), which then
+	// left the list, or when the submit rejected; `undefined` otherwise.
 	async function send(text: string, forkFrom?: string) {
 		actionError = null;
 		const id = crypto.randomUUID();
@@ -217,9 +231,9 @@
 			await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
 		} catch (error) {
 			actionError = asError(error);
-			return true;
+			return id;
 		}
-		return metadataOf(id)?.optimisticStatus === 'failed';
+		return !echoedIds.has(id) && metadataOf(id)?.optimisticStatus === 'failed' ? id : undefined;
 	}
 
 	// A send with no echo would lose the text: put it back in the composer, unless the user has
@@ -227,8 +241,12 @@
 	// message, which leaves the old branch shown; its text is not put back.
 	async function submitHumanMessage(text: string) {
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		const refused = await send(text);
-		if (refused && current_input === '') current_input = text;
+		restoredSend = undefined;
+		const unechoed = await send(text);
+		if (unechoed && current_input === '') {
+			current_input = text;
+			restoredSend = { id: unechoed, text };
+		}
 	}
 
 	function submitInput(text?: string) {

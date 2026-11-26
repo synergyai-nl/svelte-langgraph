@@ -449,6 +449,31 @@ describe('Conversation', () => {
 			expect(document.querySelector('[data-message-type="user"]')).toBeNull();
 		});
 
+		test('an echo that arrives after the failure shows the message and empties the composer', async () => {
+			const user = userEvent.setup();
+			let sentId = '';
+			mockModule.mockStreamCallbacks.submit = vi.fn(async (input) => {
+				sentId = (input as SubmitInput).messages[0].id;
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: sentId }]);
+				mockModule.setMetadata(sentId, { optimisticStatus: 'failed' });
+				mockModule.setError(new Error('Boom'));
+			});
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello');
+			await user.keyboard('{Enter}');
+			await waitFor(() => expect(textbox).toHaveValue('Hello'));
+			expect(document.querySelector('[data-message-type="user"]')).toBeNull();
+
+			// The status stays `failed`; the server's values carry the message after all.
+			mockModule.emitValues({ messages: [{ type: 'human', content: 'Hello', id: sentId }] });
+
+			await waitFor(() => expect(textbox).toHaveValue(''));
+			expect(document.querySelector('[data-message-type="user"]')).toHaveTextContent('Hello');
+			expect(screen.getByTestId('chat-error')).toBeInTheDocument();
+		});
+
 		test('keeps the message and an empty composer when the server stored it', async () => {
 			const user = userEvent.setup();
 			failSubmit(new Error('Generation failed'), 'sent');
@@ -613,6 +638,19 @@ describe('Conversation', () => {
 			if (!api) throw new Error('the snippet did not render');
 			return api;
 		}
+
+		test('a submit that fails before its run starts lands in error', async () => {
+			// The stream rejects when setting up the thread fails, before any run starts.
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				throw new Error('Thread setup failed');
+			});
+			const api = renderForApi();
+
+			api.submit();
+
+			await waitFor(() => expect(api.error?.message).toBe('Thread setup failed'));
+			expect(api.input).toBe('');
+		});
 
 		test('submits exactly { messages: [] }, adds no message and leaves input alone', () => {
 			const submit = vi.fn();
