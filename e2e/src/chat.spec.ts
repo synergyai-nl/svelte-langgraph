@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { LANGGRAPH_CONFIG, gotoFreshThread } from './fixtures/backend';
+import { LANGGRAPH_CONFIG, gotoFreshThread, makeAuthenticatedRequest } from './fixtures/backend';
+import type { ChatPage } from './pages';
 
 // Opt this file out of fullyParallel. Every test here now starts on its own fresh thread
 // (gotoFreshThread), so none of them share LangGraph thread state; serial mode is kept as
@@ -102,6 +103,114 @@ test.describe('Sending', () => {
 		await chat.expectAiReply(message);
 		await expect(errorCard).toHaveCount(0);
 		await expect(chat.textInput).toHaveValue('');
+	});
+
+	test('a run that fails after the server created it keeps the message, not the text', async ({
+		page,
+		chat
+	}) => {
+		// The SDK learns the run id from the first `metadata` event: from then on the input is
+		// the server's, so the message stays in the list and the composer stays empty.
+		await page.route(
+			'**/runs/stream',
+			(route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'text/event-stream',
+					body:
+						`event: metadata\ndata: ${JSON.stringify({ run_id: randomUUID() })}\n\n` +
+						`event: error\ndata: ${JSON.stringify({ error: 'Boom', message: 'failed' })}\n\n`
+				}),
+			{ times: 1 }
+		);
+
+		const message = `Created then failed ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+
+		await expect(page.getByTestId('chat-error')).toBeVisible();
+		await expect(chat.userMessage(message)).toHaveCount(1);
+		await expect(chat.textInput).toHaveValue('');
+	});
+});
+
+test.describe('History load', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+	});
+
+	test('a thread shows its stored messages after a reload; the composer waits for them', async ({
+		page,
+		chat
+	}) => {
+		const threadId = await gotoFreshThread(page);
+		const message = `Stored ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+		await chat.expectAiReply(message);
+
+		let releaseHistory!: () => void;
+		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadId}/history`, async (route) => {
+			await historyGate;
+			await route.continue();
+		});
+		await page.reload();
+		await expect(chat.historyLoading).toBeVisible();
+		await expect(chat.textInput).toBeDisabled();
+		await expect(chat.sendButton).toBeDisabled();
+
+		releaseHistory();
+		await expect(chat.userMessage(message)).toBeVisible();
+		await expect(chat.aiMessage(message)).toBeVisible();
+		await expect(chat.textInput).toBeEnabled();
+	});
+});
+
+test.describe('Runs outlive the page', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await gotoFreshThread(page);
+	});
+
+	/** Starts a ~13 s echo (see 'Streaming') and waits for its head; returns its tail. */
+	async function startLongReply(chat: ChatPage): Promise<string> {
+		const testInput = Array.from({ length: 8 }, () => randomUUID().replace(/-/g, '')).join('');
+		await chat.textInput.fill(testInput);
+		await chat.textInput.press('Enter');
+		await expect(chat.aiMessage(testInput.slice(0, 20))).toBeVisible({ timeout: 30_000 });
+		return testInput.slice(-20);
+	}
+
+	test('reloading mid-reply shows the reply', async ({ page, chat }) => {
+		test.setTimeout(90_000);
+		const tail = await startLongReply(chat);
+		await expect(chat.aiMessage(tail)).toHaveCount(0);
+
+		await page.reload();
+
+		// The page joins the run again and shows the whole reply. Whether the composer becomes
+		// usable again is not asserted here.
+		await expect(chat.aiMessage(tail)).toBeVisible({ timeout: 45_000 });
+	});
+
+	test('leaving mid-run does not cancel the run', async ({ page, chat, sidebar }) => {
+		test.setTimeout(90_000);
+		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
+		const tail = await startLongReply(chat);
+
+		// Client-side navigation unmounts the conversation, which disposes its stream.
+		await sidebar.newChatButton.click();
+		await page.waitForURL((url) => !url.pathname.endsWith(threadId));
+
+		await expect(async () => {
+			const res = await makeAuthenticatedRequest(page, `/threads/${threadId}/runs`);
+			const runs = (await res.json()) as Array<{ status: string }>;
+			expect(runs.map((run) => run.status)).toEqual(['success']);
+		}).toPass({ timeout: 45_000 });
+
+		await sidebar.threadLink(threadId).click();
+		await expect(chat.aiMessage(tail)).toBeVisible();
 	});
 });
 
