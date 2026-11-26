@@ -197,29 +197,42 @@ export async function createThread(
 /**
  * The checkpoint to fork from to replace message `messageId` and everything after it (an edit,
  * or a regenerate of an answer): the parent of the oldest checkpoint on the thread's current
- * branch that holds the message. Reads the newest `limit` checkpoints once and follows the
- * branch from the newest. `undefined` when the message is not on the branch, or the branch
- * leaves those checkpoints before the message's first one.
+ * branch that holds the message. Follows the branch from the newest checkpoint, reading the
+ * history `pageSize` checkpoints per request, newest first, until it has passed the message's
+ * first checkpoint. `undefined` when the message is not on the branch.
  */
 export async function findForkPoint(
 	client: Client,
 	threadId: string,
 	messageId: string,
-	limit = 100
+	pageSize = 100
 ): Promise<string | undefined> {
-	const history = await client.threads.getHistory<ThreadValues>(threadId, { limit });
-	const byId = new Map(history.map((state) => [state.checkpoint.checkpoint_id, state]));
+	const byId = new Map<string, ThreadState<ThreadValues>>();
+	let page: ThreadState<ThreadValues>[] = [];
+	const readPage = async () => {
+		const last = page.at(-1)?.checkpoint.checkpoint_id;
+		page = await client.threads.getHistory<ThreadValues>(threadId, {
+			limit: pageSize,
+			before: last === undefined ? undefined : { configurable: { checkpoint_id: last } }
+		});
+		for (const state of page) byId.set(state.checkpoint.checkpoint_id!, state);
+	};
 	const holds = (
 		state: ThreadState<ThreadValues> | undefined
 	): state is ThreadState<ThreadValues> =>
 		state?.values?.messages?.some((message) => message.id === messageId) ?? false;
-	let state: ThreadState<ThreadValues> | undefined = history[0];
+
+	await readPage();
+	let state: ThreadState<ThreadValues> | undefined = page[0];
 	let forkFrom: string | undefined;
 	while (holds(state)) {
 		forkFrom = state.parent_checkpoint?.checkpoint_id ?? undefined;
-		state = forkFrom === undefined ? undefined : byId.get(forkFrom);
+		if (forkFrom === undefined) return undefined;
+		// A parent is older than its child, so it is on a later page when not read yet.
+		while (!byId.has(forkFrom) && page.length === pageSize) await readPage();
+		state = byId.get(forkFrom);
 	}
-	// `state` is now the newest checkpoint on the branch without the message, if it was read.
+	// `state` is now the newest checkpoint on the branch without the message, if there is one.
 	return state && forkFrom;
 }
 

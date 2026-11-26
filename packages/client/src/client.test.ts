@@ -420,12 +420,22 @@ describe('findForkPoint', () => {
 		parent_checkpoint: parent && { checkpoint_id: parent },
 		values: { messages: ids.map((messageId) => ({ id: messageId })) }
 	});
-	const forkPoint = async (history: unknown[], messageId: string) => {
-		vi.stubGlobal(
-			'fetch',
-			vi.fn(async () => new Response(JSON.stringify(history)))
-		);
-		return findForkPoint(createClient('https://backend.test/api/'), 't1', messageId);
+	/** Serves `history` newest first, `limit` per request, after the `before` checkpoint. */
+	let fetchMock: ReturnType<typeof vi.fn>;
+	const forkPoint = async (
+		history: Array<ReturnType<typeof checkpoint>>,
+		messageId: string,
+		pageSize?: number
+	) => {
+		fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+			const { limit, before } = JSON.parse(String(init.body));
+			const after = (s: ReturnType<typeof checkpoint>) =>
+				s.checkpoint.checkpoint_id === before?.configurable.checkpoint_id;
+			const start = before ? history.findIndex(after) + 1 : 0;
+			return new Response(JSON.stringify(history.slice(start, start + limit)));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		return findForkPoint(createClient('https://backend.test/api/'), 't1', messageId, pageSize);
 	};
 	// Newest first: an edit of `h1` forked at `c1` into `c4`…`c5`, so `c2`…`c3` are another branch.
 	const history = [
@@ -445,7 +455,14 @@ describe('findForkPoint', () => {
 		expect(await forkPoint(history, 'h1')).toBeUndefined();
 	});
 
-	it('is undefined when the branch leaves the checkpoints read before the message starts', async () => {
-		expect(await forkPoint(history.slice(0, 1), 'h1b')).toBeUndefined();
+	it('reads further pages until it has passed the message, and no more', async () => {
+		expect(await forkPoint(history, 'h1b', 2)).toBe('c1');
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(await forkPoint(history, 'a1b', 2)).toBe('c4');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("is undefined for a message in the thread's first checkpoint", async () => {
+		expect(await forkPoint([checkpoint('c1', null, ['h0'])], 'h0')).toBeUndefined();
 	});
 });
