@@ -132,7 +132,7 @@ describe('shadcn-svelte registry', () => {
 
 	test('lists only the packages the chat adds, at the demo app ranges', () => {
 		// Packages every shadcn-svelte + Paraglide app has (`bits-ui`, `tailwind-variants`,
-		// `@inlang/paraglide-js`) stay out: the CLI reinstalls any package whose installed version
+		// `@inlang/paraglide-js`) stay out: the CLI reinstalls any package whose declared range
 		// is outside the listed range, so listing them would rewrite the app's own ranges.
 		const ranges: Record<string, string> = { ...pkg.devDependencies, ...pkg.dependencies };
 		const at = (name: string) => `${name}@${ranges[name]}`;

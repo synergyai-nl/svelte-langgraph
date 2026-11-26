@@ -185,7 +185,7 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    - **Dependencies.** The chat adds only `@langchain/langgraph-sdk`, `@langchain/svelte`,
      `@lucide/svelte`, `@tailwindcss/typography` and `svelte-exmarkdown` under `dependencies`,
      and `@types/node` (which Paraglide's generated `server.js` needs) under `devDependencies`.
-     The CLI reinstalls a package whose installed version is outside the listed range, so
+     The CLI reinstalls a package whose range declared in the app's `package.json` falls outside the listed range, so
      `@lucide/svelte` is listed as `>=0.562.0` and `@types/node` as `*`: a version you already
      have stays. `shadcn-svelte init` installs `@lucide/svelte` only for Lucide icon presets.
      The stock components carry their own ranges, which the CLI
