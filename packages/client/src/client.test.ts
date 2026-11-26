@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClient } from './client';
+import { createClient, createThread, getOrCreateThread } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -337,5 +337,70 @@ describe('onRequest hook', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(onRequest).not.toHaveBeenCalled();
+	});
+});
+
+describe('thread helpers', () => {
+	const thread = { thread_id: 'a-given-id', metadata: {} };
+	const json = (body: unknown, status = 200) =>
+		new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+	const sent = (call: unknown[]) => {
+		const [url, init] = call as [string, RequestInit];
+		return { url, method: init.method, body: JSON.parse(String(init.body)) };
+	};
+	let fetchMock: ReturnType<typeof vi.fn>;
+	beforeEach(() => vi.stubGlobal('fetch', (fetchMock = vi.fn(async () => json(thread)))));
+	const client = () => createClient('https://backend.test/api/', 'test-token');
+
+	it('tags a new thread with the graph, over the same key in the metadata', async () => {
+		await createThread(client(), 'coach', { topic: 'trip', graph_id: 'other' });
+
+		expect(sent(fetchMock.mock.calls[0]).body.metadata).toEqual({
+			topic: 'trip',
+			graph_id: 'coach'
+		});
+	});
+
+	it('creates a given thread if it is missing, in one request and without a search', async () => {
+		expect(
+			await getOrCreateThread(client(), 'coach', {
+				threadId: 'a-given-id',
+				metadata: { topic: 'trip' }
+			})
+		).toEqual(thread);
+
+		expect(fetchMock.mock.calls.map(sent)).toEqual([
+			{
+				url: 'https://backend.test/api/threads',
+				method: 'POST',
+				body: {
+					thread_id: 'a-given-id',
+					if_exists: 'do_nothing',
+					metadata: { topic: 'trip', graph_id: 'coach' }
+				}
+			}
+		]);
+	});
+
+	it('reuses an idle thread with the same graph and metadata', async () => {
+		fetchMock.mockResolvedValueOnce(json([thread]));
+
+		await getOrCreateThread(client(), 'coach', { metadata: { topic: 'trip' } });
+
+		expect(fetchMock.mock.calls.map(sent)).toMatchObject([
+			{
+				url: 'https://backend.test/api/threads/search',
+				body: { metadata: { topic: 'trip', graph_id: 'coach' }, status: 'idle', limit: 1 }
+			}
+		]);
+	});
+
+	it("passes the server's error to the caller unchanged", async () => {
+		fetchMock.mockResolvedValue(json({ detail: 'exists' }, 409));
+
+		await expect(
+			getOrCreateThread(client(), 'coach', { threadId: 'someone-elses-id' })
+		).rejects.toMatchObject({ status: 409 });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 });

@@ -56,7 +56,7 @@ describe('ThreadListState', () => {
 		const { promise, resolve } = deferred<unknown[]>();
 		mock.threads.search.mockReturnValue(promise);
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		expect(list.loading).toBe(true);
 		expect(mock.threads.search).toHaveBeenCalledTimes(1);
 
@@ -68,12 +68,12 @@ describe('ThreadListState', () => {
 		expect(list.threads[0].id).toBe('thread-1');
 	});
 
-	it('searches only chat threads, without restricting status', async () => {
+	it("searches only the given graph's threads, without restricting status", async () => {
 		const list = new ThreadListState({ pageSize: 20 });
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([]);
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'coach');
 		await flushPromises();
 
 		expect(mock.threads.search).toHaveBeenCalledTimes(1);
@@ -87,7 +87,7 @@ describe('ThreadListState', () => {
 			select: [...THREAD_SELECT]
 		});
 		expect(arg.signal).toBeInstanceOf(AbortSignal);
-		expect(arg.metadata).toEqual({ graph_id: 'chat' });
+		expect(arg.metadata).toEqual({ graph_id: 'coach' });
 		expect(arg).not.toHaveProperty('status');
 	});
 
@@ -102,7 +102,7 @@ describe('ThreadListState', () => {
 			makeRawThread('b')
 		]);
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		await flushPromises();
 
 		expect(list.threads.map((t) => t.id)).toEqual(['c', 'a', 'b']);
@@ -113,7 +113,7 @@ describe('ThreadListState', () => {
 		const mock = makeMockClient();
 		mock.threads.search.mockRejectedValue(new Error('boom'));
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		await flushPromises();
 
 		expect(list.error).toBeInstanceOf(Error);
@@ -131,7 +131,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('thread-1')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			expect(mock.threads.search).toHaveBeenCalledTimes(2);
@@ -161,7 +161,7 @@ describe('ThreadListState', () => {
 					return [makeRawThread('thread-1')];
 				});
 
-				list.setClient(asClient(mock));
+				list.setClient(asClient(mock), 'chat');
 				await flushPromises();
 
 				expect(list.error).toBeNull();
@@ -187,7 +187,7 @@ describe('ThreadListState', () => {
 			// a 5xx), not something specific to `select`.
 			mock.threads.search.mockRejectedValue(new Error('server unavailable'));
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			expect(mock.threads.search).toHaveBeenCalledTimes(2);
@@ -218,7 +218,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('thread-1')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			expect(mock.threads.search).toHaveBeenCalledTimes(2);
@@ -248,7 +248,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('thread-1')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			expect(mock.threads.search).toHaveBeenCalledTimes(2);
@@ -273,8 +273,8 @@ describe('ThreadListState', () => {
 		mockA.threads.search.mockReturnValue(promiseA);
 		mockB.threads.search.mockResolvedValue([makeRawThread('from-b')]);
 
-		list.setClient(asClient(mockA));
-		list.setClient(asClient(mockB));
+		list.setClient(asClient(mockA), 'chat');
+		list.setClient(asClient(mockB), 'chat');
 		await flushPromises();
 
 		expect(list.threads).toHaveLength(1);
@@ -290,19 +290,24 @@ describe('ThreadListState', () => {
 		expect(list.error).toBeNull();
 	});
 
-	it('setClient with the same client is a no-op', async () => {
+	it('setClient with the same client and graph is a no-op; a new graph reloads', async () => {
 		const list = new ThreadListState();
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([]);
 		const client = asClient(mock);
 
-		list.setClient(client);
+		list.setClient(client, 'chat');
 		await flushPromises();
 		expect(mock.threads.search).toHaveBeenCalledTimes(1);
 
-		list.setClient(client);
+		list.setClient(client, 'chat');
 		await flushPromises();
 		expect(mock.threads.search).toHaveBeenCalledTimes(1);
+
+		list.setClient(client, 'coach');
+		await flushPromises();
+		expect(mock.threads.search).toHaveBeenCalledTimes(2);
+		expect(mock.threads.search.mock.calls[1][0].metadata).toEqual({ graph_id: 'coach' });
 	});
 
 	it('setClient(null) clears state without issuing a request', async () => {
@@ -310,11 +315,11 @@ describe('ThreadListState', () => {
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValue([makeRawThread('thread-1')]);
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		await flushPromises();
 		expect(list.threads).toHaveLength(1);
 
-		list.setClient(null);
+		list.setClient(null, 'chat');
 
 		expect(list.threads).toEqual([]);
 		expect(list.loading).toBe(false);
@@ -327,14 +332,14 @@ describe('ThreadListState', () => {
 		const fullPage = new ThreadListState({ pageSize: 2 });
 		const mockFull = makeMockClient();
 		mockFull.threads.search.mockResolvedValue([makeRawThread('a'), makeRawThread('b')]);
-		fullPage.setClient(asClient(mockFull));
+		fullPage.setClient(asClient(mockFull), 'chat');
 		await flushPromises();
 		expect(fullPage.hasMore).toBe(true);
 
 		const shortPage = new ThreadListState({ pageSize: 2 });
 		const mockShort = makeMockClient();
 		mockShort.threads.search.mockResolvedValue([makeRawThread('a')]);
-		shortPage.setClient(asClient(mockShort));
+		shortPage.setClient(asClient(mockShort), 'chat');
 		await flushPromises();
 		expect(shortPage.hasMore).toBe(false);
 	});
@@ -344,7 +349,7 @@ describe('ThreadListState', () => {
 			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 			expect(list.threads.map((t) => t.id)).toEqual(['a', 'b']);
 
@@ -361,7 +366,7 @@ describe('ThreadListState', () => {
 			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			const { promise } = deferred<unknown[]>();
@@ -377,7 +382,7 @@ describe('ThreadListState', () => {
 			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 			expect(list.hasMore).toBe(false);
 
@@ -391,7 +396,7 @@ describe('ThreadListState', () => {
 		const list = new ThreadListState({ pageSize: 2 });
 		const mock = makeMockClient();
 		mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		await flushPromises();
 		expect(list.threads.map((t) => t.id)).toEqual(['a', 'b']);
 
@@ -409,7 +414,7 @@ describe('ThreadListState', () => {
 			// A single short page: hasMore stays false, which is exactly what made the old
 			// loadMore()-based retry a silent no-op.
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 			expect(list.hasMore).toBe(false);
 
@@ -437,7 +442,7 @@ describe('ThreadListState', () => {
 			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a'), makeRawThread('b')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 			expect(list.hasMore).toBe(true);
 
@@ -460,7 +465,7 @@ describe('ThreadListState', () => {
 			const list = new ThreadListState({ pageSize: 2 });
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('a')]);
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			mock.threads.search.mockResolvedValueOnce([makeRawThread('z')]);
@@ -477,7 +482,7 @@ describe('ThreadListState', () => {
 		const { promise, resolve } = deferred<unknown[]>();
 		mock.threads.search.mockReturnValue(promise);
 
-		list.setClient(asClient(mock));
+		list.setClient(asClient(mock), 'chat');
 		expect(list.loading).toBe(true);
 
 		list.dispose();
@@ -500,7 +505,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 			await flushPromises();
 
@@ -517,7 +522,7 @@ describe('ThreadListState', () => {
 			const mock = makeMockClient();
 			mock.threads.search.mockResolvedValue([makeRawThread('a'), makeRawThread('target')]);
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 			mock.threads.search.mockClear();
 
@@ -538,7 +543,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('target'), makeRawThread('c')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 			await flushPromises();
 
@@ -560,7 +565,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 			await flushPromises();
 			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
@@ -586,7 +591,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 			await flushPromises();
 			expect(list.threads.map((t) => t.id)).toEqual(['target', 'a', 'b']);
@@ -617,7 +622,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 			await flushPromises();
 
@@ -635,7 +640,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('not-mine');
 			await flushPromises();
 
@@ -653,7 +658,7 @@ describe('ThreadListState', () => {
 				query.ids ? pinPromise : pagePromise
 			);
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			list.setActiveThreadId('target');
 
 			const pinCall = mock.threads.search.mock.calls.find(
@@ -678,7 +683,7 @@ describe('ThreadListState', () => {
 				return [makeRawThread('a'), makeRawThread('b')];
 			});
 
-			list.setClient(asClient(mock));
+			list.setClient(asClient(mock), 'chat');
 			await flushPromises();
 
 			mock.threads.search.mockClear();
@@ -704,7 +709,7 @@ describe('ThreadListState', () => {
 			expect(list.threads).toEqual([]);
 			expect(list.error).toBeNull();
 
-			list.setClient(null);
+			list.setClient(null, 'chat');
 
 			expect(list.loading).toBe(false);
 		});

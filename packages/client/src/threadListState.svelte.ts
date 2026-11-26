@@ -7,7 +7,7 @@
  * `setClient`.
  *
  * Server already scopes every `threads.search` to the caller (global `add_owner` handler), so
- * the metadata filter below selects chat threads only. Busy/interrupted threads intentionally
+ * the metadata filter below selects the threads of one graph only. Busy/interrupted threads intentionally
  * stay in the list — no `status` filter either.
  */
 import type { Client } from '@langchain/langgraph-sdk';
@@ -73,6 +73,7 @@ export class ThreadListState {
 	 * identity no-op below and still clears `initialLoading`.
 	 */
 	#client: Client | null | undefined = undefined;
+	#graphId = '';
 	#activeThreadId: string | null = null;
 	#nextOffset = 0;
 	/** The last request that failed, replayed by `retry()`. Cleared on any successful load. */
@@ -110,15 +111,17 @@ export class ThreadListState {
 	}
 
 	/**
-	 * Swap the active client. Identity no-op if unchanged. Aborts any in-flight request, resets
-	 * state, and loads page 0 for the new client (or just clears state when `next` is null).
+	 * Swap the active client and the graph whose threads are listed (`metadata.graph_id`). No-op
+	 * if both are unchanged. Aborts any in-flight request, resets state, and loads page 0 for the
+	 * new pair (or just clears state when `next` is null).
 	 */
-	setClient(next: Client | null): void {
-		if (next === this.#client) return;
+	setClient(next: Client | null, graphId: string): void {
+		if (next === this.#client && graphId === this.#graphId) return;
 
 		this.#abortInFlight();
 		this.#abortPin();
 		this.#client = next;
+		this.#graphId = graphId;
 		this.#threads = [];
 		this.#pinned = null;
 		this.#error = null;
@@ -298,7 +301,7 @@ export class ThreadListState {
 	 * while `select`/`signal` are managed here.
 	 */
 	async #search(client: Client, query: BaseQuery, signal: AbortSignal): Promise<SearchedThread[]> {
-		query = { ...query, metadata: { graph_id: 'chat' } };
+		query = { ...query, metadata: { graph_id: this.#graphId } };
 		if (!this.#supportsSelect) {
 			return (await client.threads.search({ ...query, signal })) as SearchedThread[];
 		}

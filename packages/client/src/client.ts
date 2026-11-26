@@ -1,4 +1,4 @@
-import { Client, type RequestHook, type Thread } from '@langchain/langgraph-sdk';
+import { Client, type Metadata, type RequestHook, type Thread } from '@langchain/langgraph-sdk';
 import { apiEndpoint, normalizeApiUrl } from './apiUrl';
 import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
@@ -130,24 +130,60 @@ export function createClient(
 	});
 }
 
-export async function getOrCreateThread(client: Client): Promise<Thread<ThreadValues>> {
+/** A caller's own thread for {@link getOrCreateThread}. */
+export interface ThreadOptions {
+	/** Use this thread: created when missing, otherwise returned as it is. */
+	threadId?: string;
+	/**
+	 * Written onto a thread this call creates, never onto an existing one. `graph_id` is always
+	 * `graphId`: the thread list filters on it, and the server stamps it again on every run.
+	 */
+	metadata?: Metadata;
+}
+
+/**
+ * With `threadId`, one create request that does nothing when the thread exists
+ * (`ifExists: 'do_nothing'`). Without it, the most recently updated idle thread of `graphId`
+ * whose metadata matches, or a new one. Errors (a 409 for another user's id, 403, network) reach
+ * the caller unchanged.
+ */
+export async function getOrCreateThread(
+	client: Client,
+	graphId: string,
+	{ threadId, metadata }: ThreadOptions = {}
+): Promise<Thread<ThreadValues>> {
+	if (threadId) {
+		return (await client.threads.create({
+			graphId,
+			metadata,
+			threadId,
+			ifExists: 'do_nothing'
+		})) as Thread<ThreadValues>;
+	}
 	const threads = await client.threads.search({
-		metadata: { graph_id: 'chat' },
+		metadata: { ...metadata, graph_id: graphId },
 		status: 'idle',
 		limit: 1,
 		sortBy: 'updated_at',
 		sortOrder: 'desc'
 	});
-	return threads.length ? (threads[0] as Thread<ThreadValues>) : createThread(client);
+	return threads.length
+		? (threads[0] as Thread<ThreadValues>)
+		: createThread(client, graphId, metadata);
 }
 
 /**
- * Unconditionally create a new thread.
+ * Unconditionally create a new thread of `graphId`; `graph_id` wins over the same key in
+ * `metadata`.
  * Distinct from getOrCreateThread, which deliberately reuses the most recently updated *idle*
  * thread. "New chat" means new — reuse would drop the user back into the conversation they left.
  */
-export async function createThread(client: Client): Promise<Thread<ThreadValues>> {
-	return (await client.threads.create({ metadata: { graph_id: 'chat' } })) as Thread<ThreadValues>;
+export async function createThread(
+	client: Client,
+	graphId: string,
+	metadata?: Metadata
+): Promise<Thread<ThreadValues>> {
+	return (await client.threads.create({ graphId, metadata })) as Thread<ThreadValues>;
 }
 
 export async function getOrCreateAssistant(
