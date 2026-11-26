@@ -52,6 +52,26 @@ export function extractThinkingFromContent(
 	return undefined;
 }
 
+/**
+ * The calls an AI message makes, from `tool_calls` and the content blocks. While a message
+ * streams, its `tool_calls` covers only the call still arriving, so a call finished before it is
+ * read from its block. A call is listed once it has an id and a name: a call without an id can
+ * never be answered, and one still streaming may get its id later.
+ */
+function extractToolCalls(item: Record<string, unknown>): { id: string; name: string }[] {
+	const blocks = (Array.isArray(item.content) ? item.content : []).filter(
+		(b) => b?.type === 'tool_call' || b?.type === 'tool_call_chunk'
+	);
+	const calls = new Map<string, string>();
+	// Blocks first: they keep the order the calls were made in while one is still streaming.
+	for (const c of [...blocks, ...(Array.isArray(item.tool_calls) ? item.tool_calls : [])]) {
+		const { id, name } = (c ?? {}) as { id?: unknown; name?: unknown };
+		if (typeof id === 'string' && id && typeof name === 'string' && name && !calls.has(id))
+			calls.set(id, name);
+	}
+	return [...calls].map(([id, name]) => ({ id, name }));
+}
+
 export function convertThreadMessage(item: Record<string, unknown>): Message {
 	if (item.type === 'human') {
 		return {
@@ -64,11 +84,13 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 		const text = extractTextFromContent(item.content);
 		const thinking = extractThinkingFromContent(item.content, additionalKwargs);
 		const responseMetadata = item.response_metadata as Record<string, unknown> | undefined;
+		const toolCalls = extractToolCalls(item);
 		return {
 			type: 'ai',
 			text,
 			id: (item.id as string) || crypto.randomUUID(),
 			...(thinking ? { thinking } : {}),
+			...(toolCalls.length ? { toolCalls } : {}),
 			// A generated id would name nothing the backend knows.
 			...(item.id && typeof responseMetadata?.run_id === 'string' ? { rateable: true } : {})
 		} as AIMessage;

@@ -45,6 +45,34 @@ describe('convertThreadMessage', () => {
 		expect(convertThreadMessage({ ...stamped, id: undefined })).not.toHaveProperty('rateable');
 	});
 
+	describe('toolCalls', () => {
+		const call = (id: string | undefined) => ({ id, name: 'get_weather', args: { city: 'x' } });
+		const both = ['c1', 'c2'].map((id) => ({ id, name: 'get_weather' }));
+
+		it('lists the calls by id and name, and is absent without any', () => {
+			const ai = { type: 'ai', content: '', id: 'ai-1', tool_calls: [call('c1'), call('c2')] };
+			expect(convertThreadMessage(ai)).toMatchObject({ toolCalls: both });
+			expect(convertThreadMessage({ ...ai, tool_calls: [] })).not.toHaveProperty('toolCalls');
+		});
+
+		it('leaves out a call without an id, also one still streaming', () => {
+			const ai = { type: 'ai', content: '', id: 'ai-1', tool_calls: [call(undefined), call('')] };
+			expect(convertThreadMessage(ai)).not.toHaveProperty('toolCalls');
+			const chunk = { type: 'tool_call_chunk', name: 'get_weather', args: '{' };
+			const streaming = { ...ai, content: [chunk], tool_calls: [], tool_call_chunks: [chunk] };
+			expect(convertThreadMessage(streaming)).not.toHaveProperty('toolCalls');
+		});
+
+		it('keeps a finished call while the next one streams, in order', () => {
+			// The stream's shape: `tool_calls` covers only the chunk still arriving.
+			const chunk = { type: 'tool_call_chunk', id: 'c2', name: 'get_weather', args: '{"ci' };
+			const content = [{ type: 'tool_call', ...call('c1') }, chunk];
+			const tool_calls = [{ ...call('c2'), args: {} }];
+			const streaming = { type: 'ai', id: 'ai-1', content, tool_calls, tool_call_chunks: [chunk] };
+			expect(convertThreadMessage(streaming)).toMatchObject({ toolCalls: both });
+		});
+	});
+
 	it('should convert tool message to ToolMessage', () => {
 		const item = {
 			type: 'tool',

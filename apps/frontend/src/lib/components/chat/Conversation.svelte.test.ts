@@ -851,6 +851,19 @@ describe('Conversation', () => {
 			// The default composition (MessageComposer/MessagesList) must not render at all.
 			expect(screen.queryByPlaceholderText('Ask your agent…')).not.toBeInTheDocument();
 		});
+
+		test("an AI message's api copy carries its tool calls", () => {
+			const toolCall = { id: 'call-1', name: 'change_phase', args: { phase: 'review' } };
+			mockModule.setMessages([{ type: 'ai', content: '', id: 'ai-1', tool_calls: [toolCall] }]);
+			const children = createRawSnippet<[ConversationApi]>((getApi) => ({
+				render: () => `<p data-testid="calls">${JSON.stringify(getApi().messages[0])}</p>`
+			}));
+			renderConversation({ children });
+
+			expect(JSON.parse(screen.getByTestId('calls').textContent!)).toMatchObject({
+				toolCalls: [{ id: 'call-1', name: 'change_phase' }]
+			});
+		});
 	});
 
 	describe('when an AI message is rated', () => {
