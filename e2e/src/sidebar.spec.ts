@@ -125,13 +125,13 @@ test.describe('Sidebar - real backend', () => {
 		await chat.textInput.press('Enter');
 		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
 
-		// Gate threadA's history refetch (fired on mount of the remounted Chat instance,
-		// see `{#key threadId}` in [threadID]/+page.svelte) so the pending window is deterministically
-		// observable rather than racing a fast local response. Registered only now — after B
-		// is mounted and quiescent — so it doesn't also catch B's own on-mount history fetch.
+		// Gate threadA's history load (its thread state, read on mount of the remounted Chat
+		// instance, see `{#key threadId}` in [threadID]/+page.svelte) so the pending window is
+		// deterministically observable rather than racing a fast local response. Registered only
+		// now — after B is mounted and quiescent — so it doesn't also catch B's own on-mount load.
 		let releaseHistory!: () => void;
 		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
-		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/history`, async (route) => {
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/state`, async (route) => {
 			await historyGate;
 			await route.continue();
 		});
