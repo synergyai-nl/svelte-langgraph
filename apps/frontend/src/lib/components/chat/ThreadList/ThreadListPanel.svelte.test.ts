@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
-import type { ThreadListState } from '@svelte-langgraph/client';
+import type { ThreadListState } from '#lib/svelte-langgraph-client/index.ts';
 import type { useSidebar } from '#lib/components/ui/sidebar/index.ts';
 import LangGraphHost from '../__tests__/LangGraphHost.svelte';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';

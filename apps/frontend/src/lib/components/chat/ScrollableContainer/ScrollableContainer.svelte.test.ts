@@ -2,7 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render } from '@testing-library/svelte';
 import ScrollableContainerHost from './__tests__/ScrollableContainerHost.svelte';
 import { anAIMessage } from '../../__tests__/fixtures';
-import type { Message } from '@svelte-langgraph/client';
+import type { Message } from '#lib/svelte-langgraph-client/index.ts';
 
 /**
  * Renders message rows through ScrollableContainer's `scrollToMe` attachment,

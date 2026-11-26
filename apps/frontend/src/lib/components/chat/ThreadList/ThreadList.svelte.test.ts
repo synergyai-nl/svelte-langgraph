@@ -5,7 +5,11 @@ import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import ThreadList from './ThreadList.svelte';
 import { makeContext } from '../__tests__/testContext.js';
 import { aThread } from '../../__tests__/fixtures';
-import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
+import {
+	threadLabel,
+	type ThreadSummary,
+	type ThreadListState
+} from '#lib/svelte-langgraph-client/index.ts';
 import { useSidebar } from '#lib/components/ui/sidebar/index.ts';
 
 interface ListStubOverrides {

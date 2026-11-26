@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
 import StateField from './StateField.svelte';
-import type { FieldBinding } from '@svelte-langgraph/client';
+import type { FieldBinding } from '#lib/svelte-langgraph-client/index.ts';
 
 /**
  * Build a minimal FieldBinding test double.

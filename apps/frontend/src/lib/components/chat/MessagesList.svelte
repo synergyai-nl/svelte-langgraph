@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChatMessage from './ChatMessage.svelte';
 	import ChatToolMessage from './ChatToolMessage.svelte';
-	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
+	import type { FeedbackScore, Message } from '#lib/svelte-langgraph-client/index.ts';
 	import ChatWaiting from './ChatWaiting.svelte';
 	import ChatErrorMessage from './ChatErrorMessage.svelte';
 	import { fly } from 'svelte/transition';

@@ -2,7 +2,11 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import { aThread } from '../../__tests__/fixtures';
-import { threadLabel, type ThreadSummary, type ThreadListState } from '@svelte-langgraph/client';
+import {
+	threadLabel,
+	type ThreadSummary,
+	type ThreadListState
+} from '#lib/svelte-langgraph-client/index.ts';
 import { useSidebar } from '#lib/components/ui/sidebar/index.ts';
 
 // Covers ThreadListItem.svelte:18-21 (handleClick): a row click closes the mobile drawer and

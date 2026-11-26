@@ -3,7 +3,7 @@
 	import { findScrollContainer, createBottomScroller } from './scrollControls';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import type { BaseMessage } from '@svelte-langgraph/client';
+	import type { BaseMessage } from '#lib/svelte-langgraph-client/index.ts';
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ToolMessage } from '@svelte-langgraph/client';
+	import type { ToolMessage } from '#lib/svelte-langgraph-client/index.ts';
 	import { Wrench, CircleCheck, CircleAlert, Clock, ChevronRight } from '@lucide/svelte';
 	import { slide } from 'svelte/transition';
 	import * as m from '#lib/paraglide/messages.js';

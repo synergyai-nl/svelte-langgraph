@@ -22,7 +22,7 @@ import {
 	createThread as createThreadRemote,
 	type ThreadSummary,
 	type AppClient
-} from '@svelte-langgraph/client';
+} from '#lib/svelte-langgraph-client/index.ts';
 
 export interface LangGraphContextOptions {
 	/** Start the owned `ThreadListState` in the loading state — see `ThreadListOptions.initialLoading`. */

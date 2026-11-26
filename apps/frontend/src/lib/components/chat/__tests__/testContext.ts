@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { AppClient } from '@svelte-langgraph/client';
+import type { AppClient } from '#lib/svelte-langgraph-client/index.ts';
 import { LangGraphContext } from '../langGraphContext.svelte.js';
 
 /**

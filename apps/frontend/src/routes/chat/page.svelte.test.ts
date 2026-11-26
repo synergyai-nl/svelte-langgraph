@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import LangGraphHost from '#lib/components/chat/__tests__/LangGraphHost.svelte';
 import { makeContext, makeMockClient } from '#lib/components/chat/__tests__/testContext.js';
 import ChatIndexPage from './+page.svelte';
-import { getOrCreateThread } from '@svelte-langgraph/client';
+import { getOrCreateThread } from '#lib/svelte-langgraph-client/index.ts';
 
 vi.mock('$app/navigation', () => ({ goto: vi.fn().mockResolvedValue(undefined) }));
 
@@ -17,8 +17,8 @@ vi.mock('$app/state', () => ({
 
 // Keep `ThreadListState` (used by the real `LangGraphContext`) real; only the thread fetch this
 // page performs is stubbed.
-vi.mock('@svelte-langgraph/client', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@svelte-langgraph/client')>()),
+vi.mock('#lib/svelte-langgraph-client/index.ts', async (importOriginal) => ({
+	...(await importOriginal<typeof import('#lib/svelte-langgraph-client/index.ts')>()),
 	getOrCreateThread: vi.fn()
 }));
 

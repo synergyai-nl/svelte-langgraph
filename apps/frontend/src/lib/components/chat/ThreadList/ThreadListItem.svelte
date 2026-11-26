@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
 	import { Spinner } from '#lib/components/ui/spinner/index.ts';
-	import { threadLabel, type ThreadSummary } from '@svelte-langgraph/client';
+	import { threadLabel, type ThreadSummary } from '#lib/svelte-langgraph-client/index.ts';
 	// Plain read, not reactive: LanguageSwitcher's setLocale() reloads the page on change.
 	import { getLocale } from '#lib/paraglide/runtime.js';
 

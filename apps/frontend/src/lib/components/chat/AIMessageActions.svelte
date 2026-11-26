@@ -3,7 +3,7 @@
 	import { Check, Copy, RefreshCw, X } from '@lucide/svelte';
 	import { scale } from 'svelte/transition';
 	import { UseClipboard } from '#lib/hooks/use-clipboard.svelte.ts';
-	import type { FeedbackScore, Message } from '@svelte-langgraph/client';
+	import type { FeedbackScore, Message } from '#lib/svelte-langgraph-client/index.ts';
 	import * as m from '#lib/paraglide/messages.js';
 	import { Tooltip, TooltipTrigger, TooltipContent } from '#lib/components/ui/tooltip/index.ts';
 	import FeedbackButtons, { type FeedbackStatus } from './FeedbackButtons.svelte';
