@@ -15,6 +15,32 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — The chat runs on `@langchain/svelte` 1.x and Agent Protocol v2 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.** The `chat-core` registry item now asks for `@langchain/svelte` `^1.2.15` (was `^0.3.2`). Its `useStream` is a different runtime: it pins `@langchain/langgraph-sdk` 1.17.0 and talks Agent Protocol v2 to the server, `POST /threads/{id}/commands` (`run.start`) and the `POST /threads/{id}/stream/events` event stream, instead of `/runs/stream`. What that changes:
+
+- A conversation opened while its thread has a run going joins that run and shows the reply, after a reload, on coming back to it, or in a second tab; the composer is busy until the run ends. On 0.3.2 the composer could stay busy after the run had ended.
+- A message the server never stored leaves the list, and `submit(text)` puts the text back in the composer. It used to be "a send refused before the run was created". Now it is "a run that ended before the server echoed the message", which also covers a run stopped that early.
+- Stop drops the part of the reply that had streamed; the cancelled run never stored it. On 0.3.2 it stayed on screen until a reload.
+- `ConversationApi.edit` returns `Promise<boolean>` (was `boolean`): it reads the thread's history to find the checkpoint to fork from, and resolves `false` when it finds none. `MessagesList`'s and `ChatMessage`'s `onEdit` take the same type. `regenerate` reads the history too.
+- `createStateSync`'s `StreamLike.submit` takes `multitaskStrategy` instead of `optimisticValues`; `field.set()` enqueues behind a running turn, which the stream's default would cancel.
+- Every `run.start` carries `config.configurable.thread_id`, and an edit or regenerate `config.configurable.checkpoint_id`. `run_input.py` allows both as strings (Aegra overwrites the thread id and reads the checkpoint id as the run's `checkpoint`) and no longer lists `__event_streaming_v2`, which 1.x does not send.
+- `@svelte-langgraph/client` exports `findForkPoint(client, threadId, messageId)`.
+
+The item ships the new `Conversation.svelte`, `ChatMessage.svelte`, `MessagesList.svelte`, `svelte-langgraph-client/client.ts` and `svelte-langgraph-client/stateSync.svelte.ts`.
+
+**Who is affected.** Apps that installed the chat item; apps that copied `auth/run_input.py`; apps that call `api.edit`, pass their own `onEdit`, or use `createStateSync` or `@langchain/svelte` directly; backends that do not serve the v2 routes.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`). Keep your own `@langchain/langgraph-sdk` resolving to 1.17.0, the version `@langchain/svelte` 1.2.15 pins, so one copy is installed. The peers are `svelte` 5 and `@langchain/core` `^1.3.2`.
+2. Serve Agent Protocol v2: on Aegra 0.12 the routes are on unless `FF_V2_EVENT_STREAMING=false`. A route filter or proxy in front of the server must pass `POST /threads/{id}/commands` and `POST /threads/{id}/stream/events` (an event stream that stays open).
+3. If you copied `auth/run_input.py`, replace `"__event_streaming_v2": bool` in `ALLOWED_CONFIGURABLE_KEYS` with `"thread_id": str` and `"checkpoint_id": str`. Check that your server sets the run's thread from the route, not from `configurable.thread_id`.
+4. If you call `api.edit` or pass your own `onEdit`, await it. If you call `useStream` yourself, follow `@langchain/svelte` 1.x: no `joinStream`, `switchThread`, `getMessagesMetadata`, `branch` or `history`; fork with `submit(input, { forkFrom })`; `onError` gets the error only.
+5. An `onRequest` hook that rewrote `/runs/stream` bodies now sees `/commands` bodies, with the run input under `params.input`.
+
+**How to check.** Run `moon run e2e:test -- src/chat.spec.ts`. In your app, start a long reply and reload: the reply finishes, and the composer is usable afterwards.
+
 ## 2026-11-26 — The chat runs on `@langchain/langgraph-sdk` 1.17 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
 **What changed.** The `chat-core` registry item now asks for `@langchain/langgraph-sdk` `^1.17.0` (was `^1.8.3`) and `@langchain/svelte` `^0.3.2` (was `^0.3.1`). SDK 1.17 needs `@langchain/core` `^1.3.2` as a peer. It changes what the chat does:
