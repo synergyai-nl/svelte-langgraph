@@ -49,11 +49,11 @@ test.describe('Phase state-sync', () => {
 		// Optimistic update: dropdown reflects the new value immediately.
 		await expect(chat.phaseSelect).toHaveValue(targetValue);
 
-		// Input re-enabled is the reliable "run finished" signal (matches the house style
-		// in chat.spec.ts — no fixed sleeps). Only once it resolves do we know the
+		// Send back in place of Stop is the reliable "run finished" signal (matches the house
+		// style in chat.spec.ts — no fixed sleeps). Only once it resolves do we know the
 		// state-only run has fully completed, so only then is it safe to assert that it
 		// did NOT produce any chat message.
-		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 15000 });
 		expect(await chat.messages.count()).toBe(countBefore);
 
 		// Reload to verify the server committed the phase (not just an optimistic value).
@@ -71,7 +71,7 @@ test.describe('Phase state-sync', () => {
 		await chat.phaseSelect.selectOption('draft');
 		await expect(chat.phaseSelect).toHaveValue('draft');
 		// Wait for stream.isLoading → false (state-only run complete, server committed phase).
-		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 15000 });
 
 		// Send a unique message to avoid matching any cached content.
 		// Avoid "Please switch to the review phase" — that triggers the tool-call mock.
@@ -92,7 +92,7 @@ test.describe('Phase state-sync', () => {
 		// Set phase to "research" first so the AI-driven change to "review" is observable.
 		await chat.phaseSelect.selectOption('research');
 		await expect(chat.phaseSelect).toHaveValue('research');
-		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 15000 });
 
 		// Send the exact trigger message — the ai-mock responds with change_phase("review").
 		await chat.textInput.fill('Please switch to the review phase');
@@ -104,7 +104,7 @@ test.describe('Phase state-sync', () => {
 		await expect(chat.phaseSelect).toHaveValue('review', { timeout: 20000 });
 
 		// Run completes normally with an AI message after the tool call (echoed user text from
-		// the follow-up LLM call) and the input re-enabled (streaming did not stall).
+		// the follow-up LLM call) and Send back (streaming did not stall).
 		await chat.expectAiReply('Please switch to the review phase', { timeout: 20000 });
 	});
 
@@ -115,7 +115,7 @@ test.describe('Phase state-sync', () => {
 		// Set a known starting phase so the AI-driven change is observable.
 		await chat.phaseSelect.selectOption('research');
 		await expect(chat.phaseSelect).toHaveValue('research');
-		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 15000 });
 
 		// The ai-mock answers this exact text with TWO change_phase tool calls in
 		// one assistant message (draft, then review) -- the parallel-tool-call
@@ -127,8 +127,8 @@ test.describe('Phase state-sync', () => {
 		// must not die with InvalidUpdateError.
 		await expect(chat.phaseSelect).toHaveValue('review', { timeout: 20000 });
 
-		// Run completed normally: the follow-up LLM call's echo is shown and the input
-		// re-enabled (not stalled/errored).
+		// Run completed normally: the follow-up LLM call's echo is shown and Send is back
+		// (not stalled/errored).
 		await chat.expectAiReply('Please switch to draft then review', { timeout: 20000 });
 
 		// Server actually committed "review" (not "draft", not a wedged thread).

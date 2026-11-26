@@ -56,11 +56,11 @@ test.describe('Sidebar - real backend', () => {
 
 		await chat.textInput.fill('alpha');
 		await chat.textInput.press('Enter');
-		// Input re-enabled is the "run finished" signal (house style — no fixed sleeps).
+		// Send back in place of Stop is the "run finished" signal (house style — no fixed sleeps).
 		// Generous timeout: the backend's in-memory runtime processes runs through a single
 		// worker, so a run can sit queued behind other specs' runs under full-suite parallel
 		// load (see e.g. phase.spec.ts's own 15s/20s timeouts for the same reason).
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveCount(1);
@@ -76,12 +76,12 @@ test.describe('Sidebar - real backend', () => {
 		await chat.textInput.fill('alpha');
 		await chat.textInput.press('Enter');
 		// See the "sending a message" test above for why this timeout is generous.
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		const threadB = await gotoFreshThread(page);
 		await chat.textInput.fill('beta');
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		await sidebar.threadLink(threadA).click();
 		await page.waitForURL(`/chat/${threadA}`);
@@ -100,7 +100,7 @@ test.describe('Sidebar - real backend', () => {
 		await chat.textInput.fill('alpha');
 		await chat.textInput.press('Enter');
 		// See the "sending a message" test above for why this timeout is generous.
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		// Give threadA a short title so its row has plenty of free space; the pending spinner's
 		// position is only observable when the label doesn't already fill the row.
@@ -123,7 +123,7 @@ test.describe('Sidebar - real backend', () => {
 		await expect(sidebar.threadLink(threadA)).toHaveText('alpha');
 		await chat.textInput.fill('beta');
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		// Gate threadA's history load (its thread state, read on mount of the remounted Chat
 		// instance, see `{#key threadId}` in [threadID]/+page.svelte) so the pending window is
@@ -300,7 +300,7 @@ test.describe('Sidebar - real backend', () => {
 		);
 		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		// Titling runs after the chat run settles, so the row updates later still — its own
 		// generous timeout on top of the wait above.
@@ -314,7 +314,7 @@ test.describe('Sidebar - real backend', () => {
 
 		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
@@ -334,7 +334,7 @@ test.describe('Sidebar - real backend', () => {
 
 		await chat.textInput.fill(TITLE_TRIGGER_MESSAGE);
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		const row = sidebar.threadLink(threadId);
 		await expect(row).toHaveText(EXPECTED_TITLE, { timeout: 15000 });
@@ -342,7 +342,7 @@ test.describe('Sidebar - real backend', () => {
 		// `ensureThreadTitle` finds `metadata.title` already set and stops there — no second run.
 		await chat.textInput.fill('a second, unrelated message');
 		await chat.textInput.press('Enter');
-		await expect(chat.textInput).toBeEnabled({ timeout: 20000 });
+		await expect(chat.sendButton).toBeVisible({ timeout: 20000 });
 
 		await expect(row).toHaveText(EXPECTED_TITLE);
 	});
