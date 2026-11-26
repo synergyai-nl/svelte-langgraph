@@ -552,14 +552,34 @@ test.describe('Backend Integration', () => {
 				method: 'run.start',
 				params: { assistant_id: assistantId, input: humanInput(content), ...extra }
 			});
-			const stateMessages = async (api: Api, threadId: string) =>
-				((await api('GET', `/threads/${threadId}/state`)).body.values?.messages ?? []) as Array<{
-					content: unknown;
-				}>;
+			/** The thread's stored messages; fails on a failed read rather than returning none. */
+			const stateMessages = async (api: Api, threadId: string) => {
+				const state = await api('GET', `/threads/${threadId}/state`);
+				expect(state.status, state.text).toBe(200);
+				expect(Array.isArray(state.body.values?.messages), state.text).toBe(true);
+				return state.body.values.messages as Array<{ content: unknown }>;
+			};
+			/** Opens the thread's event stream and closes it again: only the status is read. */
+			const openStream = async (token: string, threadId: string) => {
+				const abort = new AbortController();
+				const response = await fetch(
+					`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadId}/stream/events`,
+					{
+						method: 'POST',
+						headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+						body: JSON.stringify({ channels: ['values', 'lifecycle'] }),
+						signal: abort.signal
+					}
+				);
+				abort.abort();
+				return { status: response.status, type: response.headers.get('content-type') ?? '' };
+			};
 			/** A's thread after one finished run, and B with a thread of their own. */
 			async function twoUsersAfterARun(request: APIRequestContext) {
-				const a = await setUpUser(request);
-				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const aToken = await mintToken(request);
+				const bToken = await mintToken(request, { sub: OIDC_CONFIG.otherUsername });
+				const a = { ...(await setUpUser(request)), token: aToken };
+				const b = { ...(await setUpUser(request, OIDC_CONFIG.otherUsername)), token: bToken };
 				const secret = `A's secret ${randomUUID()}`;
 				const started = await a.api(
 					'POST',
@@ -576,17 +596,34 @@ test.describe('Backend Integration', () => {
 			}) => {
 				const { a, b, secret } = await twoUsersAfterARun(request);
 				const thread = `/threads/${a.threadId}`;
+				// Each request as B is refused; the same request as A, the owner, succeeds.
 				for (const [method, path, data] of [
-					['POST', `${thread}/commands`, runStart(b.assistantId, 'Unauthorized run')],
-					['POST', `${thread}/stream/events`, { channels: ['values', 'lifecycle'] }],
 					['GET', `${thread}/state`, undefined],
 					['POST', `${thread}/history`, { limit: 20 }]
 				] as const) {
 					const denied = await b.api(method, path, data);
 					expect(denied.status, `${method} ${path} as B: ${denied.text}`).toBe(404);
 					expect(denied.text).not.toContain(secret);
+					const allowed = await a.api(method, path, data);
+					expect(allowed.status, `${method} ${path} as A: ${allowed.text}`).toBe(200);
+					expect(allowed.text).toContain(secret);
 				}
+
+				expect(await openStream(b.token, a.threadId)).toMatchObject({ status: 404 });
+				const own = await openStream(a.token, a.threadId);
+				expect(own.status).toBe(200);
+				expect(own.type).toContain('text/event-stream');
+
+				// B names B's own assistant, so the refusal is the thread's boundary.
+				const command = (assistantId: string) =>
+					runStart(assistantId, `Run on A's thread ${randomUUID()}`);
+				const deniedRun = await b.api('POST', `${thread}/commands`, command(b.assistantId));
+				expect(deniedRun.status, deniedRun.text).toBe(404);
 				expect((await a.api('GET', `${thread}/runs`)).body).toHaveLength(1);
+				const ownRun = await a.api('POST', `${thread}/commands`, command(a.assistantId));
+				expect(ownRun.body.type, ownRun.text).toBe('success');
+				await waitForRunStatus(a.api, a.threadId, ownRun.body.result.run_id, ['success']);
+				expect((await a.api('GET', `${thread}/runs`)).body).toHaveLength(2);
 				expect(JSON.stringify(await stateMessages(a.api, a.threadId))).toContain(secret);
 			});
 
