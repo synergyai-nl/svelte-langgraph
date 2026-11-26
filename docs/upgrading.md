@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — The composer keeps focus through a run ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — The composer keeps focus through a run ([#479](https://github.com/synergyai-nl/svelte-langgraph/pull/479))
 
 **What changed.** `MessageComposer` no longer disables its input during a run, so focus stays in it and the user can type the next message; Stop replaces Send and Enter sends nothing until the run ends. Pressing Send or Stop moves focus to the input, as the other button replaces the one pressed. On a phone the keyboard now stays up after sending (it used to close because the input was disabled). A draft typed during a run stays when the run fails or is stopped; Retry still resends the refused message. Only `disabled` (the history load, in `Conversation`'s default composition) still turns the input off. The item ships the new `MessageComposer.svelte`.
 
