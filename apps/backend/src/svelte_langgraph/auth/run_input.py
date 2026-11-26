@@ -95,6 +95,22 @@ def _validate_config(path: str, raw_config: object) -> None:
             )
 
 
+def _validate_thread_id(value: Mapping[str, Any]) -> None:
+    # `thread_id` is the route's thread, set by Aegra for `threads.create_run`
+    # only: the client may name that thread, never another.
+    configurable = _as_mapping("config", value.get("config")).get("configurable") or {}
+    if "thread_id" in configurable and configurable["thread_id"] != value.get(
+        "thread_id"
+    ):
+        raise _reject("config.configurable.thread_id must be the thread of the route.")
+
+
+def _validate_checkpoint(raw_checkpoint: object) -> None:
+    for key in _as_mapping("checkpoint", raw_checkpoint):
+        if key not in ALLOWED_CHECKPOINT_KEYS:
+            raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")
+
+
 def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
@@ -105,14 +121,7 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     offending key, never its value.
     """
     _validate_config("config", value.get("config"))
-
-    # `thread_id` is the route's thread, set by Aegra for `threads.create_run`
-    # only: the client may name that thread, never another.
-    configurable = _as_mapping("config", value.get("config")).get("configurable") or {}
-    if "thread_id" in configurable and configurable["thread_id"] != value.get(
-        "thread_id"
-    ):
-        raise _reject("config.configurable.thread_id must be the thread of the route.")
+    _validate_thread_id(value)
 
     if not _is_empty(value.get("context")):
         raise _reject("context is not accepted; it must be empty.")
@@ -121,9 +130,7 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     if value.get("webhook") not in (None, ""):
         raise _reject("webhook is not accepted.")
 
-    for key in _as_mapping("checkpoint", value.get("checkpoint")):
-        if key not in ALLOWED_CHECKPOINT_KEYS:
-            raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")
+    _validate_checkpoint(value.get("checkpoint"))
 
     for key, item in _as_mapping("command", value.get("command")).items():
         if key in ALLOWED_COMMAND_KEYS:
