@@ -74,7 +74,7 @@
 	},
 	"imports": {
 		"#lib": "./src/lib/index.js",
-		"#lib/svelte-langgraph-client/*": "@svelte-langgraph/client/*",
+		"#lib/svelte-langgraph-client/index.ts": "@svelte-langgraph/client",
 		"#lib/*": "./src/lib/*"
 	}
 }
