@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — Thread helpers take the graph id; `<LangGraph threadList={false}>` ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — Thread helpers take the graph id; `<LangGraph threadList={false}>` ([#456](https://github.com/synergyai-nl/svelte-langgraph/pull/456))
 
 **What changed.**
 
