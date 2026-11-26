@@ -19,6 +19,9 @@ from langgraph_sdk import Auth
 ALLOWED_CONFIGURABLE_KEYS: dict[str, type] = {
     # Marks a submit that only writes state fields; see graph.phase_gate.
     "state_only_submit": bool,
+    # `@langchain/langgraph-sdk` 1.17's `useStream` sets it to `false` (the v1
+    # event format) on every run it starts without a `context`.
+    "__event_streaming_v2": bool,
 }
 
 # Keys of a run's `checkpoint`: the checkpoint address the SDK sends for an

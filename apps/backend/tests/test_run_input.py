@@ -75,6 +75,9 @@ def configurable(**keys) -> dict:
         pytest.param(configurable(state_only_submit=True), id="state-only-submit"),
         pytest.param(configurable(state_only_submit=False), id="state-only-false"),
         pytest.param(
+            configurable(__event_streaming_v2=False), id="sdk-event-streaming-v1"
+        ),
+        pytest.param(
             {
                 "checkpoint": {
                     "thread_id": "t",

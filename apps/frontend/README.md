@@ -188,7 +188,9 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
      The CLI reinstalls a package whose range declared in the app's `package.json` falls outside the listed range, so
      `@lucide/svelte` is listed as `>=0.562.0` and `@types/node` as `*`: a version you already
      have stays. `shadcn-svelte init` installs `@lucide/svelte` only for Lucide icon presets.
-     The stock components carry their own ranges, which the CLI
+     The chat is built and tested on `@langchain/langgraph-sdk` 1.17 and `@langchain/svelte`
+     0.3.2; the SDK needs `@langchain/core` `^1.3.2`, which your package manager installs as a
+     peer unless you pin an older one. The stock components carry their own ranges, which the CLI
      writes when it installs them: in the test above, the setup's `add button sidebar` (before
      the chat) set `tailwind-variants` to `^3.3.1` over `init`'s `^4.0.1`. The chat install that
      followed, with `button` declined, added only the chat's own packages. Check `package.json`
