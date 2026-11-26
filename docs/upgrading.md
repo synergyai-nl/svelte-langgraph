@@ -17,7 +17,7 @@ Each entry has this format:
 
 ## 2026-11-26 — An AI message lists its tool calls ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
-**What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, present when the message calls a tool, also while it streams. A call shows once it has an id and a name: a tool result names its call by id, so a call without one cannot be matched to its result. The result of a call is the `ToolMessage` with the same `id`; the arguments are on its `payload` when available. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
+**What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, listing the tools the message calls (a call shows once it has an id and a name), also while it streams. A call's result is the `ToolMessage` with the same `id`. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
 
 **Who is affected.** Nobody needs to act. Apps that compose their own message list can use it.
 
@@ -25,7 +25,7 @@ Each entry has this format:
 
 1. Nothing. To use it, update `chat-core` (see "Updating" in `apps/frontend/README.md`).
 
-**How to check.** Run `moon run client:test`.
+**How to check.** Run `moon run client:test`. In your app, have the agent call a tool: the AI message in `api.messages` has `toolCalls` with the tool's name.
 
 ## 2026-11-26 — The chat runs on `@langchain/svelte` 1.x, `@langchain/langgraph-sdk` 1.17 and Agent Protocol v2 ([#461](https://github.com/synergyai-nl/svelte-langgraph/pull/461))
 
