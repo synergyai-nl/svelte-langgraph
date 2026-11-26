@@ -28,12 +28,11 @@ ALLOWED_CONFIGURABLE_KEYS: dict[str, type] = {
     "checkpoint_id": str,
 }
 
-# Keys of a run's `checkpoint`: the checkpoint address the SDK sends for an
-# edit or regenerate. Aegra merges these into `configurable`, so other keys
-# would bypass the allowlist above.
-ALLOWED_CHECKPOINT_KEYS = frozenset(
-    {"thread_id", "checkpoint_ns", "checkpoint_id", "checkpoint_map"}
-)
+# Keys of a run's `checkpoint`. The client sends no `checkpoint` field: for
+# `run.start` Aegra builds `{"checkpoint_id": ...}` from
+# `configurable.checkpoint_id` (an edit or regenerate). Aegra merges these
+# keys into `configurable`, so other keys would bypass the allowlist above.
+ALLOWED_CHECKPOINT_KEYS = frozenset({"checkpoint_id"})
 
 # Keys of a run's `command`. `resume` answers a pending interrupt, and Aegra
 # checks that the thread is interrupted. `update` writes state and `goto` runs
@@ -100,8 +99,9 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
-    empty, `configurable.thread_id` only the route's thread), `context` and `webhook` (must be empty), the keys of
-    `checkpoint`, and `command` (only `resume`). The detail names the
+    empty, `configurable.thread_id` only the route's thread), `context` and
+    `webhook` (must be empty), the keys of `checkpoint` (only
+    `checkpoint_id`), and `command` (only `resume`). The detail names the
     offending key, never its value.
     """
     _validate_config("config", value.get("config"))

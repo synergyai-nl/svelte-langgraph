@@ -78,17 +78,7 @@ def configurable(**keys) -> dict:
             {**configurable(thread_id="t", checkpoint_id="c"), "thread_id": "t"},
             id="route-thread-and-fork",
         ),
-        pytest.param(
-            {
-                "checkpoint": {
-                    "thread_id": "t",
-                    "checkpoint_ns": "",
-                    "checkpoint_id": "c",
-                    "checkpoint_map": None,
-                }
-            },
-            id="checkpoint-address",
-        ),
+        pytest.param({"checkpoint": {"checkpoint_id": "c"}}, id="checkpoint-id"),
     ],
 )
 def test_accepts_trusted_input(value):
@@ -105,14 +95,14 @@ def test_accepts_trusted_input(value):
             run_create(
                 assistant_id="chat",
                 input={"messages": []},
-                checkpoint={"checkpoint_ns": "", "checkpoint_id": "c"},
+                checkpoint={"checkpoint_id": "c"},
             ),
             id="edit",
         ),
         pytest.param(
             run_create(
                 assistant_id="chat",
-                checkpoint={"checkpoint_ns": "", "checkpoint_id": "c"},
+                checkpoint={"checkpoint_id": "c"},
             ),
             id="regenerate",
         ),
@@ -207,9 +197,12 @@ def test_rejects_a_non_object_configurable():
     )
 
 
-def test_rejects_unknown_checkpoint_keys():
-    detail = rejected({"checkpoint": {"checkpoint_id": "c", "user_id": CLIENT_VALUE}})
-    assert "checkpoint.user_id" in detail
+@pytest.mark.parametrize(
+    "key", ["user_id", "thread_id", "checkpoint_ns", "checkpoint_map"]
+)
+def test_rejects_checkpoint_keys_beyond_the_id(key):
+    detail = rejected({"checkpoint": {"checkpoint_id": "c", key: CLIENT_VALUE}})
+    assert f"checkpoint.{key}" in detail
 
 
 @pytest.mark.parametrize("webhook", [None, ""])
