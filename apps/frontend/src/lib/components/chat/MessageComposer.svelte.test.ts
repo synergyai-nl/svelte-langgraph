@@ -105,6 +105,20 @@ describe('MessageComposer', () => {
 		});
 	});
 
+	describe('when disabled is true', () => {
+		test('disables the textarea and Send, and ignores a form submit', async () => {
+			const onSubmit = vi.fn();
+			renderComposer({ value: 'Hello', disabled: true, onSubmit });
+
+			const textbox = screen.getByRole('textbox');
+			expect(textbox).toBeDisabled();
+			expect(screen.getByRole('button', { name: 'Send message' })).toBeDisabled();
+			await fireEvent.submit(textbox.closest('form')!);
+
+			expect(onSubmit).not.toHaveBeenCalled();
+		});
+	});
+
 	test('disables submit button when input is empty', () => {
 		renderComposer({ value: '' });
 

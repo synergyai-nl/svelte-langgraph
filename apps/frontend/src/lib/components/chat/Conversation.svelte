@@ -28,8 +28,9 @@
 		error: Error | null;
 		/**
 		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
-		 * in the UI (`MessageComposer` does). No-op while `isLoading`. Clears `input`, and puts the
-		 * text back when the send fails before the message reaches the thread.
+		 * in the UI (`MessageComposer` does). No-op while `isLoading` or `isThreadLoading`. Clears
+		 * `input`. When the server refuses the run before creating it (e.g. a 401), the message
+		 * leaves the list and the text goes back into `input`.
 		 *
 		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
 		 * speaks first or a backend that answers the last human message again. No-op while
@@ -59,7 +60,7 @@
 
 <script lang="ts">
 	import { useStream } from '@langchain/svelte';
-	import { SvelteMap } from 'svelte/reactivity';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import {
 		convertThreadMessage,
 		InvalidData,
@@ -120,12 +121,16 @@
 	let current_input = $state('');
 	let last_user_message = $state('');
 	let aiMessageCountAtSubmit = $state(0);
+	// Messages the stream showed for a send the server refused before creating its run: they
+	// were never stored, so they are left out of `messages`.
+	const refusedIds = new SvelteSet<string>();
 
 	function mapMessages(msgs: typeof stream.messages): Message[] {
 		const toolCallArgs = new SvelteMap<string, Record<string, unknown>>();
 		const result: Message[] = [];
 
 		for (const msg of msgs) {
+			if (msg.id && refusedIds.has(msg.id)) continue;
 			const m = msg as unknown as Record<string, unknown>;
 
 			if ((m.type === 'ai' || m.type === 'AIMessageChunk') && Array.isArray(m.tool_calls)) {
@@ -168,17 +173,29 @@
 	);
 
 	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
-	// `stream.error`. A send refused before the run starts (e.g. a 401) settles with an error
-	// and no new human message in the thread, so the text would be lost: put it back in the
-	// composer, unless the user has started typing something else meanwhile.
+	// `stream.error`. The stream shows the input messages at once. When the server refuses the
+	// run before creating it (e.g. a 401), `onError` gets no run and those messages were never
+	// stored: hide them, so the list shows what the thread holds. Resolves `true` then.
+	async function send(input: { messages: unknown[] }, options?: { checkpoint: Checkpoint }) {
+		const before = new Set(stream.messages.map((m) => m.id));
+		let refused = false;
+		await stream.submit(input, {
+			...options,
+			onError: (_error, run) => {
+				refused = run === undefined;
+			}
+		});
+		if (!refused) return false;
+		for (const m of stream.messages) if (m.id && !before.has(m.id)) refusedIds.add(m.id);
+		return true;
+	}
+
+	// A refused send would lose the text: put it back in the composer, unless the user has
+	// started typing something else meanwhile (Retry still sends it).
 	async function submitHumanMessage(text: string) {
-		const humanCountAtSubmit = messages.filter((m) => m.type === 'user').length;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		await stream.submit({ messages: [{ type: 'human', content: text }] });
-		const humanCount = messages.filter((m) => m.type === 'user').length;
-		if (generationError && humanCount === humanCountAtSubmit && current_input === '') {
-			current_input = text;
-		}
+		const refused = await send({ messages: [{ type: 'human', content: text }] });
+		if (refused && current_input === '') current_input = text;
 	}
 
 	function submitInput(text?: string) {
@@ -186,7 +203,7 @@
 			submitWithoutMessage();
 			return;
 		}
-		if (stream.isLoading) return;
+		if (stream.isLoading || stream.isThreadLoading) return;
 		last_user_message = text;
 		current_input = '';
 		void submitHumanMessage(text);
@@ -227,7 +244,7 @@
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(
+		void send(
 			{ messages: [{ type: 'human', content: newText }] },
 			{ checkpoint: parentCheckpoint }
 		);
@@ -379,6 +396,7 @@
 		<MessageComposer
 			bind:value={() => api.input, (v) => api.setInput(v)}
 			isStreaming={api.isLoading}
+			disabled={api.isThreadLoading}
 			onSubmit={() => api.submit(api.input)}
 			onStop={api.stop}
 		/>

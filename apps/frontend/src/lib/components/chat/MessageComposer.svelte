@@ -12,6 +12,8 @@
 	interface Props {
 		value: string;
 		isStreaming?: boolean;
+		/** Turns the composer off (e.g. while the thread history loads): no input, no Send. */
+		disabled?: boolean;
 		onSubmit: () => void;
 		onStop?: () => void;
 		placeholder?: string;
@@ -20,26 +22,26 @@
 	let {
 		value = $bindable(''),
 		isStreaming = false,
+		disabled = false,
 		onSubmit,
 		onStop,
 		placeholder = m.slg_chat_input_placeholder()
 	}: Props = $props();
 
 	let isEmpty = $derived(!(value ?? '').trim());
+	let cannotSend = $derived(isEmpty || isStreaming || disabled);
 	function handleSubmit(event: SubmitEvent) {
 		// Prevent the native GET form submission (would navigate to ?message=<text>).
 		event.preventDefault();
 		// The one guard against blank input: `ConversationApi.submit` sends any text it is given.
-		if (isEmpty || isStreaming) return;
+		if (cannotSend) return;
 		onSubmit();
 	}
 
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false && !event.isComposing) {
 			event.preventDefault();
-			if (!isEmpty && !isStreaming) {
-				onSubmit();
-			}
+			if (!cannotSend) onSubmit();
 		}
 	}
 </script>
@@ -55,7 +57,7 @@
 				<div class="min-w-0 flex-1">
 					<Textarea
 						id="user-input"
-						disabled={isStreaming}
+						disabled={isStreaming || disabled}
 						{placeholder}
 						aria-label={placeholder}
 						rows={1}
@@ -71,7 +73,7 @@
 				<div class="flex shrink-0 items-end pb-1">
 					<SubmitButton
 						{isStreaming}
-						disabled={isStreaming || isEmpty}
+						disabled={cannotSend}
 						{onStop}
 						sendLabel={m.slg_chat_input_send()}
 						stopLabel={m.slg_chat_input_stop()}

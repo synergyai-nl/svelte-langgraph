@@ -90,7 +90,8 @@ describe('ChatSurface', () => {
 				expect(mockSubmit).toHaveBeenCalledWith(
 					expect.objectContaining({
 						messages: [expect.objectContaining({ type: 'human', content: 'Tell me about AI' })]
-					})
+					}),
+					expect.anything()
 				);
 			});
 		});

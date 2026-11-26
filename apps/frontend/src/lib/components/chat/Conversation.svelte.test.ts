@@ -285,7 +285,7 @@ describe('Conversation', () => {
 
 			expect(mockSubmit).toHaveBeenCalledWith(
 				{ messages: [{ type: 'human', content: 'Edited message' }] },
-				{ checkpoint: { id: 'checkpoint-1' } }
+				expect.objectContaining({ checkpoint: { id: 'checkpoint-1' } })
 			);
 		});
 	});
@@ -326,16 +326,21 @@ describe('Conversation', () => {
 		});
 	});
 
+	type SubmitOptions = { onError?: (error: unknown, run: unknown) => void };
+
 	describe('when a send is refused before the run starts', () => {
-		// Like the real stream: `submit` resolves once the run settles, with the error in
-		// `stream.error` and no new human message in the thread.
+		// Like the real stream: the input shows at once, and `submit` resolves once the run
+		// settles, with the error in `stream.error`. `onError` gets no run: none was created.
 		function refuseSubmit() {
-			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
-				mockModule.setError(new Error('HTTP 401 {"detail":"Unauthorized"}'));
+			mockModule.mockStreamCallbacks.submit = vi.fn(async (_input, options) => {
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'optimistic-1' }]);
+				const error = new Error('HTTP 401 {"detail":"Unauthorized"}');
+				mockModule.setError(error);
+				(options as SubmitOptions).onError?.(error, undefined);
 			});
 		}
 
-		test('puts the text back in the composer', async () => {
+		test('puts the text back in the composer and drops the message from the list', async () => {
 			const user = userEvent.setup();
 			refuseSubmit();
 			renderConversation();
@@ -346,13 +351,16 @@ describe('Conversation', () => {
 
 			await waitFor(() => expect(textbox).toHaveValue('Hello'));
 			expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
+			expect(document.querySelector('[data-message-type="user"]')).toBeNull();
 		});
 
-		test('keeps the composer empty when the human message reached the thread', async () => {
+		test('keeps the message and an empty composer when the run was created', async () => {
 			const user = userEvent.setup();
-			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+			mockModule.mockStreamCallbacks.submit = vi.fn(async (_input, options) => {
 				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
-				mockModule.setError(new Error('Generation failed'));
+				const error = new Error('Generation failed');
+				mockModule.setError(error);
+				(options as SubmitOptions).onError?.(error, { run_id: 'run-1', thread_id: 'test-123' });
 			});
 			renderConversation();
 
@@ -362,6 +370,7 @@ describe('Conversation', () => {
 
 			await screen.findByTestId('chat-error');
 			expect(textbox).toHaveValue('');
+			expect(document.querySelector('[data-message-type="user"]')).toHaveTextContent('Hello');
 		});
 
 		test('retry sends the restored text and clears the composer', async () => {
@@ -381,7 +390,10 @@ describe('Conversation', () => {
 			mockModule.mockStreamCallbacks.submit = submit;
 			await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
 
-			expect(submit).toHaveBeenCalledWith({ messages: [{ type: 'human', content: 'Hello' }] });
+			expect(submit).toHaveBeenCalledWith(
+				{ messages: [{ type: 'human', content: 'Hello' }] },
+				expect.anything()
+			);
 			await waitFor(() => expect(textbox).toHaveValue(''));
 		});
 	});
@@ -499,9 +511,10 @@ describe('Conversation', () => {
 
 			api.submit('');
 
-			expect(submit).toHaveBeenCalledExactlyOnceWith({
-				messages: [{ type: 'human', content: '' }]
-			});
+			expect(submit).toHaveBeenCalledExactlyOnceWith(
+				{ messages: [{ type: 'human', content: '' }] },
+				expect.anything()
+			);
 		});
 
 		test('text is sent as a human message and clears input', () => {
@@ -512,23 +525,35 @@ describe('Conversation', () => {
 
 			api.submit('Hello');
 
-			expect(submit).toHaveBeenCalledExactlyOnceWith({
-				messages: [{ type: 'human', content: 'Hello' }]
-			});
+			expect(submit).toHaveBeenCalledExactlyOnceWith(
+				{ messages: [{ type: 'human', content: 'Hello' }] },
+				expect.anything()
+			);
 			expect(api.input).toBe('');
 		});
 
-		test('text is accepted while the thread history is loading', () => {
+		test('text is not sent before the thread history has loaded', () => {
 			const submit = vi.fn();
 			mockModule.mockStreamCallbacks.submit = submit;
 			mockModule.setIsThreadLoading(true);
 			const api = renderForApi();
+			api.setInput('Hello');
 
 			api.submit('Hello');
 
-			expect(submit).toHaveBeenCalledExactlyOnceWith({
-				messages: [{ type: 'human', content: 'Hello' }]
-			});
+			expect(submit).not.toHaveBeenCalled();
+			expect(api.input).toBe('Hello');
+		});
+
+		test('the default composer is off while the thread history loads', async () => {
+			mockModule.setIsThreadLoading(true);
+			renderConversation();
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+
+			expect(textbox).toBeDisabled();
+
+			mockModule.setIsThreadLoading(false);
+			await waitFor(() => expect(textbox).toBeEnabled());
 		});
 
 		test('the default composer does not submit blank input', async () => {
