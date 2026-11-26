@@ -19,7 +19,11 @@ function sourceFiles(root: string, dir: string): string[] {
 		.sort();
 }
 
-/** `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `#lib`. */
+/**
+ * `@svelte-langgraph/client` is unpublished, so its source ships in the item, under `#lib`.
+ * The chat imports it as `#lib/svelte-langgraph-client/…`, which the CLI rewrites to the
+ * consumer's `lib` alias; `package.json` `imports` maps the same specifier to `packages/client`.
+ */
 const clientDir = '../../packages/client/src';
 const clientTarget = 'svelte-langgraph-client';
 
@@ -86,6 +90,23 @@ describe('shadcn-svelte registry', () => {
 				/#lib\/components\/chat\//
 			);
 		}
+	});
+
+	test('imports the client through #lib/svelte-langgraph-client/, never by package name', () => {
+		// A bare `@svelte-langgraph/client` import would need an alias in every consumer app.
+		const shippedClient = core.files
+			.filter((file) => file.type === 'registry:lib')
+			.map((file) => file.target);
+		let clientImports = 0;
+		for (const { path } of shippedComponents) {
+			const source = readFileSync(`${frontendRoot}/${path}`, 'utf8');
+			expect(source, path).not.toMatch(/['"]@svelte-langgraph\/client['"/]/);
+			for (const [, file] of source.matchAll(/['"]#lib\/svelte-langgraph-client\/([^'"]+)['"]/g)) {
+				expect(shippedClient, `${path} imports ${file}`).toContain(`${clientTarget}/${file}`);
+				clientImports++;
+			}
+		}
+		expect(clientImports).toBeGreaterThan(0);
 	});
 
 	test('ships the chat message catalogue for every locale', () => {

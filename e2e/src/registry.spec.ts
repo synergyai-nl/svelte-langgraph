@@ -34,5 +34,9 @@ test.describe('shadcn-svelte registry', () => {
 				(file) => file.target.startsWith('svelte-langgraph-client/') && file.content.length > 0
 			)
 		).toBe(true);
+		// The build turns `#lib` into `$LIB$`, which the CLI replaces with the consumer's lib alias.
+		const sources = item.files.map((file) => file.content).join('\n');
+		expect(sources).toContain("'$LIB$/svelte-langgraph-client/index.ts'");
+		expect(sources).not.toContain("'@svelte-langgraph/client'");
 	});
 });

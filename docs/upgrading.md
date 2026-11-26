@@ -15,6 +15,20 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — The chat imports the client through `#lib`; drop the `@svelte-langgraph/client` alias ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.** The chat components import the bundled client as `#lib/svelte-langgraph-client/index.ts` instead of by its package name `@svelte-langgraph/client`. The CLI rewrites that import to your `components.json` `lib` alias, like the item's other `#lib` imports, so the chat needs no `alias` in `vite.config.ts` and SvelteKit 3 no longer prints `config_option_deprecated_alias` for it. In this repo a `package.json` `imports` entry, `"#lib/svelte-langgraph-client/*": "@svelte-langgraph/client/*"`, maps the same specifier to `packages/client`.
+
+**Who is affected.** Apps that installed the chat item: they have the `@svelte-langgraph/client` alias from install step 2 (or the 2026-11-19 entry's step 2), which is gone.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Delete the `'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'` entry from `alias` in `sveltekit()` in `vite.config.ts`, and the `alias` option if it is now empty.
+3. In your own code, replace `from '@svelte-langgraph/client'` with `from '#lib/svelte-langgraph-client/index.ts'` (or your `lib` alias, if you customised it).
+
+**How to check.** `grep -rn "@svelte-langgraph/client" src vite.config.ts` finds nothing, and `svelte-check` and `vite build` pass without a `config_option_deprecated_alias` warning.
+
 ## 2026-11-25 — `submit` text is optional; blank text is no longer ignored ([#443](https://github.com/synergyai-nl/svelte-langgraph/pull/443))
 
 **What changed.** `ConversationApi.submit` is now `submit(text?: string)`.
@@ -47,7 +61,7 @@ The `chat-core` registry item ships the new `Conversation.svelte`, `MessageCompo
 - SvelteKit 3 adds a build-time `paths.origin` option in `sveltekit()`, which adapter-node 6 honours. The `ORIGIN` environment variable still works (checked against adapter-node 6.0.4) but is ignored, with a warning, when `paths.origin` is set. The `sv migrate` checklist says `ORIGIN` was removed; that is not what the released adapter does.
 - `@sentry/sveltekit` is 11 (10 only supports Kit 2). v11 filters the Kit 3 `handleError` kinds itself, and `sentrySvelteKit` is imported from `@sentry/sveltekit/vite`. v11 also removed three options we used: `sendDefaultPii` (replaced by `dataCollection`, whose unset default collects user info, cookies and request bodies), `enableLogs` (logs are sent whenever a logging integration is present) and `sourceMapsUploadOptions` in `sentrySvelteKit()` (its fields moved to the top level). `src/lib/sentry.ts` now sets a restrictive `dataCollection` unless `PUBLIC_SENTRY_SEND_PII=true` (or unset in dev), which keeps the previous behaviour.
 - Kit 3 deprecates the `alias` option (`config_option_deprecated_alias`, "use subpath imports instead"). It still works. This repo no longer uses it for `async_hooks`.
-- The chat registry item (`chat` and `chat-core`) ships Kit 3-style sources (`#lib` imports with file extensions), and its install guide uses `$app/env/public`. Consumers still need an alias for `@svelte-langgraph/client`; in Kit 3 it goes in `sveltekit({ alias })` and prints the deprecation warning. The alias goes away once the client is published to npm.
+- The chat registry item (`chat` and `chat-core`) ships Kit 3-style sources (`#lib` imports with file extensions), and its install guide uses `$app/env/public`. Consumers still need an alias for `@svelte-langgraph/client`; in Kit 3 it goes in `sveltekit({ alias })` and prints the deprecation warning. The 2026-11-26 entry removes it.
 
 **Who is affected.** Apps that copied the frontend auth helpers, hooks or config, and apps that installed the chat item. The CLI still rewrites the item's imports to the aliases in your `components.json`, but the item is now built and tested on Kit 3 only: move a Kit 2 app to Kit 3 before updating `chat-core`.
 
