@@ -247,15 +247,16 @@ describe('function token', () => {
 		});
 
 		it('lets a caller abort an SDK request, which the SDK hands to onRequest', async () => {
+			const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
 			const controller = new AbortController();
-			const request = createClient('https://backend.test/api/', pending).threads.search({
-				limit: 1,
-				signal: controller.signal
-			});
+			const request = createClient('https://backend.test/api/', pending, undefined, {
+				onRequest
+			}).threads.search({ limit: 1, signal: controller.signal });
 			controller.abort(new Error('stopped'));
 
 			await expect(request).rejects.toThrow('stopped');
 			expect(fetchMock).not.toHaveBeenCalled();
+			expect(onRequest).not.toHaveBeenCalled();
 		});
 
 		it('does not cancel the token request for other callers', async () => {
@@ -272,5 +273,69 @@ describe('function token', () => {
 			await patient;
 			expect(authorization(fetchMock.mock.calls[0][1])).toBe('Bearer late');
 		});
+	});
+});
+
+describe('onRequest hook', () => {
+	const ok = () =>
+		new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
+	const header = (init: RequestInit, name: string) => new Headers(init.headers).get(name);
+	let fetchMock: ReturnType<typeof vi.fn>;
+	beforeEach(() => vi.stubGlobal('fetch', (fetchMock = vi.fn(async () => ok()))));
+
+	it.each([
+		['a string token', 'tok', 'Bearer tok'],
+		['a function token', async () => 'fn-tok', 'Bearer fn-tok']
+	])('runs after the bearer is set, with %s', async (_, token, bearer) => {
+		const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
+		const client = createClient(
+			'https://backend.test/api/',
+			token,
+			{ 'X-Org': 'acme' },
+			{
+				onRequest
+			}
+		);
+
+		await client.threads.search({ limit: 1 });
+
+		const [url, init] = onRequest.mock.calls[0];
+		expect(url.href).toBe('https://backend.test/api/threads/search');
+		expect(header(init, 'Authorization')).toBe(bearer);
+		expect(header(init, 'X-Org')).toBe('acme');
+	});
+
+	it('sends the RequestInit it returns', async () => {
+		const client = createClient('https://backend.test/api/', 'tok', undefined, {
+			onRequest: (_url, init) => ({ ...init, body: JSON.stringify({ limit: 2 }) })
+		});
+
+		await client.threads.search({ limit: 1 });
+
+		expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify({ limit: 2 }));
+		expect(header(fetchMock.mock.calls[0][1], 'Authorization')).toBe('Bearer tok');
+	});
+
+	it('fails the request with the error the hook throws', async () => {
+		const client = createClient('https://backend.test/api/', 'tok', undefined, {
+			onRequest: () => {
+				throw new Error('refused by hook');
+			}
+		});
+
+		await expect(client.threads.search({ limit: 1 })).rejects.toThrow('refused by hook');
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('does not run on the title and feedback routes', async () => {
+		fetchMock.mockResolvedValue(new Response(JSON.stringify({ title: null })));
+		const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
+		const client = createClient('https://backend.test/api/', 'tok', undefined, { onRequest });
+
+		await client.generateTitle(messages, new AbortController().signal);
+		await client.submitFeedback('thread-1', 'ai-1', 'up');
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(onRequest).not.toHaveBeenCalled();
 	});
 });

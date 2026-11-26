@@ -15,6 +15,21 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — `createClient` and `<LangGraph>` take the SDK's `onRequest` hook ([#455](https://github.com/synergyai-nl/svelte-langgraph/pull/455))
+
+**What changed.** `createClient(url, token?, headers?, options?)` takes `options.onRequest`, and `<LangGraph>` an `onRequest` prop that it passes on. It is the SDK's own `RequestHook`: it runs once per SDK request after the bearer is set (HTTP retries reuse its result; stream reconnects call it again) and may return a changed `RequestInit`. The title and feedback routes do not pass through it.
+
+The `chat-core` registry item ships the new `LangGraph.svelte` and `svelte-langgraph-client/client.ts`.
+
+**Who is affected.** Apps that pass their own `client` to `<LangGraph>` only to change outgoing requests. Other apps need not act.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Optionally, replace a hand-built `client` with `<LangGraph onRequest={…}>` (see "Changing outgoing requests" in `apps/frontend/README.md`).
+
+**How to check.** Run `moon run client:test -- src/client.test.ts`. In your app, a header your hook sets shows on the `/runs/stream` request in the browser's network panel.
+
 ## 2026-11-26 — AI messages render only safe links ([#453](https://github.com/synergyai-nl/svelte-langgraph/pull/453))
 
 **What changed.** `ChatMessage` renders a markdown link in an AI message as a link only when its URL is `http:`, `https:`, `mailto:`, relative or a fragment. Any other scheme, such as `javascript:`, `data:` or `vbscript:`, renders the link's contents without an anchor. Before, links were rendered without a scheme allowlist. The `chat-core` registry item ships the new `ChatMessage.svelte`.

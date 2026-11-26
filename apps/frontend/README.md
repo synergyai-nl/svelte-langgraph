@@ -371,6 +371,40 @@ Cmd/Ctrl+B.
 Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
 seeds the provider's `open` from the cookie (`bind:open`).
 
+### Changing outgoing requests
+
+`<LangGraph onRequest>` takes the SDK's own `onRequest` hook (`RequestHook` from
+`@langchain/langgraph-sdk`). It runs once per SDK request after the bearer is set (HTTP retries
+reuse its result; stream reconnects call it again), and may return a changed `RequestInit`; an
+error it throws fails the request. The title and feedback routes do not pass through it: it is
+the SDK's hook, they are not sent by the SDK, and running it there would make it an API of our
+own with its own semantics. So a header the hook computes per request does not reach them; only
+the static `headers` and the token function do. The hook is read per
+request, so passing a new function does not rebuild the client. It has no effect when you pass
+`client`: give `createClient(url, token, headers, { onRequest })` the hook instead.
+
+For example, for a backend that refuses a client-chosen message `id` (newer SDK versions add
+one to input messages):
+
+```svelte
+<script lang="ts">
+	import type { RequestHook } from '@langchain/langgraph-sdk';
+
+	const dropMessageIds: RequestHook = (url, init) => {
+		if (!url.pathname.endsWith('/runs/stream') || typeof init.body !== 'string') return init;
+		const body = JSON.parse(init.body);
+		for (const message of body.input?.messages ?? []) {
+			delete message.id;
+		}
+		return { ...init, body: JSON.stringify(body) };
+	};
+</script>
+
+<LangGraph url={PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} onRequest={dropMessageIds}>
+	<Chat />
+</LangGraph>
+```
+
 ### Run errors
 
 When a run fails, the message list shows an error card (`data-testid="chat-error"`) with the

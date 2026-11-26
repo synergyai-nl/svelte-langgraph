@@ -20,6 +20,7 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import type { Snippet } from 'svelte';
+	import type { RequestHook } from '@langchain/langgraph-sdk';
 	import {
 		createClient,
 		getOrCreateAssistant,
@@ -42,6 +43,13 @@
 		token?: TokenSource;
 		/** Extra request headers. Derived on their serialized *contents*, like `token`, so an inline object literal doesn't mint a new client on every re-render. */
 		headers?: Record<string, string>;
+		/**
+		 * The SDK's own `onRequest`: runs once per SDK request after the bearer is set (HTTP retries
+		 * reuse its result; stream reconnects call it again) and may return a changed `RequestInit`.
+		 * The title and feedback routes do not pass through it. Read per request, so a new function
+		 * never mints a new client. No effect with `client`.
+		 */
+		onRequest?: RequestHook;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
 		client?: AppClient;
 		/** Graph id used to resolve/create the assistant. Defaults to `'chat'`. */
@@ -65,6 +73,7 @@
 		url,
 		token,
 		headers,
+		onRequest,
 		client: clientProp,
 		graph = 'chat',
 		assistantId: assistantIdProp,
@@ -93,12 +102,18 @@
 	// `$derived` whose value is unchanged (`===`) doesn't propagate — so `derivedClient` below
 	// reads only `headersKey`, never `headers` itself. Key order counts as a change; harmless,
 	// since an inline literal keeps its order across re-renders.
+	//
+	// `onRequest` is not read here at all: `forwardRequest` reads the current prop per request.
 	const headersKey = $derived(headers ? JSON.stringify(headers) : '');
+	const forwardRequest: RequestHook = (requestUrl, init) =>
+		onRequest ? onRequest(requestUrl, init) : init;
 	let derivedClient = $derived.by(
 		() =>
 			clientProp ??
 			(token
-				? createClient(url ?? '', token, headersKey ? JSON.parse(headersKey) : undefined)
+				? createClient(url ?? '', token, headersKey ? JSON.parse(headersKey) : undefined, {
+						onRequest: forwardRequest
+					})
 				: undefined)
 	);
 

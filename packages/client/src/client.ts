@@ -1,4 +1,4 @@
-import { Client, type Thread } from '@langchain/langgraph-sdk';
+import { Client, type RequestHook, type Thread } from '@langchain/langgraph-sdk';
 import { apiEndpoint, normalizeApiUrl } from './apiUrl';
 import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
@@ -51,11 +51,16 @@ export type TokenSource = string | null | (() => Promise<string | null> | string
  * @param token - Bearer token sent as the `Authorization` header, when provided. A function is
  * called before every request; when it returns null the request carries no `Authorization`.
  * @param headers - Additional default headers, merged in under `Authorization`.
+ * @param options.onRequest - The SDK's own `onRequest`, run once per SDK request after the bearer
+ * is set (HTTP retries reuse its result; stream reconnects call it again); it may return a changed
+ * `RequestInit`. The title and feedback routes do not pass through it. An error it throws fails
+ * the request.
  */
 export function createClient(
 	url: string,
 	token?: TokenSource,
-	headers?: Record<string, string>
+	headers?: Record<string, string>,
+	{ onRequest }: { onRequest?: RequestHook } = {}
 ): AppClient {
 	const baseUrl = normalizeApiUrl(url);
 	const readToken = typeof token === 'function' ? token : undefined;
@@ -75,13 +80,16 @@ export function createClient(
 		apiUrl: baseUrl,
 		timeoutMs: 5000, // Increased from 2000ms for CI reliability
 		onRequest:
-			readToken &&
-			(async (_url, init) => {
-				// The SDK has merged its timeout and the caller's signal into `init.signal`.
-				const bearer = await (init.signal ? abortable(readToken(), init.signal) : readToken());
-				const requestHeaders = new Headers(init.headers);
-				if (bearer) requestHeaders.set('Authorization', `Bearer ${bearer}`);
-				return { ...init, headers: requestHeaders };
+			(readToken || onRequest) &&
+			(async (requestUrl, init) => {
+				if (readToken) {
+					// The SDK has merged its timeout and the caller's signal into `init.signal`.
+					const bearer = await (init.signal ? abortable(readToken(), init.signal) : readToken());
+					const requestHeaders = new Headers(init.headers);
+					if (bearer) requestHeaders.set('Authorization', `Bearer ${bearer}`);
+					init = { ...init, headers: requestHeaders };
+				}
+				return onRequest ? onRequest(requestUrl, init) : init;
 			})
 	});
 

@@ -191,3 +191,33 @@ describe('<LangGraph> titles prop', () => {
 		await waitFor(() => expect(getCtx()?.titles).toBe(false));
 	});
 });
+
+describe('<LangGraph> onRequest prop', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	test('runs on SDK requests with the bearer set, and a new hook keeps the client', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response('[]', { headers: { 'Content-Type': 'application/json' } }))
+		);
+		const seen: string[] = [];
+		// The owned thread list fetches too; only the assistants searches below are counted.
+		const hook = (name: string) => (url: URL, init: RequestInit) => {
+			if (url.pathname.endsWith('/assistants/search'))
+				seen.push(`${name} ${new Headers(init.headers).get('Authorization')}`);
+			return init;
+		};
+		const base = { url: 'http://localhost:8000', token: 'tok-a', assistantId: 'assistant-1' };
+		const { rerender, getCtx } = renderProbe({ ...base, onRequest: hook('first') });
+		await tick();
+		const first = getCtx()?.client;
+		await first?.assistants.search({ limit: 1 });
+
+		await rerender({ ...base, onRequest: hook('second') });
+		await tick();
+		await getCtx()?.client?.assistants.search({ limit: 1 });
+
+		expect(getCtx()?.client).toBe(first);
+		expect(seen).toEqual(['first Bearer tok-a', 'second Bearer tok-a']);
+	});
+});
