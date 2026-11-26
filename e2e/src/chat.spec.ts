@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
 import { LANGGRAPH_CONFIG, gotoFreshThread, makeAuthenticatedRequest } from './fixtures/backend';
+import type { Page } from '@playwright/test';
 import type { ChatPage } from './pages';
 
 // Opt this file out of fullyParallel. Every test here now starts on its own fresh thread
@@ -173,19 +174,30 @@ test.describe('Runs outlive the page', () => {
 		await gotoFreshThread(page);
 	});
 
-	/** Starts a ~13 s echo (see 'Streaming') and waits for its head; returns its tail. */
-	async function startLongReply(chat: ChatPage): Promise<string> {
+	async function runStatuses(page: Page, threadId: string): Promise<string[]> {
+		const res = await makeAuthenticatedRequest(page, `/threads/${threadId}/runs`);
+		expect(res.ok()).toBeTruthy();
+		return ((await res.json()) as Array<{ status: string }>).map((run) => run.status);
+	}
+
+	/**
+	 * Starts a ~13 s echo (see 'Streaming') and waits for its head, then checks on the server that
+	 * the run is still going, so the step that follows happens mid-run. Returns the echo's tail.
+	 */
+	async function startLongReply(page: Page, chat: ChatPage, threadId: string): Promise<string> {
 		const testInput = Array.from({ length: 8 }, () => randomUUID().replace(/-/g, '')).join('');
 		await chat.textInput.fill(testInput);
 		await chat.textInput.press('Enter');
 		await expect(chat.aiMessage(testInput.slice(0, 20))).toBeVisible({ timeout: 30_000 });
+		expect(await runStatuses(page, threadId)).toEqual(['running']);
 		return testInput.slice(-20);
 	}
 
+	const currentThread = (page: Page) => new URL(page.url()).pathname.split('/').at(-1)!;
+
 	test('reloading mid-reply shows the reply', async ({ page, chat }) => {
 		test.setTimeout(90_000);
-		const tail = await startLongReply(chat);
-		await expect(chat.aiMessage(tail)).toHaveCount(0);
+		const tail = await startLongReply(page, chat, currentThread(page));
 
 		await page.reload();
 
@@ -196,17 +208,15 @@ test.describe('Runs outlive the page', () => {
 
 	test('leaving mid-run does not cancel the run', async ({ page, chat, sidebar }) => {
 		test.setTimeout(90_000);
-		const threadId = new URL(page.url()).pathname.split('/').at(-1)!;
-		const tail = await startLongReply(chat);
+		const threadId = currentThread(page);
+		const tail = await startLongReply(page, chat, threadId);
 
 		// Client-side navigation unmounts the conversation, which disposes its stream.
 		await sidebar.newChatButton.click();
 		await page.waitForURL((url) => !url.pathname.endsWith(threadId));
 
 		await expect(async () => {
-			const res = await makeAuthenticatedRequest(page, `/threads/${threadId}/runs`);
-			const runs = (await res.json()) as Array<{ status: string }>;
-			expect(runs.map((run) => run.status)).toEqual(['success']);
+			expect(await runStatuses(page, threadId)).toEqual(['success']);
 		}).toPass({ timeout: 45_000 });
 
 		await sidebar.threadLink(threadId).click();
