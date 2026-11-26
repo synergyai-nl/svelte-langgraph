@@ -15,55 +15,37 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — The chat runs on `@langchain/svelte` 1.x and Agent Protocol v2 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — The chat runs on `@langchain/svelte` 1.x, `@langchain/langgraph-sdk` 1.17 and Agent Protocol v2 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
-**What changed.** The `chat-core` registry item now asks for `@langchain/svelte` `^1.2.15` (was `^0.3.2`). Its `useStream` is a different runtime: it pins `@langchain/langgraph-sdk` 1.17.0 and talks Agent Protocol v2 to the server, `POST /threads/{id}/commands` (`run.start`) and the `POST /threads/{id}/stream/events` event stream, instead of `/runs/stream`. What that changes:
+**What changed.** The `chat-core` registry item now asks for `@langchain/svelte` `^1.2.15` (was `^0.3.1`) and `@langchain/langgraph-sdk` `^1.17.0` (was `^1.8.3`). The binding pins the SDK at 1.17.0; both need `@langchain/core` `^1.3.2` and `svelte` 5 as peers. Its `useStream` is a different runtime that talks Agent Protocol v2 to the server: runs start with `POST /threads/{id}/commands` (`run.start`) and are followed on the `POST /threads/{id}/stream/events` event stream, not `/runs/stream`. A thread loads from `GET /threads/{id}/state`. What the chat does differently:
 
-- A conversation opened while its thread has a run going joins that run and shows the reply, after a reload, on coming back to it, or in a second tab; the composer is busy until the run ends. On 0.3.2 the composer could stay busy after the run had ended.
-- A message the server never stored leaves the list, and `submit(text)` puts the text back in the composer. It used to be "a send refused before the run was created". Now it is "a run that ended before the server echoed the message", which also covers a run stopped that early.
-- Stop drops the part of the reply that had streamed; the cancelled run never stored it. On 0.3.2 it stayed on screen until a reload.
-- `ConversationApi.edit` returns `Promise<boolean>` (was `boolean`): it reads the thread's history to find the checkpoint to fork from, and resolves `false` when it finds none. `MessagesList`'s and `ChatMessage`'s `onEdit` take the same type. `regenerate` reads the history too.
-- `createStateSync`'s `StreamLike.submit` takes `multitaskStrategy` instead of `optimisticValues`; `field.set()` enqueues behind a running turn, which the stream's default would cancel.
-- Every `run.start` carries `config.configurable.thread_id`, and an edit or regenerate `config.configurable.checkpoint_id`. `run_input.py` allows both as strings (Aegra overwrites the thread id and reads the checkpoint id as the run's `checkpoint`) and no longer lists `__event_streaming_v2`, which 1.x does not send.
+- A conversation opened while its thread has a run going joins that run and shows the reply, after a reload, on coming back to it, or in a second tab. The composer is busy until the run ends. A run started in another tab after the conversation opened, on a thread that was idle then, is not followed.
+- Leaving a conversation mid-run no longer cancels the run: unmounting `Conversation` stops listening and the run finishes. The Stop button still cancels.
+- Stop drops the part of the reply that had streamed; the cancelled run never stored it, and the binding offers no option to keep it. It used to stay on screen until a reload.
+- The stream shows a sent message at once and sends it with an `id`: `Conversation` sets one, and the SDK adds `additional_kwargs: {}` and `response_metadata: {}`.
+- A message whose run ended before the server echoed it (a send refused with a 401 or by the run input check, or a run stopped that early) leaves the list. For a plain send, `Conversation` also puts the text back in the composer. An edit's text is not put back (the edited-text issue [#403](https://github.com/synergyai-nl/svelte-langgraph/issues/403)); the list shows the old branch. A run that fails after the server echoed the message keeps it, and the composer stays empty.
+- `ConversationApi.edit` returns `Promise<boolean>` (was `boolean`). It reads the thread history (`POST /threads/{id}/history`, 100 checkpoints per request, further pages only for an older message) to find the checkpoint to fork from, and resolves `false` when the message is not on the current branch. `MessagesList`'s and `ChatMessage`'s `onEdit` take the same type. `regenerate` reads the history the same way.
+- `api.submit(text)` is a no-op while `api.isThreadLoading`, as `api.submit()` already was. `MessageComposer` has a new `disabled` prop, which turns the input and Send off as a run does; `Conversation`'s composer sets it while the history loads.
+- `MessagesList` animates a message in, not out: one that leaves the list (an edit's old branch, an unstored send) goes at once. With the outro, the old branch's messages stayed in the list after an edit, inert.
+- `createStateSync`'s `StreamLike.submit` takes `multitaskStrategy` instead of `optimisticValues`. `field.set()` enqueues behind a running turn, which the stream's default would cancel.
+- Every `run.start` carries `config.configurable.thread_id`, and an edit or regenerate also carries `config.configurable.checkpoint_id`. `run_input.py` allows both as strings, and refuses a `thread_id` other than the route's thread.
 - `@svelte-langgraph/client` exports `findForkPoint(client, threadId, messageId)`.
 
-The item ships the new `Conversation.svelte`, `ChatMessage.svelte`, `MessagesList.svelte`, `svelte-langgraph-client/client.ts` and `svelte-langgraph-client/stateSync.svelte.ts`.
+The item ships the new `Conversation.svelte`, `ChatMessage.svelte`, `MessageComposer.svelte`, `MessagesList.svelte`, `svelte-langgraph-client/client.ts` and `svelte-langgraph-client/stateSync.svelte.ts`.
 
-**Who is affected.** Apps that installed the chat item; apps that copied `auth/run_input.py`; apps that call `api.edit`, pass their own `onEdit`, or use `createStateSync` or `@langchain/svelte` directly; backends that do not serve the v2 routes.
-
-**What to do.**
-
-1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`). Keep your own `@langchain/langgraph-sdk` resolving to 1.17.0, the version `@langchain/svelte` 1.2.15 pins, so one copy is installed. The peers are `svelte` 5 and `@langchain/core` `^1.3.2`.
-2. Serve Agent Protocol v2: on Aegra 0.12 the routes are on unless `FF_V2_EVENT_STREAMING=false`. A route filter or proxy in front of the server must pass `POST /threads/{id}/commands` and `POST /threads/{id}/stream/events` (an event stream that stays open).
-3. If you copied `auth/run_input.py`, replace `"__event_streaming_v2": bool` in `ALLOWED_CONFIGURABLE_KEYS` with `"thread_id": str` and `"checkpoint_id": str`. Check that your server sets the run's thread from the route, not from `configurable.thread_id`.
-4. If you call `api.edit` or pass your own `onEdit`, await it. If you call `useStream` yourself, follow `@langchain/svelte` 1.x: no `joinStream`, `switchThread`, `getMessagesMetadata`, `branch` or `history`; fork with `submit(input, { forkFrom })`; `onError` gets the error only.
-5. An `onRequest` hook that rewrote `/runs/stream` bodies now sees `/commands` bodies, with the run input under `params.input`.
-
-**How to check.** Run `moon run e2e:test -- src/chat.spec.ts`. In your app, start a long reply and reload: the reply finishes, and the composer is usable afterwards.
-
-## 2026-11-26 — The chat runs on `@langchain/langgraph-sdk` 1.17 ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
-
-**What changed.** The `chat-core` registry item now asks for `@langchain/langgraph-sdk` `^1.17.0` (was `^1.8.3`) and `@langchain/svelte` `^0.3.2` (was `^0.3.1`). SDK 1.17 needs `@langchain/core` `^1.3.2` as a peer. It changes what the chat does:
-
-- Leaving a conversation mid-run no longer cancels the run. On 1.8.3 unmounting `Conversation` (navigating to another thread) cancelled it on the server; 1.17 stops listening and the run finishes. The Stop button still cancels.
-- Every run `useStream` starts without a `context` carries `config.configurable.__event_streaming_v2: false`. The demo backend's run input check refuses unknown `configurable` keys with a 422, which failed every send on 1.17: `ALLOWED_CONFIGURABLE_KEYS` in `apps/backend/src/svelte_langgraph/auth/run_input.py` now lists it.
-- The SDK shows every input message in the list at once, before the server answers, and sends it with an `id` it mints, plus `additional_kwargs: {}` and `response_metadata: {}`: the request carries `{ type, content, id, additional_kwargs, response_metadata }` for the chat's `{ type, content }`.
-- When a send fails before the client learns of a run (the server refused it, for example with a 401, or the request never left), `Conversation` takes its message out of the list again. For a plain send it also puts the text back in the composer; an edit's text is not put back (the edited-text issue [#403](https://github.com/synergyai-nl/svelte-langgraph/issues/403)), and the list shows the old branch. A run the client knows was created keeps its message, and the composer stays empty. One case looks like a refusal: the server stored the run but its response was lost; then a stored message is hidden until the next run, and its text is offered again. An abort or timeout hides nothing and puts nothing back.
-- `api.submit(text)` is a no-op while `api.isThreadLoading`, as `api.submit()` already was. `MessageComposer` has a new `disabled` prop, which turns the input and Send off, as a run does; `Conversation`'s composer sets it while the history loads.
-- `MessagesList` animates a message in, not out: one that leaves the list (an edit's old branch, a refused send) goes at once. With the outro, after an edit on 1.17 the old branch's messages stayed in the list, inert; why their outro never ended is not pinned down.
-
-The item ships the new `Conversation.svelte`, `MessageComposer.svelte` and `MessagesList.svelte`.
-
-**Who is affected.** Apps that installed the chat item, and apps that copied `auth/run_input.py`.
+**Who is affected.** Apps that installed the chat item; apps that copied `auth/run_input.py`; apps that call `api.edit` or `api.submit(text)` from their own composer, pass their own `onEdit`, or use `createStateSync` or `@langchain/svelte` directly; backends that do not serve the v2 routes.
 
 **What to do.**
 
-1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`). The CLI reinstalls `@langchain/langgraph-sdk` and `@langchain/svelte` at the new ranges, because `^1.8.3` and `^0.3.1` fall outside them. The item does not list `@langchain/core`: if your `package.json` declares it below `^1.3.2`, raise it yourself and run your package manager's install.
-2. If you copied `auth/run_input.py`, add `"__event_streaming_v2": bool` to `ALLOWED_CONFIGURABLE_KEYS`. If your backend validates input messages, let them carry `id`, `additional_kwargs` and `response_metadata`.
-3. If your own composer calls `api.submit(text)`, disable it while `api.isThreadLoading`, or pass `disabled={api.isThreadLoading}` to `MessageComposer`.
-4. If your app relied on leaving a page to cancel a run, call `api.stop()` before you navigate away.
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`). The CLI reinstalls `@langchain/langgraph-sdk` and `@langchain/svelte` at the new ranges. Keep your own SDK range resolving to 1.17.0, the version the binding pins, so one copy is installed. The item does not list `@langchain/core`: if your `package.json` declares it below `^1.3.2`, raise it and run your package manager's install.
+2. Serve Agent Protocol v2. On Aegra 0.12 the routes are on unless `FF_V2_EVENT_STREAMING=false`. A route filter or proxy in front of the server must pass `POST /threads/{id}/commands` and `POST /threads/{id}/stream/events`, an event stream that stays open. With the routes off, Aegra answers both with HTTP 503 and `Agent Protocol v2 event streaming is disabled on this server (FF_V2_EVENT_STREAMING=false)`. Every send then shows the chat's error card and puts the text back, and a conversation opened on a running thread shows the error once the stream gives up reconnecting.
+3. If you copied `auth/run_input.py`, add `"thread_id": str` and `"checkpoint_id": str` to `ALLOWED_CONFIGURABLE_KEYS`, with the check in `validate_run_input` that refuses a `configurable.thread_id` other than the route's thread. If your backend validates input messages, let them carry `id`, `additional_kwargs` and `response_metadata`.
+4. If you call `api.edit` or pass your own `onEdit`, await it. If your own composer calls `api.submit(text)`, disable it while `api.isThreadLoading`, or pass `disabled={api.isThreadLoading}` to `MessageComposer`.
+5. If you call `useStream` yourself, follow `@langchain/svelte` 1.x: there is no `joinStream`, `switchThread`, `getMessagesMetadata`, `branch` or `history`; fork with `submit(input, { forkFrom })`; `onError` gets the error only.
+6. An `onRequest` hook that rewrote `/runs/stream` bodies now sees `/commands` bodies, with the run input under `params.input`.
+7. If your app relied on leaving a page to cancel a run, call `api.stop()` before you navigate away.
 
-**How to check.** Run `moon run e2e:test -- src/chat.spec.ts`. In your app, start a long reply and open another thread: the run on the first thread still ends with status `success` in `GET /threads/{id}/runs`.
+**How to check.** Run `moon run e2e:test -- src/chat.spec.ts`. In your app, start a long reply and reload: the reply finishes, and the composer is usable afterwards. Open another thread mid-reply: the run on the first thread still ends with status `success` in `GET /threads/{id}/runs`.
 
 ## 2026-11-26 — Thread helpers take the graph id; `<LangGraph threadList={false}>` ([#456](https://github.com/synergyai-nl/svelte-langgraph/pull/456))
 
