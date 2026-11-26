@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — `createClient` and `<LangGraph>` take the SDK's `onRequest` hook ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — `createClient` and `<LangGraph>` take the SDK's `onRequest` hook ([#455](https://github.com/synergyai-nl/svelte-langgraph/pull/455))
 
 **What changed.** `createClient(url, token?, headers?, options?)` takes `options.onRequest`, and `<LangGraph>` an `onRequest` prop that it passes on. It is the SDK's own `RequestHook`: it runs once per SDK request after the bearer is set (HTTP retries reuse its result; stream reconnects call it again) and may return a changed `RequestInit`. The title and feedback routes do not pass through it.
 
