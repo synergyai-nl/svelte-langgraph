@@ -492,7 +492,10 @@ stay.
 it is; `api.submit()` starts a run without one (`{ messages: [] }`), for an agent that speaks first
 or a backend that answers the last human message again. Both are a no-op while a run is active, and
 `submit()` also while the history is loading. `MessageComposer` never submits blank input; a
-composer you write yourself must check before it calls `submit`. This one omits `onEdit`/`onRegenerate`, so user
+composer you write yourself must check before it calls `submit`. During a run (`isStreaming`) its
+input stays editable and keeps focus, also after Send or Stop, so the next message can be typed;
+Stop replaces Send and Enter sends nothing. `disabled` turns input and Send off, as the default composition does while the
+history loads. This one omits `onEdit`/`onRegenerate`, so user
 messages have no Edit and AI messages no Regenerate (Copy stays).
 
 ```svelte
@@ -526,6 +529,7 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 							<MessageComposer
 								bind:value={() => api.input, (v) => api.setInput(v)}
 								isStreaming={api.isLoading}
+								disabled={api.isThreadLoading}
 								onSubmit={() => api.submit(api.input)}
 								onStop={api.stop}
 							/>

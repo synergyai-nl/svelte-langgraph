@@ -62,7 +62,7 @@ export class ChatSurfacePage {
 
 	/**
 	 * Asserts the run actually produced a reply: an AI message containing `text` becomes
-	 * visible, then the composer input is re-enabled (run finished). The ai-mock backend
+	 * visible, then Send is back in place of Stop (run finished). The ai-mock backend
 	 * echoes the user's input, so callers typically pass (the head of) what they sent.
 	 *
 	 * `timeout` applies to each wait; the default tolerates first-token latency against a
@@ -74,7 +74,7 @@ export class ChatSurfacePage {
 	): Promise<Locator> {
 		const reply = this.aiMessage(text).last();
 		await expect(reply).toBeVisible({ timeout });
-		await expect(this.textInput).toBeEnabled({ timeout });
+		await expect(this.sendButton).toBeVisible({ timeout });
 		return reply;
 	}
 }

@@ -43,12 +43,16 @@ test.describe('Sending', () => {
 		await gotoFreshThread(page);
 	});
 
-	test('user can send a message and receive an AI response', async ({ chat }) => {
+	test('user can send a message and receive an AI response', async ({ page, chat }) => {
 		const message = `Hello ${randomUUID()}`;
 		await chat.textInput.fill(message);
 		await chat.textInput.press('Enter');
 
 		await chat.expectAiReply(message);
+		// The input kept focus through the run: the next message can be typed straight away.
+		await expect(chat.textInput).toBeFocused();
+		await page.keyboard.type('Next');
+		await expect(chat.textInput).toHaveValue('Next');
 	});
 
 	test('clicking the Send button submits the message without a native form navigation', async ({
@@ -412,15 +416,15 @@ test.describe('Streaming', () => {
 		const aiWithTail = chat.aiMessage(tailEcho);
 
 		// The echo's head must appear in an AI bubble mid-run: before its tail
-		// exists and while the input is still disabled (run in flight). The
+		// exists and while Stop is still shown (run in flight). The
 		// generous timeout only tolerates first-token latency (cold dev server);
 		// incrementality itself is enforced by the two assertions that follow,
 		// which must hold at whatever moment the partial first renders.
 		await expect(aiWithPartial.first()).toBeVisible({ timeout: 30_000 });
 		await expect(aiWithTail).toHaveCount(0);
-		await expect(chat.textInput).toBeDisabled();
+		await expect(chat.stopButton).toBeVisible();
 
-		// The run then completes normally: full echo present, input re-enabled.
+		// The run then completes normally: full echo present, Send back.
 		await chat.expectAiReply(tailEcho, { timeout: 45_000 });
 	});
 });
@@ -573,7 +577,7 @@ test.describe('Regenerate message', () => {
 		}
 		expect(after?.id, 'regenerate must produce a new AI message id').not.toBe(before!.id);
 
-		// The UI settles with a visible answer and the input re-enabled.
+		// The UI settles with a visible answer and Send back.
 		await chat.expectAiReply(question);
 	});
 });
@@ -637,8 +641,8 @@ test.describe('Cancellation', () => {
 		await expect(partialReply).toHaveCount(0);
 		await expect(chat.userMessage(testInput)).toBeVisible();
 
-		// is_streaming=false → input re-enabled, no error shown
-		await expect(chat.textInput).toBeEnabled();
+		// is_streaming=false → Send back, no error shown
+		await expect(chat.sendButton).toBeVisible();
 		await expect(page.getByRole('alert')).not.toBeVisible();
 	});
 
@@ -680,7 +684,7 @@ test.describe('Cancellation', () => {
 		await stopButton.click();
 
 		// Confirm client-side streaming has stopped
-		await expect(chat.textInput).toBeEnabled();
+		await expect(chat.sendButton).toBeVisible();
 
 		// By now streaming has started and stopped, so the token must be set
 		expect(capturedToken).toBeTruthy();

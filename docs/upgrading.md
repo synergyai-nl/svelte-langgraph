@@ -15,6 +15,19 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — The composer keeps focus through a run ([#479](https://github.com/synergyai-nl/svelte-langgraph/pull/479))
+
+**What changed.** `MessageComposer` no longer disables its input during a run, so focus stays in it and the user can type the next message; Stop replaces Send and Enter sends nothing until the run ends. Pressing Send or Stop moves focus to the input, as the other button replaces the one pressed. On a phone the keyboard now stays up after sending (it used to close because the input was disabled). A draft typed during a run stays when the run fails or is stopped; Retry still resends the refused message. Only `disabled` (the history load, in `Conversation`'s default composition) still turns the input off. The item ships the new `MessageComposer.svelte`.
+
+**Who is affected.** Apps that use the stock composer (`ChatSurface`, `Conversation`'s default composition or `MessageComposer`). Apps that write to the input when a run ends (for example a suggested follow-up through `api.setInput`) now overwrite a draft the user may have typed, and should check `api.input` is empty first; apps that styled `textarea:disabled` as the busy cue lose that cue. Apps with their own composer need not act otherwise.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. If your tests wait for the input to be enabled as a sign that a run ended, wait for the Send button instead (`getByRole('button', { name: 'Send message' })`).
+
+**How to check.** Run `moon run e2e:test -- src/chat.spec.ts -g "receive an AI response"`. In your app, send with Enter: after the reply, type on without clicking.
+
 ## 2026-11-26 — Retry repeats the last action with the same message id ([#475](https://github.com/synergyai-nl/svelte-langgraph/pull/475))
 
 **What changed.** `ConversationApi.retry` repeats the last action instead of resending the last text: a send or an edit goes again with its first message id (an edit from the same fork point), a regenerate and a run without text (`api.submit()`) go again as such. The server replaces a message of the same id, so a message it stored already (a run that failed after it, a lost response) is held once. A refused send whose text was put back in the composer is resent, and taken out of the composer, only while that text is unchanged; if the user changed it, Retry only clears the error, unless the server's echo of the message arrived since: then the message shows and Retry resends it with its id, leaving the draft. Send on that unchanged text reuses the id as well. `api.retry` is `undefined` while there is nothing to repeat (a failed history load), so `MessagesList` shows no Retry button then. Two limits: merging by id deduplicates messages, not runs, so if a response was lost while the original run is still running on the server, Retry starts a second run next to it, and how the server handles two runs on one thread is up to the server. And when the stored message already has an answer after it (the error surfaced late), the resend replaces the human message in place and the run finds nothing to answer; the demo graph then ends it without a model call. Retry does not promise a fresh answer; Regenerate is the action for that. The item ships the new `Conversation.svelte`.
