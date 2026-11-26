@@ -107,6 +107,36 @@ test.describe('Sending', () => {
 		await expect(chat.textInput).toHaveValue('');
 	});
 
+	test("a send the backend's run input check refuses shows the error card and keeps the text", async ({
+		page,
+		chat
+	}) => {
+		// The request goes to the real backend, with a configurable key it refuses: its answer is
+		// a protocol error envelope (HTTP 200), not an HTTP error.
+		await page.route(
+			'**/threads/*/commands',
+			(route) => {
+				const command = route.request().postDataJSON();
+				command.params.config.configurable.user_id = 'someone-else';
+				return route.continue({ postData: JSON.stringify(command) });
+			},
+			{ times: 1 }
+		);
+		const refusal = page.waitForResponse((res) => res.url().endsWith('/commands'));
+
+		const message = `Refused by the backend ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+
+		expect(await (await refusal).json()).toMatchObject({
+			type: 'error',
+			error: 'invalid_argument'
+		});
+		await expect(page.getByTestId('chat-error')).toContainText('Something went wrong. Try again.');
+		await expect(chat.textInput).toHaveValue(message);
+		await expect(chat.userMessage(message)).toHaveCount(0);
+	});
+
 	test('a run that fails after the server stored the message keeps the message, not the text', async ({
 		page,
 		chat
