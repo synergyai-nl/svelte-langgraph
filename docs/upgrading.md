@@ -15,11 +15,18 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — AI messages render only safe links ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — AI messages render only safe links ([#453](https://github.com/synergyai-nl/svelte-langgraph/pull/453))
 
-**What changed.** `ChatMessage` renders a markdown link in an AI message as a link only when its URL is `http:`, `https:`, `mailto:`, relative or a fragment. Any other scheme, such as `javascript:`, `data:` or `vbscript:`, renders as the link's plain text. Before, `svelte-exmarkdown` passed the URL through to `href` unchanged. The `chat-core` registry item ships the new `ChatMessage.svelte`.
+**What changed.** `ChatMessage` renders a markdown link in an AI message as a link only when its URL is `http:`, `https:`, `mailto:`, relative or a fragment. Any other scheme, such as `javascript:`, `data:` or `vbscript:`, renders the link's contents without an anchor. Before, links were rendered without a scheme allowlist. The `chat-core` registry item ships the new `ChatMessage.svelte`.
 
-**Who is affected.** Apps that installed the chat item. Apps whose agents link to another scheme on purpose (for example `tel:`) see those links as text.
+**Who is affected.** Apps that installed the chat item. Apps whose agents link to another scheme on purpose (for example `tel:`) see those links without an anchor.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. To allow another scheme, add it to `SAFE_LINK_PROTOCOLS` in your copy of `ChatMessage.svelte`.
+
+**How to check.** Run `moon run frontend:test -- src/lib/components/chat/ChatMessage.svelte.test.ts`. In your app, have the agent answer `[x](javascript:alert(1))`: the reply shows `x`, not a link.
 
 ## 2026-11-26 — The chat imports the client through `#lib`; drop the `@svelte-langgraph/client` alias ([#452](https://github.com/synergyai-nl/svelte-langgraph/pull/452))
 
@@ -30,10 +37,6 @@ Each entry has this format:
 **What to do.**
 
 1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
-2. To allow another scheme, add it to `SAFE_LINK_PROTOCOLS` in your copy of `ChatMessage.svelte`.
-
-**How to check.** Run `moon run frontend:test -- src/lib/components/chat/ChatMessage.svelte.test.ts`. In your app, have the agent answer `[x](javascript:alert(1))`: the reply shows `x` as plain text.
-
 2. Delete the `'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'` entry from `alias` in `sveltekit()` in `vite.config.ts`, and the `alias` option if it is now empty.
 3. In your own code, replace `from '@svelte-langgraph/client'` with `from '#lib/svelte-langgraph-client/index.ts'` (or your `lib` alias, if you customised it).
 
