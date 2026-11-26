@@ -21,7 +21,8 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	test.setTimeout(60_000);
 
 	await authenticateUser(page);
-	// (e) `threadList={false}`: no thread search and no title request, at start or after the run.
+	// (e) `threadList={false} titles={false}`: no thread search and no title request, at start or
+	// after the run.
 	const listRequests: string[] = [];
 	page.on('request', (request) => {
 		const path = new URL(request.url()).pathname;

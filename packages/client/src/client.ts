@@ -135,8 +135,9 @@ export interface ThreadOptions {
 	/** Use this thread: created when missing, otherwise returned as it is. */
 	threadId?: string;
 	/**
-	 * Written onto a thread this call creates, never onto an existing one. `graph_id` is always
-	 * `graphId`: the thread list filters on it, and the server stamps it again on every run.
+	 * Written onto a thread this call creates, never onto an existing one, with `graph_id` set to
+	 * `graphId` over the same key: the thread list filters on it, and the server stamps it again on
+	 * every run. Without `threadId` it is also the reuse filter.
 	 */
 	metadata?: Metadata;
 }
@@ -152,7 +153,8 @@ export async function getOrCreateThread(
 	graphId: string,
 	{ threadId, metadata }: ThreadOptions = {}
 ): Promise<Thread<ThreadValues>> {
-	if (threadId) {
+	// `!== undefined`: an empty id must reach the server and be refused, not reuse a thread.
+	if (threadId !== undefined) {
 		return (await client.threads.create({
 			graphId,
 			metadata,

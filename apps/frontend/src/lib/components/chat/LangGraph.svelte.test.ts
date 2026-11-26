@@ -198,14 +198,14 @@ describe('<LangGraph> graph and threadList props', () => {
 		await waitFor(() => expect(getCtx()?.graph).toBe('coach'));
 	});
 
-	test('threadList={false} turns titles off and leaves the list idle and empty', async () => {
+	test('threadList={false} leaves the list idle and empty, and titles on', async () => {
 		const { getCtx } = renderProbe({
 			url: 'http://localhost:8000',
 			token: 'tok',
 			threadList: false
 		});
 		await waitFor(() => expect(getCtx()?.client).toBeDefined());
-		expect(getCtx()?.titles).toBe(false);
+		expect(getCtx()?.titles).toBe(true);
 		expect(getCtx()?.threadList.loading).toBe(false);
 		expect(getCtx()?.threadList.threads).toEqual([]);
 	});

@@ -382,6 +382,14 @@ describe('thread helpers', () => {
 		]);
 	});
 
+	it('sends an empty thread id to the server instead of reusing a thread', async () => {
+		await getOrCreateThread(client(), 'coach', { threadId: '' });
+
+		expect(fetchMock.mock.calls.map(sent)).toMatchObject([
+			{ url: 'https://backend.test/api/threads', body: { thread_id: '', if_exists: 'do_nothing' } }
+		]);
+	});
+
 	it('reuses an idle thread with the same graph and metadata', async () => {
 		fetchMock.mockResolvedValueOnce(json([thread]));
 
