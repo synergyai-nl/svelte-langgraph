@@ -224,6 +224,7 @@ describe('Conversation', () => {
 			await screen.findByRole('button', { name: 'Send message' });
 			expect(mockModule.mockStreamCallbacks.submit).toHaveBeenCalledOnce();
 			expect(textbox).toHaveValue('Next');
+			expect(textbox).toHaveFocus();
 		});
 	});
 

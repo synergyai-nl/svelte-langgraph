@@ -33,7 +33,7 @@ test.describe('Phase state-sync', () => {
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.phaseSelect).toBeVisible();
 
-		// Wait for the initial stream reconnect to settle before we interact.
+		// Wait for the thread history to load before we interact.
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
 
 		// Pick a target phase that differs from the current value so the change event fires.
@@ -63,7 +63,7 @@ test.describe('Phase state-sync', () => {
 	});
 
 	test('phase is visible to the model', async ({ chat }) => {
-		// Wait for schema and initial stream.
+		// Wait for the schema and the thread history.
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
 
@@ -85,7 +85,7 @@ test.describe('Phase state-sync', () => {
 	});
 
 	test('AI-driven phase change updates the dropdown live', async ({ chat }) => {
-		// Wait for schema and initial stream.
+		// Wait for the schema and the thread history.
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
 
@@ -109,6 +109,7 @@ test.describe('Phase state-sync', () => {
 	});
 
 	test('AI-driven parallel phase changes: last write wins', async ({ page, chat }) => {
+		// Wait for the schema and the thread history.
 		await expect(chat.phaseWrapper).toBeVisible({ timeout: 15000 });
 		await expect(chat.textInput).toBeEnabled({ timeout: 15000 });
 

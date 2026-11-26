@@ -17,9 +17,9 @@ Each entry has this format:
 
 ## 2026-11-26 — The composer keeps focus through a run ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
-**What changed.** `MessageComposer` no longer disables its input during a run, so focus stays in it and the user can type the next message; Stop replaces Send and Enter sends nothing until the run ends. Pressing Send moves focus to the input, as Stop replaces the button. Only `disabled` (the history load, in `Conversation`'s default composition) still turns the input off. The item ships the new `MessageComposer.svelte`.
+**What changed.** `MessageComposer` no longer disables its input during a run, so focus stays in it and the user can type the next message; Stop replaces Send and Enter sends nothing until the run ends. Pressing Send or Stop moves focus to the input, as the other button replaces the one pressed. On a phone the keyboard now stays up after sending (it used to close because the input was disabled). A draft typed during a run stays when the run fails or is stopped; Retry still resends the refused message. Only `disabled` (the history load, in `Conversation`'s default composition) still turns the input off. The item ships the new `MessageComposer.svelte`.
 
-**Who is affected.** Apps that use the stock composer (`ChatSurface`, `Conversation`'s default composition or `MessageComposer`). Apps with their own composer need not act.
+**Who is affected.** Apps that use the stock composer (`ChatSurface`, `Conversation`'s default composition or `MessageComposer`). Apps that write to the input when a run ends (for example a suggested follow-up through `api.setInput`) now overwrite a draft the user may have typed, and should check `api.input` is empty first; apps that styled `textarea:disabled` as the busy cue lose that cue. Apps with their own composer need not act otherwise.
 
 **What to do.**
 

@@ -42,6 +42,12 @@
 		textarea?.focus();
 	}
 
+	// Send replaces Stop, which would drop focus the same way.
+	function handleStop() {
+		onStop?.();
+		textarea?.focus();
+	}
+
 	function handleKeyPress(event: KeyboardEvent) {
 		if (event.key === 'Enter' && event.shiftKey === false && !event.isComposing) {
 			event.preventDefault();
@@ -80,7 +86,7 @@
 					<SubmitButton
 						{isStreaming}
 						disabled={cannotSend}
-						{onStop}
+						onStop={handleStop}
 						sendLabel={m.slg_chat_input_send()}
 						stopLabel={m.slg_chat_input_stop()}
 					/>
