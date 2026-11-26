@@ -21,6 +21,12 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 	test.setTimeout(60_000);
 
 	await authenticateUser(page);
+	// (e) `threadList={false}`: no thread search and no title request, at start or after the run.
+	const listRequests: string[] = [];
+	page.on('request', (request) => {
+		const path = new URL(request.url()).pathname;
+		if (path.endsWith('/threads/search') || path.endsWith('/titles')) listRequests.push(path);
+	});
 	await page.goto('/demo/embedded');
 
 	const card = page.locator('[data-testid="embedded-chat-card"]');
@@ -65,6 +71,7 @@ test('embedded chat surface has no sidebar, round-trips a message, and stays sco
 
 	// Still no sidebar cookie after a full round trip.
 	expect((await page.context().cookies()).find((c) => c.name === 'sidebar_state')).toBeUndefined();
+	expect(listRequests).toEqual([]);
 });
 
 test('a failed assistant lookup shows an error with Retry instead of the loader, and Retry recovers', async ({
