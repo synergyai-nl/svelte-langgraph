@@ -527,9 +527,9 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 {/if}
 ```
 
-An AI message that calls tools lists them in `toolCalls` (`{ id, name }`; the arguments come with
-the result, as the tool message's `payload`). A tool message's `id` is its call's `id`, so a
-composition can tell an agent waiting for a tool from one that said nothing:
+An AI message that calls tools lists them in `toolCalls` (`{ id, name }`, each once it has both; the
+arguments are on the matching tool message's `payload` when available). A tool message's `id` is
+its call's `id`, so a composition can tell an agent waiting for a tool from one that said nothing:
 
 ```ts
 const last = api.messages.at(-1);

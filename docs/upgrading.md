@@ -17,7 +17,7 @@ Each entry has this format:
 
 ## 2026-11-26 — An AI message lists its tool calls ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
-**What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, present when the message calls a tool, also while it streams. A call shows once it has an id. The answer to a call is the `ToolMessage` with the same `id`. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
+**What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, present when the message calls a tool, also while it streams. A call shows once it has an id and a name: a tool result names its call by id, so a call without one cannot be matched to its result. The result of a call is the `ToolMessage` with the same `id`; the arguments are on its `payload` when available. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
 
 **Who is affected.** Nobody needs to act. Apps that compose their own message list can use it.
 

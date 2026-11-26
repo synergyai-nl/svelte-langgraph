@@ -52,19 +52,26 @@ export function extractThinkingFromContent(
 	return undefined;
 }
 
+const TOOL_CALL_BLOCKS = new Set(['tool_call', 'tool_use', 'tool_call_chunk']);
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
 /**
- * The calls an AI message makes, from `tool_calls` and the content blocks. While a message
- * streams, its `tool_calls` covers only the call still arriving, so a call finished before it is
- * read from its block. A call is listed once it has an id and a name: a call without an id can
- * never be answered, and one still streaming may get its id later.
+ * The calls an AI message makes, from its content blocks, `tool_calls`, `tool_call_chunks` and
+ * `invalid_tool_calls`. Expects a message as the SDK hands it over (`@langchain/core` fields), not
+ * a raw dict with calls only in `additional_kwargs.tool_calls`. While a message streams, its
+ * `tool_calls` covers only the chunks still arriving, and a chunk whose arguments do not parse
+ * moves to `invalid_tool_calls`, so all four are read to keep a listed call listed. A call is
+ * listed once it has an id and a name: a tool result names its call by id, so a call without one
+ * (`ToolCall.id` is optional) cannot be matched to its result; a streaming call may get it later.
  */
 function extractToolCalls(item: Record<string, unknown>): { id: string; name: string }[] {
-	const blocks = (Array.isArray(item.content) ? item.content : []).filter(
-		(b) => b?.type === 'tool_call' || b?.type === 'tool_call_chunk'
+	const blocks = asArray(item.content).filter((b) =>
+		TOOL_CALL_BLOCKS.has((b as { type?: string })?.type ?? '')
 	);
 	const calls = new Map<string, string>();
 	// Blocks first: they keep the order the calls were made in while one is still streaming.
-	for (const c of [...blocks, ...(Array.isArray(item.tool_calls) ? item.tool_calls : [])]) {
+	const sources = [item.tool_calls, item.tool_call_chunks, item.invalid_tool_calls];
+	for (const c of [...blocks, ...sources.flatMap(asArray)]) {
 		const { id, name } = (c ?? {}) as { id?: unknown; name?: unknown };
 		if (typeof id === 'string' && id && typeof name === 'string' && name && !calls.has(id))
 			calls.set(id, name);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { convertThreadMessage, extractTextFromContent, extractThinkingFromContent } from './utils';
 import { InvalidData } from './errors';
+import type { AIMessage } from './types';
 
 describe('convertThreadMessage', () => {
 	it('should convert human message to UserMessage', () => {
@@ -47,29 +48,72 @@ describe('convertThreadMessage', () => {
 
 	describe('toolCalls', () => {
 		const call = (id: string | undefined) => ({ id, name: 'get_weather', args: { city: 'x' } });
+		const chunk = (id?: string, args = '') => ({ type: 'tool_call_chunk', ...call(id), args });
+		const done = (id: string) => ({ type: 'tool_call', ...call(id) });
 		const both = ['c1', 'c2'].map((id) => ({ id, name: 'get_weather' }));
+		const ai = { type: 'ai', content: '', id: 'ai-1' };
 
 		it('lists the calls by id and name, and is absent without any', () => {
-			const ai = { type: 'ai', content: '', id: 'ai-1', tool_calls: [call('c1'), call('c2')] };
-			expect(convertThreadMessage(ai)).toMatchObject({ toolCalls: both });
+			expect(convertThreadMessage({ ...ai, tool_calls: [call('c1'), call('c2')] })).toMatchObject({
+				toolCalls: both
+			});
 			expect(convertThreadMessage({ ...ai, tool_calls: [] })).not.toHaveProperty('toolCalls');
 		});
 
 		it('leaves out a call without an id, also one still streaming', () => {
-			const ai = { type: 'ai', content: '', id: 'ai-1', tool_calls: [call(undefined), call('')] };
-			expect(convertThreadMessage(ai)).not.toHaveProperty('toolCalls');
-			const chunk = { type: 'tool_call_chunk', name: 'get_weather', args: '{' };
-			const streaming = { ...ai, content: [chunk], tool_calls: [], tool_call_chunks: [chunk] };
+			const idless = [call(undefined), call('')];
+			expect(convertThreadMessage({ ...ai, tool_calls: idless })).not.toHaveProperty('toolCalls');
+			const streaming = { ...ai, content: [chunk()], tool_call_chunks: [chunk()] };
 			expect(convertThreadMessage(streaming)).not.toHaveProperty('toolCalls');
 		});
 
-		it('keeps a finished call while the next one streams, in order', () => {
-			// The stream's shape: `tool_calls` covers only the chunk still arriving.
-			const chunk = { type: 'tool_call_chunk', id: 'c2', name: 'get_weather', args: '{"ci' };
-			const content = [{ type: 'tool_call', ...call('c1') }, chunk];
-			const tool_calls = [{ ...call('c2'), args: {} }];
-			const streaming = { type: 'ai', id: 'ai-1', content, tool_calls, tool_call_chunks: [chunk] };
-			expect(convertThreadMessage(streaming)).toMatchObject({ toolCalls: both });
+		it('reads tool_call_chunks, invalid_tool_calls and a tool_use block', () => {
+			const [c1] = both;
+			const chunks = { ...ai, tool_call_chunks: [chunk('c1', '{')] };
+			expect(convertThreadMessage(chunks)).toMatchObject({ toolCalls: [c1] });
+			const invalid = { ...ai, invalid_tool_calls: [{ ...call('c1'), args: '{"city": x' }] };
+			expect(convertThreadMessage(invalid)).toMatchObject({ toolCalls: [c1] });
+			const toolUse = { type: 'tool_use', id: 'c1', name: 'get_weather', input: {} };
+			const mixed = { ...ai, content: [toolUse, chunk('c2')], tool_calls: [call('c2')] };
+			expect(convertThreadMessage(mixed)).toMatchObject({ toolCalls: both });
+		});
+
+		it('never drops or reorders a listed call while the message streams', () => {
+			// The steps as the SDK hands them over: core derives `tool_calls` from the chunks only,
+			// and moves a chunk whose arguments do not parse to `invalid_tool_calls`.
+			const steps = [
+				{ blocks: [chunk()], tool_call_chunks: [chunk()], invalid_tool_calls: [chunk()] },
+				{
+					blocks: [chunk('c1', '{"ci')],
+					tool_call_chunks: [chunk('c1')],
+					tool_calls: [call('c1')]
+				},
+				{
+					blocks: [chunk('c1', 'x')],
+					tool_call_chunks: [chunk('c1')],
+					invalid_tool_calls: [chunk('c1')]
+				},
+				{ blocks: [done('c1')], tool_calls: [call('c1')] },
+				{
+					blocks: [done('c1'), chunk('c2')],
+					tool_call_chunks: [chunk('c2')],
+					tool_calls: [call('c2')]
+				},
+				{ blocks: [done('c1'), done('c2')], tool_calls: [call('c1'), call('c2')] }
+			];
+			for (const blockContent of [true, false]) {
+				let previous: unknown[] = [];
+				for (const { blocks, ...fields } of steps) {
+					// With string content nothing records a call finished before the next one streams;
+					// the SDK's streamed messages always carry their blocks.
+					if (!blockContent && blocks.length > 1 && fields.tool_call_chunks) continue;
+					const message = { ...ai, content: blockContent ? blocks : '', ...fields };
+					const { toolCalls = [] } = convertThreadMessage(message) as AIMessage;
+					expect(toolCalls.slice(0, previous.length)).toEqual(previous);
+					previous = toolCalls;
+				}
+				expect(previous).toEqual(both);
+			}
 		});
 	});
 

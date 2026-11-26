@@ -12,9 +12,9 @@ export interface AIMessage extends BaseMessage {
 	/** Carries the producing run the backend stamps on, so /feedback can
 	 *  score its trace. Absent while streaming and on pre-stamp answers. */
 	rateable?: boolean;
-	/** The tools this message calls, when it calls any. A call's answer is the `ToolMessage`
-	 *  whose `id` is the call's `id`. Ids and names only: arguments can be large and arrive with
-	 *  the answer, as its `payload`. */
+	/** The tools this message calls, when it calls any; a call is listed once it has an id and a
+	 *  name. A call's result is the `ToolMessage` whose `id` is the call's `id`. Ids and names
+	 *  only: arguments can be large, and are on that tool message's `payload` when available. */
 	toolCalls?: { id: string; name: string }[];
 }
 
