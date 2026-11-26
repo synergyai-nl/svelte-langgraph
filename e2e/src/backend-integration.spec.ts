@@ -545,6 +545,108 @@ test.describe('Backend Integration', () => {
 			});
 		});
 
+		test.describe('Agent Protocol v2 routes', () => {
+			/** A `run.start` command, as `@langchain/svelte` 1.x sends it, with `extra` params. */
+			const runStart = (assistantId: string, content: string, extra = {}) => ({
+				id: 1,
+				method: 'run.start',
+				params: { assistant_id: assistantId, input: humanInput(content), ...extra }
+			});
+			const stateMessages = async (api: Api, threadId: string) =>
+				((await api('GET', `/threads/${threadId}/state`)).body.values?.messages ?? []) as Array<{
+					content: unknown;
+				}>;
+			/** A's thread after one finished run, and B with a thread of their own. */
+			async function twoUsersAfterARun(request: APIRequestContext) {
+				const a = await setUpUser(request);
+				const b = await setUpUser(request, OIDC_CONFIG.otherUsername);
+				const secret = `A's secret ${randomUUID()}`;
+				const started = await a.api(
+					'POST',
+					`/threads/${a.threadId}/commands`,
+					runStart(a.assistantId, secret)
+				);
+				expect(started.body.type, started.text).toBe('success');
+				await waitForRunStatus(a.api, a.threadId, started.body.result.run_id, ['success']);
+				return { a, b, secret };
+			}
+
+			test("should not let another user command, read or follow a user's thread", async ({
+				request
+			}) => {
+				const { a, b, secret } = await twoUsersAfterARun(request);
+				const thread = `/threads/${a.threadId}`;
+				for (const [method, path, data] of [
+					['POST', `${thread}/commands`, runStart(b.assistantId, 'Unauthorized run')],
+					['POST', `${thread}/stream/events`, { channels: ['values', 'lifecycle'] }],
+					['GET', `${thread}/state`, undefined],
+					['POST', `${thread}/history`, { limit: 20 }]
+				] as const) {
+					const denied = await b.api(method, path, data);
+					expect(denied.status, `${method} ${path} as B: ${denied.text}`).toBe(404);
+					expect(denied.text).not.toContain(secret);
+				}
+				expect((await a.api('GET', `${thread}/runs`)).body).toHaveLength(1);
+				expect(JSON.stringify(await stateMessages(a.api, a.threadId))).toContain(secret);
+			});
+
+			test("should refuse another user's thread id in the run config", async ({ request }) => {
+				const { a, b } = await twoUsersAfterARun(request);
+				const foreign = { config: { configurable: { thread_id: a.threadId } } };
+				const command = await b.api(
+					'POST',
+					`/threads/${b.threadId}/commands`,
+					runStart(b.assistantId, 'Write here', foreign)
+				);
+				expect(command.body.type, command.text).toBe('error');
+				expect(command.body.message).toContain('config.configurable.thread_id');
+				const run = await b.api('POST', `/threads/${b.threadId}/runs/wait`, {
+					assistant_id: b.assistantId,
+					input: humanInput('Write here'),
+					...foreign
+				});
+				expect(run.status, run.text).toBe(422);
+				expect((await b.api('GET', `/threads/${b.threadId}/runs`)).body).toEqual([]);
+				expect((await a.api('GET', `/threads/${a.threadId}/runs`)).body).toHaveLength(1);
+			});
+
+			test("should not fork from another user's checkpoint", async ({ request }) => {
+				const { a, b, secret } = await twoUsersAfterARun(request);
+				const head = (await a.api('GET', `/threads/${a.threadId}/state`)).body.checkpoint
+					.checkpoint_id as string;
+				const command = await b.api(
+					'POST',
+					`/threads/${b.threadId}/commands`,
+					runStart(b.assistantId, 'Fork', { config: { configurable: { checkpoint_id: head } } })
+				);
+				// Accepted: the checkpoint is looked up in B's own thread, where it does not exist.
+				expect(command.body.type, command.text).toBe('success');
+				await waitForRunStatus(b.api, b.threadId, command.body.result.run_id, ['success', 'error']);
+				expect(JSON.stringify(await stateMessages(b.api, b.threadId))).not.toContain(secret);
+				expect(JSON.stringify(await stateMessages(a.api, a.threadId))).toContain(secret);
+				expect((await a.api('GET', `/threads/${a.threadId}/runs`)).body).toHaveLength(1);
+			});
+
+			test('should refuse thread and checkpoint ids at the top of the run config', async ({
+				request
+			}) => {
+				const { a, b } = await twoUsersAfterARun(request);
+				for (const [key, value] of [
+					['thread_id', a.threadId],
+					['checkpoint_id', randomUUID()]
+				]) {
+					const command = await b.api(
+						'POST',
+						`/threads/${b.threadId}/commands`,
+						runStart(b.assistantId, 'Hello', { config: { [key]: value } })
+					);
+					expect(command.body.type, command.text).toBe('error');
+					expect(command.body.message).toContain(`config.${key} is not accepted.`);
+				}
+				expect((await b.api('GET', `/threads/${b.threadId}/runs`)).body).toEqual([]);
+			});
+		});
+
 		test.describe('Prune', () => {
 			test("should not prune another user's thread", async ({ request }) => {
 				const a = await setUpUser(request);

@@ -20,7 +20,8 @@ ALLOWED_CONFIGURABLE_KEYS: dict[str, type] = {
     # Marks a submit that only writes state fields; see graph.phase_gate.
     "state_only_submit": bool,
     # `@langchain/svelte` 1.x sends the thread id on every `run.start`. Aegra
-    # overwrites it with the thread of the route, so it cannot redirect a run.
+    # overwrites it with the route's thread; `validate_run_input` also refuses
+    # any other thread, and the key outside a run.
     "thread_id": str,
     # The checkpoint an edit or regenerate forks from (`submit(…, { forkFrom })`).
     # Aegra reads it as the run's `checkpoint`, whose keys are checked below.
@@ -99,11 +100,19 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
-    empty), `context` and `webhook` (must be empty), the keys of
+    empty, `configurable.thread_id` only the route's thread), `context` and `webhook` (must be empty), the keys of
     `checkpoint`, and `command` (only `resume`). The detail names the
     offending key, never its value.
     """
     _validate_config("config", value.get("config"))
+
+    # `thread_id` is the route's thread, set by Aegra for `threads.create_run`
+    # only: the client may name that thread, never another.
+    configurable = _as_mapping("config", value.get("config")).get("configurable") or {}
+    if "thread_id" in configurable and configurable["thread_id"] != value.get(
+        "thread_id"
+    ):
+        raise _reject("config.configurable.thread_id must be the thread of the route.")
 
     if not _is_empty(value.get("context")):
         raise _reject("context is not accepted; it must be empty.")

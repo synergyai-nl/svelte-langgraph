@@ -75,7 +75,8 @@ def configurable(**keys) -> dict:
         pytest.param(configurable(state_only_submit=True), id="state-only-submit"),
         pytest.param(configurable(state_only_submit=False), id="state-only-false"),
         pytest.param(
-            configurable(thread_id="t", checkpoint_id="c"), id="thread-and-fork"
+            {**configurable(thread_id="t", checkpoint_id="c"), "thread_id": "t"},
+            id="route-thread-and-fork",
         ),
         pytest.param(
             {
@@ -146,6 +147,29 @@ def test_rejects_configurable_keys_not_allowlisted(key):
 def test_rejects_state_only_submit_of_the_wrong_type(value):
     detail = rejected(configurable(state_only_submit=value))
     assert "config.configurable.state_only_submit must be of type bool" in detail
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(
+            {**configurable(thread_id="another-thread"), "thread_id": "t"},
+            id="another-thread",
+        ),
+        pytest.param(configurable(thread_id="t"), id="no-route-thread"),
+    ],
+)
+def test_rejects_a_thread_id_other_than_the_route_thread(value):
+    detail = rejected(value)
+    assert detail == "config.configurable.thread_id must be the thread of the route."
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [("thread_id", "another-thread"), ("checkpoint_id", "c")],
+)
+def test_rejects_thread_and_checkpoint_ids_at_the_top_of_config(key, value):
+    assert f"config.{key} is not accepted." in rejected({"config": {key: value}})
 
 
 @pytest.mark.parametrize("key", ["thread_id", "checkpoint_id"])
@@ -443,6 +467,20 @@ class TestThreadCommands:
         assert envelope["type"] == "success"
         prepare.assert_awaited_once()
         assert prepare.await_args.args[2].context == {"user_id": USER_ID}
+
+    async def test_run_start_refuses_another_thread_id(self, prepare):
+        envelope = await self.dispatch(
+            "run.start",
+            {
+                "assistant_id": "chat",
+                "input": {},
+                "config": {"configurable": {"thread_id": "someone-elses-thread"}},
+            },
+        )
+        assert envelope["type"] == "error"
+        assert envelope["error"] == "invalid_argument"
+        assert "config.configurable.thread_id" in envelope["message"]
+        prepare.assert_not_awaited()
 
     # `run.start` params as `@langchain/svelte` 1.x sends them: the thread id
     # always, the fork point for an edit or regenerate.
