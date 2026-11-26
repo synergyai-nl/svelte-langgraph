@@ -52,9 +52,16 @@
 		onRequest?: RequestHook;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
 		client?: AppClient;
-		/** Graph id used to resolve/create the assistant. Defaults to `'chat'`. */
+		/**
+		 * Graph id used to resolve/create the assistant, to tag new threads (`metadata.graph_id`) and
+		 * to filter the thread list. Defaults to `'chat'`.
+		 */
 		graph?: string;
-		/** Skip assistant resolution entirely and use this id. */
+		/**
+		 * Skip assistant resolution entirely and use this id. `graph` must still name this
+		 * assistant's graph: it tags new threads and filters the list, and the server re-tags a
+		 * thread with the assistant's graph on its first run, which would drop it from the list.
+		 */
 		assistantId?: string;
 		/** Controlled active thread id. Omit for uncontrolled (internal) mode; pass `null`/a string to control it. */
 		activeThreadId?: string | null;
@@ -66,6 +73,12 @@
 		 * route, see the README's "Backend routes"): no thread titles are requested. Defaults to `true`.
 		 */
 		titles?: boolean;
+		/**
+		 * Set `false` for an app without a thread list: no `POST {url}/threads/search` is sent, not at
+		 * start, after a run or after a title. Titles still follow `titles`. A `ThreadList` rendered
+		 * anyway shows its empty state. Set at mount. Defaults to `true`.
+		 */
+		threadList?: boolean;
 		children: Snippet;
 	}
 
@@ -81,13 +94,14 @@
 		onThreadChange,
 		hrefFor,
 		titles = true,
+		threadList = true,
 		children
 	}: Props = $props();
 
 	// Captured once, from the *initial* props: whether the owned `ThreadListState` should start
 	// in the loading state (SSR — see `ThreadListOptions.initialLoading`, and `+layout.svelte`'s
 	// existing `Boolean(page.data.session)` precedent).
-	const ctx = new LangGraphContext({ initialLoading: Boolean(token || clientProp) });
+	const ctx = new LangGraphContext({ initialLoading: threadList && Boolean(token || clientProp) });
 	setLangGraphContext(ctx);
 
 	// Derive the client on the token *string* (not a session object) so navigations that keep the
@@ -118,11 +132,13 @@
 	);
 
 	$effect(() => {
-		ctx.setClient(derivedClient);
+		ctx.setClient(derivedClient, graph);
 	});
 
+	// `threadList={false}`: the list never gets a client, so its loads, refreshes and pin fetches
+	// are all no-ops.
 	$effect(() => {
-		ctx.threadList.setClient(derivedClient ?? null);
+		ctx.threadList.setClient(threadList ? (derivedClient ?? null) : null, graph);
 	});
 
 	$effect(() => {

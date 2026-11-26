@@ -53,15 +53,15 @@ function mockThreadStore(includeOrphan = true, includeChat = true) {
 describe('title-thread leak', () => {
 	it('/chat creates a tagged chat when only title orphans exist', async () => {
 		const { client, fresh, create } = mockThreadStore(true, false);
-		expect(await getOrCreateThread(client)).toEqual(fresh);
-		expect(create).toHaveBeenCalledExactlyOnceWith({ metadata: { graph_id: 'chat' } });
+		expect(await getOrCreateThread(client, 'chat')).toEqual(fresh);
+		expect(create).toHaveBeenCalledExactlyOnceWith({ graphId: 'chat' });
 	});
 
 	it('an active title orphan cannot be pinned into the sidebar', async () => {
 		const { client, search, chat } = mockThreadStore();
 		const list = new ThreadListState();
 		try {
-			list.setClient(client);
+			list.setClient(client, 'chat');
 			list.setActiveThreadId('orphan-title-run');
 			await vi.waitFor(() => expect(list.loading).toBe(false));
 			expect(list.threads.map((row) => row.id)).toEqual([chat.thread_id]);
@@ -75,7 +75,7 @@ describe('title-thread leak', () => {
 
 	it('/chat reuses the real conversation instead of the newer idle title orphan', async () => {
 		const { client, chat } = mockThreadStore();
-		const selected = await getOrCreateThread(client);
+		const selected = await getOrCreateThread(client, 'chat');
 		expect(selected.thread_id).toBe(chat.thread_id);
 	});
 
@@ -83,7 +83,7 @@ describe('title-thread leak', () => {
 		const { client, chat } = mockThreadStore();
 		const list = new ThreadListState();
 		try {
-			list.setClient(client);
+			list.setClient(client, 'chat');
 			await vi.waitFor(() => expect(list.loading).toBe(false));
 			expect(list.error).toBeNull();
 			expect(list.threads.map((row) => row.id)).toEqual([chat.thread_id]);
@@ -94,14 +94,14 @@ describe('title-thread leak', () => {
 
 	it('/chat still reuses the real conversation when there is no orphan', async () => {
 		const { client, chat, create } = mockThreadStore(false);
-		expect((await getOrCreateThread(client)).thread_id).toBe(chat.thread_id);
+		expect((await getOrCreateThread(client, 'chat')).thread_id).toBe(chat.thread_id);
 		expect(create).not.toHaveBeenCalled();
 	});
 });
 
 it('the sidebar New chat action creates a fresh thread without searching for an idle one', async () => {
 	const { client, fresh, search, create } = mockThreadStore();
-	expect(await createThread(client)).toEqual(fresh);
-	expect(create).toHaveBeenCalledExactlyOnceWith({ metadata: { graph_id: 'chat' } });
+	expect(await createThread(client, 'chat')).toEqual(fresh);
+	expect(create).toHaveBeenCalledExactlyOnceWith({ graphId: 'chat' });
 	expect(search).not.toHaveBeenCalled();
 });

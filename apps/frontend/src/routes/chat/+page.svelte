@@ -20,7 +20,7 @@
 		if (!client) return;
 
 		try {
-			const thread = await getOrCreateThread(client);
+			const thread = await getOrCreateThread(client, ctx.graph);
 			// A navigation away from this page (e.g. the user clicking an existing thread in the
 			// sidebar) while the fetch above was in flight must win — otherwise this stale
 			// resolution would yank them back to the reused/created thread they no longer asked

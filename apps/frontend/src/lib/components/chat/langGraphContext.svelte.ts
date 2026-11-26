@@ -31,6 +31,7 @@ export interface LangGraphContextOptions {
 
 export class LangGraphContext {
 	#client = $state<AppClient | undefined>(undefined);
+	#graph = $state('');
 	#assistantId = $state<string | undefined>(undefined);
 	/** Assistant-resolution failure surface. `undefined` when nothing has gone wrong. */
 	#error = $state<unknown>(undefined);
@@ -68,9 +69,15 @@ export class LangGraphContext {
 		return this.#client;
 	}
 
-	/** Pushed by `LangGraph.svelte`'s wiring effect whenever the derived client changes. */
-	setClient(client: AppClient | undefined): void {
+	/** The `<LangGraph graph>` id, pushed with the client; empty until the first push. */
+	get graph(): string {
+		return this.#graph;
+	}
+
+	/** Pushed by `LangGraph.svelte`'s wiring effect whenever the derived client or `graph` changes. */
+	setClient(client: AppClient | undefined, graph: string): void {
 		this.#client = client;
+		this.#graph = graph;
 	}
 
 	// --- assistant ---------------------------------------------------------------------------
@@ -205,7 +212,7 @@ export class LangGraphContext {
 		this.#creatingThread = true;
 		this.#createThreadError = null;
 		try {
-			const thread = await createThreadRemote(client);
+			const thread = await createThreadRemote(client, this.#graph);
 			this.threadList.refresh();
 			if (this.#selectionEpoch === startedEpoch) {
 				this.selectThread(thread.thread_id);

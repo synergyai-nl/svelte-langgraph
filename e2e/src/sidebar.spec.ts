@@ -179,6 +179,8 @@ test.describe('Sidebar - real backend', () => {
 
 		const newId = new URL(page.url()).pathname.split('/').at(-1)!;
 		expect(newId).not.toBe(originalId);
+		// Tagged with its graph at creation, so it is listed before its first message.
+		await expect(sidebar.threadLink(newId)).toBeVisible();
 
 		// Empty state (suggestions view): no message cards, proving this is a genuinely
 		// fresh thread and not a redirect back to the idle thread we started on.

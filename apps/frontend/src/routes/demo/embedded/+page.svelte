@@ -5,7 +5,8 @@
 	 * `routes/chat/+layout.svelte`:
 	 *
 	 * - No `<ThreadList>` — this embed has no chrome to navigate between threads, just the one
-	 *   conversation.
+	 *   conversation. `threadList={false}` keeps the provider from searching threads for it, and
+	 *   `titles={false}` skips titles, which nothing here shows.
 	 * - No `activeThreadId`/`onThreadChange`/`hrefFor` — a router-free embed has no URL to
 	 *   read a thread id from or push one into, so `<LangGraph>` runs in its uncontrolled
 	 *   thread-selection mode instead (see `EmbeddedChatSurface.svelte`, which creates the first
@@ -44,8 +45,11 @@
 			data-testid="embedded-chat-card"
 			class="h-[32rem] w-full max-w-md overflow-hidden rounded-xl border shadow-lg"
 		>
-			<LangGraph url={PUBLIC_LANGGRAPH_API_URL ?? ''} token={getToken}
-				><EmbeddedChatSurface /></LangGraph
+			<LangGraph
+				url={PUBLIC_LANGGRAPH_API_URL ?? ''}
+				token={getToken}
+				threadList={false}
+				titles={false}><EmbeddedChatSurface /></LangGraph
 			>
 		</div>
 	{:else}

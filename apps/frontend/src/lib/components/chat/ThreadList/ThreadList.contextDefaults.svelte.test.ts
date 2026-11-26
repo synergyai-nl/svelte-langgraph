@@ -27,7 +27,7 @@ function clientWithThreads(threadsOverrides: Record<string, unknown> = {}): AppC
 /** Mounts a bare `ThreadList` (no props unless given) under a context wired to `client`. */
 function renderUnderContext(client: AppClient | undefined, props: Record<string, unknown> = {}) {
 	const ctx = makeContext({ client });
-	if (client) ctx.threadList.setClient(client);
+	if (client) ctx.threadList.setClient(client, 'chat');
 	render(ThreadListHost, { props: { ctx, ...props } });
 	return ctx;
 }

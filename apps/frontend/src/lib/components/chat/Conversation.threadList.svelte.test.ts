@@ -1,7 +1,9 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, waitFor } from '@testing-library/svelte';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/svelte';
+import { ThreadListState } from '@svelte-langgraph/client';
 import { tick } from 'svelte';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
+import LangGraphSurfaceHost from './__tests__/LangGraphSurfaceHost.svelte';
 import Conversation from './Conversation.svelte';
 import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
@@ -421,5 +423,53 @@ describe('Conversation titles toggled after mount', () => {
 		await tick();
 
 		expect(generateTitleMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('<LangGraph threadList={false}>', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	// The real provider and client over a stubbed `fetch`: mount, then a run that settles with an
+	// untitled opening exchange, so the list loads, refreshes after the run and after the title.
+	async function requestsOfAMountARunAndATitle(threadList?: boolean) {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const path = new URL(input instanceof Request ? input.url : input).pathname;
+			const body = path.endsWith('/search') ? [] : path.endsWith('/titles') ? { title: 'T' } : {};
+			return new Response(JSON.stringify(body), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		// Calls through: only records that the run's settle and the written title reached the list.
+		const refresh = vi.spyOn(ThreadListState.prototype, 'refresh');
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(true);
+		render(LangGraphSurfaceHost, {
+			props: { url: 'http://backend.test', token: 'tok', assistantId: 'a-1', threadList }
+		});
+		// The conversation is mounted (its composer shows), then the run settles.
+		await screen.findByRole('textbox');
+		mockModule.setIsLoading(false);
+		await waitFor(() => expect(refresh).toHaveBeenCalledTimes(2));
+		const paths = () => fetchMock.mock.calls.map(([input]) => new URL(String(input)).pathname);
+		const searches = () => paths().filter((path) => path === '/threads/search').length;
+		return { paths, searches };
+	}
+
+	test('by default, the list searches at start, after the run and after the title', async () => {
+		const { paths, searches } = await requestsOfAMountARunAndATitle();
+		expect(paths()).toContain('/titles');
+		// Three: the first page at start, the refresh after the run, the refresh after the title.
+		await waitFor(() => expect(searches()).toBeGreaterThanOrEqual(3));
+	});
+
+	test('sends no thread search at start, after the run or after the title', async () => {
+		const { paths, searches } = await requestsOfAMountARunAndATitle(false);
+		expect(paths()).toContain('/titles');
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(searches()).toBe(0);
 	});
 });
