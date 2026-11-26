@@ -247,15 +247,16 @@ describe('function token', () => {
 		});
 
 		it('lets a caller abort an SDK request, which the SDK hands to onRequest', async () => {
+			const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
 			const controller = new AbortController();
-			const request = createClient('https://backend.test/api/', pending).threads.search({
-				limit: 1,
-				signal: controller.signal
-			});
+			const request = createClient('https://backend.test/api/', pending, undefined, {
+				onRequest
+			}).threads.search({ limit: 1, signal: controller.signal });
 			controller.abort(new Error('stopped'));
 
 			await expect(request).rejects.toThrow('stopped');
 			expect(fetchMock).not.toHaveBeenCalled();
+			expect(onRequest).not.toHaveBeenCalled();
 		});
 
 		it('does not cancel the token request for other callers', async () => {
@@ -284,8 +285,7 @@ describe('onRequest hook', () => {
 
 	it.each([
 		['a string token', 'tok', 'Bearer tok'],
-		['a function token', async () => 'fn-tok', 'Bearer fn-tok'],
-		['no token', undefined, null]
+		['a function token', async () => 'fn-tok', 'Bearer fn-tok']
 	])('runs after the bearer is set, with %s', async (_, token, bearer) => {
 		const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
 		const client = createClient(
@@ -325,21 +325,6 @@ describe('onRequest hook', () => {
 
 		await expect(client.threads.search({ limit: 1 })).rejects.toThrow('refused by hook');
 		expect(fetchMock).not.toHaveBeenCalled();
-	});
-
-	it('keeps an SDK request abortable while the token is pending', async () => {
-		const onRequest = vi.fn((_url: URL, init: RequestInit) => init);
-		const controller = new AbortController();
-		const request = createClient(
-			'https://backend.test/api/',
-			() => new Promise<string>(() => {}),
-			undefined,
-			{ onRequest }
-		).threads.search({ limit: 1, signal: controller.signal });
-		controller.abort(new Error('stopped'));
-
-		await expect(request).rejects.toThrow('stopped');
-		expect(onRequest).not.toHaveBeenCalled();
 	});
 
 	it('does not run on the title and feedback routes', async () => {

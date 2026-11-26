@@ -44,9 +44,10 @@
 		/** Extra request headers. Derived on their serialized *contents*, like `token`, so an inline object literal doesn't mint a new client on every re-render. */
 		headers?: Record<string, string>;
 		/**
-		 * The SDK's own `onRequest`: sees every SDK request after the bearer is set and may return a
-		 * changed `RequestInit`. The title and feedback routes do not pass through it. Read per
-		 * request, so a new function never mints a new client. No effect with `client`.
+		 * The SDK's own `onRequest`: runs once per SDK request after the bearer is set (HTTP retries
+		 * reuse its result; stream reconnects call it again) and may return a changed `RequestInit`.
+		 * The title and feedback routes do not pass through it. Read per request, so a new function
+		 * never mints a new client. No effect with `client`.
 		 */
 		onRequest?: RequestHook;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */

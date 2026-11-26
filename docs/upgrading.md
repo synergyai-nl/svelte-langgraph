@@ -17,7 +17,7 @@ Each entry has this format:
 
 ## 2026-11-26 — `createClient` and `<LangGraph>` take the SDK's `onRequest` hook ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
 
-**What changed.** `createClient(url, token?, headers?, options?)` takes `options.onRequest`, and `<LangGraph>` an `onRequest` prop that it passes on. It is the SDK's own `RequestHook`: it runs on every SDK request after the bearer is set and may return a changed `RequestInit`. The title and feedback routes do not pass through it. `<LangGraph>` reads the prop per request, so a new function does not rebuild the client; it has no effect with the `client` prop.
+**What changed.** `createClient(url, token?, headers?, options?)` takes `options.onRequest`, and `<LangGraph>` an `onRequest` prop that it passes on. It is the SDK's own `RequestHook`: it runs once per SDK request after the bearer is set (HTTP retries reuse its result; stream reconnects call it again) and may return a changed `RequestInit`. The title and feedback routes do not pass through it.
 
 The `chat-core` registry item ships the new `LangGraph.svelte` and `svelte-langgraph-client/client.ts`.
 

@@ -51,17 +51,17 @@ export type TokenSource = string | null | (() => Promise<string | null> | string
  * @param token - Bearer token sent as the `Authorization` header, when provided. A function is
  * called before every request; when it returns null the request carries no `Authorization`.
  * @param headers - Additional default headers, merged in under `Authorization`.
- * @param options.onRequest - The SDK's own `onRequest`, run on every SDK request (streams and
- * their reconnects included) after the bearer is set; it may return a changed `RequestInit`. The
- * title and feedback routes do not pass through it. An error it throws fails the request.
+ * @param options.onRequest - The SDK's own `onRequest`, run once per SDK request after the bearer
+ * is set (HTTP retries reuse its result; stream reconnects call it again); it may return a changed
+ * `RequestInit`. The title and feedback routes do not pass through it. An error it throws fails
+ * the request.
  */
 export function createClient(
 	url: string,
 	token?: TokenSource,
 	headers?: Record<string, string>,
-	options: { onRequest?: RequestHook } = {}
+	{ onRequest }: { onRequest?: RequestHook } = {}
 ): AppClient {
-	const { onRequest } = options;
 	const baseUrl = normalizeApiUrl(url);
 	const readToken = typeof token === 'function' ? token : undefined;
 
