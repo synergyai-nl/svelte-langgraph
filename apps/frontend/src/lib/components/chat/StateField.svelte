@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { FieldBinding } from '@svelte-langgraph/client';
+	import type { FieldBinding } from '#lib/svelte-langgraph-client/index.ts';
 	import type { Snippet } from 'svelte';
 
 	interface Props {

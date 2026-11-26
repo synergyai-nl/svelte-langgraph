@@ -1,7 +1,7 @@
 import { afterEach, describe, test, expect, vi, type MockInstance } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
-import { threadLabel, type AppClient } from '@svelte-langgraph/client';
+import { threadLabel, type AppClient } from '#lib/svelte-langgraph-client/index.ts';
 import { makeContext, makeMockClient } from '../__tests__/testContext.js';
 import ThreadListHost from './__tests__/ThreadListHost.svelte';
 import { aThread } from '../../__tests__/fixtures';

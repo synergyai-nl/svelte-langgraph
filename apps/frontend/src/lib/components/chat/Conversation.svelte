@@ -1,6 +1,6 @@
 <script lang="ts" module>
 	import { getContext, setContext } from 'svelte';
-	import type { Message, SchemaStatus, FieldBinding } from '@svelte-langgraph/client';
+	import type { Message, SchemaStatus, FieldBinding } from '#lib/svelte-langgraph-client/index.ts';
 
 	/**
 	 * The reactive surface `Conversation` hands to its `children` and `empty` snippets (and sets
@@ -68,7 +68,7 @@
 		createThreadTitler,
 		type FeedbackScore,
 		type ToolMessage
-	} from '@svelte-langgraph/client';
+	} from '#lib/svelte-langgraph-client/index.ts';
 	import MessageComposer from './MessageComposer.svelte';
 	import MessagesList from './MessagesList.svelte';
 	import type { Checkpoint } from '@langchain/langgraph-sdk';

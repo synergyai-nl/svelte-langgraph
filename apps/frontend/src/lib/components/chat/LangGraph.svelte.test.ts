@@ -2,7 +2,7 @@ import { describe, test, expect, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import { userEvent } from '@testing-library/user-event';
 import { tick } from 'svelte';
-import type { AppClient } from '@svelte-langgraph/client';
+import type { AppClient } from '#lib/svelte-langgraph-client/index.ts';
 import LangGraphProbe from './__tests__/LangGraphProbe.svelte';
 import LangGraphTooltipHost from './__tests__/LangGraphTooltipHost.svelte';
 import type { LangGraphContext } from './langGraphContext.svelte.js';

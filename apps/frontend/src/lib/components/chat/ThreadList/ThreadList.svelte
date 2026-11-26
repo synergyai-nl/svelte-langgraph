@@ -9,7 +9,7 @@
 	import * as Sidebar from '#lib/components/ui/sidebar/index.ts';
 	import ThreadListItem from './ThreadListItem.svelte';
 	import ThreadListPanel from './ThreadListPanel.svelte';
-	import type { ThreadSummary, ThreadListState } from '@svelte-langgraph/client';
+	import type { ThreadSummary, ThreadListState } from '#lib/svelte-langgraph-client/index.ts';
 	import type { Snippet } from 'svelte';
 	import { useLangGraph } from '../langGraphContext.svelte.js';
 	import * as m from '#lib/paraglide/messages.js';

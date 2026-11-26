@@ -75,9 +75,9 @@ and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
   whatever aliases your `components.json` declares.
 - Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
 - Paraglide (`@inlang/paraglide-js`).
-- `@lucide/svelte`, `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first
-  two, and `bits-ui` comes with the stock components. The chat items do not list them, so they
-  leave your ranges alone.
+- `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first, and `bits-ui`
+  comes with the stock components. The chat items do not list them, so they leave your ranges
+  alone.
 
 ### Layout
 
@@ -85,9 +85,10 @@ The items install into three folders they own. Everything else in your app is yo
 
 - `#lib/components/svelte-langgraph/`: the components, flat, with the `ThreadList/` and
   `ScrollableContainer/` subfolders.
-- `#lib/svelte-langgraph-client/`: the client library (step 2), until the client is published
-  to npm.
-- `messages/svelte-langgraph/`: the chat strings, one file per locale (steps 4 and 5).
+- `#lib/svelte-langgraph-client/`: the client library, until the client is published to npm.
+  The chat imports it through your `lib` alias (`#lib/svelte-langgraph-client/index.ts`), so it
+  needs no `alias` in `vite.config.ts`.
+- `messages/svelte-langgraph/`: the chat strings, one file per locale (steps 3 and 4).
 
 The CLI logs "chat installed at src/lib/components/chat" and "chat-core installed at
 src/lib/components/chat-core"; neither folder is created, the files are in the folders above.
@@ -141,33 +142,14 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    `ThreadList`, `Conversation` and `ChatSurface` must be rendered inside `<LangGraph>` and throw
    at init otherwise, the same way shadcn's `Sidebar.*` parts require `Sidebar.Provider`.
 
-2. Point `@svelte-langgraph/client` at the installed library with a SvelteKit `alias` entry,
-   passed to `sveltekit()` in your `vite.config.ts`:
-
-   ```ts
-   sveltekit({
-   	// ...your existing options
-   	alias: {
-   		'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'
-   	}
-   });
-   ```
-
-   SvelteKit 3 prints a `config_option_deprecated_alias` deprecation warning for this option.
-   That is expected until the client is published to npm and the alias goes away.
-
-   The path must match your shadcn-svelte `lib` alias if you customised it. The chat
-   components import the client by its package name; this alias is temporary until the client
-   is published to npm (after 1.0).
-
-3. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
+2. Register the typography plugin in your app CSS (the item installs `@tailwindcss/typography`,
    which `ChatMessage` uses for its `prose` classes, but cannot register it for you):
 
    ```css
    @plugin '@tailwindcss/typography';
    ```
 
-4. Load those messages alongside your own: in `project.inlang/settings.json`, make
+3. Load those messages alongside your own: in `project.inlang/settings.json`, make
    `pathPattern` an array (needs `@inlang/plugin-message-format` 4.5.0 or newer):
 
    ```json
@@ -179,7 +161,7 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    Then run `vite dev` or `vite build` once (or `paraglide-js compile`), so the chat messages
    are compiled before you run `svelte-check`.
 
-5. Edit the chat UI's strings in `messages/svelte-langgraph/{locale}.json`. The item ships
+4. Edit the chat UI's strings in `messages/svelte-langgraph/{locale}.json`. The item ships
    `en`, `nl` and `hi`, and Paraglide compiles only the `locales` in your settings: delete the
    files for locales you don't ship (the next update restores them), or add the locale to
    `locales`. Add a new locale by adding its file there and to `locales`.
@@ -188,9 +170,9 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
    so an unprefixed shared key would shadow your app's own string.
    If you overrode strings under the old unprefixed names, rename those keys.
 
-6. Tidy up after the add:
+5. Tidy up after the add:
    - **Prettier.** `prettier-plugin-tailwindcss` re-sorts the `prose` classes once the
-     typography plugin from step 3 is registered. Run Prettier over the installed files after
+     typography plugin from step 2 is registered. Run Prettier over the installed files after
      each add.
    - **ESLint.** `ThreadListItem` renders an `<a href>` from `hrefFor`, which must return a
      resolved path. `svelte/no-navigation-without-resolve` flags it; turn the rule off for
@@ -201,8 +183,12 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
      `sidebar-menu-button` (the active row). If your app has a weight policy, patch them after
      each add.
    - **Dependencies.** The chat adds only `@langchain/langgraph-sdk`, `@langchain/svelte`,
-     `@tailwindcss/typography` and `svelte-exmarkdown`, under `dependencies`, and leaves the
-     ones you already have alone. The stock components carry their own ranges, which the CLI
+     `@lucide/svelte`, `@tailwindcss/typography` and `svelte-exmarkdown` under `dependencies`,
+     and `@types/node` (which Paraglide's generated `server.js` needs) under `devDependencies`.
+     The CLI reinstalls a package whose range declared in the app's `package.json` falls outside the listed range, so
+     `@lucide/svelte` is listed as `>=0.562.0` and `@types/node` as `*`: a version you already
+     have stays. `shadcn-svelte init` installs `@lucide/svelte` only for Lucide icon presets.
+     The stock components carry their own ranges, which the CLI
      writes when it installs them: in the test above, the setup's `add button sidebar` (before
      the chat) set `tailwind-variants` to `^3.3.1` over `init`'s `^4.0.1`. The chat install that
      followed, with `button` declined, added only the chat's own packages. Check `package.json`
@@ -242,7 +228,7 @@ When a release needs a stock component you don't have yet, its release notes say
 3. Move your imports to `#lib/components/svelte-langgraph/`, put a stock `Sidebar.Provider`
    where you use `ThreadList` (see "Thread list layout"), and in `project.inlang/settings.json`
    change the `./messages/chat/{locale}.json` entry of `pathPattern` to
-   `./messages/svelte-langgraph/{locale}.json` (see [step 4](#steps)). Run `vite dev` or a build
+   `./messages/svelte-langgraph/{locale}.json` (see [step 3](#steps)). Run `vite dev` or a build
    once so Paraglide regenerates the `slg_` messages, then delete the old `components/chat/`,
    `components/ChatLoader.svelte`, `ui/copy-button/` and `messages/chat/`.
    Replace the trial's patched `ui/sidebar/` and `ui/spinner/` with stock
@@ -481,7 +467,7 @@ primitive built on Svelte 5 runes.
 
 ```svelte
 <script lang="ts">
-	import { createStateSync } from '@svelte-langgraph/client';
+	import { createStateSync } from '#lib/svelte-langgraph-client/index.ts';
 	import StateField from '#lib/components/svelte-langgraph/StateField.svelte';
 
 	// stream is the return value of useStream(); client and assistantId come from props

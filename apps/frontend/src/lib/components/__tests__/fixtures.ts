@@ -1,4 +1,9 @@
-import type { AIMessage, UserMessage, ToolMessage, ThreadSummary } from '@svelte-langgraph/client';
+import type {
+	AIMessage,
+	UserMessage,
+	ToolMessage,
+	ThreadSummary
+} from '#lib/svelte-langgraph-client/index.ts';
 
 export function anAIMessage(overrides: Partial<AIMessage> = {}): AIMessage {
 	return { type: 'ai', text: 'Hello from AI', id: 'ai-1', ...overrides };

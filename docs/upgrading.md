@@ -15,6 +15,33 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — AI messages render only safe links ([#453](https://github.com/synergyai-nl/svelte-langgraph/pull/453))
+
+**What changed.** `ChatMessage` renders a markdown link in an AI message as a link only when its URL is `http:`, `https:`, `mailto:`, relative or a fragment. Any other scheme, such as `javascript:`, `data:` or `vbscript:`, renders the link's contents without an anchor. Before, links were rendered without a scheme allowlist. The `chat-core` registry item ships the new `ChatMessage.svelte`.
+
+**Who is affected.** Apps that installed the chat item. Apps whose agents link to another scheme on purpose (for example `tel:`) see those links without an anchor.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. To allow another scheme, add it to `SAFE_LINK_PROTOCOLS` in your copy of `ChatMessage.svelte`.
+
+**How to check.** Run `moon run frontend:test -- src/lib/components/chat/ChatMessage.svelte.test.ts`. In your app, have the agent answer `[x](javascript:alert(1))`: the reply shows `x`, not a link.
+
+## 2026-11-26 — The chat imports the client through `#lib`; drop the `@svelte-langgraph/client` alias ([#452](https://github.com/synergyai-nl/svelte-langgraph/pull/452))
+
+**What changed.** The chat components import the bundled client as `#lib/svelte-langgraph-client/index.ts` instead of by its package name `@svelte-langgraph/client`. The CLI rewrites that import to your `components.json` `lib` alias, like the item's other `#lib` imports, so the chat needs no `alias` in `vite.config.ts` and SvelteKit 3 no longer prints `config_option_deprecated_alias` for it. In this repo a `package.json` `imports` entry, `"#lib/svelte-langgraph-client/index.ts": "@svelte-langgraph/client"`, maps the same specifier to `packages/client`. `chat-core` now also lists `@lucide/svelte` (`>=0.562.0`) and `@types/node` (`*`, a dev dependency), so a fresh app no longer fails on them; a version your `package.json` already declares inside those ranges stays.
+
+**Who is affected.** Apps that installed the chat item. They added an alias for `@svelte-langgraph/client` (install step 2, or step 2 of the 2026-11-19 entry), and the chat no longer needs it.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Delete the `'@svelte-langgraph/client': 'src/lib/svelte-langgraph-client'` entry from `alias` in `sveltekit()` in `vite.config.ts`, and the `alias` option if it is now empty.
+3. In your own code, replace `from '@svelte-langgraph/client'` with `from '#lib/svelte-langgraph-client/index.ts'` (or your `lib` alias, if you customised it).
+
+**How to check.** `grep -rn "@svelte-langgraph/client" src vite.config.ts` finds nothing, and `svelte-check` and `vite build` pass without a `config_option_deprecated_alias` warning.
+
 ## 2026-11-25 — `submit` text is optional; blank text is no longer ignored ([#443](https://github.com/synergyai-nl/svelte-langgraph/pull/443))
 
 **What changed.** `ConversationApi.submit` is now `submit(text?: string)`.
@@ -47,14 +74,14 @@ The `chat-core` registry item ships the new `Conversation.svelte`, `MessageCompo
 - SvelteKit 3 adds a build-time `paths.origin` option in `sveltekit()`, which adapter-node 6 honours. The `ORIGIN` environment variable still works (checked against adapter-node 6.0.4) but is ignored, with a warning, when `paths.origin` is set. The `sv migrate` checklist says `ORIGIN` was removed; that is not what the released adapter does.
 - `@sentry/sveltekit` is 11 (10 only supports Kit 2). v11 filters the Kit 3 `handleError` kinds itself, and `sentrySvelteKit` is imported from `@sentry/sveltekit/vite`. v11 also removed three options we used: `sendDefaultPii` (replaced by `dataCollection`, whose unset default collects user info, cookies and request bodies), `enableLogs` (logs are sent whenever a logging integration is present) and `sourceMapsUploadOptions` in `sentrySvelteKit()` (its fields moved to the top level). `src/lib/sentry.ts` now sets a restrictive `dataCollection` unless `PUBLIC_SENTRY_SEND_PII=true` (or unset in dev), which keeps the previous behaviour.
 - Kit 3 deprecates the `alias` option (`config_option_deprecated_alias`, "use subpath imports instead"). It still works. This repo no longer uses it for `async_hooks`.
-- The chat registry item (`chat` and `chat-core`) ships Kit 3-style sources (`#lib` imports with file extensions), and its install guide uses `$app/env/public`. Consumers still need an alias for `@svelte-langgraph/client`; in Kit 3 it goes in `sveltekit({ alias })` and prints the deprecation warning. The alias goes away once the client is published to npm.
+- The chat registry item (`chat` and `chat-core`) ships Kit 3-style sources (`#lib` imports with file extensions), and its install guide uses `$app/env/public`. Consumers needed an alias for `@svelte-langgraph/client` until the 2026-11-26 entry; in Kit 3 it went in `sveltekit({ alias })` and printed the deprecation warning.
 
 **Who is affected.** Apps that copied the frontend auth helpers, hooks or config, and apps that installed the chat item. The CLI still rewrites the item's imports to the aliases in your `components.json`, but the item is now built and tested on Kit 3 only: move a Kit 2 app to Kit 3 before updating `chat-core`.
 
 **What to do.**
 
 1. Run `npx sv migrate sveltekit-3`.
-2. Move `kit.alias` for `@svelte-langgraph/client` into `sveltekit({ alias })` in `vite.config.ts`.
+2. Move `kit.alias` for `@svelte-langgraph/client` into `sveltekit({ alias })` in `vite.config.ts` (removed again by the 2026-11-26 entry).
 3. Declare the auth and `PUBLIC_*` variables in `src/env.ts` and import them from `$app/env/private` and `$app/env/public`.
 4. Review `handleError`: it now receives all errors. Filter on `kind` and handle only `unknown` (and `app` or `framework` if you need to).
 5. Keep `ORIGIN` (or `PROTOCOL_HEADER` and `HOST_HEADER` behind a trusted proxy) as you have it. Only if you set `paths.origin` in `sveltekit()`: drop `ORIGIN`, it is ignored then.

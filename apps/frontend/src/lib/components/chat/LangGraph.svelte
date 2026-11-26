@@ -26,7 +26,7 @@
 		type ThreadSummary,
 		type AppClient,
 		type TokenSource
-	} from '@svelte-langgraph/client';
+	} from '#lib/svelte-langgraph-client/index.ts';
 	import * as Tooltip from '#lib/components/ui/tooltip/index.ts';
 	import { LangGraphContext, setLangGraphContext } from './langGraphContext.svelte.js';
 

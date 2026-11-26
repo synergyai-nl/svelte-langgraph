@@ -13,7 +13,7 @@
 			"name": "chat",
 			"type": "registry:block",
 			"title": "Chat",
-			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, installed into #lib/components/svelte-langgraph/ and localized with Paraglide (strings in messages/svelte-langgraph/{locale}.json). Lists the stock shadcn-svelte components the chat uses and ships no copies of them; its own files come from chat-core. Bundles the @svelte-langgraph/client library under #lib/svelte-langgraph-client, which needs an alias entry for @svelte-langgraph/client in sveltekit() in vite.config.ts (SvelteKit 3).",
+			"description": "LangGraph chat UI: the <LangGraph> provider, Conversation, ChatSurface, ThreadList and their message components, installed into #lib/components/svelte-langgraph/ and localized with Paraglide (strings in messages/svelte-langgraph/{locale}.json). Lists the stock shadcn-svelte components the chat uses and ships no copies of them; its own files come from chat-core. Bundles the @svelte-langgraph/client library under #lib/svelte-langgraph-client, imported through your lib alias.",
 			"registryDependencies": [
 				"button",
 				"card",
@@ -38,10 +38,11 @@
 			"dependencies": [
 				"@langchain/langgraph-sdk@^1.8.3",
 				"@langchain/svelte@^0.3.1",
+				"@lucide/svelte@>=0.562.0",
 				"@tailwindcss/typography@^0.5.15",
 				"svelte-exmarkdown@^5.0.1"
 			],
-			"devDependencies": [],
+			"devDependencies": ["@types/node@*"],
 			"files": [
 				{
 					"path": "src/lib/components/chat/AIMessageActions.svelte",
