@@ -15,6 +15,29 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — Thread helpers take the graph id; `<LangGraph threadList={false}>` ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.**
+
+- `createThread(client, graphId, metadata?)` and `getOrCreateThread(client, graphId, { threadId?, metadata? })` take the graph id, which they used to hard-code as `'chat'`. They now pass it as the SDK's `graphId`; the old `metadata: { graph_id: 'chat' }` never reached the server, because the SDK overwrote it with the missing `graphId`.
+- A thread is listed from its creation, not from its first run (Aegra tags a thread with its assistant's graph on every run, so untagged threads were listed once they had run). A "New chat" without a message now leaves an empty row. Each `/demo/embedded` visit creates a thread that now shows in the same user's `/chat` list, and `/chat`'s `getOrCreateThread` now reuses an empty idle thread where it used to create another untagged one per visit.
+- With `assistantId` and no `graph`, new threads are tagged `'chat'` and drop out of the list once the server re-tags them with the assistant's real graph: set `graph` to the assistant's graph.
+- `getOrCreateThread` with `threadId` creates that thread if it is missing and returns it otherwise (`ifExists: 'do_nothing'`). `metadata` is written only on creation; `graph_id` wins over the same key in it.
+- `ThreadListState.setClient(client, graphId)` takes the graph whose threads it lists; a new graph reloads the list. `LangGraphContext.setClient(client, graph)` likewise, and `ctx.graph` reads it.
+- `<LangGraph threadList={false}>` sends no thread search; titles still follow `titles`. `/demo/embedded` sets both to `false`.
+
+The `chat-core` registry item ships the new `LangGraph.svelte`, `langGraphContext.svelte.ts`, `svelte-langgraph-client/client.ts` and `svelte-langgraph-client/threadListState.svelte.ts`.
+
+**Who is affected.** Apps that call `createThread`, `getOrCreateThread`, `ThreadListState.setClient` or `LangGraphContext.setClient` themselves, and apps that pass `assistantId` without `graph`. Apps without a thread list may opt out of its requests. Other apps need not act.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Pass your graph id to those calls: `getOrCreateThread(ctx.client, ctx.graph)` inside `<LangGraph>`. If you pass `assistantId`, also pass `graph` naming that assistant's graph.
+3. Without a thread list, set `<LangGraph threadList={false}>` (and `titles={false}` unless you read `metadata.title`). To open a thread whose id you know, see "One conversation on your own thread" in `apps/frontend/README.md`.
+
+**How to check.** Run `moon run client:test -- src/client.test.ts src/threadListState.svelte.test.ts`. In your app with `threadList={false}`, the browser's network panel shows no request to `/threads/search` after sending a message.
+
 ## 2026-11-26 — `createClient` and `<LangGraph>` take the SDK's `onRequest` hook ([#455](https://github.com/synergyai-nl/svelte-langgraph/pull/455))
 
 **What changed.** `createClient(url, token?, headers?, options?)` takes `options.onRequest`, and `<LangGraph>` an `onRequest` prop that it passes on. It is the SDK's own `RequestHook`: it runs once per SDK request after the bearer is set (HTTP retries reuse its result; stream reconnects call it again) and may return a changed `RequestInit`. The title and feedback routes do not pass through it.

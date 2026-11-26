@@ -447,8 +447,7 @@ describe('<LangGraph threadList={false}>', () => {
 		await tick();
 		mockModule.setIsLoading(false);
 		await tick();
-		const paths = () =>
-			fetchMock.mock.calls.map(([input]) => new URL(String(input)).pathname);
+		const paths = () => fetchMock.mock.calls.map(([input]) => new URL(String(input)).pathname);
 		return { paths };
 	}
 

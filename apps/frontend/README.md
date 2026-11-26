@@ -243,8 +243,8 @@ Besides the LangGraph API, the client calls `POST {url}/titles` and `POST {url}/
 custom routes of this repo's demo backend. A backend that lacks them gets a failed request per
 settled run and per page load unless you opt out of titles:
 
-- **Titles.** `<LangGraph titles={false}>` creates no titler, so `/titles` is never called and
-  thread titles stay as dates. The default is `true`. With titles on, the backend must accept
+- **Titles.** `<LangGraph titles={false}>` (or `threadList={false}`) creates no titler, so
+  `/titles` is never called and thread titles stay as dates. The default is `true`. With titles on, the backend must accept
   `POST {url}/titles` with `{ messages: [{ type, content }] }` (the opening exchange; `type` is `'human' | 'ai'`) and answer
   `{ title: string | null }`; the client then stores the title in the thread's `metadata.title`
   itself.
@@ -264,7 +264,8 @@ A bounded-height container holding the provider, and a child that creates the fi
 renders `ChatSurface` (which fills and scrolls inside the container). `<LangGraph>` builds its
 client only when `token` is truthy; pass a pre-built `client` instead otherwise. Set `graph` to
 your server's graph id: the key under `graphs` in your `aegra.json` or `langgraph.json`. It
-defaults to `'chat'`, which only fits servers that use that key. A wrong id fails assistant
+defaults to `'chat'`, which only fits servers that use that key. The same id tags the threads
+the chat creates (`metadata.graph_id`) and filters the thread list. A wrong id fails assistant
 resolution; `ChatSurface` then shows an error with a Retry button instead of its loader. Pass
 `graph` explicitly. The token is sent as a bearer token: send whatever your backend validates,
 normally an access token for your API's audience. Which token that is depends on your backend's
@@ -370,6 +371,43 @@ Cmd/Ctrl+B.
 
 Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
 seeds the provider's `open` from the cookie (`bind:open`).
+
+### One conversation on your own thread
+
+For an app without a thread list, set `<LangGraph threadList={false}>`: the provider then sends no
+`POST {url}/threads/search`, not at start, after a run or for a title, and requests no titles
+(`titles` is ignored, since a title only shows in the list). A `ThreadList` rendered anyway
+shows its empty state. The default is `true`.
+
+When your app already knows the thread id, `getOrCreateThread(client, graph, { threadId,
+metadata })` creates that thread if it is missing and returns it otherwise, in one request
+(`if_exists: 'do_nothing'`). `metadata` is written only on creation. `graph_id` is always
+`graph`, over the same key in `metadata`: the thread list filters on it, and Aegra stamps the
+assistant's graph on every run anyway. Errors reach you unchanged; Aegra answers 409 for an id
+that another user owns.
+
+```svelte
+<!-- Coach.svelte: a child of <LangGraph graph="coach" threadList={false}> -->
+<script lang="ts">
+	import { getOrCreateThread } from '@svelte-langgraph/client';
+	import Conversation from '#lib/components/svelte-langgraph/Conversation.svelte';
+	import { useLangGraph } from '#lib/components/svelte-langgraph/langGraphContext.svelte.js';
+
+	let { threadId, topic }: { threadId: string; topic: string } = $props();
+	const ctx = useLangGraph();
+
+	// Safe to repeat: an existing thread is returned as it is.
+	const thread = $derived(
+		ctx.client && getOrCreateThread(ctx.client, ctx.graph, { threadId, metadata: { topic } })
+	);
+</script>
+
+{#await thread then ready}
+	{#if ready && ctx.assistantId}<Conversation threadId={ready.thread_id} />{/if}
+{:catch}
+	<p role="alert">Could not open the chat.</p>
+{/await}
+```
 
 ### Changing outgoing requests
 
