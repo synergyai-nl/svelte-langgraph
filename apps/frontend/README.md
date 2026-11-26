@@ -371,6 +371,39 @@ Cmd/Ctrl+B.
 Full reference: [`routes/chat/+layout.svelte`](src/routes/chat/+layout.svelte), which also
 seeds the provider's `open` from the cookie (`bind:open`).
 
+### Changing outgoing requests
+
+`<LangGraph onRequest>` takes the SDK's own `onRequest` hook (`RequestHook` from
+`@langchain/langgraph-sdk`). It runs on every SDK request, streams and their reconnects
+included, after the bearer is set, and may return a changed `RequestInit`; an error it throws
+fails the request. The title and feedback routes do not pass through it. The hook is read per
+request, so passing a new function does not rebuild the client. It has no effect when you pass
+`client`: give `createClient(url, token, headers, { onRequest })` the hook instead.
+
+For example, for a backend that validates run input strictly and refuses keys the SDK adds to
+input messages:
+
+```svelte
+<script lang="ts">
+	import type { RequestHook } from '@langchain/langgraph-sdk';
+
+	const dropMessageKeys: RequestHook = (url, init) => {
+		if (!url.pathname.endsWith('/runs/stream') || typeof init.body !== 'string') return init;
+		const body = JSON.parse(init.body);
+		for (const message of body.input?.messages ?? []) {
+			delete message.id;
+			delete message.additional_kwargs;
+			delete message.response_metadata;
+		}
+		return { ...init, body: JSON.stringify(body) };
+	};
+</script>
+
+<LangGraph url={PUBLIC_LANGGRAPH_API_URL} token={data.accessToken} onRequest={dropMessageKeys}>
+	<Chat />
+</LangGraph>
+```
+
 ### Run errors
 
 When a run fails, the message list shows an error card (`data-testid="chat-error"`) with the
