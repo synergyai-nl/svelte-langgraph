@@ -527,6 +527,16 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 {/if}
 ```
 
+An AI message that calls tools lists them in `toolCalls` (`{ id, name }`; the arguments come with
+the result, as the tool message's `payload`). A tool message's `id` is its call's `id`, so a
+composition can tell an agent waiting for a tool from one that said nothing:
+
+```ts
+const last = api.messages.at(-1);
+// An AI message calls tools and no tool message follows it yet.
+const waitingForTool = last?.type === 'ai' && !!last.toolCalls?.length;
+```
+
 Two layout rules for `MessagesList`:
 
 - It scrolls its newest message into view by looking for an ancestor with the literal class

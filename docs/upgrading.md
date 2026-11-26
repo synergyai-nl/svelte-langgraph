@@ -15,6 +15,18 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — An AI message lists its tool calls ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+
+**What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, present when the message calls a tool, also while it streams. A call shows once it has an id. The answer to a call is the `ToolMessage` with the same `id`. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
+
+**Who is affected.** Nobody needs to act. Apps that compose their own message list can use it.
+
+**What to do.**
+
+1. Nothing. To use it, update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+
+**How to check.** Run `moon run client:test`.
+
 ## 2026-11-26 — The chat runs on `@langchain/svelte` 1.x, `@langchain/langgraph-sdk` 1.17 and Agent Protocol v2 ([#461](https://github.com/synergyai-nl/svelte-langgraph/pull/461))
 
 **What changed.** The `chat-core` registry item now asks for `@langchain/svelte` `^1.2.15` (was `^0.3.1`) and `@langchain/langgraph-sdk` `^1.17.0` (was `^1.8.3`). The binding pins the SDK at 1.17.0 and declares `@langchain/core` `^1.1.48` and `svelte` 5 as peers; the SDK declares `@langchain/core` `^1.3.2`. Together: `svelte` 5 and `@langchain/core` `^1.3.2`. Its `useStream` is a different runtime that talks Agent Protocol v2 to the server: runs start with `POST /threads/{id}/commands` (`run.start`) and are followed on the `POST /threads/{id}/stream/events` event stream, not `/runs/stream`. A thread loads from `GET /threads/{id}/state`. What the chat does differently:
