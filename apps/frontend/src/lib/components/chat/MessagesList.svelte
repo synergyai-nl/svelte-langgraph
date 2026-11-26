@@ -76,7 +76,7 @@
 		{#each visibleMessages as message, i (message.id)}
 			{@const backlog = isBacklog(revealFrom + i)}
 			<!-- `in:` only: a message that leaves (a branch switch, a refused send) goes at once. With
-			     an outro, the old messages of an edited branch could stay in the list, inert. -->
+			     an outro, after an edit the old branch's messages stayed in the list, inert. -->
 			<div
 				{@attach scrollToMe(message, backlog ? 'instant' : 'smooth')}
 				in:fly={{ y: 20, duration: backlog ? 0 : 800 }}

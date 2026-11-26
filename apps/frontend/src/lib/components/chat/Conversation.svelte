@@ -29,7 +29,7 @@
 		/**
 		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
 		 * in the UI (`MessageComposer` does). No-op while `isLoading` or `isThreadLoading`. Clears
-		 * `input`. When the server refuses the run before creating it (e.g. a 401), the message
+		 * `input`. When the send fails before the client learns of a run (e.g. a 401), the message
 		 * leaves the list and the text goes back into `input`.
 		 *
 		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
@@ -173,9 +173,12 @@
 	);
 
 	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
-	// `stream.error`. The stream shows the input messages at once. When the server refuses the
-	// run before creating it (e.g. a 401), `onError` gets no run and those messages were never
-	// stored: hide them, so the list shows what the thread holds. Resolves `true` then.
+	// `stream.error`. The stream shows the input messages at once. When `onError` gets no run,
+	// the client learned of none: the server refused the request (e.g. a 401) or it never left,
+	// so the input was not stored. Hide those messages, so the list shows what the thread holds,
+	// and resolve `true`. One case looks the same: the server stored the run but its response
+	// was lost; then a stored message is hidden until the next run, and a plain send offers its
+	// text again. An abort or timeout skips `onError`: nothing is hidden or put back.
 	async function send(input: { messages: unknown[] }, options?: { checkpoint: Checkpoint }) {
 		const before = new Set(stream.messages.map((m) => m.id));
 		let refused = false;
@@ -190,8 +193,9 @@
 		return true;
 	}
 
-	// A refused send would lose the text: put it back in the composer, unless the user has
-	// started typing something else meanwhile (Retry still sends it).
+	// A refused plain send would lose the text: put it back in the composer, unless the user has
+	// started typing something else meanwhile (Retry still sends it). An edit only hides its
+	// refused message, which leaves the old branch shown; its text is not put back.
 	async function submitHumanMessage(text: string) {
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		const refused = await send({ messages: [{ type: 'human', content: text }] });

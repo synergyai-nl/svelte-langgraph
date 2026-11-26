@@ -373,6 +373,55 @@ describe('Conversation', () => {
 			expect(document.querySelector('[data-message-type="user"]')).toHaveTextContent('Hello');
 		});
 
+		test('an aborted send (no onError) keeps the message and puts nothing back', async () => {
+			const user = userEvent.setup();
+			// The real stream skips `onError` for an AbortError or TimeoutError.
+			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'optimistic-1' }]);
+			});
+			renderConversation();
+
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello');
+			await user.keyboard('{Enter}');
+
+			await waitFor(() =>
+				expect(document.querySelector('[data-message-type="user"]')).toHaveTextContent('Hello')
+			);
+			expect(textbox).toHaveValue('');
+		});
+
+		test('a refused edit drops the edited message and keeps the old branch', async () => {
+			const user = userEvent.setup();
+			mockModule.mockStreamCallbacks.getMessagesMetadata = vi.fn().mockReturnValue({
+				firstSeenState: { parent_checkpoint: { id: 'checkpoint-1' } }
+			});
+			const branch = [
+				{ type: 'human', content: 'Original message', id: 'user-1' },
+				{ type: 'ai', content: 'Original answer', id: 'ai-1' }
+			];
+			mockModule.setMessages(branch);
+			mockModule.mockStreamCallbacks.submit = vi.fn(async (_input, options) => {
+				mockModule.setMessages([...branch, { type: 'human', content: 'Edited', id: 'opt-1' }]);
+				const error = new Error('HTTP 401');
+				mockModule.setError(error);
+				(options as SubmitOptions).onError?.(error, undefined);
+			});
+			renderConversation();
+
+			await user.hover(await screen.findByText('Original message'));
+			await user.click(await screen.findByTitle(/edit/i));
+			const textarea = screen.getByDisplayValue('Original message');
+			await user.clear(textarea);
+			await user.type(textarea, 'Edited');
+			await user.keyboard('{Enter}');
+
+			await screen.findByTestId('chat-error');
+			await waitFor(() => expect(screen.queryByText('Edited')).not.toBeInTheDocument());
+			expect(screen.getByText('Original message')).toBeInTheDocument();
+			expect(screen.getByText('Original answer')).toBeInTheDocument();
+		});
+
 		test('retry sends the restored text and clears the composer', async () => {
 			const user = userEvent.setup();
 			refuseSubmit();
