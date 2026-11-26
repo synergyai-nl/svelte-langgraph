@@ -52,7 +52,10 @@
 		onRequest?: RequestHook;
 		/** Escape hatch: supply a pre-built client directly. Always wins over `url`/`token`/`headers`. */
 		client?: AppClient;
-		/** Graph id used to resolve/create the assistant. Defaults to `'chat'`. */
+		/**
+		 * Graph id used to resolve/create the assistant, to tag new threads (`metadata.graph_id`) and
+		 * to filter the thread list. Defaults to `'chat'`.
+		 */
 		graph?: string;
 		/** Skip assistant resolution entirely and use this id. */
 		assistantId?: string;
@@ -66,6 +69,13 @@
 		 * route, see the README's "Backend routes"): no thread titles are requested. Defaults to `true`.
 		 */
 		titles?: boolean;
+		/**
+		 * Set `false` for an app without a thread list: no `POST {url}/threads/search` is sent, not at
+		 * start, after a run or for a title, and no titles are requested (`titles` is ignored: a
+		 * title shows only in the list). A `ThreadList` rendered anyway shows its empty state.
+		 * Defaults to `true`.
+		 */
+		threadList?: boolean;
 		children: Snippet;
 	}
 
@@ -81,13 +91,14 @@
 		onThreadChange,
 		hrefFor,
 		titles = true,
+		threadList = true,
 		children
 	}: Props = $props();
 
 	// Captured once, from the *initial* props: whether the owned `ThreadListState` should start
 	// in the loading state (SSR — see `ThreadListOptions.initialLoading`, and `+layout.svelte`'s
 	// existing `Boolean(page.data.session)` precedent).
-	const ctx = new LangGraphContext({ initialLoading: Boolean(token || clientProp) });
+	const ctx = new LangGraphContext({ initialLoading: threadList && Boolean(token || clientProp) });
 	setLangGraphContext(ctx);
 
 	// Derive the client on the token *string* (not a session object) so navigations that keep the
@@ -118,11 +129,13 @@
 	);
 
 	$effect(() => {
-		ctx.setClient(derivedClient);
+		ctx.setClient(derivedClient, graph);
 	});
 
+	// `threadList={false}`: the list never gets a client, so its loads, refreshes and pin fetches
+	// are all no-ops.
 	$effect(() => {
-		ctx.threadList.setClient(derivedClient ?? null);
+		ctx.threadList.setClient(threadList ? (derivedClient ?? null) : null, graph);
 	});
 
 	$effect(() => {
@@ -138,7 +151,7 @@
 	});
 
 	$effect(() => {
-		ctx.setTitles(titles);
+		ctx.setTitles(titles && threadList);
 	});
 
 	// Assistant resolution — children never do this themselves. Re-resolves whenever the

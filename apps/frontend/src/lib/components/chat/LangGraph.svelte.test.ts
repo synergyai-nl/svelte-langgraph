@@ -192,6 +192,21 @@ describe('<LangGraph> titles prop', () => {
 	});
 });
 
+describe('<LangGraph> graph and threadList props', () => {
+	test('graph reaches the context', async () => {
+		const { getCtx } = renderProbe({ graph: 'coach' });
+		await waitFor(() => expect(getCtx()?.graph).toBe('coach'));
+	});
+
+	test('threadList={false} turns titles off and leaves the list idle and empty', async () => {
+		const { getCtx } = renderProbe({ url: 'http://localhost:8000', token: 'tok', threadList: false });
+		await waitFor(() => expect(getCtx()?.client).toBeDefined());
+		expect(getCtx()?.titles).toBe(false);
+		expect(getCtx()?.threadList.loading).toBe(false);
+		expect(getCtx()?.threadList.threads).toEqual([]);
+	});
+});
+
 describe('<LangGraph> onRequest prop', () => {
 	afterEach(() => vi.unstubAllGlobals());
 

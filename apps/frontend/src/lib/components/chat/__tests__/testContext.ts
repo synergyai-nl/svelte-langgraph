@@ -29,7 +29,7 @@ export function makeContext(
 	} = {}
 ): LangGraphContext {
 	const ctx = new LangGraphContext();
-	if (options.client) ctx.setClient(options.client);
+	if (options.client) ctx.setClient(options.client, 'chat');
 	if (options.assistantId !== undefined) ctx.setAssistantId(options.assistantId);
 	if (options.titles !== undefined) ctx.setTitles(options.titles);
 	return ctx;

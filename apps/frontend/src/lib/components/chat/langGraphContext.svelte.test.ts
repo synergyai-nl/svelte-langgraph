@@ -106,9 +106,8 @@ describe('LangGraphContext', () => {
 
 	describe('createThread', () => {
 		test('success: creates, refreshes the thread list, selects the new thread, fires onThreadChange', async () => {
-			const client = makeMockClient({
-				threads: { create: vi.fn().mockResolvedValue({ thread_id: 'new-thread-1' }) }
-			});
+			const create = vi.fn().mockResolvedValue({ thread_id: 'new-thread-1' });
+			const client = makeMockClient({ threads: { create } });
 			const ctx = makeContext({ client });
 			const onThreadChange = vi.fn();
 			ctx.setActiveThreadIdProp(undefined, onThreadChange);
@@ -117,6 +116,7 @@ describe('LangGraphContext', () => {
 			const result = await ctx.createThread();
 
 			expect(result).toBe(true);
+			expect(create).toHaveBeenCalledExactlyOnceWith({ graphId: 'chat' });
 			expect(refreshSpy).toHaveBeenCalledTimes(1);
 			expect(ctx.activeThreadId).toBe('new-thread-1');
 			expect(onThreadChange).toHaveBeenCalledExactlyOnceWith('new-thread-1');
@@ -280,12 +280,13 @@ describe('LangGraphContext', () => {
 			expect(ctx.assistantId).toBeUndefined();
 
 			const client = makeMockClient();
-			ctx.setClient(client);
+			ctx.setClient(client, 'coach');
 			ctx.setAssistantId('assistant-1');
 
 			// Not `toBe`: `#client` is a `$state` field, so Svelte wraps the assigned object in a
 			// reactive proxy — `ctx.client` is structurally, not referentially, the same object.
 			expect(ctx.client).toEqual(client);
+			expect(ctx.graph).toBe('coach');
 			expect(ctx.assistantId).toBe('assistant-1');
 		});
 

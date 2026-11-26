@@ -1,7 +1,8 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import LangGraphHost from './__tests__/LangGraphHost.svelte';
+import LangGraphSurfaceHost from './__tests__/LangGraphSurfaceHost.svelte';
 import Conversation from './Conversation.svelte';
 import { makeContext, makeMockClient } from './__tests__/testContext.js';
 import * as mockModule from '../__tests__/mockUseStream.svelte';
@@ -421,5 +422,48 @@ describe('Conversation titles toggled after mount', () => {
 		await tick();
 
 		expect(generateTitleMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('<LangGraph threadList={false}>', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	// The real provider and client over a stubbed `fetch`: mount, then a run that settles with an
+	// untitled opening exchange, so the list loads, refreshes and the titler writes a title.
+	async function requestsOfAMountAndARun(threadList?: boolean) {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const path = new URL(input instanceof Request ? input.url : input).pathname;
+			const body = path.endsWith('/search') ? [] : path.endsWith('/titles') ? { title: 'T' } : {};
+			return new Response(JSON.stringify(body), {
+				headers: { 'Content-Type': 'application/json' }
+			});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		mockModule.setMessages(openingExchange);
+		mockModule.setIsLoading(true);
+		render(LangGraphSurfaceHost, {
+			props: { url: 'http://backend.test', token: 'tok', assistantId: 'a-1', threadList }
+		});
+		await tick();
+		mockModule.setIsLoading(false);
+		await tick();
+		const paths = () =>
+			fetchMock.mock.calls.map(([input]) => new URL(String(input)).pathname);
+		return { paths };
+	}
+
+	test('by default, the list searches at start and after the run, and a title is requested', async () => {
+		const { paths } = await requestsOfAMountAndARun();
+		await waitFor(() => expect(paths()).toContain('/titles'));
+		await waitFor(() =>
+			expect(paths().filter((path) => path === '/threads/search').length).toBeGreaterThan(2)
+		);
+	});
+
+	test('sends no thread search at start, after the run or for a title', async () => {
+		const { paths } = await requestsOfAMountAndARun(false);
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect(paths()).not.toContain('/threads/search');
+		expect(paths()).not.toContain('/titles');
 	});
 });
