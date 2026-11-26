@@ -22,6 +22,18 @@
 
 	const plugins = [gfmPlugin()];
 
+	// Message text is untrusted model output: a link stays clickable only for these schemes or a
+	// relative or fragment URL. `URL` parses as the browser does, so case, whitespace and control
+	// characters cannot hide a `javascript:` scheme.
+	const SAFE_LINK_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+	function isSafeHref(href: string | null | undefined): boolean {
+		try {
+			return SAFE_LINK_PROTOCOLS.has(new URL(href ?? '', 'http://relative.invalid').protocol);
+		} catch {
+			return false;
+		}
+	}
+
 	let isHovered = $state(false);
 	let isEditing = $state(false);
 	let editText = $state('');
@@ -76,7 +88,16 @@
 						{#if message.text}
 							<Card.Root class="border-border-card bg-muted border shadow-sm">
 								<Card.Content class="prose prose-gray dark:prose-invert max-w-none text-sm">
-									<Markdown md={message.text} {plugins} />
+									<Markdown md={message.text} {plugins}>
+										{#snippet a(props)}
+											{@const { children, href, ...rest } = props}
+											{#if isSafeHref(href)}
+												<a {href} {...rest}>{@render children?.()}</a>
+											{:else}
+												{@render children?.()}
+											{/if}
+										{/snippet}
+									</Markdown>
 								</Card.Content>
 							</Card.Root>
 							<AIMessageActions
