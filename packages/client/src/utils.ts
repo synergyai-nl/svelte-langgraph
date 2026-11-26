@@ -52,6 +52,36 @@ export function extractThinkingFromContent(
 	return undefined;
 }
 
+const TOOL_CALL_BLOCKS = ['tool_call', 'tool_use', 'tool_call_chunk'];
+const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const nonEmptyString = (value: unknown): value is string => typeof value === 'string' && !!value;
+
+type NamedCall = { id: string; name: string };
+/** A tool call (or tool-call block) that has an id and a name. */
+const isNamedCall = (value: unknown): value is NamedCall =>
+	nonEmptyString((value as Partial<NamedCall>)?.id) &&
+	nonEmptyString((value as Partial<NamedCall>)?.name);
+
+/**
+ * The calls an AI message makes, from its content blocks, then `tool_calls`. On the stream the
+ * SDK sets `content` to its blocks and derives `tool_calls` and the chunks from them, but while a
+ * call streams `tool_calls` covers only the chunks, so a call finished before it is read from its
+ * block; a stored message's `tool_calls` is complete. `invalid_tool_calls` is not read: no tool
+ * answers such a call. Expects messages as the SDK hands them over, not raw dicts with calls only
+ * in `additional_kwargs`. A call is listed once it has an id and a name: a tool result names its
+ * call by id, so an id-less call cannot be matched to its result.
+ */
+function extractToolCalls(item: Record<string, unknown>): NamedCall[] {
+	const blocks = asArray(item.content).filter((b) =>
+		TOOL_CALL_BLOCKS.includes((b as { type?: string })?.type ?? '')
+	);
+	const calls = new Map<string, string>();
+	for (const c of [...blocks, ...asArray(item.tool_calls)]) {
+		if (isNamedCall(c) && !calls.has(c.id)) calls.set(c.id, c.name);
+	}
+	return [...calls].map(([id, name]) => ({ id, name }));
+}
+
 export function convertThreadMessage(item: Record<string, unknown>): Message {
 	if (item.type === 'human') {
 		return {
@@ -64,11 +94,13 @@ export function convertThreadMessage(item: Record<string, unknown>): Message {
 		const text = extractTextFromContent(item.content);
 		const thinking = extractThinkingFromContent(item.content, additionalKwargs);
 		const responseMetadata = item.response_metadata as Record<string, unknown> | undefined;
+		const toolCalls = extractToolCalls(item);
 		return {
 			type: 'ai',
 			text,
 			id: (item.id as string) || crypto.randomUUID(),
 			...(thinking ? { thinking } : {}),
+			...(toolCalls.length ? { toolCalls } : {}),
 			// A generated id would name nothing the backend knows.
 			...(item.id && typeof responseMetadata?.run_id === 'string' ? { rateable: true } : {})
 		} as AIMessage;

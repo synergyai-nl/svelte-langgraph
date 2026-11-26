@@ -527,6 +527,18 @@ messages have no Edit and AI messages no Regenerate (Copy stays).
 {/if}
 ```
 
+An AI message that calls tools lists them in `toolCalls` as `{ id, name }`; a call appears once it
+has both. Arguments are partial while a call streams; they are on the matching tool message's
+`payload` once the result arrives. A tool message's `id` is its call's `id` when the server sends
+one, so a composition can tell an agent waiting for a tool from one that said nothing:
+
+```ts
+const answered = new Set(api.messages.filter((m) => m.type === 'tool').map((m) => m.id));
+const lastAi = api.messages.findLast((m) => m.type === 'ai');
+// Calls of the last AI message that have no tool message yet, while a run is going.
+const pending = api.isLoading ? (lastAi?.toolCalls ?? []).filter((c) => !answered.has(c.id)) : [];
+```
+
 Two layout rules for `MessagesList`:
 
 - It scrolls its newest message into view by looking for an ancestor with the literal class
