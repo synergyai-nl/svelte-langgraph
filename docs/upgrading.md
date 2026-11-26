@@ -15,6 +15,20 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
+## 2026-11-26 — Retry repeats the last action with the same message id ([#475](https://github.com/synergyai-nl/svelte-langgraph/pull/475))
+
+**What changed.** `ConversationApi.retry` repeats the last action instead of resending the last text: a send or an edit goes again with its first message id (an edit from the same fork point), a regenerate and a run without text (`api.submit()`) go again as such. The server replaces a message of the same id, so a message it stored already (a run that failed after it, a lost response) is held once. A refused send whose text was put back in the composer is resent, and taken out of the composer, only while that text is unchanged; if the user changed it, Retry only clears the error, unless the server's echo of the message arrived since: then the message shows and Retry resends it with its id, leaving the draft. Send on that unchanged text reuses the id as well. `api.retry` is `undefined` while there is nothing to repeat (a failed history load), so `MessagesList` shows no Retry button then. Two limits: merging by id deduplicates messages, not runs, so if a response was lost while the original run is still running on the server, Retry starts a second run next to it, and how the server handles two runs on one thread is up to the server. And when the stored message already has an answer after it (the error surfaced late), the resend replaces the human message in place and the run finds nothing to answer; the demo graph then ends it without a model call. Retry does not promise a fresh answer; Regenerate is the action for that. The item ships the new `Conversation.svelte`.
+
+**Who is affected.** Apps that installed the chat item; apps that call `api.retry()`; apps whose server or graph does not keep client message ids.
+
+**What to do.**
+
+1. Update `chat-core` (see "Updating" in `apps/frontend/README.md`).
+2. Your server must keep the id of an input message and merge messages by id, as LangGraph's `add_messages` reducer does; otherwise Retry after a stored send stores the message twice.
+3. If you call `api.retry()` yourself, check it is defined first, or pass `api.retry` as `onRetryError` as before.
+
+**How to check.** Run `moon run e2e:test -- src/chat.spec.ts -g "same message id"`. In your app, make a run fail after the server stored the message, press Retry, and read `GET /threads/{id}/state`: the message is there once, with the reply after it.
+
 ## 2026-11-26 — An AI message lists its tool calls ([#463](https://github.com/synergyai-nl/svelte-langgraph/pull/463))
 
 **What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, listing the tools the message calls (a call shows once it has an id and a name), also while it streams. A call's result is the `ToolMessage` with the same `id`. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.

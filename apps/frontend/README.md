@@ -471,8 +471,19 @@ itself, for example no Retry while the user lacks access. When a run ends before
 the server echo the sent message (a send refused with a 401, say), the message leaves the list and
 `Conversation` puts the text back in the composer; a response lost after the server stored the
 message looks the same. An edit or regenerate that finds no checkpoint to fork from shows the same
-error card. Stop cancels the run and drops the unfinished, uncheckpointed part of the reply;
-finished messages stay.
+error card.
+
+`api.retry()` repeats the last action: a send or an edit with its first message id, which the
+server replaces rather than stores twice, and a regenerate or a run without text as such. Text put
+back in the composer is resent only while unchanged; otherwise Retry just clears the error (unless
+the server's echo arrived since: then it resends the message with its id and leaves the draft).
+Merging by id deduplicates messages, not runs: a response lost while the original run still runs
+on the server gets a second run next to it. And a message that already has an answer gets no new
+one (the demo graph ends that run without a model call); Regenerate is for a fresh answer.
+`api.retry` is `undefined`, and the card shows no Retry, when there is nothing to repeat.
+
+Stop cancels the run and drops the unfinished, uncheckpointed part of the reply; finished messages
+stay.
 
 ### Composing your own conversation
 

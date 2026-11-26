@@ -403,7 +403,7 @@ describe('Conversation', () => {
 	});
 
 	describe('when stream errors before any messages arrive', () => {
-		test('shows the error', async () => {
+		test('shows the error, without a Retry: there is nothing to repeat', async () => {
 			mockModule.setError(new Error('Connection failed'));
 
 			renderConversation();
@@ -411,6 +411,7 @@ describe('Conversation', () => {
 			await waitFor(() => {
 				expect(screen.getByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
 			});
+			expect(screen.queryByRole('button', { name: m.slg_chat_error_retry() })).toBeNull();
 		});
 	});
 
@@ -573,18 +574,18 @@ describe('Conversation', () => {
 			await user.type(textbox, 'Hello');
 			await user.keyboard('{Enter}');
 			await waitFor(() => expect(textbox).toHaveValue('Hello'));
+			const [first] = (mockModule.mockStreamCallbacks.submit as Mock).mock.calls[0];
 
+			// The stream marks a known id `pending` again; here its echo arrives.
 			const submit = vi.fn(async () => {
 				mockModule.setError(null);
-				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
+				mockModule.setMetadata((first as SubmitInput).messages[0].id, { optimisticStatus: 'sent' });
 			});
 			mockModule.mockStreamCallbacks.submit = submit;
 			await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
 
-			expect(submit).toHaveBeenCalledWith(
-				{ messages: [{ type: 'human', content: 'Hello', id: expect.any(String) }] },
-				expect.anything()
-			);
+			// The same message id: a server that stored it after all replaces it.
+			expect(submit).toHaveBeenCalledWith(first, expect.anything());
 			await waitFor(() => expect(textbox).toHaveValue(''));
 		});
 	});
@@ -607,7 +608,7 @@ describe('Conversation', () => {
 
 			renderConversation();
 
-			// Submit a message — this sets last_user_message, which retryGenerationAfterError() requires.
+			// Submit a message: Retry repeats it.
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
@@ -623,22 +624,153 @@ describe('Conversation', () => {
 		});
 	});
 
-	describe('submit without text', () => {
-		/** Render with the `children` or `empty` snippet and hand back the api it receives. */
-		function renderForApi(slot: 'children' | 'empty' = 'children') {
-			let api: ConversationApi | undefined;
-			const snippet = createRawSnippet<[ConversationApi]>((getApi) => {
-				api = getApi();
-				return { render: () => '<div data-testid="api-probe"></div>' };
+	/** Render with the `children` or `empty` snippet and hand back the api it receives. */
+	function renderForApi(slot: 'children' | 'empty' = 'children') {
+		let api: ConversationApi | undefined;
+		const snippet = createRawSnippet<[ConversationApi]>((getApi) => {
+			api = getApi();
+			return { render: () => '<div data-testid="api-probe"></div>' };
+		});
+		renderConversation({ [slot]: snippet });
+		if (!api) throw new Error('the snippet did not render');
+		return api;
+	}
+
+	describe('Retry repeats the last action', () => {
+		/** Fails every submit; a message sent is marked `failed` (no echo). */
+		function refuseAll() {
+			const submit = vi.fn(async (input?: SubmitInput) => {
+				const id = input?.messages[0]?.id;
+				if (id) mockModule.setMetadata(id, { optimisticStatus: 'failed' });
+				mockModule.setError(new Error('HTTP 401'));
 			});
-			const ctx = makeContext({ client: makeMockClient(), assistantId: 'assistant-1' });
-			render(LangGraphHost, {
-				props: { ctx, component: Conversation, threadId: 'test-123', [slot]: snippet }
-			});
-			if (!api) throw new Error('the snippet did not render');
-			return api;
+			mockModule.mockStreamCallbacks.submit = submit as (...args: unknown[]) => unknown;
+			return submit;
 		}
 
+		const sentIds = (submit: Mock) =>
+			submit.mock.calls.map(([input]) => (input as SubmitInput).messages[0].id);
+
+		test('a restored text the user changed is not sent; the error clears', async () => {
+			const submit = refuseAll();
+			const api = renderForApi('empty');
+			api.submit('Hello');
+			await waitFor(() => expect(api.input).toBe('Hello'));
+			api.setInput('Hello there');
+
+			api.retry!();
+
+			expect(api.error).toBeNull();
+			expect(submit).toHaveBeenCalledOnce();
+			expect(api.input).toBe('Hello there');
+		});
+
+		test('an echo after the user changed the restored text: Retry resends it, the draft stays', async () => {
+			const submit = refuseAll();
+			const api = renderForApi();
+			api.submit('Hello');
+			await waitFor(() => expect(api.input).toBe('Hello'));
+			api.setInput('Hello there');
+			mockModule.emitValues({
+				messages: [{ type: 'human', content: 'Hello', id: sentIds(submit)[0] }]
+			});
+
+			api.retry!();
+
+			expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);
+			expect(api.input).toBe('Hello there');
+		});
+
+		test('an echo after Retry cleared the error brings the card back; Retry then resends', async () => {
+			const submit = refuseAll();
+			const api = renderForApi();
+			api.submit('Hello');
+			await waitFor(() => expect(api.input).toBe('Hello'));
+			api.setInput('Hello there');
+			api.retry!();
+			expect(api.error).toBeNull();
+
+			mockModule.emitValues({
+				messages: [{ type: 'human', content: 'Hello', id: sentIds(submit)[0] }]
+			});
+
+			await waitFor(() => expect(api.error).not.toBeNull());
+			expect(submit).toHaveBeenCalledOnce();
+			api.retry!();
+			expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);
+			expect(api.input).toBe('Hello there');
+		});
+
+		test('a text never put back (another draft was there) is sent again; the draft stays', async () => {
+			const submit = refuseAll();
+			const api = renderForApi();
+			api.submit('Hello');
+			api.setInput('Another draft');
+			await waitFor(() => expect(api.error).not.toBeNull());
+
+			api.retry!();
+
+			expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);
+			expect(api.input).toBe('Another draft');
+		});
+
+		const throwOnSubmit = () => {
+			const submit = vi.fn(async () => {
+				throw new Error('Thread setup failed');
+			});
+			mockModule.mockStreamCallbacks.submit = submit;
+			return submit;
+		};
+
+		test.each([
+			['marked failed', refuseAll],
+			['refused before it showed', throwOnSubmit]
+		])('Send on the unchanged restored text reuses the id (%s)', async (_, refuse) => {
+			const submit = refuse() as Mock;
+			const api = renderForApi();
+			api.submit('Hello');
+			await waitFor(() => expect(api.input).toBe('Hello'));
+
+			api.submit('Hello');
+
+			const [first, second] = sentIds(submit);
+			expect(second).toBe(first);
+		});
+
+		test('a refused edit is sent again from its fork point with the same id', async () => {
+			historyWith('user-1');
+			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
+			const submit = refuseAll();
+			const api = renderForApi();
+			await api.edit(api.messages[0], 'Edited');
+			await waitFor(() => expect(api.error).not.toBeNull());
+
+			api.retry!();
+
+			expect(submit.mock.calls[1]).toEqual([
+				{ messages: [{ type: 'human', content: 'Edited', id: sentIds(submit)[0] }] },
+				{ forkFrom: 'c1' }
+			]);
+			expect(threadsGetHistoryMock).toHaveBeenCalledOnce();
+		});
+
+		test('after a failed fork-point read, Retry reads again and then runs', async () => {
+			const submit = refuseAll();
+			threadsGetHistoryMock.mockRejectedValueOnce(new Error('HTTP 503'));
+			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
+			const api = renderForApi();
+			await api.regenerate(api.messages[0]);
+			await waitFor(() => expect(api.error).not.toBeNull());
+			expect(submit).not.toHaveBeenCalled();
+			historyWith('ai-1');
+
+			api.retry!();
+
+			await waitFor(() => expect(submit).toHaveBeenCalledWith(undefined, { forkFrom: 'c1' }));
+		});
+	});
+
+	describe('submit without text', () => {
 		test('a submit that fails before its run starts lands in error', async () => {
 			// The stream rejects when setting up the thread fails, before any run starts.
 			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
@@ -694,10 +826,11 @@ describe('Conversation', () => {
 			expect(submit).not.toHaveBeenCalled();
 		});
 
-		test('surfaces a failure like a failed submit with text', async () => {
-			mockModule.mockStreamCallbacks.submit = vi.fn(async () => {
+		test('surfaces a failure like a failed submit with text; Retry repeats it as such', async () => {
+			const submit = vi.fn(async () => {
 				mockModule.setError(new Error('Generation failed'));
 			});
+			mockModule.mockStreamCallbacks.submit = submit;
 			// `empty` keeps the default composition, so the error card renders as for text.
 			const api = renderForApi('empty');
 
@@ -706,6 +839,9 @@ describe('Conversation', () => {
 			expect(await screen.findByTestId('chat-error')).toHaveTextContent(m.slg_error_generic());
 			expect(api.error?.message).toBe('Generation failed');
 			expect(screen.getByPlaceholderText('Ask your agent…')).toHaveValue('');
+
+			api.retry!();
+			expect(submit.mock.calls).toEqual([[{ messages: [] }], [{ messages: [] }]]);
 		});
 
 		test('an empty string is sent as a human message, not treated as no text', () => {

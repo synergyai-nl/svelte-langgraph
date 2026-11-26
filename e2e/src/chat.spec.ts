@@ -1,7 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { LANGGRAPH_CONFIG, gotoFreshThread, makeAuthenticatedRequest } from './fixtures/backend';
+import {
+	LANGGRAPH_CONFIG,
+	getBearerToken,
+	gotoFreshThread,
+	makeAuthenticatedRequest
+} from './fixtures/backend';
 import { fakeRuns } from './fixtures/fakeRun';
 import type { Page } from '@playwright/test';
 import { AppPage, ChatPage } from './pages';
@@ -13,6 +18,20 @@ import { AppPage, ChatPage } from './pages';
 // head while the cancellation test polled `/threads/{id}/state`, failing its positive guard
 // nondeterministically.
 test.describe.configure({ mode: 'default' });
+
+/** How often the page's thread stores a human message `content`, and the AI messages after it. */
+async function stored(page: Page, content: string) {
+	const threadId = new URL(page.url()).pathname.split('/').at(-1);
+	const res = await makeAuthenticatedRequest(page, `/threads/${threadId}/state`);
+	const messages = (await res.json()).values.messages as Array<{ type: string; content: unknown }>;
+	const mine = (m: { type: string; content: unknown }) =>
+		m.type === 'human' && String(m.content) === content;
+	const after = messages.slice(messages.findLastIndex(mine) + 1);
+	return {
+		humans: messages.filter(mine).length,
+		replies: after.filter((m) => m.type === 'ai').length
+	};
+}
 
 test.describe('Sending', () => {
 	test.beforeEach(async ({ page }) => {
@@ -105,6 +124,8 @@ test.describe('Sending', () => {
 		await chat.expectAiReply(message);
 		await expect(errorCard).toHaveCount(0);
 		await expect(chat.textInput).toHaveValue('');
+		await expect(chat.userMessage(message)).toHaveCount(1);
+		await expect.poll(() => stored(page, message)).toEqual({ humans: 1, replies: 1 });
 	});
 
 	test("a send the backend's run input check refuses shows the error card and keeps the text", async ({
@@ -158,6 +179,74 @@ test.describe('Sending', () => {
 		await expect(chat.userMessage(message)).toHaveCount(1);
 		await expect(chat.textInput).toHaveValue('');
 		await runs.close();
+	});
+});
+
+test.describe('Retry resends with the same message id', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await gotoFreshThread(page);
+	});
+
+	/**
+	 * Sends `message` with the first `run.start` going through `handler`, which leaves it stored
+	 * without an answer and the error card shown; runs `repair`, then Retry. The thread must then
+	 * hold the message once, with a reply.
+	 */
+	async function failStoredThenRetry(
+		page: Page,
+		chat: ChatPage,
+		message: string,
+		handler: Parameters<Page['route']>[1],
+		repair = async () => {}
+	) {
+		await page.route('**/threads/*/commands', handler, { times: 1 });
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+		await expect(page.getByTestId('chat-error')).toBeVisible();
+		await expect.poll(() => stored(page, message)).toEqual({ humans: 1, replies: 0 });
+		await repair();
+		await page.getByTestId('chat-error').getByRole('button', { name: 'Retry' }).click();
+		await chat.expectAiReply(message);
+		await expect(chat.userMessage(message)).toHaveCount(1);
+		await expect.poll(() => stored(page, message)).toEqual({ humans: 1, replies: 1 });
+	}
+
+	test('after a run that failed once the server stored the message', async ({ page, chat }) => {
+		// A phase the graph refuses, stored with the message: the run fails after storing it.
+		const badPhase: Parameters<Page['route']>[1] = (route) => {
+			const command = route.request().postDataJSON();
+			command.params.input.phase = 'no-such-phase';
+			return route.continue({ postData: JSON.stringify(command) });
+		};
+		// Then a state-only run writes a valid phase, as the phase field does.
+		const repair = async () => {
+			const threadId = new URL(page.url()).pathname.split('/').at(-1);
+			const fix = await page.request.post(
+				`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadId}/runs/wait`,
+				{
+					headers: { Authorization: `Bearer ${await getBearerToken(page)}` },
+					data: {
+						assistant_id: 'chat',
+						input: { phase: 'research' },
+						config: { configurable: { state_only_submit: true } }
+					}
+				}
+			);
+			expect(fix.ok()).toBeTruthy();
+		};
+		await failStoredThenRetry(page, chat, `Stored then failed ${randomUUID()}`, badPhase, repair);
+	});
+
+	test('after a send whose response was lost', async ({ page, chat }) => {
+		// The server stores the message (a state-only run: no answer yet); the page gets a 502.
+		await failStoredThenRetry(page, chat, `Response lost ${randomUUID()}`, async (route) => {
+			const command = route.request().postDataJSON();
+			command.params.config.configurable.state_only_submit = true;
+			await route.fetch({ postData: JSON.stringify(command) });
+			await route.fulfill({ status: 502, body: 'Bad gateway' });
+		});
+		await expect(chat.textInput).toHaveValue('');
 	});
 });
 
