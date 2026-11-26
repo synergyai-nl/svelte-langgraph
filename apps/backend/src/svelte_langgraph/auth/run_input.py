@@ -19,9 +19,12 @@ from langgraph_sdk import Auth
 ALLOWED_CONFIGURABLE_KEYS: dict[str, type] = {
     # Marks a submit that only writes state fields; see graph.phase_gate.
     "state_only_submit": bool,
-    # `@langchain/langgraph-sdk` 1.17's `useStream` sets it to `false` (the v1
-    # event format) on every run it starts without a `context`.
-    "__event_streaming_v2": bool,
+    # `@langchain/svelte` 1.x sends the thread id on every `run.start`. Aegra
+    # overwrites it with the thread of the route, so it cannot redirect a run.
+    "thread_id": str,
+    # The checkpoint an edit or regenerate forks from (`submit(…, { forkFrom })`).
+    # Aegra reads it as the run's `checkpoint`, whose keys are checked below.
+    "checkpoint_id": str,
 }
 
 # Keys of a run's `checkpoint`: the checkpoint address the SDK sends for an

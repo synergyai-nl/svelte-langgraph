@@ -75,7 +75,7 @@ def configurable(**keys) -> dict:
         pytest.param(configurable(state_only_submit=True), id="state-only-submit"),
         pytest.param(configurable(state_only_submit=False), id="state-only-false"),
         pytest.param(
-            configurable(__event_streaming_v2=False), id="sdk-event-streaming-v1"
+            configurable(thread_id="t", checkpoint_id="c"), id="thread-and-fork"
         ),
         pytest.param(
             {
@@ -146,6 +146,13 @@ def test_rejects_configurable_keys_not_allowlisted(key):
 def test_rejects_state_only_submit_of_the_wrong_type(value):
     detail = rejected(configurable(state_only_submit=value))
     assert "config.configurable.state_only_submit must be of type bool" in detail
+
+
+@pytest.mark.parametrize("key", ["thread_id", "checkpoint_id"])
+@pytest.mark.parametrize("value", [1, None, {"id": CLIENT_VALUE}])
+def test_rejects_thread_and_checkpoint_ids_that_are_not_strings(key, value):
+    detail = rejected(configurable(**{key: value}))
+    assert f"config.configurable.{key} must be of type str" in detail
 
 
 @pytest.mark.parametrize(
@@ -436,6 +443,58 @@ class TestThreadCommands:
         assert envelope["type"] == "success"
         prepare.assert_awaited_once()
         assert prepare.await_args.args[2].context == {"user_id": USER_ID}
+
+    # `run.start` params as `@langchain/svelte` 1.x sends them: the thread id
+    # always, the fork point for an edit or regenerate.
+    FORK = "1f0c2a3e-0000-6000-8000-000000000001"
+
+    @pytest.mark.parametrize(
+        ("params", "checkpoint"),
+        [
+            pytest.param(
+                {
+                    "input": {
+                        "messages": [{"type": "human", "content": "hi", "id": "m"}]
+                    }
+                },
+                None,
+                id="turn",
+            ),
+            pytest.param(
+                {
+                    "input": {"messages": [{"type": "human", "content": "hi"}]},
+                    "config": {"configurable": {"checkpoint_id": FORK}},
+                },
+                {"checkpoint_id": FORK},
+                id="edit",
+            ),
+            pytest.param(
+                {"input": None, "config": {"configurable": {"checkpoint_id": FORK}}},
+                {"checkpoint_id": FORK},
+                id="regenerate",
+            ),
+            pytest.param(
+                {
+                    "input": {"phase": "draft"},
+                    "config": {"configurable": {"state_only_submit": True}},
+                    "multitaskStrategy": "enqueue",
+                    "multitask_strategy": "enqueue",
+                },
+                None,
+                id="state-only-submit",
+            ),
+        ],
+    )
+    async def test_run_start_accepts_what_the_frontend_sends(
+        self, prepare, params, checkpoint
+    ):
+        config = params.get("config", {"configurable": {}})
+        config["configurable"]["thread_id"] = "thread-1"
+        envelope = await self.dispatch(
+            "run.start", {**params, "config": config, "assistant_id": "chat"}
+        )
+        assert envelope["type"] == "success"
+        assert prepare.await_args.args[2].checkpoint == checkpoint
 
     async def test_input_respond_rejects_a_state_update(self, prepare):
         envelope = await self.dispatch(
