@@ -681,6 +681,26 @@ describe('Conversation', () => {
 			expect(api.input).toBe('Hello there');
 		});
 
+		test('an echo after Retry cleared the error brings the card back; Retry then resends', async () => {
+			const submit = refuseAll();
+			const api = renderForApi();
+			api.submit('Hello');
+			await waitFor(() => expect(api.input).toBe('Hello'));
+			api.setInput('Hello there');
+			api.retry!();
+			expect(api.error).toBeNull();
+
+			mockModule.emitValues({
+				messages: [{ type: 'human', content: 'Hello', id: sentIds(submit)[0] }]
+			});
+
+			await waitFor(() => expect(api.error).not.toBeNull());
+			expect(submit).toHaveBeenCalledOnce();
+			api.retry!();
+			expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);
+			expect(api.input).toBe('Hello there');
+		});
+
 		test('a text never put back (another draft was there) is sent again; the draft stays', async () => {
 			const submit = refuseAll();
 			const api = renderForApi();

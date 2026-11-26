@@ -155,6 +155,8 @@
 			if (restoredSend && echoedIds.has(restoredSend.id)) {
 				if (current_input === restoredSend.text) current_input = '';
 				restoredSend = undefined;
+				// A Retry that only cleared the error is offered again: it now resends this message.
+				dismissedError = null;
 			}
 		}
 	});
