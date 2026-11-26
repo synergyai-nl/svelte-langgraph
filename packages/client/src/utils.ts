@@ -54,6 +54,13 @@ export function extractThinkingFromContent(
 
 const TOOL_CALL_BLOCKS = ['tool_call', 'tool_use', 'tool_call_chunk'];
 const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+const nonEmptyString = (value: unknown): value is string => typeof value === 'string' && !!value;
+
+type NamedCall = { id: string; name: string };
+/** A tool call (or tool-call block) that has an id and a name. */
+const isNamedCall = (value: unknown): value is NamedCall =>
+	nonEmptyString((value as Partial<NamedCall>)?.id) &&
+	nonEmptyString((value as Partial<NamedCall>)?.name);
 
 /**
  * The calls an AI message makes, from its content blocks, then `tool_calls`. On the stream the
@@ -64,15 +71,13 @@ const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : [
  * in `additional_kwargs`. A call is listed once it has an id and a name: a tool result names its
  * call by id, so an id-less call cannot be matched to its result.
  */
-function extractToolCalls(item: Record<string, unknown>): { id: string; name: string }[] {
+function extractToolCalls(item: Record<string, unknown>): NamedCall[] {
 	const blocks = asArray(item.content).filter((b) =>
 		TOOL_CALL_BLOCKS.includes((b as { type?: string })?.type ?? '')
 	);
 	const calls = new Map<string, string>();
 	for (const c of [...blocks, ...asArray(item.tool_calls)]) {
-		const { id, name } = (c ?? {}) as { id?: unknown; name?: unknown };
-		if (typeof id === 'string' && id && typeof name === 'string' && name && !calls.has(id))
-			calls.set(id, name);
+		if (isNamedCall(c) && !calls.has(c.id)) calls.set(c.id, c.name);
 	}
 	return [...calls].map(([id, name]) => ({ id, name }));
 }
