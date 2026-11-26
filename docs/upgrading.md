@@ -15,7 +15,7 @@ Each entry has this format:
 - **What to do**: numbered steps.
 - **How to check**: one command or request.
 
-## 2026-11-26 — An AI message lists its tool calls ([#PRNUM](https://github.com/synergyai-nl/svelte-langgraph/pull/PRNUM))
+## 2026-11-26 — An AI message lists its tool calls ([#463](https://github.com/synergyai-nl/svelte-langgraph/pull/463))
 
 **What changed.** `AIMessage` has an optional `toolCalls: { id, name }[]`, listing the tools the message calls (a call shows once it has an id and a name), also while it streams. A call's result is the `ToolMessage` with the same `id`. The `chat-core` item ships the new `svelte-langgraph-client/types.ts` and `svelte-langgraph-client/utils.ts`.
 
