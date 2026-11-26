@@ -11,6 +11,7 @@
 
 	interface Props {
 		value: string;
+		/** A run is going: Stop replaces Send, and Enter sends nothing. The input stays editable. */
 		isStreaming?: boolean;
 		/** Turns the composer off (e.g. while the thread history loads): no input, no Send. */
 		disabled?: boolean;
@@ -28,6 +29,7 @@
 		placeholder = m.slg_chat_input_placeholder()
 	}: Props = $props();
 
+	let textarea = $state<HTMLTextAreaElement | null>(null);
 	let isEmpty = $derived(!(value ?? '').trim());
 	let cannotSend = $derived(isEmpty || isStreaming || disabled);
 	function handleSubmit(event: SubmitEvent) {
@@ -36,6 +38,8 @@
 		// The one guard against blank input: `ConversationApi.submit` sends any text it is given.
 		if (cannotSend) return;
 		onSubmit();
+		// Send was pressed: Stop replaces it, which would drop focus. Keep it in the input.
+		textarea?.focus();
 	}
 
 	function handleKeyPress(event: KeyboardEvent) {
@@ -55,9 +59,11 @@
 		>
 			<div class="flex items-end gap-3">
 				<div class="min-w-0 flex-1">
+					<!-- Not disabled during a run: a disabled input loses focus, and nothing gives it back. -->
 					<Textarea
+						bind:ref={textarea}
 						id="user-input"
-						disabled={isStreaming || disabled}
+						{disabled}
 						{placeholder}
 						aria-label={placeholder}
 						rows={1}

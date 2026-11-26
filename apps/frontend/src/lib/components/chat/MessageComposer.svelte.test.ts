@@ -69,6 +69,17 @@ describe('MessageComposer', () => {
 		expect(notPrevented).toBe(false);
 	});
 
+	test('clicking Send moves focus to the textarea, which Stop would otherwise drop', async () => {
+		const user = userEvent.setup();
+		const onSubmit = vi.fn();
+		renderComposer({ value: 'Hello', onSubmit });
+
+		await user.click(screen.getByRole('button', { name: 'Send message' }));
+
+		expect(onSubmit).toHaveBeenCalledOnce();
+		expect(screen.getByRole('textbox')).toHaveFocus();
+	});
+
 	test('does not call onSubmit on Shift+Enter', async () => {
 		const user = userEvent.setup();
 		const onSubmit = vi.fn();
@@ -82,9 +93,30 @@ describe('MessageComposer', () => {
 	});
 
 	describe('when isStreaming is true', () => {
-		test('disables the textarea', () => {
-			renderComposer({ value: 'Hello', isStreaming: true });
-			expect(screen.getByRole('textbox')).toBeDisabled();
+		// A disabled input drops focus; nothing would give it back after the run.
+		test('keeps the textarea enabled and focused, during the run and after it', async () => {
+			const props = { value: 'Hello', onSubmit: vi.fn() };
+			const { rerender } = renderComposer(props);
+			const textbox = screen.getByRole('textbox');
+			textbox.focus();
+
+			await rerender({ component: MessageComposer, props: { ...props, isStreaming: true } });
+			expect(textbox).toBeEnabled();
+			expect(textbox).toHaveFocus();
+
+			await rerender({ component: MessageComposer, props });
+			expect(textbox).toHaveFocus();
+		});
+
+		test('Enter sends nothing and keeps the text', async () => {
+			const user = userEvent.setup();
+			const onSubmit = vi.fn();
+			renderComposer({ isStreaming: true, onSubmit });
+
+			await user.type(screen.getByRole('textbox'), 'Next question{Enter}');
+
+			expect(onSubmit).not.toHaveBeenCalled();
+			expect(screen.getByRole('textbox')).toHaveValue('Next question');
 		});
 
 		test('shows enabled stop button with an accessible name', () => {

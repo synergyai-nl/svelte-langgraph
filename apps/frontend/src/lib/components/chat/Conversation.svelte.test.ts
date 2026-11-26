@@ -179,13 +179,11 @@ describe('Conversation', () => {
 			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
 			await user.keyboard('{Enter}');
 
-			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
-
-			await user.click(within(document.getElementById('input_form')!).getByRole('button'));
+			await user.click(await screen.findByRole('button', { name: 'Stop generating' }));
 
 			await waitFor(() => {
 				expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-				expect(screen.getByRole('textbox')).not.toBeDisabled();
+				expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument();
 			});
 		});
 
@@ -210,20 +208,22 @@ describe('Conversation', () => {
 			});
 		});
 
-		test('input is re-enabled after stopping', async () => {
+		test('a draft typed during the run is kept after stopping', async () => {
 			const user = userEvent.setup();
 			mockModule.mockStreamCallbacks.submit = vi.fn(() => mockModule.setIsLoading(true));
 			mockModule.mockStreamCallbacks.stop = vi.fn(() => mockModule.setIsLoading(false));
 
 			renderConversation();
-			await user.type(screen.getByPlaceholderText('Ask your agent…'), 'Hello');
-			await user.keyboard('{Enter}');
+			const textbox = screen.getByPlaceholderText('Ask your agent…');
+			await user.type(textbox, 'Hello{Enter}');
+			const stop = await screen.findByRole('button', { name: 'Stop generating' });
+			await user.type(textbox, 'Next{Enter}');
 
-			await waitFor(() => expect(screen.getByRole('textbox')).toBeDisabled());
+			await user.click(stop);
 
-			await user.click(within(document.getElementById('input_form')!).getByRole('button'));
-
-			await waitFor(() => expect(screen.getByRole('textbox')).not.toBeDisabled());
+			await screen.findByRole('button', { name: 'Send message' });
+			expect(mockModule.mockStreamCallbacks.submit).toHaveBeenCalledOnce();
+			expect(textbox).toHaveValue('Next');
 		});
 	});
 
@@ -513,7 +513,7 @@ describe('Conversation', () => {
 			await user.click(await screen.findByRole('button', { name: 'Stop generating' }));
 
 			expect(stop).toHaveBeenCalledOnce();
-			await waitFor(() => expect(textbox).toBeEnabled());
+			await screen.findByRole('button', { name: 'Send message' });
 			expect(document.querySelector('[data-message-type="user"]')).toHaveTextContent('Hello');
 			expect(textbox).toHaveValue('');
 			expect(screen.queryByTestId('chat-error')).not.toBeInTheDocument();
