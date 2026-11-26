@@ -205,7 +205,7 @@ export async function findForkPoint(
 	client: Client,
 	threadId: string,
 	messageId: string,
-	pageSize = 100
+	pageSize = 20
 ): Promise<string | undefined> {
 	const byId = new Map<string, ThreadState<ThreadValues>>();
 	let page: ThreadState<ThreadValues>[] = [];

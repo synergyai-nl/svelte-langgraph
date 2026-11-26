@@ -50,9 +50,18 @@ export const mockStream = {
 	}
 };
 
+type ChannelEvent = { method: string; params: { data: unknown } };
+// A plain list: the listeners are callbacks, not state a component renders.
+const channelListeners: Array<(event: ChannelEvent) => void> = [];
+
+/** Delivers a server `values` event to every `useChannelEffect` listener. */
+export function emitValues(data: Record<string, unknown>) {
+	for (const listener of channelListeners) listener({ method: 'values', params: { data } });
+}
+
 /**
  * Stand-ins for the `@langchain/svelte` composables `Conversation` uses besides `useStream`:
- * `useMessageMetadata` reads `setMetadata`'s entries, `useChannelEffect` delivers nothing.
+ * `useMessageMetadata` reads `setMetadata`'s entries, `useChannelEffect` gets `emitValues`'s events.
  */
 export const mockSelectors = {
 	useMessageMetadata(_stream: unknown, getId: () => string | undefined) {
@@ -63,7 +72,13 @@ export const mockSelectors = {
 			}
 		};
 	},
-	useChannelEffect() {}
+	useChannelEffect(
+		_stream: unknown,
+		_channels: unknown,
+		{ onEvent }: { onEvent: (event: ChannelEvent) => void }
+	) {
+		channelListeners.push(onEvent);
+	}
 };
 
 export function setMetadata(id: string, metadata: MockMessageMetadata) {
@@ -97,6 +112,7 @@ export function resetMock() {
 	_error = null;
 	_values = {};
 	_metadata = {};
+	channelListeners.length = 0;
 	mockStreamCallbacks.submit = () => {};
 	mockStreamCallbacks.stop = () => {};
 }

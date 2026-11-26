@@ -29,8 +29,8 @@
 		/**
 		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
 		 * in the UI (`MessageComposer` does). No-op while `isLoading` or `isThreadLoading`. Clears
-		 * `input`. When the run ends without the server storing the message (e.g. a send refused
-		 * with a 401), the message leaves the list and the text goes back into `input`.
+		 * `input`. When the run ends before the client sees the server echo the message (e.g. a send
+		 * refused with a 401), the message leaves the list and the text goes back into `input`.
 		 *
 		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
 		 * speaks first or a backend that answers the last human message again. No-op while
@@ -43,11 +43,12 @@
 		/** Stop the in-flight run. */
 		stop: () => void;
 		/**
-		 * Branch-edit a past user message. Resolves `false` when it couldn't (a run is going, or
-		 * the message's checkpoint was not found), `true` once the run has started.
+		 * Branch-edit a past user message. Resolves `false` when it couldn't: a run is going, or no
+		 * checkpoint to fork from was found (then `error` says why). Resolves `true` once the run
+		 * has started.
 		 */
 		edit: (message: Message, newText: string) => Promise<boolean>;
-		/** Regenerate the AI response following a past message. */
+		/** Regenerate this AI response. Without a checkpoint to fork from, sets `error` instead. */
 		regenerate: (message: Message) => void;
 		/** State-sync bindings (`sync.field(name)`) for this thread — see `createStateSync`. */
 		sync: { readonly schema: SchemaStatus; field(name: string): FieldBinding };
@@ -126,7 +127,10 @@
 	// makes it rateable. The stream keeps showing its streamed copy of an answer (its content
 	// differs in shape from the stored one), so the stamp is read from the server's `values`.
 	const stampedIds = new SvelteSet<string>();
+	// `bufferSize: 1`: each `values` event is a full state, and only the newest is needed (the
+	// projection's default keeps 4096 for the life of the mount).
 	useChannelEffect(stream, ['values'], {
+		bufferSize: 1,
 		onEvent(event) {
 			for (const message of (event.params.data as ThreadValues).messages ?? []) {
 				const metadata = message.response_metadata as { run_id?: unknown } | undefined;
@@ -148,8 +152,10 @@
 
 		for (const msg of msgs) {
 			// The stream shows a sent message at once and marks it `failed` when its run ended
-			// without the server storing it (e.g. a send refused with a 401): leave it out, so the
-			// list shows what the thread holds.
+			// before the client saw the server echo it (a send refused with a 401, a run stopped
+			// that early): leave it out. A response lost after the server stored the message looks
+			// the same and hides a stored message until a remount; the Retry issue #444 reconciles
+			// with the stored thread state before a resend.
 			if (msg.id && metadataOf(msg.id)?.optimisticStatus === 'failed') continue;
 			const m = msg as unknown as Record<string, unknown>;
 
@@ -178,12 +184,21 @@
 
 	let messages = $derived(mapMessages(stream.messages));
 
+	// A failure outside a run (no checkpoint to fork from, a failed history read, a submit that
+	// threw before its run started) shows as a failed run does. Cleared when the next action starts.
+	let actionError = $state<Error | null>(null);
+	const asError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+	async function startRun(submit: () => Promise<void>) {
+		actionError = null;
+		try {
+			await submit();
+		} catch (error) {
+			actionError = asError(error);
+		}
+	}
+
 	let generationError = $derived(
-		!isCancellationError(stream.error) && stream.error != null
-			? stream.error instanceof Error
-				? stream.error
-				: new Error(String(stream.error))
-			: null
+		!isCancellationError(stream.error) && stream.error != null ? asError(stream.error) : actionError
 	);
 
 	let chat_started = $derived(messages.length > 0 || stream.isLoading || generationError != null);
@@ -191,18 +206,25 @@
 		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
 	);
 
-	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
-	// `stream.error`. Resolves `true` when the server never stored the message (see
-	// `mapMessages`), which then left the list.
+	// `stream.submit` resolves once the run settles, with a failure in `stream.error`; it rejects
+	// only when it fails before the run starts (setting up the thread), before the message shows.
+	// Resolves `true` when the client saw no echo of the message (see `mapMessages`), which then
+	// left the list, or when the submit rejected.
 	async function send(text: string, forkFrom?: string) {
+		actionError = null;
 		const id = crypto.randomUUID();
-		await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
+		try {
+			await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
+		} catch (error) {
+			actionError = asError(error);
+			return true;
+		}
 		return metadataOf(id)?.optimisticStatus === 'failed';
 	}
 
-	// A send the server never stored would lose the text: put it back in the composer, unless
-	// the user has started typing something else meanwhile (Retry still sends it). An edit only
-	// hides its message, which leaves the old branch shown; its text is not put back.
+	// A send with no echo would lose the text: put it back in the composer, unless the user has
+	// started typing something else meanwhile (Retry still sends it). An edit only hides its
+	// message, which leaves the old branch shown; its text is not put back.
 	async function submitHumanMessage(text: string) {
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		const refused = await send(text);
@@ -223,7 +245,7 @@
 	function submitWithoutMessage() {
 		if (stream.isLoading || stream.isThreadLoading) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		void stream.submit({ messages: [] });
+		void startRun(() => stream.submit({ messages: [] }));
 	}
 
 	function retryGenerationAfterError() {
@@ -241,8 +263,18 @@
 	// `parentCheckpointId` metadata is not used: a Python LangGraph server's `checkpoints`
 	// events lack the fields it reads, and after a history load it gives every message the
 	// newest checkpoint's parent.
-	function forkPoint(message: Message) {
-		return findForkPoint(langGraphClient, threadId, message.id);
+	// A failed history read, or no fork point (the message is not on the current branch), shows
+	// as an error and starts nothing.
+	async function forkPoint(message: Message): Promise<string | undefined> {
+		actionError = null;
+		try {
+			const forkFrom = await findForkPoint(langGraphClient, threadId, message.id);
+			if (forkFrom) return forkFrom;
+			actionError = new Error(`No checkpoint to fork from for message ${message.id}`);
+		} catch (error) {
+			actionError = asError(error);
+		}
+		return undefined;
 	}
 
 	async function handleEdit(message: Message, newText: string): Promise<boolean> {
@@ -263,7 +295,7 @@
 		// last_user_message is intentionally not updated here — retryGenerationAfterError only
 		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		void stream.submit(undefined, { forkFrom });
+		void startRun(() => stream.submit(undefined, { forkFrom }));
 	}
 
 	function rateMessage(message: Message, type: FeedbackScore, comment?: string) {
