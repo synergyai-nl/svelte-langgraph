@@ -21,17 +21,30 @@ import * as m from '#lib/paraglide/messages.js';
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('../__tests__/mockUseStream.svelte');
-	return { useStream: vi.fn(() => mod.mockStream) };
+	return { useStream: vi.fn(() => mod.mockStream), ...mod.mockSelectors };
 });
 
 // `threads` backs the titler's metadata reads and writes; `submitFeedback` backs ratings.
 const submitFeedbackMock = vi.fn();
 const threadsGetMock: Mock = vi.fn();
 const threadsUpdateMock: Mock = vi.fn();
+const threadsGetHistoryMock: Mock = vi.fn();
+
+/** Thread history where the message `id` first shows in checkpoint `c2`, after `c1`. */
+function historyWith(id: string) {
+	threadsGetHistoryMock.mockResolvedValue([
+		{
+			checkpoint: { checkpoint_id: 'c2' },
+			parent_checkpoint: { checkpoint_id: 'c1' },
+			values: { messages: [{ id }] }
+		},
+		{ checkpoint: { checkpoint_id: 'c1' }, parent_checkpoint: null, values: { messages: [] } }
+	]);
+}
 
 function renderConversation(overrides: Record<string, unknown> = {}) {
 	const client = makeMockClient({
-		threads: { get: threadsGetMock, update: threadsUpdateMock },
+		threads: { get: threadsGetMock, update: threadsUpdateMock, getHistory: threadsGetHistoryMock },
 		submitFeedback: submitFeedbackMock
 	});
 	const ctx = makeContext({ client, assistantId: 'assistant-1' });
@@ -44,6 +57,7 @@ beforeEach(() => {
 	mockModule.resetMock();
 	threadsGetMock.mockReset().mockResolvedValue({ metadata: {} });
 	threadsUpdateMock.mockReset().mockResolvedValue({});
+	threadsGetHistoryMock.mockReset().mockResolvedValue([]);
 	submitFeedbackMock.mockReset().mockResolvedValue(undefined);
 });
 
@@ -262,14 +276,11 @@ describe('Conversation', () => {
 			expect(screen.getByText('Original message')).toBeInTheDocument();
 		});
 
-		test('submits edited message with parent checkpoint on Enter', async () => {
+		test('submits the edited message, forked from the parent checkpoint, on Enter', async () => {
 			const user = userEvent.setup();
 			const mockSubmit = vi.fn();
-			const mockGetMetadata = vi.fn().mockReturnValue({
-				firstSeenState: { parent_checkpoint: { id: 'checkpoint-1' } }
-			});
 			mockModule.mockStreamCallbacks.submit = mockSubmit;
-			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
+			historyWith('user-1');
 			mockModule.setMessages([{ type: 'human', content: 'Original message', id: 'user-1' }]);
 
 			renderConversation();
@@ -283,22 +294,23 @@ describe('Conversation', () => {
 			await user.type(textarea, 'Edited message');
 			await user.keyboard('{Enter}');
 
-			expect(mockSubmit).toHaveBeenCalledWith(
-				{ messages: [{ type: 'human', content: 'Edited message' }] },
-				expect.objectContaining({ checkpoint: { id: 'checkpoint-1' } })
+			await waitFor(() =>
+				expect(mockSubmit).toHaveBeenCalledWith(
+					{ messages: [{ type: 'human', content: 'Edited message', id: expect.any(String) }] },
+					{ forkFrom: 'c1' }
+				)
 			);
+			expect(threadsGetHistoryMock).toHaveBeenCalledWith('test-123', { limit: 100 });
+			expect(screen.queryByDisplayValue('Edited message')).not.toBeInTheDocument();
 		});
 	});
 
 	describe('when an AI message is regenerated', () => {
-		test('submits with undefined input and the parent checkpoint', async () => {
+		test('submits with undefined input, forked from the parent checkpoint', async () => {
 			const user = userEvent.setup();
 			const mockSubmit = vi.fn();
-			const mockGetMetadata = vi.fn().mockReturnValue({
-				firstSeenState: { parent_checkpoint: { id: 'checkpoint-ai-1' } }
-			});
 			mockModule.mockStreamCallbacks.submit = mockSubmit;
-			mockModule.mockStreamCallbacks.getMessagesMetadata = mockGetMetadata;
+			historyWith('ai-1');
 			mockModule.setMessages([{ type: 'ai', content: 'AI response', id: 'ai-1' }]);
 
 			renderConversation();
@@ -308,9 +320,7 @@ describe('Conversation', () => {
 
 			await user.click(await screen.findByTitle(/regenerate/i));
 
-			expect(mockSubmit).toHaveBeenCalledWith(undefined, {
-				checkpoint: { id: 'checkpoint-ai-1' }
-			});
+			await waitFor(() => expect(mockSubmit).toHaveBeenCalledWith(undefined, { forkFrom: 'c1' }));
 		});
 	});
 
@@ -326,18 +336,25 @@ describe('Conversation', () => {
 		});
 	});
 
-	type SubmitOptions = { onError?: (error: unknown, run: unknown) => void };
+	type SubmitInput = { messages: Array<{ id: string }> };
 
-	describe('when a send is refused before the run starts', () => {
-		// Like the real stream: the input shows at once, and `submit` resolves once the run
-		// settles, with the error in `stream.error`. `onError` gets no run: none was created.
+	/**
+	 * Like the real stream: the sent message shows at once, and `submit` resolves once the run
+	 * settles, with the error in `stream.error` and the message marked `status`: `failed` when
+	 * the server never stored it, `sent` when it did.
+	 */
+	function failSubmit(error: Error, status: 'failed' | 'sent') {
+		mockModule.mockStreamCallbacks.submit = vi.fn(async (input) => {
+			const { id } = (input as SubmitInput).messages[0];
+			mockModule.setMessages([{ type: 'human', content: 'Hello', id }]);
+			mockModule.setMetadata(id, { optimisticStatus: status });
+			mockModule.setError(error);
+		});
+	}
+
+	describe('when the server never stores a sent message', () => {
 		function refuseSubmit() {
-			mockModule.mockStreamCallbacks.submit = vi.fn(async (_input, options) => {
-				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'optimistic-1' }]);
-				const error = new Error('HTTP 401 {"detail":"Unauthorized"}');
-				mockModule.setError(error);
-				(options as SubmitOptions).onError?.(error, undefined);
-			});
+			failSubmit(new Error('HTTP 401 {"detail":"Unauthorized"}'), 'failed');
 		}
 
 		test('puts the text back in the composer and drops the message from the list', async () => {
@@ -354,14 +371,9 @@ describe('Conversation', () => {
 			expect(document.querySelector('[data-message-type="user"]')).toBeNull();
 		});
 
-		test('keeps the message and an empty composer when the run was created', async () => {
+		test('keeps the message and an empty composer when the server stored it', async () => {
 			const user = userEvent.setup();
-			mockModule.mockStreamCallbacks.submit = vi.fn(async (_input, options) => {
-				mockModule.setMessages([{ type: 'human', content: 'Hello', id: 'user-1' }]);
-				const error = new Error('Generation failed');
-				mockModule.setError(error);
-				(options as SubmitOptions).onError?.(error, { run_id: 'run-1', thread_id: 'test-123' });
-			});
+			failSubmit(new Error('Generation failed'), 'sent');
 			renderConversation();
 
 			const textbox = screen.getByPlaceholderText('Ask your agent…');
@@ -440,7 +452,7 @@ describe('Conversation', () => {
 			await user.click(screen.getByRole('button', { name: m.slg_chat_error_retry() }));
 
 			expect(submit).toHaveBeenCalledWith(
-				{ messages: [{ type: 'human', content: 'Hello' }] },
+				{ messages: [{ type: 'human', content: 'Hello', id: expect.any(String) }] },
 				expect.anything()
 			);
 			await waitFor(() => expect(textbox).toHaveValue(''));
@@ -561,7 +573,7 @@ describe('Conversation', () => {
 			api.submit('');
 
 			expect(submit).toHaveBeenCalledExactlyOnceWith(
-				{ messages: [{ type: 'human', content: '' }] },
+				{ messages: [{ type: 'human', content: '', id: expect.any(String) }] },
 				expect.anything()
 			);
 		});
@@ -575,7 +587,7 @@ describe('Conversation', () => {
 			api.submit('Hello');
 
 			expect(submit).toHaveBeenCalledExactlyOnceWith(
-				{ messages: [{ type: 'human', content: 'Hello' }] },
+				{ messages: [{ type: 'human', content: 'Hello', id: expect.any(String) }] },
 				expect.anything()
 			);
 			expect(api.input).toBe('');

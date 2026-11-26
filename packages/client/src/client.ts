@@ -1,4 +1,10 @@
-import { Client, type Metadata, type RequestHook, type Thread } from '@langchain/langgraph-sdk';
+import {
+	Client,
+	type Metadata,
+	type RequestHook,
+	type Thread,
+	type ThreadState
+} from '@langchain/langgraph-sdk';
 import { apiEndpoint, normalizeApiUrl } from './apiUrl';
 import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
@@ -186,6 +192,35 @@ export async function createThread(
 	metadata?: Metadata
 ): Promise<Thread<ThreadValues>> {
 	return (await client.threads.create({ graphId, metadata })) as Thread<ThreadValues>;
+}
+
+/**
+ * The checkpoint to fork from to replace message `messageId` and everything after it (an edit,
+ * or a regenerate of an answer): the parent of the oldest checkpoint on the thread's current
+ * branch that holds the message. Reads the newest `limit` checkpoints once and follows the
+ * branch from the newest. `undefined` when the message is not on the branch, or the branch
+ * leaves those checkpoints before the message's first one.
+ */
+export async function findForkPoint(
+	client: Client,
+	threadId: string,
+	messageId: string,
+	limit = 100
+): Promise<string | undefined> {
+	const history = await client.threads.getHistory<ThreadValues>(threadId, { limit });
+	const byId = new Map(history.map((state) => [state.checkpoint.checkpoint_id, state]));
+	const holds = (
+		state: ThreadState<ThreadValues> | undefined
+	): state is ThreadState<ThreadValues> =>
+		state?.values?.messages?.some((message) => message.id === messageId) ?? false;
+	let state: ThreadState<ThreadValues> | undefined = history[0];
+	let forkFrom: string | undefined;
+	while (holds(state)) {
+		forkFrom = state.parent_checkpoint?.checkpoint_id ?? undefined;
+		state = forkFrom === undefined ? undefined : byId.get(forkFrom);
+	}
+	// `state` is now the newest checkpoint on the branch without the message, if it was read.
+	return state && forkFrom;
 }
 
 export async function getOrCreateAssistant(

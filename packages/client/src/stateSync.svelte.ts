@@ -3,19 +3,20 @@
  *
  * ## Write path
  * `field.set(v)` calls
- * `stream.submit({ [name]: v }, { optimisticValues: ..., config: { configurable: { state_only_submit: true } } })`.
+ * `stream.submit({ [name]: v }, { multitaskStrategy: 'enqueue', config: { configurable: { state_only_submit: true } } })`.
  * This triggers a *state-only* run through the graph: the backend's `phase_gate`
  * middleware (a `@before_agent` hook in graph.py) applies the field update and
  * jumps to `end` without an LLM call.  The `state_only_submit` marker is carried
  * in per-invocation run config (not state) so the middleware can tell a genuine
  * field-only submit apart from a leftover dangling HumanMessage in checkpoint
  * state (e.g. after a cancelled/failed generation) without the marker leaking
- * into later chat submits.  useStream then refetches server truth after
- * the run completes.  Optimistic values give an immediate UI update while the
- * round-trip is in flight.
+ * into later chat submits.  `useStream` shows the new value at once and
+ * takes the server's once the run writes it (it rolls the value back when the
+ * run ends without writing state).
  *
- * Submitting while `stream.isLoading` is true enqueues the submission via
- * useStream's built-in queue — acceptable for lightweight state-only writes.
+ * Submitting while `stream.isLoading` is true enqueues the submission behind
+ * the running chat turn (`multitaskStrategy: 'enqueue'`); the stream's default
+ * would cancel that turn.
  *
  * ## threads.updateState is not available
  * `client.threads.updateState` writes directly to the thread checkpoint,
@@ -41,8 +42,8 @@ import { parseObjectSchema, type FieldSchema } from './schema.js';
 /**
  * Minimal interface stateSync requires from the useStream return value.
  *
- * Typed to accept both the real `WithClassMessages<ResolveStreamInterface<...>>`
- * from `@langchain/svelte` and lightweight test doubles.
+ * Typed to accept both the `useStream` handle from `@langchain/svelte` and
+ * lightweight test doubles.
  */
 export interface StreamLike {
 	/** Current thread-state values. May be absent on a fresh (empty) thread. */
@@ -50,9 +51,8 @@ export interface StreamLike {
 	submit(
 		input: Record<string, unknown> | null | undefined,
 		options?: {
-			optimisticValues?: (
-				prev: Record<string, unknown>
-			) => Record<string, unknown> | Partial<Record<string, unknown>>;
+			/** What to do when a run is already going: `enqueue` runs this one after it. */
+			multitaskStrategy?: 'enqueue';
 			/**
 			 * Per-invocation run config forwarded to the graph. Unlike `input`,
 			 * this is never persisted to checkpoint state — see `set()` below
@@ -60,7 +60,7 @@ export interface StreamLike {
 			 */
 			config?: { configurable?: Record<string, unknown> };
 		}
-	): void;
+	): unknown;
 }
 
 /** Current state of the remote schema fetch. */
@@ -83,7 +83,7 @@ export interface FieldBinding {
 	readonly options: string[];
 	/**
 	 * Write a new value via a graph-mediated state submit.
-	 * Applies `optimisticValues` immediately; server truth is reconciled
+	 * The stream shows the value at once; server truth is reconciled
 	 * after the run completes.
 	 */
 	set(v: unknown): void;
@@ -196,14 +196,10 @@ export function createStateSync({ stream, client, assistantId }: StateSyncOption
 			set(v: unknown): void {
 				warnIfFieldMissing(name, schemaStatus, 'set');
 				warnIfEnumValueInvalid(name, v, getFieldSchema(name, schemaStatus));
-				// SDK auto-enqueues busy-thread submits; see StreamOrchestrator.submit()
-				stream.submit(
+				void stream.submit(
 					{ [name]: v },
 					{
-						optimisticValues: (prev: Record<string, unknown>) => ({
-							...prev,
-							[name]: v
-						}),
+						multitaskStrategy: 'enqueue',
 						// Tells the backend's phase_gate middleware (graph.py) this is a
 						// pure state update, not a chat turn. Sent via run config rather
 						// than as a state field: if the last committed message happens to

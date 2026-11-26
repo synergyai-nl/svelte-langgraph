@@ -37,7 +37,7 @@
 			"registryDependencies": [],
 			"dependencies": [
 				"@langchain/langgraph-sdk@^1.17.0",
-				"@langchain/svelte@^0.3.2",
+				"@langchain/svelte@^1.2.15",
 				"@lucide/svelte@>=0.562.0",
 				"@tailwindcss/typography@^0.5.15",
 				"svelte-exmarkdown@^5.0.1"

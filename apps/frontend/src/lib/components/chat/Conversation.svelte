@@ -29,8 +29,8 @@
 		/**
 		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
 		 * in the UI (`MessageComposer` does). No-op while `isLoading` or `isThreadLoading`. Clears
-		 * `input`. When the send fails before the client learns of a run (e.g. a 401), the message
-		 * leaves the list and the text goes back into `input`.
+		 * `input`. When the run ends without the server storing the message (e.g. a send refused
+		 * with a 401), the message leaves the list and the text goes back into `input`.
 		 *
 		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
 		 * speaks first or a backend that answers the last human message again. No-op while
@@ -42,8 +42,11 @@
 		retry: () => void;
 		/** Stop the in-flight run. */
 		stop: () => void;
-		/** Branch-edit a past user message. Returns `false` when it couldn't (e.g. no checkpoint). */
-		edit: (message: Message, newText: string) => boolean;
+		/**
+		 * Branch-edit a past user message. Resolves `false` when it couldn't (a run is going, or
+		 * the message's checkpoint was not found), `true` once the run has started.
+		 */
+		edit: (message: Message, newText: string) => Promise<boolean>;
 		/** Regenerate the AI response following a past message. */
 		regenerate: (message: Message) => void;
 		/** State-sync bindings (`sync.field(name)`) for this thread — see `createStateSync`. */
@@ -59,20 +62,20 @@
 </script>
 
 <script lang="ts">
-	import { useStream } from '@langchain/svelte';
+	import { useChannelEffect, useMessageMetadata, useStream } from '@langchain/svelte';
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import {
 		convertThreadMessage,
-		InvalidData,
+		findForkPoint,
 		isCancellationError,
 		createStateSync,
 		createThreadTitler,
 		type FeedbackScore,
+		type ThreadValues,
 		type ToolMessage
 	} from '#lib/svelte-langgraph-client/index.ts';
 	import MessageComposer from './MessageComposer.svelte';
 	import MessagesList from './MessagesList.svelte';
-	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
@@ -108,12 +111,29 @@
 	const langGraphClient = ctx.client;
 	const assistantId = ctx.assistantId;
 
-	const stream = useStream({
-		client: langGraphClient,
-		assistantId,
-		threadId,
-		fetchStateHistory: true,
-		reconnectOnMount: true
+	const stream = useStream({ client: langGraphClient, assistantId, threadId });
+
+	// `useMessageMetadata` reads the metadata of one message id, which a getter supplies: point
+	// it at an id, then read `current`. Reading it inside a `$derived` tracks the metadata.
+	let metadataId: string | undefined;
+	const metadata = useMessageMetadata(stream, () => metadataId);
+	function metadataOf(id: string) {
+		metadataId = id;
+		return metadata.current;
+	}
+
+	// Ids of messages whose stored copy carries the run id the backend stamps on an answer, which
+	// makes it rateable. The stream keeps showing its streamed copy of an answer (its content
+	// differs in shape from the stored one), so the stamp is read from the server's `values`.
+	const stampedIds = new SvelteSet<string>();
+	useChannelEffect(stream, ['values'], {
+		onEvent(event) {
+			for (const message of (event.params.data as ThreadValues).messages ?? []) {
+				const metadata = message.response_metadata as { run_id?: unknown } | undefined;
+				if (typeof message.id === 'string' && typeof metadata?.run_id === 'string')
+					stampedIds.add(message.id);
+			}
+		}
 	});
 
 	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
@@ -121,16 +141,16 @@
 	let current_input = $state('');
 	let last_user_message = $state('');
 	let aiMessageCountAtSubmit = $state(0);
-	// Messages the stream showed for a send the server refused before creating its run: they
-	// were never stored, so they are left out of `messages`.
-	const refusedIds = new SvelteSet<string>();
 
 	function mapMessages(msgs: typeof stream.messages): Message[] {
 		const toolCallArgs = new SvelteMap<string, Record<string, unknown>>();
 		const result: Message[] = [];
 
 		for (const msg of msgs) {
-			if (msg.id && refusedIds.has(msg.id)) continue;
+			// The stream shows a sent message at once and marks it `failed` when its run ended
+			// without the server storing it (e.g. a send refused with a 401): leave it out, so the
+			// list shows what the thread holds.
+			if (msg.id && metadataOf(msg.id)?.optimisticStatus === 'failed') continue;
 			const m = msg as unknown as Record<string, unknown>;
 
 			if ((m.type === 'ai' || m.type === 'AIMessageChunk') && Array.isArray(m.tool_calls)) {
@@ -144,6 +164,8 @@
 				const converted = convertThreadMessage(normalized);
 				if (converted.type === 'tool') {
 					(converted as ToolMessage).payload = toolCallArgs.get(converted.id);
+				} else if (converted.type === 'ai' && stampedIds.has(converted.id)) {
+					converted.rateable = true;
 				}
 				result.push(converted);
 			} catch {
@@ -155,9 +177,6 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
-	let rawMessageById = $derived(
-		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
-	);
 
 	let generationError = $derived(
 		!isCancellationError(stream.error) && stream.error != null
@@ -173,32 +192,20 @@
 	);
 
 	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
-	// `stream.error`. The stream shows the input messages at once. When `onError` gets no run,
-	// the client learned of none: the server refused the request (e.g. a 401) or it never left,
-	// so the input was not stored. Hide those messages, so the list shows what the thread holds,
-	// and resolve `true`. One case looks the same: the server stored the run but its response
-	// was lost; then a stored message is hidden until the next run, and a plain send offers its
-	// text again. An abort or timeout skips `onError`: nothing is hidden or put back.
-	async function send(input: { messages: unknown[] }, options?: { checkpoint: Checkpoint }) {
-		const before = new Set(stream.messages.map((m) => m.id));
-		let refused = false;
-		await stream.submit(input, {
-			...options,
-			onError: (_error, run) => {
-				refused = run === undefined;
-			}
-		});
-		if (!refused) return false;
-		for (const m of stream.messages) if (m.id && !before.has(m.id)) refusedIds.add(m.id);
-		return true;
+	// `stream.error`. Resolves `true` when the server never stored the message (see
+	// `mapMessages`), which then left the list.
+	async function send(text: string, forkFrom?: string) {
+		const id = crypto.randomUUID();
+		await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
+		return metadataOf(id)?.optimisticStatus === 'failed';
 	}
 
-	// A refused plain send would lose the text: put it back in the composer, unless the user has
-	// started typing something else meanwhile (Retry still sends it). An edit only hides its
-	// refused message, which leaves the old branch shown; its text is not put back.
+	// A send the server never stored would lose the text: put it back in the composer, unless
+	// the user has started typing something else meanwhile (Retry still sends it). An edit only
+	// hides its message, which leaves the old branch shown; its text is not put back.
 	async function submitHumanMessage(text: string) {
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		const refused = await send({ messages: [{ type: 'human', content: text }] });
+		const refused = await send(text);
 		if (refused && current_input === '') current_input = text;
 	}
 
@@ -227,42 +234,36 @@
 	}
 
 	function stopGeneration() {
-		stream.stop();
+		void stream.stop();
 	}
 
-	function getParentCheckpoint(message: Message): Checkpoint | null {
-		if (!message.id) throw new InvalidData('Message is missing an id', message);
-		const rawMsg = rawMessageById.get(message.id);
-		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
-		const metadata = stream.getMessagesMetadata(rawMsg);
-		if (!metadata)
-			throw new InvalidData('No metadata found for message id: ' + message.id, message);
-		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
-		return metadata.firstSeenState?.parent_checkpoint ?? null;
+	// Forking from this checkpoint replaces the message onwards. The stream's own
+	// `parentCheckpointId` metadata is not used: a Python LangGraph server's `checkpoints`
+	// events lack the fields it reads, and after a history load it gives every message the
+	// newest checkpoint's parent.
+	function forkPoint(message: Message) {
+		return findForkPoint(langGraphClient, threadId, message.id);
 	}
 
-	function handleEdit(message: Message, newText: string): boolean {
+	async function handleEdit(message: Message, newText: string): Promise<boolean> {
 		if (stream.isLoading) return false;
-		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) return false;
+		const forkFrom = await forkPoint(message);
+		if (!forkFrom || stream.isLoading) return false;
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		void send(
-			{ messages: [{ type: 'human', content: newText }] },
-			{ checkpoint: parentCheckpoint }
-		);
+		void send(newText, forkFrom);
 		return true;
 	}
 
-	function handleRegenerate(message: Message) {
+	async function handleRegenerate(message: Message) {
 		if (stream.isLoading) return;
-		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) return;
+		const forkFrom = await forkPoint(message);
+		if (!forkFrom || stream.isLoading) return;
 		// last_user_message is intentionally not updated here — retryGenerationAfterError only
 		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(undefined, { checkpoint: parentCheckpoint });
+		void stream.submit(undefined, { forkFrom });
 	}
 
 	function rateMessage(message: Message, type: FeedbackScore, comment?: string) {

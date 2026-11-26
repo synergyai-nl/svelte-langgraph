@@ -214,7 +214,7 @@ describe('createStateSync', () => {
 
 			expect(stream.submit).toHaveBeenCalledWith(
 				{ phase: 'draft' },
-				expect.objectContaining({ optimisticValues: expect.any(Function) })
+				expect.objectContaining({ multitaskStrategy: 'enqueue' })
 			);
 		});
 
@@ -240,26 +240,6 @@ describe('createStateSync', () => {
 					config: { configurable: { state_only_submit: true } }
 				})
 			);
-		});
-
-		it('optimisticValues function spreads prev and overrides the field', async () => {
-			const stream = makeMockStream({ phase: 'research' });
-			const sync = createStateSync({
-				stream,
-				client: makeMockClient(validSchema) as unknown as Client,
-				assistantId: 'test'
-			});
-			await flushPromises();
-
-			sync.field('phase').set('draft');
-
-			const calls = (stream.submit as ReturnType<typeof vi.fn>).mock.calls;
-			expect(calls).toHaveLength(1);
-			const options = calls[0][1] as {
-				optimisticValues: (prev: Record<string, unknown>) => Record<string, unknown>;
-			};
-			const result = options.optimisticValues({ phase: 'research', other: 'kept' });
-			expect(result).toEqual({ phase: 'draft', other: 'kept' });
 		});
 	});
 

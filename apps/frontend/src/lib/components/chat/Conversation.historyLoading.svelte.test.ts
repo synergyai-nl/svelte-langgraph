@@ -16,7 +16,7 @@ import * as mockModule from '../__tests__/mockUseStream.svelte';
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('../__tests__/mockUseStream.svelte');
-	return { useStream: vi.fn(() => mod.mockStream) };
+	return { useStream: vi.fn(() => mod.mockStream), ...mod.mockSelectors };
 });
 
 function renderConversation() {

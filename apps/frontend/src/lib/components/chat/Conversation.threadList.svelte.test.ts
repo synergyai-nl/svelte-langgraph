@@ -19,7 +19,7 @@ import * as mockModule from '../__tests__/mockUseStream.svelte';
 // Mock useStream — this is the key dependency
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('../__tests__/mockUseStream.svelte');
-	return { useStream: vi.fn(() => mod.mockStream) };
+	return { useStream: vi.fn(() => mod.mockStream), ...mod.mockSelectors };
 });
 
 // Backing mocks for the frontend-driven thread-titling effects under test below (SLG-117).

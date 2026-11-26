@@ -14,7 +14,7 @@ import { SIDEBAR_COOKIE_NAME } from '#lib/components/ui/sidebar/constants.ts';
 // depends on it directly.
 vi.mock('@langchain/svelte', async () => {
 	const mod = await import('../__tests__/mockUseStream.svelte');
-	return { useStream: vi.fn(() => mod.mockStream) };
+	return { useStream: vi.fn(() => mod.mockStream), ...mod.mockSelectors };
 });
 
 const suggestions: ChatSuggestion[] = [

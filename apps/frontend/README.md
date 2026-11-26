@@ -188,9 +188,13 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
      The CLI reinstalls a package whose range declared in the app's `package.json` falls outside the listed range, so
      `@lucide/svelte` is listed as `>=0.562.0` and `@types/node` as `*`: a version you already
      have stays. `shadcn-svelte init` installs `@lucide/svelte` only for Lucide icon presets.
-     The chat is built and tested on `@langchain/langgraph-sdk` 1.17 and `@langchain/svelte`
-     0.3.2; the SDK needs `@langchain/core` `^1.3.2`, which your package manager installs as a
-     peer unless you pin an older one. The stock components carry their own ranges, which the CLI
+     The chat is built and tested on `@langchain/svelte` 1.2.15 and `@langchain/langgraph-sdk`
+     1.17.0, the SDK version that binding pins: keep your own SDK range resolving to it, so one
+     copy is installed. Both need `@langchain/core` `^1.3.2` and `svelte` 5 as peers, which your
+     package manager installs unless you pin older ones. The stream speaks the agent server's
+     Agent Protocol v2 (`POST /threads/{id}/commands` and `POST /threads/{id}/stream/events`),
+     so the backend must serve those routes; Aegra 0.12 does by default
+     (`FF_V2_EVENT_STREAMING`). The stock components carry their own ranges, which the CLI
      writes when it installs them: in the test above, the setup's `add button sidebar` (before
      the chat) set `tailwind-variants` to `^3.3.1` over `init`'s `^4.0.1`. The chat install that
      followed, with `button` declined, added only the chat's own packages. Check `package.json`
@@ -427,17 +431,17 @@ the static `headers` and the token function do. The hook is read per
 request, so passing a new function does not rebuild the client. It has no effect when you pass
 `client`: give `createClient(url, token, headers, { onRequest })` the hook instead.
 
-For example, for a backend that refuses a client-chosen message `id` (newer SDK versions add
-one to input messages):
+For example, for a backend that refuses a client-chosen message `id` (the SDK adds one to input
+messages, and `Conversation` sets its own):
 
 ```svelte
 <script lang="ts">
 	import type { RequestHook } from '@langchain/langgraph-sdk';
 
 	const dropMessageIds: RequestHook = (url, init) => {
-		if (!url.pathname.endsWith('/runs/stream') || typeof init.body !== 'string') return init;
+		if (!url.pathname.endsWith('/commands') || typeof init.body !== 'string') return init;
 		const body = JSON.parse(init.body);
-		for (const message of body.input?.messages ?? []) {
+		for (const message of body.params?.input?.messages ?? []) {
 			delete message.id;
 		}
 		return { ...init, body: JSON.stringify(body) };
@@ -456,8 +460,10 @@ localized text of `slg_error_generic` ("Something went wrong. Try again."), neve
 message. The stream logs the raw error to the console, and `api.error` holds it for a custom
 `children` composition. `MessagesList` shows a Retry button only when it gets `onRetryError`.
 `Conversation`'s default composition passes its `retry`, so a `children` composition decides for
-itself, for example no Retry while the user lacks access. When a send is refused before the run
-starts (a 401, say), `Conversation` puts the text back in the composer.
+itself, for example no Retry while the user lacks access. When a run ends without the server
+storing the sent message (a send refused with a 401, say), the message leaves the list and
+`Conversation` puts the text back in the composer. Stop cancels the run and drops the part of the
+reply that had streamed: the cancelled run did not store it.
 
 ### Composing your own conversation
 
@@ -573,18 +579,16 @@ primitive built on Svelte 5 runes.
 
 ### Graph-mediated write path
 
-`field.set(v)` calls `stream.submit({ [name]: v }, { optimisticValues: prev => ({ ...prev, [name]: v }) })`.
+`field.set(v)` calls `stream.submit({ [name]: v }, { multitaskStrategy: 'enqueue', config: { configurable: { state_only_submit: true } } })`.
 
 This triggers a _state-only run_ through the graph: the backend's `phase_gate`
 middleware (a `@before_agent` hook in `graph.py`) applies the new field value and
-jumps to `end` without invoking the LLM. `useStream` refetches server
-truth once the run completes (this refetch requires `fetchStateHistory: true` — or a
-number — in the `useStream` options, as used in `Conversation.svelte`). The `optimisticValues`
-callback gives an immediate UI update while the round-trip is in flight.
+jumps to `end` without invoking the LLM. `useStream` shows the new value at once and takes the
+server's from the run's `values`; it rolls the value back when the run ends without writing state.
 
-Submitting while `stream.isLoading` is true enqueues the call via useStream's built-in
-queue — acceptable for lightweight state-only writes. Note that `optimisticValues` is
-not applied on the queued path; the UI updates when the queued run completes.
+Submitting while `stream.isLoading` is true enqueues the call behind the running turn
+(`multitaskStrategy: 'enqueue'`; the stream's default would cancel that turn). The value is
+not shown on the queued path until the queued run starts.
 
 Caveats of graph-mediated writes:
 

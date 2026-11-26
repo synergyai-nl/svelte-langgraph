@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClient, createThread, getOrCreateThread } from './client';
+import { createClient, createThread, findForkPoint, getOrCreateThread } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -410,5 +410,42 @@ describe('thread helpers', () => {
 			getOrCreateThread(client(), 'coach', { threadId: 'someone-elses-id' })
 		).rejects.toMatchObject({ status: 409 });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('findForkPoint', () => {
+	/** A checkpoint `id` after `parent` that holds the messages `ids`. */
+	const checkpoint = (id: string, parent: string | null, ids: string[]) => ({
+		checkpoint: { checkpoint_id: id },
+		parent_checkpoint: parent && { checkpoint_id: parent },
+		values: { messages: ids.map((messageId) => ({ id: messageId })) }
+	});
+	const forkPoint = async (history: unknown[], messageId: string) => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => new Response(JSON.stringify(history)))
+		);
+		return findForkPoint(createClient('https://backend.test/api/'), 't1', messageId);
+	};
+	// Newest first: an edit of `h1` forked at `c1` into `c4`…`c5`, so `c2`…`c3` are another branch.
+	const history = [
+		checkpoint('c5', 'c4', ['h1b', 'a1b']),
+		checkpoint('c4', 'c1', ['h1b']),
+		checkpoint('c3', 'c2', ['h1', 'a1']),
+		checkpoint('c2', 'c1', ['h1']),
+		checkpoint('c1', null, [])
+	];
+
+	it('is the parent of the oldest checkpoint on the branch that holds the message', async () => {
+		expect(await forkPoint(history, 'h1b')).toBe('c1');
+		expect(await forkPoint(history, 'a1b')).toBe('c4');
+	});
+
+	it('is undefined for a message on another branch', async () => {
+		expect(await forkPoint(history, 'h1')).toBeUndefined();
+	});
+
+	it('is undefined when the branch leaves the checkpoints read before the message starts', async () => {
+		expect(await forkPoint(history.slice(0, 1), 'h1b')).toBeUndefined();
 	});
 });
