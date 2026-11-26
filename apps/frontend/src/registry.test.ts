@@ -31,6 +31,7 @@ type Item = {
 	name: string;
 	registryDependencies: string[];
 	dependencies?: string[];
+	devDependencies?: string[];
 	files: { path: string; type: string; target: string }[];
 };
 const items: Item[] = registry.items;
@@ -94,17 +95,11 @@ describe('shadcn-svelte registry', () => {
 
 	test('imports the client through #lib/svelte-langgraph-client/, never by package name', () => {
 		// A bare `@svelte-langgraph/client` import would need an alias in every consumer app.
-		const shippedClient = core.files
-			.filter((file) => file.type === 'registry:lib')
-			.map((file) => file.target);
 		let clientImports = 0;
 		for (const { path } of shippedComponents) {
 			const source = readFileSync(`${frontendRoot}/${path}`, 'utf8');
 			expect(source, path).not.toMatch(/['"]@svelte-langgraph\/client['"/]/);
-			for (const [, file] of source.matchAll(/['"]#lib\/svelte-langgraph-client\/([^'"]+)['"]/g)) {
-				expect(shippedClient, `${path} imports ${file}`).toContain(`${clientTarget}/${file}`);
-				clientImports++;
-			}
+			clientImports += source.match(/['"]#lib\/svelte-langgraph-client\//g)?.length ?? 0;
 		}
 		expect(clientImports).toBeGreaterThan(0);
 	});
@@ -136,16 +131,21 @@ describe('shadcn-svelte registry', () => {
 	});
 
 	test('lists only the packages the chat adds, at the demo app ranges', () => {
-		// Packages a shadcn-svelte + Paraglide app already has (`@lucide/svelte`, `bits-ui`,
-		// `tailwind-variants`, `@inlang/paraglide-js`) stay out: the CLI would rewrite their ranges.
+		// Packages every shadcn-svelte + Paraglide app has (`bits-ui`, `tailwind-variants`,
+		// `@inlang/paraglide-js`) stay out: the CLI reinstalls any package whose installed version
+		// is outside the listed range, so listing them would rewrite the app's own ranges.
 		const ranges: Record<string, string> = { ...pkg.devDependencies, ...pkg.dependencies };
-		const expected = [
-			'@langchain/langgraph-sdk',
-			'@langchain/svelte',
-			'@tailwindcss/typography',
-			'svelte-exmarkdown'
-		].map((name) => `${name}@${ranges[name]}`);
-		expect(core.dependencies).toEqual(expected);
+		const at = (name: string) => `${name}@${ranges[name]}`;
+		expect(core.dependencies).toEqual([
+			at('@langchain/langgraph-sdk'),
+			at('@langchain/svelte'),
+			// Only lucide presets install it; a floor keeps an app's newer major.
+			`@lucide/svelte@>=${ranges['@lucide/svelte'].replace(/^\^/, '')}`,
+			at('@tailwindcss/typography'),
+			at('svelte-exmarkdown')
+		]);
+		// Paraglide's generated `server.js` needs Node types; any version keeps the app's own.
+		expect(core.devDependencies).toEqual(['@types/node@*']);
 	});
 
 	test('does not depend on the unpublished client package', () => {

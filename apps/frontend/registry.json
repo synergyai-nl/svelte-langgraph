@@ -38,10 +38,11 @@
 			"dependencies": [
 				"@langchain/langgraph-sdk@^1.8.3",
 				"@langchain/svelte@^0.3.1",
+				"@lucide/svelte@>=0.562.0",
 				"@tailwindcss/typography@^0.5.15",
 				"svelte-exmarkdown@^5.0.1"
 			],
-			"devDependencies": [],
+			"devDependencies": ["@types/node@*"],
 			"files": [
 				{
 					"path": "src/lib/components/chat/AIMessageActions.svelte",

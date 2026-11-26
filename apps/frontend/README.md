@@ -75,9 +75,9 @@ and `dev` run it first), so the frontend serves the items at `/r/chat.json` and
   whatever aliases your `components.json` declares.
 - Tailwind CSS v4, with shadcn-svelte initialised (`shadcn-svelte init`).
 - Paraglide (`@inlang/paraglide-js`).
-- `@lucide/svelte`, `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first
-  two, and `bits-ui` comes with the stock components. The chat items do not list them, so they
-  leave your ranges alone.
+- `tailwind-variants` and `bits-ui`. `shadcn-svelte init` installs the first, and `bits-ui`
+  comes with the stock components. The chat items do not list them, so they leave your ranges
+  alone.
 
 ### Layout
 
@@ -183,8 +183,12 @@ src/lib/components/chat-core"; neither folder is created, the files are in the f
      `sidebar-menu-button` (the active row). If your app has a weight policy, patch them after
      each add.
    - **Dependencies.** The chat adds only `@langchain/langgraph-sdk`, `@langchain/svelte`,
-     `@tailwindcss/typography` and `svelte-exmarkdown`, under `dependencies`, and leaves the
-     ones you already have alone. The stock components carry their own ranges, which the CLI
+     `@lucide/svelte`, `@tailwindcss/typography` and `svelte-exmarkdown` under `dependencies`,
+     and `@types/node` (which Paraglide's generated `server.js` needs) under `devDependencies`.
+     The CLI reinstalls a package whose installed version is outside the listed range, so
+     `@lucide/svelte` is listed as `>=0.562.0` and `@types/node` as `*`: a version you already
+     have stays. `shadcn-svelte init` installs `@lucide/svelte` only for Lucide icon presets.
+     The stock components carry their own ranges, which the CLI
      writes when it installs them: in the test above, the setup's `add button sidebar` (before
      the chat) set `tailwind-variants` to `^3.3.1` over `init`'s `^4.0.1`. The chat install that
      followed, with `button` declined, added only the chat's own packages. Check `package.json`
