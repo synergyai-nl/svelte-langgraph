@@ -30,7 +30,7 @@ Read from the shipped `dist/` of `@langchain/svelte` 1.2.15 and `@langchain/lang
 Expose `hydrate()` (or a `refresh()` delegating to it) on the Svelte handle, with the existing
 `isThreadLoading` as its loading state.
 
-Use cases: reconciling after a failed or lost run response before a retry, reflecting writes
+Use cases: showing the stored state after a failed or lost run response, reflecting writes
 made outside the hook (`threads.updateState`, another client), background runs that ended while
 the page was idle.
 
@@ -38,6 +38,8 @@ the page was idle.
 
 ## Notes for us (svelte-langgraph)
 
-- Needed by Retry (the Retry issue #444): read the stored state, then decide whether to resend.
+- Would let a page show a message the server stored after a lost response without a remount.
+  Retry (the Retry issue #444) does not need it: it resends with the same message id, and the
+  server merges by id.
 - Until upstream lands: a remount (`{#key}`), or `client.threads.getState(threadId)` read
   separately. `createStateSync` writes state through the graph, so it needs neither.
