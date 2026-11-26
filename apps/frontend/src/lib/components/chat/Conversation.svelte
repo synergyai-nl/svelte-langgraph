@@ -38,8 +38,14 @@
 		 * lands in `error`, as with text.
 		 */
 		submit: (text?: string) => void;
-		/** Resubmit the last user message after a generation error. */
-		retry: () => void;
+		/**
+		 * Repeat the last action after an error, a sent message with its first id: the server
+		 * replaces a message of the same id, so a message it stored already is not stored twice.
+		 * When a refused send's text was put back in the composer, Retry sends it only while it is
+		 * unchanged (and takes it out); otherwise it clears the error and leaves the draft.
+		 * `undefined` while there is no action to repeat (a failed history load).
+		 */
+		retry: (() => void) | undefined;
 		/** Stop the in-flight run. */
 		stop: () => void;
 		/**
@@ -156,7 +162,14 @@
 	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
 
 	let current_input = $state('');
-	let last_user_message = $state('');
+	// The last action started, for Retry. An edit and a regenerate keep their message, and their
+	// fork point once read. Whether a send's text is in the composer is `restoredSend`.
+	type Action =
+		| { kind: 'send'; text: string; id: string }
+		| { kind: 'edit'; message: Message; text: string; id: string; forkFrom?: string }
+		| { kind: 'regenerate'; message: Message; forkFrom?: string }
+		| { kind: 'run' };
+	let lastAction = $state.raw<Action>();
 	let aiMessageCountAtSubmit = $state(0);
 
 	function mapMessages(msgs: typeof stream.messages): Message[] {
@@ -211,8 +224,12 @@
 		}
 	}
 
+	// A run error Retry cleared without sending: the user changed the text put back.
+	let dismissedError = $state<unknown>(null);
 	let generationError = $derived(
-		!isCancellationError(stream.error) && stream.error != null ? asError(stream.error) : actionError
+		!isCancellationError(stream.error) && stream.error != null && stream.error !== dismissedError
+			? asError(stream.error)
+			: actionError
 	);
 
 	let chat_started = $derived(messages.length > 0 || stream.isLoading || generationError != null);
@@ -224,9 +241,8 @@
 	// only when it fails before the run starts (setting up the thread), before the message shows.
 	// Resolves the message's id when the client saw no echo of it (see `mapMessages`), which then
 	// left the list, or when the submit rejected; `undefined` otherwise.
-	async function send(text: string, forkFrom?: string) {
+	async function send(text: string, forkFrom: string | undefined, id: string) {
 		actionError = null;
-		const id = crypto.randomUUID();
 		try {
 			await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
 		} catch (error) {
@@ -239,10 +255,11 @@
 	// A send with no echo would lose the text: put it back in the composer, unless the user has
 	// started typing something else meanwhile (Retry still sends it). An edit only hides its
 	// message, which leaves the old branch shown; its text is not put back.
-	async function submitHumanMessage(text: string) {
+	async function submitHumanMessage(text: string, id: string = crypto.randomUUID()) {
+		lastAction = { kind: 'send', text, id };
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		restoredSend = undefined;
-		const unechoed = await send(text);
+		const unechoed = await send(text, undefined, id);
 		if (unechoed && current_input === '') {
 			current_input = text;
 			restoredSend = { id: unechoed, text };
@@ -255,22 +272,34 @@
 			return;
 		}
 		if (stream.isLoading || stream.isThreadLoading) return;
-		last_user_message = text;
 		current_input = '';
-		void submitHumanMessage(text);
+		// Sending the text a refused send put back, unchanged, is a Retry: the same id.
+		void submitHumanMessage(text, restoredSend?.text === text ? restoredSend.id : undefined);
 	}
 
 	function submitWithoutMessage() {
 		if (stream.isLoading || stream.isThreadLoading) return;
+		lastAction = { kind: 'run' };
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		void startRun(() => stream.submit({ messages: [] }));
 	}
 
-	function retryGenerationAfterError() {
-		if (!last_user_message) return;
-		// A refused send put the text back in the composer; retrying sends it, so clear it.
-		if (current_input === last_user_message) current_input = '';
-		void submitHumanMessage(last_user_message);
+	// A send whose text is no longer put back (never was, or its echo came) is resent as is.
+	function retry() {
+		const action = lastAction;
+		if (!action || stream.isLoading || stream.isThreadLoading) return;
+		if (action.kind === 'run') submitWithoutMessage();
+		else if (action.kind === 'regenerate') void handleRegenerate(action.message, action.forkFrom);
+		else if (action.kind === 'edit')
+			void handleEdit(action.message, action.text, action.id, action.forkFrom);
+		else if (restoredSend?.id !== action.id) void submitHumanMessage(action.text, action.id);
+		else if (current_input === action.text) {
+			current_input = '';
+			void submitHumanMessage(action.text, action.id);
+		} else {
+			actionError = null;
+			dismissedError = stream.error;
+		}
 	}
 
 	function stopGeneration() {
@@ -295,23 +324,31 @@
 		return undefined;
 	}
 
-	async function handleEdit(message: Message, newText: string): Promise<boolean> {
+	// Retry passes the fork point read before, if any: after a stored edit, the message it
+	// edited is no longer on the current branch, so a second read would find none.
+	async function handleEdit(
+		message: Message,
+		newText: string,
+		id: string = crypto.randomUUID(),
+		known?: string
+	): Promise<boolean> {
 		if (stream.isLoading) return false;
-		const forkFrom = await forkPoint(message);
+		lastAction = { kind: 'edit', message, text: newText, id };
+		const forkFrom = known ?? (await forkPoint(message));
 		if (!forkFrom || stream.isLoading) return false;
+		lastAction = { kind: 'edit', message, text: newText, id, forkFrom };
 		// Snapshot AI count so final_answer_started tracks the new response correctly
-		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		void send(newText, forkFrom);
+		void send(newText, forkFrom, id);
 		return true;
 	}
 
-	async function handleRegenerate(message: Message) {
+	async function handleRegenerate(message: Message, known?: string) {
 		if (stream.isLoading) return;
-		const forkFrom = await forkPoint(message);
+		lastAction = { kind: 'regenerate', message };
+		const forkFrom = known ?? (await forkPoint(message));
 		if (!forkFrom || stream.isLoading) return;
-		// last_user_message is intentionally not updated here — retryGenerationAfterError only
-		// applies to user-initiated sends, not regenerations
+		lastAction = { kind: 'regenerate', message, forkFrom };
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
 		void startRun(() => stream.submit(undefined, { forkFrom }));
 	}
@@ -398,10 +435,12 @@
 			return generationError;
 		},
 		submit: submitInput,
-		retry: retryGenerationAfterError,
+		get retry() {
+			return lastAction ? retry : undefined;
+		},
 		stop: stopGeneration,
-		edit: handleEdit,
-		regenerate: handleRegenerate,
+		edit: (message, newText) => handleEdit(message, newText),
+		regenerate: (message) => void handleRegenerate(message),
 		sync
 	};
 
