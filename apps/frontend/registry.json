@@ -36,8 +36,8 @@
 			"description": "The chat's own files without its stock dependencies: the components in #lib/components/svelte-langgraph/, their strings in messages/svelte-langgraph/{locale}.json and the @svelte-langgraph/client library in #lib/svelte-langgraph-client. Install chat first; add chat-core again to update the chat without touching ui/ or hooks/.",
 			"registryDependencies": [],
 			"dependencies": [
-				"@langchain/langgraph-sdk@^1.8.3",
-				"@langchain/svelte@^0.3.1",
+				"@langchain/langgraph-sdk@^1.17.0",
+				"@langchain/svelte@^1.2.15",
 				"@lucide/svelte@>=0.562.0",
 				"@tailwindcss/typography@^0.5.15",
 				"svelte-exmarkdown@^5.0.1"

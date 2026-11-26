@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createClient, createThread, getOrCreateThread } from './client';
+import { createClient, createThread, findForkPoint, getOrCreateThread } from './client';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -410,5 +410,59 @@ describe('thread helpers', () => {
 			getOrCreateThread(client(), 'coach', { threadId: 'someone-elses-id' })
 		).rejects.toMatchObject({ status: 409 });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('findForkPoint', () => {
+	/** A checkpoint `id` after `parent` that holds the messages `ids`. */
+	const checkpoint = (id: string, parent: string | null, ids: string[]) => ({
+		checkpoint: { checkpoint_id: id },
+		parent_checkpoint: parent && { checkpoint_id: parent },
+		values: { messages: ids.map((messageId) => ({ id: messageId })) }
+	});
+	/** Serves `history` newest first, `limit` per request, after the `before` checkpoint. */
+	let fetchMock: ReturnType<typeof vi.fn>;
+	const forkPoint = async (
+		history: Array<ReturnType<typeof checkpoint>>,
+		messageId: string,
+		pageSize?: number
+	) => {
+		fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+			const { limit, before } = JSON.parse(String(init.body));
+			const after = (s: ReturnType<typeof checkpoint>) =>
+				s.checkpoint.checkpoint_id === before?.configurable.checkpoint_id;
+			const start = before ? history.findIndex(after) + 1 : 0;
+			return new Response(JSON.stringify(history.slice(start, start + limit)));
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		return findForkPoint(createClient('https://backend.test/api/'), 't1', messageId, pageSize);
+	};
+	// Newest first: an edit of `h1` forked at `c1` into `c4`…`c5`, so `c2`…`c3` are another branch.
+	const history = [
+		checkpoint('c5', 'c4', ['h1b', 'a1b']),
+		checkpoint('c4', 'c1', ['h1b']),
+		checkpoint('c3', 'c2', ['h1', 'a1']),
+		checkpoint('c2', 'c1', ['h1']),
+		checkpoint('c1', null, [])
+	];
+
+	it('is the parent of the oldest checkpoint on the branch that holds the message', async () => {
+		expect(await forkPoint(history, 'h1b')).toBe('c1');
+		expect(await forkPoint(history, 'a1b')).toBe('c4');
+	});
+
+	it('is undefined for a message on another branch', async () => {
+		expect(await forkPoint(history, 'h1')).toBeUndefined();
+	});
+
+	it('reads further pages until it has passed the message, and no more', async () => {
+		expect(await forkPoint(history, 'h1b', 2)).toBe('c1');
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(await forkPoint(history, 'a1b', 2)).toBe('c4');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("is undefined for a message in the thread's first checkpoint", async () => {
+		expect(await forkPoint([checkpoint('c1', null, ['h0'])], 'h0')).toBeUndefined();
 	});
 });

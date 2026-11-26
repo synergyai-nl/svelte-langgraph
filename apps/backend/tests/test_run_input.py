@@ -75,16 +75,10 @@ def configurable(**keys) -> dict:
         pytest.param(configurable(state_only_submit=True), id="state-only-submit"),
         pytest.param(configurable(state_only_submit=False), id="state-only-false"),
         pytest.param(
-            {
-                "checkpoint": {
-                    "thread_id": "t",
-                    "checkpoint_ns": "",
-                    "checkpoint_id": "c",
-                    "checkpoint_map": None,
-                }
-            },
-            id="checkpoint-address",
+            {**configurable(thread_id="t", checkpoint_id="c"), "thread_id": "t"},
+            id="route-thread-and-fork",
         ),
+        pytest.param({"checkpoint": {"checkpoint_id": "c"}}, id="checkpoint-id"),
     ],
 )
 def test_accepts_trusted_input(value):
@@ -101,14 +95,14 @@ def test_accepts_trusted_input(value):
             run_create(
                 assistant_id="chat",
                 input={"messages": []},
-                checkpoint={"checkpoint_ns": "", "checkpoint_id": "c"},
+                checkpoint={"checkpoint_id": "c"},
             ),
             id="edit",
         ),
         pytest.param(
             run_create(
                 assistant_id="chat",
-                checkpoint={"checkpoint_ns": "", "checkpoint_id": "c"},
+                checkpoint={"checkpoint_id": "c"},
             ),
             id="regenerate",
         ),
@@ -146,6 +140,36 @@ def test_rejects_state_only_submit_of_the_wrong_type(value):
 
 
 @pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(
+            {**configurable(thread_id="another-thread"), "thread_id": "t"},
+            id="another-thread",
+        ),
+        pytest.param(configurable(thread_id="t"), id="no-route-thread"),
+    ],
+)
+def test_rejects_a_thread_id_other_than_the_route_thread(value):
+    detail = rejected(value)
+    assert detail == "config.configurable.thread_id must be the thread of the route."
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [("thread_id", "another-thread"), ("checkpoint_id", "c")],
+)
+def test_rejects_thread_and_checkpoint_ids_at_the_top_of_config(key, value):
+    assert f"config.{key} is not accepted." in rejected({"config": {key: value}})
+
+
+@pytest.mark.parametrize("key", ["thread_id", "checkpoint_id"])
+@pytest.mark.parametrize("value", [1, None, {"id": CLIENT_VALUE}])
+def test_rejects_thread_and_checkpoint_ids_that_are_not_strings(key, value):
+    detail = rejected(configurable(**{key: value}))
+    assert f"config.configurable.{key} must be of type str" in detail
+
+
+@pytest.mark.parametrize(
     ("key", "value"),
     [
         ("tags", [CLIENT_VALUE]),
@@ -173,9 +197,12 @@ def test_rejects_a_non_object_configurable():
     )
 
 
-def test_rejects_unknown_checkpoint_keys():
-    detail = rejected({"checkpoint": {"checkpoint_id": "c", "user_id": CLIENT_VALUE}})
-    assert "checkpoint.user_id" in detail
+@pytest.mark.parametrize(
+    "key", ["user_id", "thread_id", "checkpoint_ns", "checkpoint_map"]
+)
+def test_rejects_checkpoint_keys_beyond_the_id(key):
+    detail = rejected({"checkpoint": {"checkpoint_id": "c", key: CLIENT_VALUE}})
+    assert f"checkpoint.{key}" in detail
 
 
 @pytest.mark.parametrize("webhook", [None, ""])
@@ -433,6 +460,72 @@ class TestThreadCommands:
         assert envelope["type"] == "success"
         prepare.assert_awaited_once()
         assert prepare.await_args.args[2].context == {"user_id": USER_ID}
+
+    async def test_run_start_refuses_another_thread_id(self, prepare):
+        envelope = await self.dispatch(
+            "run.start",
+            {
+                "assistant_id": "chat",
+                "input": {},
+                "config": {"configurable": {"thread_id": "someone-elses-thread"}},
+            },
+        )
+        assert envelope["type"] == "error"
+        assert envelope["error"] == "invalid_argument"
+        assert "config.configurable.thread_id" in envelope["message"]
+        prepare.assert_not_awaited()
+
+    # `run.start` params as `@langchain/svelte` 1.x sends them: the thread id
+    # always, the fork point for an edit or regenerate.
+    FORK = "1f0c2a3e-0000-6000-8000-000000000001"
+
+    @pytest.mark.parametrize(
+        ("params", "checkpoint"),
+        [
+            pytest.param(
+                {
+                    "input": {
+                        "messages": [{"type": "human", "content": "hi", "id": "m"}]
+                    }
+                },
+                None,
+                id="turn",
+            ),
+            pytest.param(
+                {
+                    "input": {"messages": [{"type": "human", "content": "hi"}]},
+                    "config": {"configurable": {"checkpoint_id": FORK}},
+                },
+                {"checkpoint_id": FORK},
+                id="edit",
+            ),
+            pytest.param(
+                {"input": None, "config": {"configurable": {"checkpoint_id": FORK}}},
+                {"checkpoint_id": FORK},
+                id="regenerate",
+            ),
+            pytest.param(
+                {
+                    "input": {"phase": "draft"},
+                    "config": {"configurable": {"state_only_submit": True}},
+                    "multitaskStrategy": "enqueue",
+                    "multitask_strategy": "enqueue",
+                },
+                None,
+                id="state-only-submit",
+            ),
+        ],
+    )
+    async def test_run_start_accepts_what_the_frontend_sends(
+        self, prepare, params, checkpoint
+    ):
+        config = params.get("config", {"configurable": {}})
+        config["configurable"]["thread_id"] = "thread-1"
+        envelope = await self.dispatch(
+            "run.start", {**params, "config": config, "assistant_id": "chat"}
+        )
+        assert envelope["type"] == "success"
+        assert prepare.await_args.args[2].checkpoint == checkpoint
 
     async def test_input_respond_rejects_a_state_update(self, prepare):
         envelope = await self.dispatch(

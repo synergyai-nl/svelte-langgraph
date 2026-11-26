@@ -19,14 +19,20 @@ from langgraph_sdk import Auth
 ALLOWED_CONFIGURABLE_KEYS: dict[str, type] = {
     # Marks a submit that only writes state fields; see graph.phase_gate.
     "state_only_submit": bool,
+    # `@langchain/svelte` 1.x sends the thread id on every `run.start`. Aegra
+    # overwrites it with the route's thread; `validate_run_input` also refuses
+    # any other thread, and the key outside a run.
+    "thread_id": str,
+    # The checkpoint an edit or regenerate forks from (`submit(…, { forkFrom })`).
+    # Aegra reads it as the run's `checkpoint`, whose keys are checked below.
+    "checkpoint_id": str,
 }
 
-# Keys of a run's `checkpoint`: the checkpoint address the SDK sends for an
-# edit or regenerate. Aegra merges these into `configurable`, so other keys
-# would bypass the allowlist above.
-ALLOWED_CHECKPOINT_KEYS = frozenset(
-    {"thread_id", "checkpoint_ns", "checkpoint_id", "checkpoint_map"}
-)
+# Keys of a run's `checkpoint`. The client sends no `checkpoint` field: for
+# `run.start` Aegra builds `{"checkpoint_id": ...}` from
+# `configurable.checkpoint_id` (an edit or regenerate). Aegra merges these
+# keys into `configurable`, so other keys would bypass the allowlist above.
+ALLOWED_CHECKPOINT_KEYS = frozenset({"checkpoint_id"})
 
 # Keys of a run's `command`. `resume` answers a pending interrupt, and Aegra
 # checks that the thread is interrupted. `update` writes state and `goto` runs
@@ -89,15 +95,33 @@ def _validate_config(path: str, raw_config: object) -> None:
             )
 
 
+def _validate_thread_id(value: Mapping[str, Any]) -> None:
+    # `thread_id` is the route's thread, set by Aegra for `threads.create_run`
+    # only: the client may name that thread, never another.
+    configurable = _as_mapping("config", value.get("config")).get("configurable") or {}
+    if "thread_id" in configurable and configurable["thread_id"] != value.get(
+        "thread_id"
+    ):
+        raise _reject("config.configurable.thread_id must be the thread of the route.")
+
+
+def _validate_checkpoint(raw_checkpoint: object) -> None:
+    for key in _as_mapping("checkpoint", raw_checkpoint):
+        if key not in ALLOWED_CHECKPOINT_KEYS:
+            raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")
+
+
 def validate_run_input(value: Mapping[str, Any]) -> None:
     """Reject client run input the server does not trust, with a 422.
 
     Checks `config` (only allowlisted `configurable` keys, every other key
-    empty), `context` and `webhook` (must be empty), the keys of
-    `checkpoint`, and `command` (only `resume`). The detail names the
+    empty, `configurable.thread_id` only the route's thread), `context` and
+    `webhook` (must be empty), the keys of `checkpoint` (only
+    `checkpoint_id`), and `command` (only `resume`). The detail names the
     offending key, never its value.
     """
     _validate_config("config", value.get("config"))
+    _validate_thread_id(value)
 
     if not _is_empty(value.get("context")):
         raise _reject("context is not accepted; it must be empty.")
@@ -106,9 +130,7 @@ def validate_run_input(value: Mapping[str, Any]) -> None:
     if value.get("webhook") not in (None, ""):
         raise _reject("webhook is not accepted.")
 
-    for key in _as_mapping("checkpoint", value.get("checkpoint")):
-        if key not in ALLOWED_CHECKPOINT_KEYS:
-            raise _reject(f"{_key('checkpoint', key)} is not an allowed key.")
+    _validate_checkpoint(value.get("checkpoint"))
 
     for key, item in _as_mapping("command", value.get("command")).items():
         if key in ALLOWED_COMMAND_KEYS:

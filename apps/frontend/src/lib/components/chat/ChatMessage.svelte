@@ -11,7 +11,7 @@
 
 	interface Props {
 		message: Message;
-		onEdit?: (message: Message, newText: string) => boolean;
+		onEdit?: (message: Message, newText: string) => Promise<boolean>;
 		onRegenerate?: (message: Message) => void;
 		onFeedback?: (message: Message, type: FeedbackScore, comment?: string) => Promise<void>;
 		/** Whether this message's thinking block should show its "still streaming" animation. */
@@ -47,10 +47,10 @@
 		isEditing = false;
 	}
 
-	function confirmEdit() {
+	async function confirmEdit() {
 		if (editText.trim() && editText !== message.text) {
 			// Only close the editor if the edit was accepted (rejected when a run is streaming)
-			if (onEdit?.(message, editText)) {
+			if (await onEdit?.(message, editText)) {
 				isEditing = false;
 			}
 		} else {

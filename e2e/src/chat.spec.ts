@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { LANGGRAPH_CONFIG, gotoFreshThread } from './fixtures/backend';
+import { LANGGRAPH_CONFIG, gotoFreshThread, makeAuthenticatedRequest } from './fixtures/backend';
+import { fakeRuns } from './fixtures/fakeRun';
+import type { Page } from '@playwright/test';
+import { AppPage, ChatPage } from './pages';
 
 // Opt this file out of fullyParallel. Every test here now starts on its own fresh thread
 // (gotoFreshThread), so none of them share LangGraph thread state; serial mode is kept as
@@ -54,7 +57,7 @@ test.describe('Sending', () => {
 		// `ConversationApi.submit` sends any text it is given: the composer is the guard.
 		let runRequests = 0;
 		page.on('request', (request) => {
-			if (new URL(request.url()).pathname.endsWith('/runs/stream')) runRequests++;
+			if (new URL(request.url()).pathname.endsWith('/commands')) runRequests++;
 		});
 
 		await chat.textInput.fill('   ');
@@ -75,7 +78,7 @@ test.describe('Sending', () => {
 		chat
 	}) => {
 		await page.route(
-			'**/runs/stream',
+			'**/threads/*/commands',
 			(route) =>
 				route.fulfill({
 					status: 401,
@@ -102,6 +105,189 @@ test.describe('Sending', () => {
 		await chat.expectAiReply(message);
 		await expect(errorCard).toHaveCount(0);
 		await expect(chat.textInput).toHaveValue('');
+	});
+
+	test("a send the backend's run input check refuses shows the error card and keeps the text", async ({
+		page,
+		chat
+	}) => {
+		// The request goes to the real backend, with a configurable key it refuses: its answer is
+		// a protocol error envelope (HTTP 200), not an HTTP error.
+		await page.route(
+			'**/threads/*/commands',
+			(route) => {
+				const command = route.request().postDataJSON();
+				command.params.config.configurable.user_id = 'someone-else';
+				return route.continue({ postData: JSON.stringify(command) });
+			},
+			{ times: 1 }
+		);
+		const refusal = page.waitForResponse((res) => res.url().endsWith('/commands'));
+
+		const message = `Refused by the backend ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+
+		expect(await (await refusal).json()).toMatchObject({
+			type: 'error',
+			error: 'invalid_argument'
+		});
+		await expect(page.getByTestId('chat-error')).toContainText('Something went wrong. Try again.');
+		await expect(chat.textInput).toHaveValue(message);
+		await expect(chat.userMessage(message)).toHaveCount(0);
+	});
+
+	test('a run that fails after the server stored the message keeps the message, not the text', async ({
+		page,
+		chat
+	}) => {
+		// The run's `values` carry the message, so it is the server's: it stays in the list and
+		// the composer stays empty.
+		const runs = await fakeRuns(page, (sent) => ({
+			first: [
+				{ method: 'values', data: { messages: [{ type: 'human', ...sent }] } },
+				{ method: 'lifecycle', data: { event: 'failed', error: 'Boom' } }
+			]
+		}));
+
+		const message = `Created then failed ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+
+		await expect(page.getByTestId('chat-error')).toBeVisible();
+		await expect(chat.userMessage(message)).toHaveCount(1);
+		await expect(chat.textInput).toHaveValue('');
+		await runs.close();
+	});
+});
+
+test.describe('History load', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+	});
+
+	test('a thread shows its stored messages after a reload; the composer waits for them', async ({
+		page,
+		chat
+	}) => {
+		const threadId = await gotoFreshThread(page);
+		const message = `Stored ${randomUUID()}`;
+		await chat.textInput.fill(message);
+		await chat.textInput.press('Enter');
+		await chat.expectAiReply(message);
+
+		let releaseHistory!: () => void;
+		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadId}/state`, async (route) => {
+			await historyGate;
+			await route.continue();
+		});
+		await page.reload();
+		await expect(chat.historyLoading).toBeVisible();
+		await expect(chat.textInput).toBeDisabled();
+		await expect(chat.sendButton).toBeDisabled();
+
+		releaseHistory();
+		await expect(chat.userMessage(message)).toBeVisible();
+		await expect(chat.aiMessage(message)).toBeVisible();
+		await expect(chat.textInput).toBeEnabled();
+	});
+});
+
+test.describe('Runs outlive the page', () => {
+	test.beforeEach(async ({ page }) => {
+		await authenticateUser(page);
+		await gotoFreshThread(page);
+	});
+
+	async function runStatuses(page: Page, threadId: string): Promise<string[]> {
+		const res = await makeAuthenticatedRequest(page, `/threads/${threadId}/runs`);
+		expect(res.ok()).toBeTruthy();
+		return ((await res.json()) as Array<{ status: string }>).map((run) => run.status);
+	}
+
+	/**
+	 * Starts a ~13 s echo (see 'Streaming') and waits for its head, then checks on the server that
+	 * the run is still going, so the step that follows happens mid-run. Returns the echo's tail.
+	 */
+	async function startLongReply(page: Page, chat: ChatPage, threadId: string): Promise<string> {
+		const testInput = Array.from({ length: 8 }, () => randomUUID().replace(/-/g, '')).join('');
+		await chat.textInput.fill(testInput);
+		await chat.textInput.press('Enter');
+		await expect(chat.aiMessage(testInput.slice(0, 20))).toBeVisible({ timeout: 30_000 });
+		expect(await runStatuses(page, threadId)).toEqual(['running']);
+		return testInput.slice(-20);
+	}
+
+	const currentThread = (page: Page) => new URL(page.url()).pathname.split('/').at(-1)!;
+
+	test('reloading mid-reply shows the reply, then the chat goes on', async ({ page, chat }) => {
+		test.setTimeout(90_000);
+		const tail = await startLongReply(page, chat, currentThread(page));
+
+		await page.reload();
+
+		// The page joins the run again from the thread's state: busy until the reply is whole.
+		await expect(chat.stopButton).toBeVisible();
+		await chat.expectAiReply(tail, { timeout: 45_000 });
+
+		const next = `After the reload ${randomUUID()}`;
+		await chat.textInput.fill(next);
+		await chat.textInput.press('Enter');
+		await chat.expectAiReply(next);
+	});
+
+	test('coming back to a conversation before its run ends shows the reply', async ({
+		page,
+		chat,
+		sidebar
+	}) => {
+		test.setTimeout(90_000);
+		const threadId = currentThread(page);
+		const tail = await startLongReply(page, chat, threadId);
+
+		await sidebar.newChatButton.click();
+		await page.waitForURL((url) => !url.pathname.endsWith(threadId));
+		expect(await runStatuses(page, threadId)).toEqual(['running']);
+		await sidebar.threadLink(threadId).click();
+		await page.waitForURL((url) => url.pathname.endsWith(threadId));
+
+		await expect(chat.stopButton).toBeVisible();
+		await chat.expectAiReply(tail, { timeout: 45_000 });
+	});
+
+	test('a second page on the same thread follows a run that is going', async ({ page, chat }) => {
+		test.setTimeout(90_000);
+		const tail = await startLongReply(page, chat, currentThread(page));
+
+		// Same browser context: the same signed-in user, and no state from the first page.
+		const second = await page.context().newPage();
+		await second.goto(page.url());
+		await second.waitForSelector('body.started');
+		const other = new ChatPage(new AppPage(second));
+
+		await expect(other.aiMessage(tail)).toHaveCount(0);
+		await expect(other.stopButton).toBeVisible();
+		await other.expectAiReply(tail, { timeout: 45_000 });
+		await chat.expectAiReply(tail);
+		await second.close();
+	});
+
+	test('leaving mid-run does not cancel the run', async ({ page, chat, sidebar }) => {
+		test.setTimeout(90_000);
+		const threadId = currentThread(page);
+		const tail = await startLongReply(page, chat, threadId);
+
+		// Client-side navigation unmounts the conversation, which disposes its stream.
+		await sidebar.newChatButton.click();
+		await page.waitForURL((url) => !url.pathname.endsWith(threadId));
+
+		await expect(async () => {
+			expect(await runStatuses(page, threadId)).toEqual(['success']);
+		}).toPass({ timeout: 45_000 });
+
+		await sidebar.threadLink(threadId).click();
+		await expect(chat.aiMessage(tail)).toBeVisible();
 	});
 });
 
@@ -357,8 +543,10 @@ test.describe('Cancellation', () => {
 
 		await stopButton.click();
 
-		// Partial content is preserved after stopping
-		await expect(partialReply).toBeVisible();
+		// The partial reply goes: the cancelled run never stored it, and the stream drops what
+		// a run streamed but did not finish. The question stays.
+		await expect(partialReply).toHaveCount(0);
+		await expect(chat.userMessage(testInput)).toBeVisible();
 
 		// is_streaming=false → input re-enabled, no error shown
 		await expect(chat.textInput).toBeEnabled();
@@ -501,30 +689,23 @@ test.describe('History backlog rendering', () => {
 	});
 
 	/**
-	 * Builds a minimal `ThreadState[]` response for the `/threads/{id}/history` endpoint.
-	 *
-	 * Mirrors `buildHistoryState` in thinking.spec.ts: a single-element history list
-	 * short-circuits the SDK's branch-sequence computation (`history.length <= 1` in
-	 * `@langchain/langgraph-sdk`'s `getBranchSequence`), so no parent/child checkpoint
-	 * wiring is required beyond a plausible-looking checkpoint object — `parent_checkpoint:
-	 * null` alone produces a valid one-node tree.
+	 * A minimal `ThreadState` for the `/threads/{id}/state` endpoint, which the stream reads to
+	 * load a thread. `next: []` marks it idle, so the stream opens no event stream for it.
 	 */
-	function buildHistoryState(messages: unknown[]) {
-		return [
-			{
-				values: { messages },
-				next: [],
-				tasks: [],
-				metadata: {},
-				created_at: new Date(0).toISOString(),
-				checkpoint: { thread_id: 'test-thread-id', checkpoint_ns: '', checkpoint_id: 'ckpt-1' },
-				parent_checkpoint: null
-			}
-		];
+	function buildThreadState(messages: unknown[]) {
+		return {
+			values: { messages },
+			next: [],
+			tasks: [],
+			metadata: {},
+			created_at: new Date(0).toISOString(),
+			checkpoint: { thread_id: 'test-thread-id', checkpoint_ns: '', checkpoint_id: 'ckpt-1' },
+			parent_checkpoint: null
+		};
 	}
 
 	/**
-	 * `count` alternating human/ai messages, as returned by the (mocked) thread-history
+	 * `count` alternating human/ai messages, as returned by the (mocked) thread-state
 	 * endpoint. `convertThreadMessage` (apps/frontend/src/lib/langgraph/utils.ts) only reads
 	 * `type`, `content`, and `id` for rendering; the extra fields mirror the shape real AI
 	 * messages carry (see `historyAiMessage` in thinking.spec.ts).
@@ -552,8 +733,8 @@ test.describe('History backlog rendering', () => {
 		chat,
 		sidebar
 	}) => {
-		// Target thread: history will be mocked below. Left empty on the real backend —
-		// the mocked `/history` response is the only source of its 60 messages.
+		// Target thread: its state will be mocked below. Left empty on the real backend —
+		// the mocked `/state` response is the only source of its 60 messages.
 		const threadA = await gotoFreshThread(page);
 		// A second fresh thread to navigate through, so clicking threadA's sidebar row
 		// below is a real navigation (not a no-op) that triggers the history refetch.
@@ -566,12 +747,12 @@ test.describe('History backlog rendering', () => {
 
 		let releaseHistory!: () => void;
 		const historyGate = new Promise<void>((resolve) => (releaseHistory = resolve));
-		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/history`, async (route) => {
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/${threadA}/state`, async (route) => {
 			await historyGate;
 			await route.fulfill({
 				status: 200,
 				contentType: 'application/json',
-				body: JSON.stringify(buildHistoryState(messages))
+				body: JSON.stringify(buildThreadState(messages))
 			});
 		});
 

@@ -1,4 +1,10 @@
-import { Client, type Metadata, type RequestHook, type Thread } from '@langchain/langgraph-sdk';
+import {
+	Client,
+	type Metadata,
+	type RequestHook,
+	type Thread,
+	type ThreadState
+} from '@langchain/langgraph-sdk';
 import { apiEndpoint, normalizeApiUrl } from './apiUrl';
 import type { FeedbackScore, ThreadValues } from './types';
 import type { TitleClient, TitleMessage } from './threadTitle';
@@ -186,6 +192,48 @@ export async function createThread(
 	metadata?: Metadata
 ): Promise<Thread<ThreadValues>> {
 	return (await client.threads.create({ graphId, metadata })) as Thread<ThreadValues>;
+}
+
+/**
+ * The checkpoint to fork from to replace message `messageId` and everything after it (an edit,
+ * or a regenerate of an answer): the parent of the oldest checkpoint on the thread's current
+ * branch that holds the message. Follows the branch from the newest checkpoint, reading the
+ * history `pageSize` checkpoints per request, newest first, until it has passed the message's
+ * first checkpoint. `undefined` when the message is not on the branch.
+ */
+export async function findForkPoint(
+	client: Client,
+	threadId: string,
+	messageId: string,
+	pageSize = 20
+): Promise<string | undefined> {
+	const byId = new Map<string, ThreadState<ThreadValues>>();
+	let page: ThreadState<ThreadValues>[] = [];
+	const readPage = async () => {
+		const last = page.at(-1)?.checkpoint.checkpoint_id;
+		page = await client.threads.getHistory<ThreadValues>(threadId, {
+			limit: pageSize,
+			before: last === undefined ? undefined : { configurable: { checkpoint_id: last } }
+		});
+		for (const state of page) byId.set(state.checkpoint.checkpoint_id!, state);
+	};
+	const holds = (
+		state: ThreadState<ThreadValues> | undefined
+	): state is ThreadState<ThreadValues> =>
+		state?.values?.messages?.some((message) => message.id === messageId) ?? false;
+
+	await readPage();
+	let state: ThreadState<ThreadValues> | undefined = page[0];
+	let forkFrom: string | undefined;
+	while (holds(state)) {
+		forkFrom = state.parent_checkpoint?.checkpoint_id ?? undefined;
+		if (forkFrom === undefined) return undefined;
+		// A parent is older than its child, so it is on a later page when not read yet.
+		while (!byId.has(forkFrom) && page.length === pageSize) await readPage();
+		state = byId.get(forkFrom);
+	}
+	// `state` is now the newest checkpoint on the branch without the message, if there is one.
+	return state && forkFrom;
 }
 
 export async function getOrCreateAssistant(

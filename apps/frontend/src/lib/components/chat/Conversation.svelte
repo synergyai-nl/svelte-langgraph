@@ -28,8 +28,9 @@
 		error: Error | null;
 		/**
 		 * Start a run. With `text`, sends it as a new user message, whatever it is: guard blank input
-		 * in the UI (`MessageComposer` does). No-op while `isLoading`. Clears `input`, and puts the
-		 * text back when the send fails before the message reaches the thread.
+		 * in the UI (`MessageComposer` does). No-op while `isLoading` or `isThreadLoading`. Clears
+		 * `input`. When the run ends before the client sees the server echo the message (e.g. a send
+		 * refused with a 401), the message leaves the list and the text goes back into `input`.
 		 *
 		 * Without `text`, starts a run with no human message (`{ messages: [] }`), for an agent that
 		 * speaks first or a backend that answers the last human message again. No-op while
@@ -41,9 +42,13 @@
 		retry: () => void;
 		/** Stop the in-flight run. */
 		stop: () => void;
-		/** Branch-edit a past user message. Returns `false` when it couldn't (e.g. no checkpoint). */
-		edit: (message: Message, newText: string) => boolean;
-		/** Regenerate the AI response following a past message. */
+		/**
+		 * Branch-edit a past user message. Resolves `false` when it couldn't: a run is going, or no
+		 * checkpoint to fork from was found (then `error` says why). Resolves `true` once the run
+		 * has started.
+		 */
+		edit: (message: Message, newText: string) => Promise<boolean>;
+		/** Regenerate this AI response. Without a checkpoint to fork from, sets `error` instead. */
 		regenerate: (message: Message) => void;
 		/** State-sync bindings (`sync.field(name)`) for this thread — see `createStateSync`. */
 		sync: { readonly schema: SchemaStatus; field(name: string): FieldBinding };
@@ -58,20 +63,20 @@
 </script>
 
 <script lang="ts">
-	import { useStream } from '@langchain/svelte';
-	import { SvelteMap } from 'svelte/reactivity';
+	import { useChannelEffect, useMessageMetadata, useStream } from '@langchain/svelte';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import {
 		convertThreadMessage,
-		InvalidData,
+		findForkPoint,
 		isCancellationError,
 		createStateSync,
 		createThreadTitler,
 		type FeedbackScore,
+		type ThreadValues,
 		type ToolMessage
 	} from '#lib/svelte-langgraph-client/index.ts';
 	import MessageComposer from './MessageComposer.svelte';
 	import MessagesList from './MessagesList.svelte';
-	import type { Checkpoint } from '@langchain/langgraph-sdk';
 	import { onDestroy, untrack, type Snippet } from 'svelte';
 	import StateField from './StateField.svelte';
 	import { useLangGraph } from './langGraphContext.svelte.js';
@@ -107,12 +112,45 @@
 	const langGraphClient = ctx.client;
 	const assistantId = ctx.assistantId;
 
-	const stream = useStream({
-		client: langGraphClient,
-		assistantId,
-		threadId,
-		fetchStateHistory: true,
-		reconnectOnMount: true
+	const stream = useStream({ client: langGraphClient, assistantId, threadId });
+
+	// `useMessageMetadata` reads the metadata of one message id, which a getter supplies: point
+	// it at an id, then read `current`. Reading it inside a `$derived` tracks the metadata.
+	let metadataId: string | undefined;
+	const metadata = useMessageMetadata(stream, () => metadataId);
+	function metadataOf(id: string) {
+		metadataId = id;
+		return metadata.current;
+	}
+
+	// Ids of messages whose stored copy carries the run id the backend stamps on an answer, which
+	// makes it rateable. The stream keeps showing its streamed copy of an answer (its content
+	// differs in shape from the stored one), so the stamp is read from the server's `values`.
+	const stampedIds = new SvelteSet<string>();
+	// Ids a server `values` event carried, so the server stored them. The stream marks a sent
+	// message `failed` when its run ends before the echo, and keeps that status when the echo
+	// comes later: the failure can reach the client first, on the lifecycle stream, while the
+	// echo is still on its way on the content stream.
+	const echoedIds = new SvelteSet<string>();
+	// The last plain send whose text went back into the composer (see `submitHumanMessage`).
+	let restoredSend: { id: string; text: string } | undefined;
+	// `bufferSize: 1`: each `values` event is a full state, and only the newest is needed (the
+	// projection's default keeps 4096 for the life of the mount).
+	useChannelEffect(stream, ['values'], {
+		bufferSize: 1,
+		onEvent(event) {
+			for (const message of (event.params.data as ThreadValues).messages ?? []) {
+				if (typeof message.id !== 'string') continue;
+				echoedIds.add(message.id);
+				const metadata = message.response_metadata as { run_id?: unknown } | undefined;
+				if (typeof metadata?.run_id === 'string') stampedIds.add(message.id);
+			}
+			// The echo came after all: the message is the server's, so its text leaves the composer.
+			if (restoredSend && echoedIds.has(restoredSend.id)) {
+				if (current_input === restoredSend.text) current_input = '';
+				restoredSend = undefined;
+			}
+		}
 	});
 
 	const sync = createStateSync({ stream, client: langGraphClient, assistantId });
@@ -126,6 +164,13 @@
 		const result: Message[] = [];
 
 		for (const msg of msgs) {
+			// The stream shows a sent message at once and marks it `failed` when its run ended
+			// before the client saw the server echo it (a send refused with a 401, a run stopped
+			// that early): leave it out. A response lost after the server stored the message looks
+			// the same and hides a stored message until a remount; Retry (the Retry issue #444) resends
+			// with the same message id, so the server merges it instead of storing it twice.
+			if (msg.id && !echoedIds.has(msg.id) && metadataOf(msg.id)?.optimisticStatus === 'failed')
+				continue;
 			const m = msg as unknown as Record<string, unknown>;
 
 			if ((m.type === 'ai' || m.type === 'AIMessageChunk') && Array.isArray(m.tool_calls)) {
@@ -139,6 +184,8 @@
 				const converted = convertThreadMessage(normalized);
 				if (converted.type === 'tool') {
 					(converted as ToolMessage).payload = toolCallArgs.get(converted.id);
+				} else if (converted.type === 'ai' && stampedIds.has(converted.id)) {
+					converted.rateable = true;
 				}
 				result.push(converted);
 			} catch {
@@ -150,16 +197,22 @@
 	}
 
 	let messages = $derived(mapMessages(stream.messages));
-	let rawMessageById = $derived(
-		new Map(stream.messages.flatMap((m) => (m.id ? ([[m.id, m]] as const) : [])))
-	);
+
+	// A failure outside a run (no checkpoint to fork from, a failed history read, a submit that
+	// threw before its run started) shows as a failed run does. Cleared when the next action starts.
+	let actionError = $state<Error | null>(null);
+	const asError = (error: unknown) => (error instanceof Error ? error : new Error(String(error)));
+	async function startRun(submit: () => Promise<void>) {
+		actionError = null;
+		try {
+			await submit();
+		} catch (error) {
+			actionError = asError(error);
+		}
+	}
 
 	let generationError = $derived(
-		!isCancellationError(stream.error) && stream.error != null
-			? stream.error instanceof Error
-				? stream.error
-				: new Error(String(stream.error))
-			: null
+		!isCancellationError(stream.error) && stream.error != null ? asError(stream.error) : actionError
 	);
 
 	let chat_started = $derived(messages.length > 0 || stream.isLoading || generationError != null);
@@ -167,17 +220,32 @@
 		!stream.isLoading || messages.filter((m) => m.type === 'ai').length > aiMessageCountAtSubmit
 	);
 
-	// `stream.submit` resolves (never rejects) once the run settles; a failure lands in
-	// `stream.error`. A send refused before the run starts (e.g. a 401) settles with an error
-	// and no new human message in the thread, so the text would be lost: put it back in the
-	// composer, unless the user has started typing something else meanwhile.
+	// `stream.submit` resolves once the run settles, with a failure in `stream.error`; it rejects
+	// only when it fails before the run starts (setting up the thread), before the message shows.
+	// Resolves the message's id when the client saw no echo of it (see `mapMessages`), which then
+	// left the list, or when the submit rejected; `undefined` otherwise.
+	async function send(text: string, forkFrom?: string) {
+		actionError = null;
+		const id = crypto.randomUUID();
+		try {
+			await stream.submit({ messages: [{ type: 'human', content: text, id }] }, { forkFrom });
+		} catch (error) {
+			actionError = asError(error);
+			return id;
+		}
+		return !echoedIds.has(id) && metadataOf(id)?.optimisticStatus === 'failed' ? id : undefined;
+	}
+
+	// A send with no echo would lose the text: put it back in the composer, unless the user has
+	// started typing something else meanwhile (Retry still sends it). An edit only hides its
+	// message, which leaves the old branch shown; its text is not put back.
 	async function submitHumanMessage(text: string) {
-		const humanCountAtSubmit = messages.filter((m) => m.type === 'user').length;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		await stream.submit({ messages: [{ type: 'human', content: text }] });
-		const humanCount = messages.filter((m) => m.type === 'user').length;
-		if (generationError && humanCount === humanCountAtSubmit && current_input === '') {
+		restoredSend = undefined;
+		const unechoed = await send(text);
+		if (unechoed && current_input === '') {
 			current_input = text;
+			restoredSend = { id: unechoed, text };
 		}
 	}
 
@@ -186,7 +254,7 @@
 			submitWithoutMessage();
 			return;
 		}
-		if (stream.isLoading) return;
+		if (stream.isLoading || stream.isThreadLoading) return;
 		last_user_message = text;
 		current_input = '';
 		void submitHumanMessage(text);
@@ -195,7 +263,7 @@
 	function submitWithoutMessage() {
 		if (stream.isLoading || stream.isThreadLoading) return;
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		void stream.submit({ messages: [] });
+		void startRun(() => stream.submit({ messages: [] }));
 	}
 
 	function retryGenerationAfterError() {
@@ -206,42 +274,46 @@
 	}
 
 	function stopGeneration() {
-		stream.stop();
+		void stream.stop();
 	}
 
-	function getParentCheckpoint(message: Message): Checkpoint | null {
-		if (!message.id) throw new InvalidData('Message is missing an id', message);
-		const rawMsg = rawMessageById.get(message.id);
-		if (!rawMsg) throw new InvalidData('Raw message not found for id: ' + message.id, message);
-		const metadata = stream.getMessagesMetadata(rawMsg);
-		if (!metadata)
-			throw new InvalidData('No metadata found for message id: ' + message.id, message);
-		// parent_checkpoint is the state just before this message — branching from it replaces the message onwards
-		return metadata.firstSeenState?.parent_checkpoint ?? null;
+	// Forking from this checkpoint replaces the message onwards. The stream's own
+	// `parentCheckpointId` metadata is not used: a Python LangGraph server's `checkpoints`
+	// events lack the fields it reads, and after a history load it gives every message the
+	// newest checkpoint's parent.
+	// A failed history read, or no fork point (the message is not on the current branch), shows
+	// as an error and starts nothing.
+	async function forkPoint(message: Message): Promise<string | undefined> {
+		actionError = null;
+		try {
+			const forkFrom = await findForkPoint(langGraphClient, threadId, message.id);
+			if (forkFrom) return forkFrom;
+			actionError = new Error(`No checkpoint to fork from for message ${message.id}`);
+		} catch (error) {
+			actionError = asError(error);
+		}
+		return undefined;
 	}
 
-	function handleEdit(message: Message, newText: string): boolean {
+	async function handleEdit(message: Message, newText: string): Promise<boolean> {
 		if (stream.isLoading) return false;
-		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) return false;
+		const forkFrom = await forkPoint(message);
+		if (!forkFrom || stream.isLoading) return false;
 		// Snapshot AI count so final_answer_started tracks the new response correctly
 		last_user_message = newText; // keep retry in sync with the edited prompt
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(
-			{ messages: [{ type: 'human', content: newText }] },
-			{ checkpoint: parentCheckpoint }
-		);
+		void send(newText, forkFrom);
 		return true;
 	}
 
-	function handleRegenerate(message: Message) {
+	async function handleRegenerate(message: Message) {
 		if (stream.isLoading) return;
-		const parentCheckpoint = getParentCheckpoint(message);
-		if (!parentCheckpoint) return;
+		const forkFrom = await forkPoint(message);
+		if (!forkFrom || stream.isLoading) return;
 		// last_user_message is intentionally not updated here — retryGenerationAfterError only
 		// applies to user-initiated sends, not regenerations
 		aiMessageCountAtSubmit = messages.filter((m) => m.type === 'ai').length;
-		stream.submit(undefined, { checkpoint: parentCheckpoint });
+		void startRun(() => stream.submit(undefined, { forkFrom }));
 	}
 
 	function rateMessage(message: Message, type: FeedbackScore, comment?: string) {
@@ -379,6 +451,7 @@
 		<MessageComposer
 			bind:value={() => api.input, (v) => api.setInput(v)}
 			isStreaming={api.isLoading}
+			disabled={api.isThreadLoading}
 			onSubmit={() => api.submit(api.input)}
 			onStop={api.stop}
 		/>

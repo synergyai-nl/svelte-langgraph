@@ -183,8 +183,8 @@ test('past the live checkpoint window, each answer is scored as its own message'
 	page,
 	chat
 }) => {
-	// The SDK fetches only the latest ten checkpoints, and four turns make well
-	// over ten. The run must come from the answer itself, not that window.
+	// Four turns make well over ten checkpoints. The run must come from the answer
+	// itself, not from a window of recent checkpoints.
 	const token = captureToken(page);
 	const turns = 4;
 	for (let i = 1; i <= turns; i++) await sendAndAwaitReply(chat, `Question ${i}`);

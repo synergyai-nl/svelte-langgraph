@@ -1,291 +1,16 @@
 import type { Page } from '@playwright/test';
-import * as http from 'node:http';
-import type { AddressInfo } from 'node:net';
 import { test, expect } from './fixtures/test';
 import { authenticateUser } from './fixtures/auth';
-import { LANGGRAPH_CONFIG } from './fixtures/backend';
+import { LANGGRAPH_CONFIG, gotoFreshThread } from './fixtures/backend';
+import { fakeRuns, streamedAiMessage, type FakeEvent, type SentMessage } from './fixtures/fakeRun';
 
-/**
- * Builds a minimal SSE stream body for LangGraph messages-tuple streaming.
- * Each chunk is formatted as a Server-Sent Event with event + data fields.
- */
-function buildSseStream(
-	chunks: Array<{ event: string; data: unknown }>,
-	runId: string = 'run--test-thinking-abc123'
-): string {
-	const metadataEvent = [
-		'id: 0',
-		'event: metadata',
-		`data: {"run_id":"${runId}","attempt":1}`,
-		''
-	].join('\n');
-
-	const messageEvents = chunks.map(({ event, data }, i) =>
-		['id: ' + (i + 1), 'event: ' + event, 'data: ' + JSON.stringify(data), ''].join('\n')
-	);
-
-	return [metadataEvent, ...messageEvents].join('\n');
+/** A stored human message, as the thread state and `values` events carry it. */
+function storedHumanMessage(id: string, text: string) {
+	return { type: 'human', id, content: text, additional_kwargs: {}, response_metadata: {} };
 }
 
-/** Base metadata object appended to every chunk in messages-tuple mode */
-function chunkMeta(runId: string) {
-	return {
-		created_by: 'system',
-		graph_id: 'chat',
-		assistant_id: 'test-assistant',
-		run_id: runId,
-		thread_id: 'test-thread-id'
-	};
-}
-
-/**
- * Builds a `messages-tuple` SSE chunk payload: [serializedAIMessageChunk, metadata].
- * Chunks sharing the same `id` are concatenated client-side by the SDK (langchain
- * message-chunk merge semantics), so splitting reasoning/content across multiple
- * chunks with the same id exercises that concatenation.
- */
-function aiChunk(
-	content: unknown,
-	id: string,
-	additionalKwargs: Record<string, unknown> = {},
-	runId: string = 'run--test-thinking-abc123'
-): [unknown, unknown] {
-	return [
-		{
-			content,
-			additional_kwargs: additionalKwargs,
-			response_metadata: {},
-			type: 'AIMessageChunk',
-			name: null,
-			id,
-			example: false,
-			tool_calls: [],
-			invalid_tool_calls: [],
-			usage_metadata: null,
-			tool_call_chunks: []
-		},
-		chunkMeta(runId)
-	];
-}
-
-/** Registers a route that fulfills the LangGraph runs/stream endpoint with a canned SSE body. */
-async function mockRunStream(
-	page: Page,
-	chunks: Array<{ event: string; data: unknown }>,
-	runId: string
-): Promise<void> {
-	const sseBody = buildSseStream(chunks, runId);
-	await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/runs/stream`, async (route) => {
-		await route.fulfill({
-			status: 200,
-			headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
-			body: sseBody
-		});
-	});
-}
-
-/** Formats a single raw SSE frame (id/event/data lines + trailing blank line). */
-function sseEventFrame(id: number, event: string, data: unknown): string {
-	return ['id: ' + id, 'event: ' + event, 'data: ' + JSON.stringify(data), ''].join('\n') + '\n';
-}
-
-interface HeldOpenStreamServer {
-	/** The absolute URL of the locally-started server, e.g. `http://127.0.0.1:54213`. */
-	url: string;
-	/** Shuts the server down. Safe to call multiple times. */
-	close: () => Promise<void>;
-}
-
-/**
- * Starts a plain Node `http` server that speaks the LangGraph messages-tuple SSE
- * protocol, but — unlike `mockRunStream` (which uses `route.fulfill` with a
- * complete, static body) — keeps the HTTP response OPEN after writing the initial
- * frames, only writing the final frames and closing the connection after `holdMs`.
- *
- * `route.fulfill` cannot represent an in-progress stream: it requires the entire
- * response body up front. To genuinely pin live-streaming behaviour, the request
- * needs to stay open server-side while the test inspects the page. Since
- * `page.route()`'s `route.continue({ url })` lets a test rewrite a request's
- * destination to any same-protocol URL, tests can point the LangGraph runs/stream
- * request at this locally-owned server instead of fulfilling it outright, giving a
- * real (not simulated) streaming connection under full test control.
- *
- * Binds to an OS-assigned ephemeral port (port 0) to avoid collisions between
- * parallel test workers. CORS headers are wide open since the browser still
- * enforces real CORS against this cross-origin (different port) server.
- */
-async function startHeldOpenStreamServer(options: {
-	runId: string;
-	initialChunks: Array<{ event: string; data: unknown }>;
-	finalChunks: Array<{ event: string; data: unknown }>;
-	holdMs: number;
-}): Promise<HeldOpenStreamServer> {
-	const { runId, initialChunks, finalChunks, holdMs } = options;
-	const pendingTimers = new Set<ReturnType<typeof setTimeout>>();
-
-	const server = http.createServer((req, res) => {
-		// Browsers do not reliably accept a wildcard for Access-Control-Allow-Headers
-		// on non-simple requests — notably it does not cover `Authorization` per the
-		// Fetch spec, and engines differ. Echo back whatever the preflight actually
-		// requested, falling back to the explicit headers this stream request sends
-		// (Authorization, Content-Type: application/json) if none was requested.
-		const corsHeaders = {
-			'Access-Control-Allow-Origin': '*',
-			'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-			'Access-Control-Allow-Headers':
-				req.headers['access-control-request-headers'] ?? 'authorization, content-type',
-			'Access-Control-Max-Age': '86400'
-		};
-
-		if (req.method === 'OPTIONS') {
-			res.writeHead(204, corsHeaders);
-			res.end();
-			return;
-		}
-
-		res.writeHead(200, {
-			...corsHeaders,
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive'
-		});
-
-		// Frame 0 is the metadata event; initial chunks follow immediately so the
-		// client sees them right away, before the connection is deliberately held open.
-		res.write(sseEventFrame(0, 'metadata', { run_id: runId, attempt: 1 }));
-		initialChunks.forEach(({ event, data }, i) => res.write(sseEventFrame(i + 1, event, data)));
-
-		const timer = setTimeout(() => {
-			pendingTimers.delete(timer);
-			finalChunks.forEach(({ event, data }, i) =>
-				res.write(sseEventFrame(initialChunks.length + 1 + i, event, data))
-			);
-			res.end();
-		}, holdMs);
-		pendingTimers.add(timer);
-
-		req.on('close', () => {
-			clearTimeout(timer);
-			pendingTimers.delete(timer);
-		});
-	});
-
-	await new Promise<void>((resolve, reject) => {
-		server.once('error', reject);
-		server.listen(0, '127.0.0.1', () => resolve());
-	});
-
-	const address = server.address() as AddressInfo;
-	const url = `http://127.0.0.1:${address.port}`;
-
-	return {
-		url,
-		close: () =>
-			new Promise<void>((resolve) => {
-				for (const timer of pendingTimers) clearTimeout(timer);
-
-				// Guard against a second `close()` call: `server.close()` on an
-				// already-closed server invokes its callback with an
-				// `ERR_SERVER_NOT_RUNNING` error instead of shutting anything down
-				// further, which would otherwise mask the original test failure with
-				// a spurious secondary error in a `finally`/teardown path.
-				if (!server.listening) {
-					resolve();
-					return;
-				}
-
-				try {
-					server.close(() => resolve());
-					// `close()` only stops new connections; force-destroy any still-open
-					// keep-alive sockets (e.g. if the test failed before the hold elapsed).
-					server.closeAllConnections?.();
-				} catch {
-					resolve();
-				}
-			})
-	};
-}
-
-/**
- * Builds a minimal `ThreadState[]` response for the `/threads/{id}/history` endpoint.
- *
- * HAZARD: useStream is configured with `fetchStateHistory: true`, so after every run
- * completes it POSTs `/threads/{id}/history` and REPLACES the in-memory messages with
- * that response. Since our mocked SSE stream never touches the real backend, the real
- * history endpoint would return no matching state — wiping out the mocked AI message.
- * Every test that asserts on post-stream UI state must mock this endpoint to return the
- * same final message content the SSE stream produced.
- *
- * A single-element history list short-circuits the SDK's branch-sequence computation
- * (`history.length <= 1`), so no parent/child checkpoint wiring is required beyond a
- * plausible-looking checkpoint object.
- */
-function buildHistoryState(messages: unknown[]) {
-	return [
-		{
-			values: { messages },
-			next: [],
-			tasks: [],
-			metadata: {},
-			created_at: new Date().toISOString(),
-			checkpoint: { thread_id: 'test-thread-id', checkpoint_ns: '', checkpoint_id: 'checkpoint-1' },
-			parent_checkpoint: null
-		}
-	];
-}
-
-/** A committed human message, as returned by the (mocked) thread-history endpoint. */
-function historyHumanMessage(id: string, text: string) {
-	return {
-		type: 'human',
-		id,
-		content: text,
-		additional_kwargs: {},
-		response_metadata: {}
-	};
-}
-
-/**
- * Registers a route that fulfills the LangGraph thread-history endpoint.
- *
- * The real backend's committed thread history always includes the human turn that
- * kicked off the run, ahead of the AI response. If the mocked history omits it, the
- * client's in-memory message list (which has no human message at all — our mocked SSE
- * stream never emits one either) gains a brand-new human list item the instant the
- * post-stream refetch lands, triggering an 800ms `fly` intro/reflow on the message list
- * right as a test may be interacting with it. Always including the human turn here keeps
- * the post-refetch swap free of that surprise insertion.
- */
-function threadHistoryMessages(humanText: string, aiMessages: unknown[]): unknown[] {
-	return [historyHumanMessage('e2e-history-human-1', humanText), ...aiMessages];
-}
-
-/**
- * Registers the thread-history route and returns a setter for the payload it serves.
- *
- * Must be called BEFORE navigating to /chat/: the mount fetch (useStream's
- * `fetchStateHistory`) fires during hydration, and a request already in flight cannot
- * be intercepted. Registering late and merely waiting for one history response is not
- * enough — `/chat/` redirects to `/chat/{threadId}`, so more than one real history
- * request can be outstanding, and a second `[]` landing after the run wipes the
- * streamed messages (and the thinking button) out from under the assertions. That is
- * the race behind the intermittent "element(s) not found" failures on CI.
- *
- * One handler reading a reassignable payload serves both the initial (empty) history
- * and the post-run refetch, so no history request ever reaches the real backend.
- */
-async function mockThreadHistory(page: Page, getMessages: () => unknown[]): Promise<void> {
-	await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/history`, async (route) => {
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/json',
-			body: JSON.stringify(buildHistoryState(getMessages()))
-		});
-	});
-}
-
-/** A committed AI message, as returned by the (mocked) thread-history endpoint. */
-function historyAiMessage(
+/** A stored AI message, as the thread state and `values` events carry it. */
+function storedAiMessage(
 	id: string,
 	content: unknown,
 	additionalKwargs: Record<string, unknown> = {}
@@ -301,65 +26,52 @@ function historyAiMessage(
 	};
 }
 
+/** The end of a run: the stored exchange (`before`, the sent message, `answer`), then success. */
+function finished(sent: SentMessage, answer: unknown, before: unknown[] = []): FakeEvent[] {
+	return [
+		{
+			method: 'values',
+			data: { messages: [...before, storedHumanMessage(sent.id, sent.content), answer] }
+		},
+		{ method: 'lifecycle', data: { event: 'completed' } }
+	];
+}
+
 /**
- * Waits for the post-stream history refetch to land AND for the resulting message-list
- * reflow (the 800ms `fly` transition on newly (re)keyed list items — see
- * `mockThreadHistory` above) to fully settle, before a test interacts with the page.
- *
- * Clicking immediately after the human/AI text becomes visible is racy: the text can be
- * visible while the surrounding list item is still animating into its final position,
- * which intermittently makes Playwright report the click target as "not stable". Since
- * `playwright.config.ts` sets `retries: 0`, tests must not depend on winning that race.
+ * Waits for the message list to settle before a test clicks or measures: the exchange's rows
+ * animate in (`in:fly`, see MessagesList.svelte), and a click on a row that is still moving
+ * makes Playwright report the target as "not stable". `playwright.config.ts` sets
+ * `retries: 0`, so tests must not depend on winning that race.
  */
-async function waitForSettledHistory(page: Page, humanText: string): Promise<void> {
+async function waitForSettledList(page: Page, humanText: string): Promise<void> {
 	await expect(page.getByText(humanText, { exact: true }).first()).toBeVisible();
-	// 800ms fly transition (see ChatMessages.svelte) + margin for the reflow to settle.
 	await page.waitForTimeout(900);
 }
 
 test.describe('Thinking block UI', () => {
-	// Payload served by the history route registered in `beforeEach`. Tests reassign it
-	// (via `setThreadHistory`) to describe what the post-run refetch should return; it
-	// starts empty so the mount fetch sees a fresh thread. Safe as shared state: a
-	// worker runs its tests one at a time, and `beforeEach` resets it.
-	let historyMessages: unknown[] = [];
-
-	function setThreadHistory(humanText: string, aiMessages: unknown[]) {
-		historyMessages = threadHistoryMessages(humanText, aiMessages);
-	}
+	let runs: { close: () => Promise<void> } | undefined;
 
 	test.beforeEach(async ({ page }) => {
-		historyMessages = [];
 		await authenticateUser(page);
-		// Registered before navigating, so it also covers the mount fetch — see
-		// `mockThreadHistory` for why waiting on that fetch instead is not enough.
-		await mockThreadHistory(page, () => historyMessages);
-		await page.goto('/chat/');
-		await page.waitForURL(/\/chat\/[\w-]+/);
+		await gotoFreshThread(page);
+	});
+
+	test.afterEach(async () => {
+		await runs?.close();
+		runs = undefined;
 	});
 
 	test('thinking block appears collapsed when AI response includes thinking (additional_kwargs format)', async ({
 		page,
 		chat
 	}) => {
-		const runId = 'run--test-thinking-001';
 		const reasoning = 'Let me think about this carefully...';
 		const answer = 'The answer is 42.';
 		const question = 'What is the answer?';
 
-		// Register mocks BEFORE submitting — the history route must be in place before
-		// the post-stream refetch fires, and the stream route before the run is submitted.
-		setThreadHistory(question, [
-			historyAiMessage('msg-1', answer, { reasoning_content: reasoning })
-		]);
-		await mockRunStream(
-			page,
-			[
-				{ event: 'messages', data: aiChunk('', 'msg-1', { reasoning_content: reasoning }, runId) },
-				{ event: 'messages', data: aiChunk(answer, 'msg-1', {}, runId) }
-			],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: finished(sent, storedAiMessage('msg-1', answer, { reasoning_content: reasoning }))
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -374,28 +86,22 @@ test.describe('Thinking block UI', () => {
 		page,
 		chat
 	}) => {
-		const runId = 'run--test-thinking-002';
-		// Reasoning is split across three SSE chunks sharing the same message id to
-		// exercise the SDK's client-side concatenation of additional_kwargs.reasoning_content.
+		// Reasoning is streamed as three deltas of one block to exercise the SDK's client-side
+		// concatenation; the streamed copy stays on screen after the stored one arrives.
 		const reasoningParts = ['Let me reason through ', 'this step ', 'by step.'];
 		const fullReasoning = reasoningParts.join('');
 		const answer = 'Here is my answer.';
 		const question = 'Explain something';
 
-		setThreadHistory(question, [
-			historyAiMessage('msg-2', answer, { reasoning_content: fullReasoning })
-		]);
-		await mockRunStream(
-			page,
-			[
-				...reasoningParts.map((part) => ({
-					event: 'messages',
-					data: aiChunk('', 'msg-2', { reasoning_content: part }, runId)
-				})),
-				{ event: 'messages', data: aiChunk(answer, 'msg-2', {}, runId) }
-			],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: [
+				...streamedAiMessage('msg-2', [
+					{ type: 'reasoning', parts: reasoningParts },
+					{ type: 'text', parts: [answer] }
+				]),
+				...finished(sent, storedAiMessage('msg-2', answer, { reasoning_content: fullReasoning }))
+			]
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -404,10 +110,8 @@ test.describe('Thinking block UI', () => {
 		await expect(thinkingButton).toBeVisible();
 		await expect(page.getByText(answer)).toBeVisible();
 
-		// Wait for the post-stream history refetch (which now includes the human turn)
-		// to land and its list-reflow transition to settle before clicking — clicking
-		// mid-transition is the reproduced flake this fixes (see waitForSettledHistory).
-		await waitForSettledHistory(page, question);
+		// Clicking mid-transition is the reproduced flake this avoids (see waitForSettledList).
+		await waitForSettledList(page, question);
 		await thinkingButton.click();
 
 		await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
@@ -418,22 +122,13 @@ test.describe('Thinking block UI', () => {
 		page,
 		chat
 	}) => {
-		const runId = 'run--test-thinking-003';
 		const reasoning = 'Some internal reasoning.';
 		const answer = 'This is the final answer text.';
 		const question = 'Give me an answer';
 
-		setThreadHistory(question, [
-			historyAiMessage('msg-3', answer, { reasoning_content: reasoning })
-		]);
-		await mockRunStream(
-			page,
-			[
-				{ event: 'messages', data: aiChunk('', 'msg-3', { reasoning_content: reasoning }, runId) },
-				{ event: 'messages', data: aiChunk(answer, 'msg-3', {}, runId) }
-			],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: finished(sent, storedAiMessage('msg-3', answer, { reasoning_content: reasoning }))
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -443,17 +138,14 @@ test.describe('Thinking block UI', () => {
 		await expect(thinkingButton).toBeVisible();
 		await expect(answerText).toBeVisible();
 
-		// Wait for the post-stream history refetch to land and its list-reflow transition
-		// to settle before measuring geometry. `boundingBox()` — unlike `toBeVisible()` —
-		// does not auto-retry, so measuring mid-swap (rows torn down and re-created by the
-		// refetch, see `waitForSettledHistory`) can catch a detached element and return
-		// null even though both elements were visible a moment ago.
-		await waitForSettledHistory(page, question);
+		// Let the rows settle before measuring geometry: `boundingBox()` — unlike
+		// `toBeVisible()` — does not auto-retry (see `waitForSettledList`).
+		await waitForSettledList(page, question);
 		await expect(thinkingButton).toBeVisible();
 		await expect(answerText).toBeVisible();
 
 		// Thinking block renders above the message card within the same group. Wrapped in
-		// `toPass()` so a residual mid-swap null (or stale box) retries instead of failing.
+		// `toPass()` so a residual mid-animation box retries instead of failing.
 		await expect(async () => {
 			const thinkingBox = await thinkingButton.boundingBox();
 			const answerBox = await answerText.boundingBox();
@@ -464,16 +156,12 @@ test.describe('Thinking block UI', () => {
 	});
 
 	test('non-thinking AI response does not show a thinking block', async ({ page, chat }) => {
-		const runId = 'run--test-thinking-004';
 		const answer = 'Hello! How can I help you today?';
 		const question = 'Hello';
 
-		setThreadHistory(question, [historyAiMessage('msg-4', answer)]);
-		await mockRunStream(
-			page,
-			[{ event: 'messages', data: aiChunk(answer, 'msg-4', {}, runId) }],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: finished(sent, storedAiMessage('msg-4', answer))
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -486,7 +174,6 @@ test.describe('Thinking block UI', () => {
 		page,
 		chat
 	}) => {
-		const runId = 'run--test-thinking-005';
 		const reasoning = 'Anthropic native thinking content.';
 		const answer = 'Anthropic native answer.';
 		const content = [
@@ -495,12 +182,9 @@ test.describe('Thinking block UI', () => {
 		];
 		const question = 'Test Anthropic format';
 
-		setThreadHistory(question, [historyAiMessage('msg-5', content)]);
-		await mockRunStream(
-			page,
-			[{ event: 'messages', data: aiChunk(content, 'msg-5', {}, runId) }],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: finished(sent, storedAiMessage('msg-5', content))
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -509,7 +193,7 @@ test.describe('Thinking block UI', () => {
 		await expect(thinkingButton).toBeVisible();
 		await expect(page.getByText(answer)).toBeVisible();
 
-		await waitForSettledHistory(page, question);
+		await waitForSettledList(page, question);
 		await thinkingButton.click();
 		await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
 		await expect(page.getByText(reasoning)).toBeVisible();
@@ -519,7 +203,6 @@ test.describe('Thinking block UI', () => {
 		page,
 		chat
 	}) => {
-		const runId = 'run--test-thinking-006';
 		const reasoning = 'Considering the langchain v1 reasoning block format.';
 		const answer = 'Langchain v1 answer.';
 		const content = [
@@ -528,12 +211,9 @@ test.describe('Thinking block UI', () => {
 		];
 		const question = 'Test langchain v1 format';
 
-		setThreadHistory(question, [historyAiMessage('msg-6', content)]);
-		await mockRunStream(
-			page,
-			[{ event: 'messages', data: aiChunk(content, 'msg-6', {}, runId) }],
-			runId
-		);
+		runs = await fakeRuns(page, (sent) => ({
+			first: finished(sent, storedAiMessage('msg-6', content))
+		}));
 
 		await chat.textInput.fill(question);
 		await chat.textInput.press('Enter');
@@ -542,7 +222,7 @@ test.describe('Thinking block UI', () => {
 		await expect(thinkingButton).toBeVisible();
 		await expect(page.getByText(answer)).toBeVisible();
 
-		await waitForSettledHistory(page, question);
+		await waitForSettledList(page, question);
 		await thinkingButton.click();
 		await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
 		await expect(page.getByText(reasoning)).toBeVisible();
@@ -552,11 +232,10 @@ test.describe('Thinking block UI', () => {
 		page,
 		chat
 	}) => {
-		// The held-open stream deliberately keeps the connection open for several
-		// seconds, plus settle waits afterwards — comfortably exceeds the 30s default.
+		// The fake run deliberately holds its answer back for several seconds, plus settle
+		// waits afterwards — comfortably exceeds the 30s default.
 		test.setTimeout(60_000);
 
-		const runId = 'run--test-thinking-007';
 		const messageId = 'msg-7';
 		// Reasoning is delivered as two separate deltas while the connection is held
 		// open, pinning both live display AND client-side concatenation of the parts
@@ -567,67 +246,55 @@ test.describe('Thinking block UI', () => {
 		const question = 'Stream while thinking, please';
 		const holdMs = 4000;
 
-		const server = await startHeldOpenStreamServer({
-			runId,
-			initialChunks: reasoningParts.map((part) => ({
-				event: 'messages',
-				data: aiChunk('', messageId, { reasoning_content: part }, runId)
-			})),
-			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId, {}, runId) }],
+		// The reasoning block streams at once; its text block, the stored exchange and the end
+		// of the run only after `holdMs`.
+		const events = streamedAiMessage(messageId, [
+			{ type: 'reasoning', parts: reasoningParts },
+			{ type: 'text', parts: [answer] }
+		]);
+		// `message-start`, then the reasoning block's start, deltas and finish.
+		const reasoningEnd = 1 + reasoningParts.length + 2;
+		runs = await fakeRuns(page, (sent) => ({
+			first: events.slice(0, reasoningEnd),
+			rest: [
+				...events.slice(reasoningEnd),
+				...finished(sent, storedAiMessage(messageId, answer, { reasoning_content: fullReasoning }))
+			],
 			holdMs
-		});
+		}));
 
-		try {
-			setThreadHistory(question, [
-				historyAiMessage(messageId, answer, { reasoning_content: fullReasoning })
-			]);
+		await chat.textInput.fill(question);
+		await chat.textInput.press('Enter');
 
-			// Proxy the run-stream request to our locally-owned server (see
-			// startHeldOpenStreamServer) instead of fulfilling it outright — a `route.fulfill`
-			// response can only ever deliver a complete, static body, which cannot represent a
-			// stream that's still in progress.
-			await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/runs/stream`, async (route) => {
-				await route.continue({ url: server.url });
-			});
+		// While the connection is still held open server-side (the AI message has
+		// thinking but no text yet), only the thinking block renders — no message
+		// card — per ChatMessage.svelte's empty-text-with-thinking behaviour.
+		const thinkingButton = page.getByRole('button', { name: /thinking/i });
+		await expect(thinkingButton).toBeVisible();
+		await expect(page.getByText(answer)).not.toBeVisible();
 
-			await chat.textInput.fill(question);
-			await chat.textInput.press('Enter');
+		// The thinking pill's icon animates (data-streaming) while the run is still
+		// in flight, so the UI doesn't feel stuck during the thinking phase.
+		await expect(thinkingButton).toHaveAttribute('data-streaming', 'true');
 
-			// While the connection is still held open server-side (the AI message has
-			// thinking but no text yet), only the thinking block renders — no message
-			// card — per ChatMessage.svelte's empty-text-with-thinking behaviour.
-			const thinkingButton = page.getByRole('button', { name: /thinking/i });
-			await expect(thinkingButton).toBeVisible();
-			await expect(page.getByText(answer)).not.toBeVisible();
+		await thinkingButton.click();
+		await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
+		// Both reasoning deltas, concatenated client-side, are visible mid-stream.
+		await expect(page.getByText(fullReasoning)).toBeVisible();
 
-			// The thinking pill's icon animates (data-streaming) while the run is still
-			// in flight, so the UI doesn't feel stuck during the thinking phase.
-			await expect(thinkingButton).toHaveAttribute('data-streaming', 'true');
+		// The text block still hasn't been delivered — the fake run holds it for `holdMs`.
+		await expect(page.getByText(answer)).not.toBeVisible();
 
-			await thinkingButton.click();
-			await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
-			// Both reasoning deltas, concatenated client-side, are visible mid-stream.
-			await expect(page.getByText(fullReasoning)).toBeVisible();
+		// Let the run finish and confirm the finished state still renders correctly.
+		await expect(page.getByText(answer)).toBeVisible({ timeout: holdMs + 10_000 });
+		await waitForSettledList(page, question);
+		await expect(thinkingButton).toBeVisible();
+		await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
+		await expect(page.getByText(fullReasoning)).toBeVisible();
 
-			// The final chunk still hasn't been delivered — the server is holding the
-			// connection open for `holdMs`.
-			await expect(page.getByText(answer)).not.toBeVisible();
-
-			// Let the server complete the stream (final text chunk + close) and confirm
-			// the finished state still renders correctly once the run wraps up and the
-			// post-stream history refetch lands.
-			await expect(page.getByText(answer)).toBeVisible({ timeout: holdMs + 10_000 });
-			await waitForSettledHistory(page, question);
-			await expect(thinkingButton).toBeVisible();
-			await expect(thinkingButton).toHaveAttribute('aria-expanded', 'true');
-			await expect(page.getByText(fullReasoning)).toBeVisible();
-
-			// Once the run has completed and the post-stream history refetch has settled,
-			// the pill is no longer the in-flight message, so the streaming animation stops.
-			await expect(thinkingButton).toHaveAttribute('data-streaming', 'false');
-		} finally {
-			await server.close();
-		}
+		// Once the run has completed, the pill is no longer the in-flight message, so the
+		// streaming animation stops.
+		await expect(thinkingButton).toHaveAttribute('data-streaming', 'false');
 	});
 });
 
@@ -640,14 +307,14 @@ function seedOverflowingHistory(exchangeCount: number): unknown[] {
 	const messages: unknown[] = [];
 	for (let i = 0; i < exchangeCount; i++) {
 		messages.push(
-			historyHumanMessage(
+			storedHumanMessage(
 				`seed-human-${i}`,
 				`Seed question ${i + 1}: padding out the prior conversation so the message list ` +
 					'overflows the viewport before the new question is asked.'
 			)
 		);
 		messages.push(
-			historyAiMessage(
+			storedAiMessage(
 				`seed-ai-${i}`,
 				`Seed answer ${i + 1}: a reasonably long reply so each exchange takes up real ` +
 					'vertical space and the conversation reliably overflows a standard viewport.'
@@ -666,11 +333,10 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 		page,
 		chat
 	}) => {
-		// Same rationale as the held-open-stream test above: the held-open
-		// connection plus settle waits comfortably exceed the 30s default.
+		// Same rationale as the live-streaming test above: the held-back answer plus settle
+		// waits comfortably exceed the 30s default.
 		test.setTimeout(60_000);
 
-		const runId = 'run--test-thinking-overflow-001';
 		const messageId = 'msg-overflow-1';
 		const reasoning = 'Thinking about the question after a long prior conversation...';
 		const answer = 'The final answer, delivered after scrolling into view.';
@@ -678,26 +344,25 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 		const holdMs = 4000;
 
 		const seedMessages = seedOverflowingHistory(10);
-		let historyMessages: unknown[] = seedMessages;
 
-		// The initial thread-history fetch fires the instant Chat.svelte mounts
-		// (useStream's `initThreadId`), before this test body would otherwise get a
-		// chance to register a route — so unlike `mockThreadHistory` calls elsewhere
-		// in this file (registered right before submitting, to intercept only the
-		// *post-run* refetch), this route must be registered BEFORE navigating to
-		// /chat/ so it also covers that very first fetch. A single route handler
-		// reading a reassignable closure variable serves both the initial seeded
-		// history and, later, the post-run refetch.
-		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/history`, async (route) => {
-			await route.fulfill({
+		// The thread's state is read the instant the conversation mounts, so the route that
+		// seeds it is registered before navigating. `next: []` marks the thread idle.
+		await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/state`, (route) =>
+			route.fulfill({
 				status: 200,
 				contentType: 'application/json',
-				body: JSON.stringify(buildHistoryState(historyMessages))
-			});
-		});
-
-		await page.goto('/chat/');
-		await page.waitForURL(/\/chat\/[\w-]+/);
+				body: JSON.stringify({
+					values: { messages: seedMessages },
+					next: [],
+					tasks: [],
+					metadata: {},
+					created_at: new Date(0).toISOString(),
+					checkpoint: { thread_id: 'seeded', checkpoint_ns: '', checkpoint_id: 'seeded-1' },
+					parent_checkpoint: null
+				})
+			})
+		);
+		await gotoFreshThread(page);
 
 		// Sanity-check the seeded conversation actually overflows the viewport —
 		// otherwise this test would pass vacuously, since a container that never
@@ -726,31 +391,30 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 			})
 			.toBe(true);
 
-		const server = await startHeldOpenStreamServer({
-			runId,
-			initialChunks: [
-				{
-					event: 'messages',
-					data: aiChunk('', messageId, { reasoning_content: reasoning }, runId)
-				}
+		const events = streamedAiMessage(messageId, [
+			{ type: 'reasoning', parts: [reasoning] },
+			{ type: 'text', parts: [answer] }
+		]);
+		// `message-start`, then the reasoning block's start, delta and finish.
+		const reasoningEnd = 4;
+		const runs = await fakeRuns(page, (sent) => ({
+			first: events.slice(0, reasoningEnd),
+			rest: [
+				...events.slice(reasoningEnd),
+				...finished(
+					sent,
+					storedAiMessage(messageId, answer, { reasoning_content: reasoning }),
+					seedMessages
+				)
 			],
-			finalChunks: [{ event: 'messages', data: aiChunk(answer, messageId, {}, runId) }],
 			holdMs
-		});
+		}));
 
 		try {
-			// Proxy the run-stream request to our locally-owned server (see
-			// startHeldOpenStreamServer) instead of fulfilling it outright — a
-			// `route.fulfill` response can only ever deliver a complete, static body,
-			// which cannot represent a stream that's still in progress.
-			await page.route(`${LANGGRAPH_CONFIG.apiUrl}/threads/*/runs/stream`, async (route) => {
-				await route.continue({ url: server.url });
-			});
-
 			await chat.textInput.fill(question);
 			await chat.textInput.press('Enter');
 
-			// While the connection is held open server-side, the new AI message has
+			// While the fake run holds its answer back, the new AI message has
 			// thinking but no text yet, and the message list already overflows the
 			// viewport (asserted above). Confirms the end-to-end outcome that
 			// ScrollableContainer's `scrollToMe` fix targets: a thinking-only message
@@ -775,18 +439,10 @@ test.describe('Thinking block UI - scrolling with an already-overflowing history
 			await expect(page.getByText(answer)).not.toBeVisible();
 			await expect(thinkingButton).toBeInViewport();
 
-			// Let the run complete, keeping the mocked history in sync with the
-			// finished exchange so the post-stream refetch (and teardown) sees a
-			// consistent state.
-			historyMessages = [
-				...seedMessages,
-				historyHumanMessage('e2e-history-human-overflow', question),
-				historyAiMessage(messageId, answer, { reasoning_content: reasoning })
-			];
 			await expect(page.getByText(answer)).toBeVisible({ timeout: holdMs + 10_000 });
 			await expect(thinkingButton).toBeInViewport();
 		} finally {
-			await server.close();
+			await runs.close();
 		}
 	});
 });

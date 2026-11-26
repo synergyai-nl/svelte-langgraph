@@ -12,11 +12,11 @@
 	},
 	"peerDependencies": {
 		"svelte": "^5.46.1",
-		"@langchain/langgraph-sdk": "^1.8.3"
+		"@langchain/langgraph-sdk": "^1.17.0"
 	},
 	"devDependencies": {
 		"svelte": "^5.57.2",
-		"@langchain/langgraph-sdk": "^1.8.3",
+		"@langchain/langgraph-sdk": "^1.17.0",
 		"@sveltejs/vite-plugin-svelte": "^5.0.0",
 		"vite": "^6.2.6",
 		"vitest": "^4.1.12",

@@ -49,12 +49,11 @@ async function waitUntil(epochMs: number) {
 		.toBeGreaterThan(epochMs);
 }
 
-/** Count run POSTs, which are the writes a recovery must never replay. */
+/** Count run commands, which are the writes a recovery must never replay. */
 function countRuns(page: Page) {
 	const runs: Request[] = [];
 	page.on('request', (req) => {
-		if (req.method() === 'POST' && /\/runs\/stream$/.test(new URL(req.url()).pathname))
-			runs.push(req);
+		if (req.method() === 'POST' && /\/commands$/.test(new URL(req.url()).pathname)) runs.push(req);
 	});
 	return runs;
 }
